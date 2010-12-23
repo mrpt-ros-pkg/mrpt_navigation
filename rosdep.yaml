@@ -1,0 +1,5 @@
+mrpt:
+  ubuntu: libmrpt-dev
+  debian: libmrpt-dev
+  fedora: mrpt-devel
+

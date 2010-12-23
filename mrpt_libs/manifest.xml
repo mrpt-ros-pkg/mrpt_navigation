@@ -1,0 +1,18 @@
+<package>
+  <description brief="MRPT C++ libraries">
+
+     Adding this package to your dependencies assures that MRPT libraries will 
+     be installed in your system. For example, in Ubuntu this means installing
+     the libmrpt-dev package.
+
+  </description>
+  <author>Jose Luis Blanco Claraco</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/mrpt_libs</url>
+
+  <rosdep name="mrpt"/>
+
+</package>
+
+

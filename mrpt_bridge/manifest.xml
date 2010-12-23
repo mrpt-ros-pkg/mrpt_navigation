@@ -1,0 +1,24 @@
+<package>
+  <description brief="mrpt_bridge">
+
+     A C++ library for converting between some of the MRPT data types and ROS messages.
+
+  </description>
+  <author>Jose Luis</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/mrpt_bridge</url>
+  <depend package="geometry_msgs"/>
+  <depend package="sensor_msgs"/>
+  <depend package="mrpt_msgs"/>
+  <depend package="mrpt_libs"/>
+
+  <export>
+    <cpp cflags="-I${prefix}/include"
+         lflags="-Wl,-rpath,${prefix}/lib -L${prefix}/lib -lmrpt_bridge" />
+  </export>
+
+
+</package>
+
+
