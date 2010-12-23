@@ -1,0 +1,10 @@
+<stack>
+  <description brief="mrpt_common">mrpt_common</description>
+  <author>Maintained by Jose Luis</author>
+  <license>BSD</license>  
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/mrpt_common</url>
+  <depend stack="ros" />
+  <depend stack="ros_comm" /> <!-- std_msgs -->
+
+</stack>
