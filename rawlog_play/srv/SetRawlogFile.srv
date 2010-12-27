@@ -1,0 +1,5 @@
+# The rawlog file to load:
+string rawlog_filename
+---
+# Return true on success
+bool success

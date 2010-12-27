@@ -16,6 +16,9 @@ SUFFIXES =
 
 .SUFFIXES: .hpux_make_needs_suffix_list
 
+# Produce verbose output by default.
+VERBOSE = 1
+
 # Suppress display of executed commands.
 $(VERBOSE).SILENT:
 
@@ -39,17 +42,17 @@ RM = /usr/bin/cmake -E remove -f
 CMAKE_EDIT_COMMAND = /usr/bin/ccmake
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /home/jlblanco/code/mrpt-ros-pkg/mrpt_common/mrpt_bridge
+CMAKE_SOURCE_DIR = /home/jlblanco/code/mrpt-ros-pkg/mrpt_common/rawlog_play
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /home/jlblanco/code/mrpt-ros-pkg/mrpt_common/mrpt_bridge
+CMAKE_BINARY_DIR = /home/jlblanco/code/mrpt-ros-pkg/mrpt_common/rawlog_play
 
 #=============================================================================
 # Targets provided globally by CMake.
 
 # Special rule for the target edit_cache
 edit_cache:
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Running CMake cache editor..."
+	@echo "Running CMake cache editor..."
 	/usr/bin/ccmake -H$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR)
 .PHONY : edit_cache
 
@@ -59,7 +62,7 @@ edit_cache/fast: edit_cache
 
 # Special rule for the target rebuild_cache
 rebuild_cache:
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Running CMake to regenerate build system..."
+	@echo "Running CMake to regenerate build system..."
 	/usr/bin/cmake -H$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR)
 .PHONY : rebuild_cache
 
@@ -69,9 +72,9 @@ rebuild_cache/fast: rebuild_cache
 
 # The main all target
 all: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/jlblanco/code/mrpt-ros-pkg/mrpt_common/mrpt_bridge/CMakeFiles /home/jlblanco/code/mrpt-ros-pkg/mrpt_common/mrpt_bridge/CMakeFiles/progress.marks
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/jlblanco/code/mrpt-ros-pkg/mrpt_common/rawlog_play/CMakeFiles /home/jlblanco/code/mrpt-ros-pkg/mrpt_common/rawlog_play/CMakeFiles/progress.marks
 	$(MAKE) -f CMakeFiles/Makefile2 all
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/jlblanco/code/mrpt-ros-pkg/mrpt_common/mrpt_bridge/CMakeFiles 0
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/jlblanco/code/mrpt-ros-pkg/mrpt_common/rawlog_play/CMakeFiles 0
 .PHONY : all
 
 # The main clean target
@@ -151,6 +154,19 @@ ROSBUILD_gensrv_lisp/fast:
 .PHONY : ROSBUILD_gensrv_lisp/fast
 
 #=============================================================================
+# Target rules for targets named ROSBUILD_gensrv_py
+
+# Build rule for target.
+ROSBUILD_gensrv_py: cmake_check_build_system
+	$(MAKE) -f CMakeFiles/Makefile2 ROSBUILD_gensrv_py
+.PHONY : ROSBUILD_gensrv_py
+
+# fast build rule for target.
+ROSBUILD_gensrv_py/fast:
+	$(MAKE) -f CMakeFiles/ROSBUILD_gensrv_py.dir/build.make CMakeFiles/ROSBUILD_gensrv_py.dir/build
+.PHONY : ROSBUILD_gensrv_py/fast
+
+#=============================================================================
 # Target rules for targets named clean-test-results
 
 # Build rule for target.
@@ -164,17 +180,17 @@ clean-test-results/fast:
 .PHONY : clean-test-results/fast
 
 #=============================================================================
-# Target rules for targets named mrpt_bridge
+# Target rules for targets named rawlog_play
 
 # Build rule for target.
-mrpt_bridge: cmake_check_build_system
-	$(MAKE) -f CMakeFiles/Makefile2 mrpt_bridge
-.PHONY : mrpt_bridge
+rawlog_play: cmake_check_build_system
+	$(MAKE) -f CMakeFiles/Makefile2 rawlog_play
+.PHONY : rawlog_play
 
 # fast build rule for target.
-mrpt_bridge/fast:
-	$(MAKE) -f CMakeFiles/mrpt_bridge.dir/build.make CMakeFiles/mrpt_bridge.dir/build
-.PHONY : mrpt_bridge/fast
+rawlog_play/fast:
+	$(MAKE) -f CMakeFiles/rawlog_play.dir/build.make CMakeFiles/rawlog_play.dir/build
+.PHONY : rawlog_play/fast
 
 #=============================================================================
 # Target rules for targets named rosbuild_precompile
@@ -242,6 +258,19 @@ rospack_gensrv/fast:
 .PHONY : rospack_gensrv/fast
 
 #=============================================================================
+# Target rules for targets named rospack_gensrv_all
+
+# Build rule for target.
+rospack_gensrv_all: cmake_check_build_system
+	$(MAKE) -f CMakeFiles/Makefile2 rospack_gensrv_all
+.PHONY : rospack_gensrv_all
+
+# fast build rule for target.
+rospack_gensrv_all/fast:
+	$(MAKE) -f CMakeFiles/rospack_gensrv_all.dir/build.make CMakeFiles/rospack_gensrv_all.dir/build
+.PHONY : rospack_gensrv_all/fast
+
+#=============================================================================
 # Target rules for targets named test
 
 # Build rule for target.
@@ -307,34 +336,19 @@ tests/fast:
 .PHONY : tests/fast
 
 # target to build an object file
-src/laser_scan.o:
-	$(MAKE) -f CMakeFiles/mrpt_bridge.dir/build.make CMakeFiles/mrpt_bridge.dir/src/laser_scan.o
-.PHONY : src/laser_scan.o
+src/rawlog_play.o:
+	$(MAKE) -f CMakeFiles/rawlog_play.dir/build.make CMakeFiles/rawlog_play.dir/src/rawlog_play.o
+.PHONY : src/rawlog_play.o
 
 # target to preprocess a source file
-src/laser_scan.i:
-	$(MAKE) -f CMakeFiles/mrpt_bridge.dir/build.make CMakeFiles/mrpt_bridge.dir/src/laser_scan.i
-.PHONY : src/laser_scan.i
+src/rawlog_play.i:
+	$(MAKE) -f CMakeFiles/rawlog_play.dir/build.make CMakeFiles/rawlog_play.dir/src/rawlog_play.i
+.PHONY : src/rawlog_play.i
 
 # target to generate assembly for a file
-src/laser_scan.s:
-	$(MAKE) -f CMakeFiles/mrpt_bridge.dir/build.make CMakeFiles/mrpt_bridge.dir/src/laser_scan.s
-.PHONY : src/laser_scan.s
-
-# target to build an object file
-src/point_cloud.o:
-	$(MAKE) -f CMakeFiles/mrpt_bridge.dir/build.make CMakeFiles/mrpt_bridge.dir/src/point_cloud.o
-.PHONY : src/point_cloud.o
-
-# target to preprocess a source file
-src/point_cloud.i:
-	$(MAKE) -f CMakeFiles/mrpt_bridge.dir/build.make CMakeFiles/mrpt_bridge.dir/src/point_cloud.i
-.PHONY : src/point_cloud.i
-
-# target to generate assembly for a file
-src/point_cloud.s:
-	$(MAKE) -f CMakeFiles/mrpt_bridge.dir/build.make CMakeFiles/mrpt_bridge.dir/src/point_cloud.s
-.PHONY : src/point_cloud.s
+src/rawlog_play.s:
+	$(MAKE) -f CMakeFiles/rawlog_play.dir/build.make CMakeFiles/rawlog_play.dir/src/rawlog_play.s
+.PHONY : src/rawlog_play.s
 
 # Help Target
 help:
@@ -346,26 +360,25 @@ help:
 	@echo "... ROSBUILD_genmsg_lisp"
 	@echo "... ROSBUILD_gensrv_cpp"
 	@echo "... ROSBUILD_gensrv_lisp"
+	@echo "... ROSBUILD_gensrv_py"
 	@echo "... clean-test-results"
 	@echo "... edit_cache"
-	@echo "... mrpt_bridge"
+	@echo "... rawlog_play"
 	@echo "... rebuild_cache"
 	@echo "... rosbuild_precompile"
 	@echo "... rosbuild_premsgsrvgen"
 	@echo "... rospack_genmsg"
 	@echo "... rospack_genmsg_libexe"
 	@echo "... rospack_gensrv"
+	@echo "... rospack_gensrv_all"
 	@echo "... test"
 	@echo "... test-future"
 	@echo "... test-results"
 	@echo "... test-results-run"
 	@echo "... tests"
-	@echo "... src/laser_scan.o"
-	@echo "... src/laser_scan.i"
-	@echo "... src/laser_scan.s"
-	@echo "... src/point_cloud.o"
-	@echo "... src/point_cloud.i"
-	@echo "... src/point_cloud.s"
+	@echo "... src/rawlog_play.o"
+	@echo "... src/rawlog_play.i"
+	@echo "... src/rawlog_play.s"
 .PHONY : help
 
 

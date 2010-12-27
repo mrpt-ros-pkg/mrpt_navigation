@@ -9,6 +9,7 @@
   <review status="unreviewed" notes=""/>
   <url>http://ros.org/wiki/mrpt_msgs</url>
   <depend package="std_msgs"/>
+  <depend package="geometry_msgs"/>
 
 </package>
 

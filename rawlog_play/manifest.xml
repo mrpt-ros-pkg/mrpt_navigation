@@ -1,0 +1,18 @@
+<package>
+  <description brief="rawlog_play">
+
+     rawlog_play
+
+  </description>
+  <author>Jose Luis</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/rawlog_play</url>
+  <depend package="roscpp"/>
+  <depend package="geometry_msgs"/>
+  <depend package="sensor_msgs"/>
+  <depend package="mrpt_bridge"/>
+
+</package>
+
+
