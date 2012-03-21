@@ -1,17 +1,22 @@
 <package>
-  <description brief="MRPT C++ libraries">
+	<description brief="MRPT C++ libraries">
 
-     Adding this package to your dependencies assures that MRPT libraries will 
-     be installed in your system. For example, in Ubuntu this means installing
-     the libmrpt-dev package.
+		Adding this package to your dependencies assures that MRPT libraries will
+		be installed in your system. For example, in Ubuntu this means
+		installing
+		the libmrpt-dev package.
 
-  </description>
-  <author>Jose Luis Blanco Claraco</author>
-  <license>BSD</license>
-  <review status="unreviewed" notes=""/>
-  <url>http://ros.org/wiki/mrpt_libs</url>
+	</description>
+	<author>Jose Luis Blanco Claraco</author>
+	<license>BSD</license>
+	<review status="unreviewed" notes="" />
+	<url>http://ros.org/wiki/mrpt_libs</url>
 
-  <rosdep name="mrpt"/>
+	<export>
+		<cpp cflags="`pkg-config mrpt-base mrpt-bayes mrpt-slam mrpt-detectors mrpt-graphs mrpt-graphslam mrpt-hmtslam mrpt-reactivenav mrpt-scanmatching mrpt-scanmatching mrpt-topography mrpt-vision mrpt-maps --cflags`" lflags="`pkg-config mrpt-base mrpt-bayes mrpt-slam mrpt-detectors mrpt-graphs mrpt-graphslam mrpt-hmtslam mrpt-reactivenav mrpt-scanmatching mrpt-scanmatching mrpt-topography mrpt-vision mrpt-maps --libs`" />
+	</export>
+
+	<rosdep name="mrpt" />
 
 </package>
 
