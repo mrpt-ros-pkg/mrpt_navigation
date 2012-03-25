@@ -7,17 +7,21 @@
 
 namespace pose_cov_ops
 {
-	/** out = a (+) b   (Pose composition - without uncertainty) */
+	/** @name  Pose composition: out = a (+) b
+	    @{ */
 	void compose(const geometry_msgs::Pose& a, const geometry_msgs::Pose& b, geometry_msgs::Pose& out);
-
-	/** out = a (+) b   (Pose composition - with uncertainty, as Gaussians with 6x6 cov matrices) */
 	void compose(const geometry_msgs::PoseWithCovariance& a, const geometry_msgs::PoseWithCovariance& b, geometry_msgs::PoseWithCovariance& out);
+	void compose(const geometry_msgs::PoseWithCovariance& a, const geometry_msgs::Pose& b, geometry_msgs::PoseWithCovariance& out);
+	void compose(const geometry_msgs::Pose& a, const geometry_msgs::PoseWithCovariance& b, geometry_msgs::PoseWithCovariance& out);
+	/** @} */
 
-	/** out = a (-) b   (Pose inverse composition - without uncertainty) */
+	/** @name  Pose inverse composition (a "as seen from" b): out = a (-) b
+	    @{ */
 	void inverseCompose(const geometry_msgs::Pose& a, const geometry_msgs::Pose& b, geometry_msgs::Pose& out);
-
-	/** out = a (-) b   (Pose inverse composition - with uncertainty, as Gaussians with 6x6 cov matrices) */
 	void inverseCompose(const geometry_msgs::PoseWithCovariance& a, const geometry_msgs::PoseWithCovariance& b, geometry_msgs::PoseWithCovariance& out);
+	void inverseCompose(const geometry_msgs::PoseWithCovariance& a, const geometry_msgs::Pose& b, geometry_msgs::PoseWithCovariance& out);
+	void inverseCompose(const geometry_msgs::Pose& a, const geometry_msgs::PoseWithCovariance& b, geometry_msgs::PoseWithCovariance& out);
+	/** @} */
 
 }
 
