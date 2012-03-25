@@ -4,7 +4,7 @@
      A C++ library for converting between some of the MRPT data types and ROS messages.
 
   </description>
-  <author>Jose Luis</author>
+  <author>Jose Luis Blanco, Pablo Iñigo Blasco</author>
   <license>BSD</license>
   <review status="unreviewed" notes=""/>
   <url>http://ros.org/wiki/mrpt_bridge</url>
