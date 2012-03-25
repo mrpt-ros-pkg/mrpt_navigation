@@ -1,0 +1,15 @@
+/**
+\mainpage
+\htmlinclude manifest.html
+
+\b pose_cov_ops is a library for operating on geometry entities using the MRPT libraries.
+
+For further references and for the mathematical details, please refer to:
+- http://www.mrpt.org/2D_3D_Geometry
+- "A tutorial on SE(3) transformation parameterizations and on-manifold optimization", J.L. Blanco, Technical report, 2010: http://mapir.isa.uma.es/~jlblanco/papers/jlblanco2010geometry3D_techrep.pdf
+
+\section codeapi Code API
+
+See namespace pose_cov_ops
+
+*/
