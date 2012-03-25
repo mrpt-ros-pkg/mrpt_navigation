@@ -42,7 +42,7 @@ TEST(PoseConversions, reference_frame_change_with_rotations)
 
   //to mrpt
   mrpt::poses::CPose3DPDFGaussian mrpt_original_pose;
-  mrpt_bridge::poses::convertToMRPTCPose3DPDFGaussian(mrpt_original_pose, ros_msg_original_pose);
+  mrpt_bridge::poses::ros2mrpt(ros_msg_original_pose, mrpt_original_pose);
   EXPECT_EQ(ros_msg_original_pose.pose.position.x, mrpt_original_pose.mean[0]);
 
   //to tf
@@ -65,7 +65,7 @@ TEST(PoseConversions, reference_frame_change_with_rotations)
   EXPECT_NEAR(tf_result.getOrigin()[1], 1.0, 0.01);
 
   geometry_msgs::Pose mrpt_ros_result;
-  mrpt_bridge::poses::convertToROSPose(mrpt_ros_result, mrpt_result);
+  mrpt_bridge::poses::mrpt2ros(mrpt_result, mrpt_ros_result);
 
   EXPECT_NEAR(mrpt_ros_result.position.x, tf_result.getOrigin()[0], 0.01);
   EXPECT_NEAR(mrpt_ros_result.position.y, tf_result.getOrigin()[1], 0.01);

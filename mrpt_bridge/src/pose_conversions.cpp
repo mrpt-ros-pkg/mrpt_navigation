@@ -11,10 +11,12 @@
 
 #include "mrpt_bridge/pose_conversions.h"
 
-void mrpt_bridge::poses::convertToROSPoseWithCovariance(geometry_msgs::PoseWithCovariance& dst,
-                                                        const mrpt::poses::CPose3DPDFGaussian& src)
+void mrpt_bridge::poses::mrpt2ros(
+	const mrpt::poses::CPose3DPDFGaussian& src,
+	geometry_msgs::PoseWithCovariance& dst
+    )
 {
-  convertToROSPose(dst.pose, src.mean);
+  mrpt2ros(src.mean, dst.pose);
 
   for (int i = 0; i < 6; i++)
     for (int j = 0; j < 6; j++)
@@ -37,7 +39,9 @@ void mrpt_bridge::poses::convertToROSPoseWithCovariance(geometry_msgs::PoseWithC
 
 }
 
-void mrpt_bridge::poses::convertToROSPose(geometry_msgs::Pose& dst, const mrpt::poses::CPose3D& src)
+void mrpt_bridge::poses::mrpt2ros(
+	const mrpt::poses::CPose3D& src,
+	geometry_msgs::Pose& dst )
 {
 
   dst.position.x = src[0];
@@ -54,10 +58,11 @@ void mrpt_bridge::poses::convertToROSPose(geometry_msgs::Pose& dst, const mrpt::
 
 }
 
-void mrpt_bridge::poses::convertToMRPTCPose3DPDFGaussian(mrpt::poses::CPose3DPDFGaussian& dst,
-                                                         const geometry_msgs::PoseWithCovariance& src)
+void mrpt_bridge::poses::ros2mrpt(
+	const geometry_msgs::PoseWithCovariance& src,
+	mrpt::poses::CPose3DPDFGaussian& dst)
 {
-  convertToMRPTCPose3D(dst.mean, src.pose);
+  ros2mrpt(src.pose, dst.mean);
 
   for (int i = 0; i < 6; i++)
     for (int j = 0; j < 6; j++)
@@ -79,10 +84,10 @@ void mrpt_bridge::poses::convertToMRPTCPose3DPDFGaussian(mrpt::poses::CPose3DPDF
     }
 }
 
-void mrpt_bridge::poses::convertToMRPTCPose3D(mrpt::poses::CPose3D& dst, const geometry_msgs::Pose& src)
+void mrpt_bridge::poses::ros2mrpt(
+	const geometry_msgs::Pose& src,
+	mrpt::poses::CPose3D& dst)
 {
   dst.setFromValues(src.position.x, src.position.y, src.position.z, src.orientation.z, src.orientation.y,
                     src.orientation.x);
-
 }
-

@@ -12,25 +12,25 @@ namespace mrpt_bridge
 namespace poses
 {
 	/** Convert: MRPT's CPose -> ROS's Pose */
-	void convertToROSPose(
-		geometry_msgs::Pose& dst,
-		const mrpt::poses::CPose3D& src);
+	void mrpt2ros(
+		const mrpt::poses::CPose3D& src,
+		geometry_msgs::Pose& dst);
 
 	/** Convert: MRPT's CPose3DPDFGaussian -> ROS's PoseWithCovariance */
-	void convertToROSPoseWithCovariance(
-		geometry_msgs::PoseWithCovariance& dst,
-		const mrpt::poses::CPose3DPDFGaussian& src);
+	void mrpt2ros(
+		const mrpt::poses::CPose3DPDFGaussian& src,
+		geometry_msgs::PoseWithCovariance& dst);
 
 
 	/** Convert: ROS's Pose -> MRPT's CPose  */
-	void convertToMRPTCPose3D(
-		mrpt::poses::CPose3D& dst,
-		const geometry_msgs::Pose& src);
+	void ros2mrpt(
+		const geometry_msgs::Pose& src,
+		mrpt::poses::CPose3D& dst);
 
 	/** Convert: ROS's PoseWithCovariance -> MRPT's CPose3DPDFGaussian */
-	void convertToMRPTCPose3DPDFGaussian(
-		mrpt::poses::CPose3DPDFGaussian& dst,
-		const geometry_msgs::PoseWithCovariance& src);
+	void ros2mrpt(
+		const geometry_msgs::PoseWithCovariance& src,
+		mrpt::poses::CPose3DPDFGaussian& dst);
 
 }
 }

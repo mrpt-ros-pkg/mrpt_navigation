@@ -8,7 +8,7 @@ namespace mrpt_bridge {
   *
   * \return true on sucessful conversion, false on any error.
   */
-bool PointCloud::ros2mrpt(
+bool point_cloud::ros2mrpt(
 		const sensor_msgs::PointCloud &msg,
 		mrpt::slam::CSimplePointsMap  &obj )
 {
@@ -29,7 +29,7 @@ bool PointCloud::ros2mrpt(
   *  Since CSimplePointsMap only contains (x,y,z) data, sensor_msgs::PointCloud::channels will be empty.
   * \return true on sucessful conversion, false on any error.
   */
-bool PointCloud::mrpt2ros(
+bool point_cloud::mrpt2ros(
 	const mrpt::slam::CSimplePointsMap  &obj,
 	const std_msgs::Header &msg_header,
 	sensor_msgs::PointCloud &msg )
@@ -52,4 +52,4 @@ bool PointCloud::mrpt2ros(
 	return true;
 }
 
-} //namespace image_proc
+} //namespace mrpt_bridge

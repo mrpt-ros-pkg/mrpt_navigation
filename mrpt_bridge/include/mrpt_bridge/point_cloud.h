@@ -7,12 +7,10 @@
 
 namespace mrpt_bridge {
 
-/** This class contains methods to convert between ROS msgs and MRPT objects for point-cloud datatypes.
-  * \note Methods are not static, so you will need to instantiate an object of this converter class. This is done on purpose so options and switches can be added to the class in the future.
+/** Methods to convert between ROS msgs and MRPT objects for point-cloud datatypes.
   */
-class PointCloud
+namespace point_cloud
 {
-public:
 	/** Convert sensor_msgs/PointCloud -> mrpt::slam::CSimplePointsMap
 	  *  CSimplePointsMap only contains (x,y,z) data, so sensor_msgs::PointCloud::channels are ignored.
 	  * \return true on sucessful conversion, false on any error.

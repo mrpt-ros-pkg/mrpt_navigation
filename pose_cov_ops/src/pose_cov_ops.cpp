@@ -16,42 +16,42 @@ void pose_cov_ops::compose(const geometry_msgs::Pose& a, const geometry_msgs::Po
 {
 	CPose3D A(UNINITIALIZED_POSE),B(UNINITIALIZED_POSE),OUT(UNINITIALIZED_POSE);
 
-	mrpt_bridge::poses::convertToMRPTCPose3D(A,a);
-	mrpt_bridge::poses::convertToMRPTCPose3D(B,b);
+	mrpt_bridge::poses::ros2mrpt(a,A);
+	mrpt_bridge::poses::ros2mrpt(b,B);
 
 	OUT.composeFrom(A,B);
-	mrpt_bridge::poses::convertToROSPose(out,OUT);
+	mrpt_bridge::poses::mrpt2ros(OUT,out);
 }
 
 void pose_cov_ops::compose(const geometry_msgs::PoseWithCovariance& a, const geometry_msgs::PoseWithCovariance& b, geometry_msgs::PoseWithCovariance& out)
 {
 	CPose3DPDFGaussian  A(UNINITIALIZED_POSE),B(UNINITIALIZED_POSE);
 
-	mrpt_bridge::poses::convertToMRPTCPose3DPDFGaussian(A,a);
-	mrpt_bridge::poses::convertToMRPTCPose3DPDFGaussian(B,b);
+	mrpt_bridge::poses::ros2mrpt(a,A);
+	mrpt_bridge::poses::ros2mrpt(b,B);
 
 	const CPose3DPDFGaussian OUT = A + B;
-	mrpt_bridge::poses::convertToROSPoseWithCovariance(out,OUT);
+	mrpt_bridge::poses::mrpt2ros(OUT,out);
 }
 
 void pose_cov_ops::inverseCompose(const geometry_msgs::Pose& a, const geometry_msgs::Pose& b, geometry_msgs::Pose& out)
 {
 	CPose3D A(UNINITIALIZED_POSE),B(UNINITIALIZED_POSE),OUT(UNINITIALIZED_POSE);
 
-	mrpt_bridge::poses::convertToMRPTCPose3D(A,a);
-	mrpt_bridge::poses::convertToMRPTCPose3D(B,b);
+	mrpt_bridge::poses::ros2mrpt(a,A);
+	mrpt_bridge::poses::ros2mrpt(b,B);
 
 	OUT.inverseComposeFrom(A,B);
-	mrpt_bridge::poses::convertToROSPose(out,OUT);
+	mrpt_bridge::poses::mrpt2ros(OUT,out);
 }
 
 void pose_cov_ops::inverseCompose(const geometry_msgs::PoseWithCovariance& a, const geometry_msgs::PoseWithCovariance& b, geometry_msgs::PoseWithCovariance& out)
 {
 	CPose3DPDFGaussian  A(UNINITIALIZED_POSE),B(UNINITIALIZED_POSE);
 
-	mrpt_bridge::poses::convertToMRPTCPose3DPDFGaussian(A,a);
-	mrpt_bridge::poses::convertToMRPTCPose3DPDFGaussian(B,b);
+	mrpt_bridge::poses::ros2mrpt(a,A);
+	mrpt_bridge::poses::ros2mrpt(b,B);
 
 	const CPose3DPDFGaussian OUT = A - B;
-	mrpt_bridge::poses::convertToROSPoseWithCovariance(out,OUT);
+	mrpt_bridge::poses::mrpt2ros(OUT,out);
 }
