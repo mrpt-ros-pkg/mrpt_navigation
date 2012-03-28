@@ -20,6 +20,8 @@ bool laser_scan::mrpt2ros(
 	sensor_msgs::LaserScan &msg
 	)
 {
+	msg.header = msg_header;
+
 	MRPT_TODO("Implement me!")
 
 	return true;
