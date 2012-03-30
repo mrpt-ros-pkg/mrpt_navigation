@@ -18,6 +18,14 @@ void mrpt_bridge::poses::mrpt2ros(
 {
   mrpt2ros(src.mean, dst.pose);
 
+  // Read REP103: http://ros.org/reps/rep-0103.html#covariance-representation
+  // # Row-major representation of the 6x6 covariance matrix
+  // # The orientation parameters use a fixed-axis representation.
+  // # In order, the parameters are:
+  // # (x, y, z, rotation about X axis, rotation about Y axis, rotation about Z axis)
+  // float64[36] covariance
+  MRPT_TODO("MRPT uses non-fixed axis for 6x6 covariance: should use a transform Jacobian here!")
+
   const unsigned int indxs_map[6] = { 0,1,2, 5,4,3 };
 
   for (int i = 0; i < 6; i++)
@@ -80,6 +88,8 @@ void mrpt_bridge::poses::mrpt2ros(
 {
   mrpt2ros(src.mean, dst.pose);
 
+  // Read REP103: http://ros.org/reps/rep-0103.html#covariance-representation
+  MRPT_TODO("MRPT uses non-fixed axis for 6x6 covariance: should use a transform Jacobian here!")
 
   for (int i = 0; i < 6; i++)
     for (int j = 0; j < 6; j++)
