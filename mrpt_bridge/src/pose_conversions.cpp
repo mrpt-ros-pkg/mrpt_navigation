@@ -132,5 +132,7 @@ void mrpt_bridge::poses::ros2mrpt(
 	dst.z(src.position.z);
 
 	const mrpt::math::CQuaternionDouble q(src.orientation.w, src.orientation.x, src.orientation.y, src.orientation.z);
-	q.rotationMatrix( dst.m_ROT );
+	mrpt::math::CMatrixDouble33 ROT;
+	q.rotationMatrix(ROT);
+	dst.setRotationMatrix( ROT );
 }
