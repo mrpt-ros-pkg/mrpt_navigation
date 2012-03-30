@@ -18,25 +18,11 @@ void mrpt_bridge::poses::mrpt2ros(
 {
   mrpt2ros(src.mean, dst.pose);
 
+  const unsigned int indxs_map[6] = { 0,1,2, 5,4,3 };
+
   for (int i = 0; i < 6; i++)
     for (int j = 0; j < 6; j++)
-    {
-      int ros_i = i;
-      int ros_j = j;
-
-      if (ros_i == 5)
-        ros_i = 3;
-      else if (ros_i == 3)
-        ros_i = 5;
-
-      if (ros_j == 5)
-        ros_j = 3;
-      else if (ros_j == 3)
-        ros_j = 5;
-
-      dst.covariance[ros_i * 6 + ros_j] = src.cov(i, j);
-    }
-
+      dst.covariance[indxs_map[i] * 6 + indxs_map[j]] = src.cov(i, j);
 }
 
 void mrpt_bridge::poses::mrpt2ros(
@@ -58,36 +44,83 @@ void mrpt_bridge::poses::mrpt2ros(
 
 }
 
+
+/** Convert: MRPT's CPose2D (x,y,yaw) -> ROS's Pose */
+void mrpt_bridge::poses::mrpt2ros(
+	const mrpt::poses::CPose2D& src,
+	geometry_msgs::Pose& dst)
+{
+  dst.position.x = src.x();
+  dst.position.y = src.y();
+  dst.position.z = 0;
+
+  const double yaw = src.phi();
+  if (std::abs(yaw)<1e-10)
+  {
+    dst.orientation.x = 0.;
+    dst.orientation.y = 0.;
+    dst.orientation.z = .5*yaw;
+    dst.orientation.w = 1.;
+  }
+  else
+  {
+    const double s = ::sin(yaw*.5);
+    const double c = ::cos(yaw*.5);
+    dst.orientation.x = 0.;
+    dst.orientation.y = 0.;
+    dst.orientation.z = s;
+    dst.orientation.w = c;
+  }
+}
+
+void mrpt_bridge::poses::mrpt2ros(
+	const mrpt::poses::CPosePDFGaussian& src,
+	geometry_msgs::PoseWithCovariance& dst
+    )
+{
+  mrpt2ros(src.mean, dst.pose);
+
+
+  for (int i = 0; i < 6; i++)
+    for (int j = 0; j < 6; j++)
+    {
+      double cov_val;
+      int ros_i=i;
+      int ros_j=j;
+      if (i>2 || j>2)
+        cov_val = 0;
+      else
+      {
+        ros_i = i==2 ? 5 : i;
+        ros_j = j==2 ? 5 : j;
+        cov_val = src.cov(i, j);
+      }
+      dst.covariance[ros_i * 6 + ros_j] = cov_val;
+    }
+}
+
+
 void mrpt_bridge::poses::ros2mrpt(
 	const geometry_msgs::PoseWithCovariance& src,
 	mrpt::poses::CPose3DPDFGaussian& dst)
 {
   ros2mrpt(src.pose, dst.mean);
 
+  const unsigned int indxs_map[6] = { 0,1,2, 5,4,3 };
+
   for (int i = 0; i < 6; i++)
     for (int j = 0; j < 6; j++)
-    {
-      int ros_i = i;
-      int ros_j = j;
-
-      if (ros_i == 5)
-        ros_i = 3;
-      else if (ros_i == 3)
-        ros_i = 5;
-
-      if (ros_j == 5)
-        ros_j = 3;
-      else if (ros_j == 3)
-        ros_j = 5;
-
-      dst.cov(i, j) = src.covariance[ros_i * 6 + ros_j];
-    }
+      dst.cov(i, j) = src.covariance[indxs_map[i] * 6 + indxs_map[j]];
 }
 
 void mrpt_bridge::poses::ros2mrpt(
 	const geometry_msgs::Pose& src,
 	mrpt::poses::CPose3D& dst)
 {
-  dst.setFromValues(src.position.x, src.position.y, src.position.z, src.orientation.z, src.orientation.y,
-                    src.orientation.x);
+	dst.x(src.position.x);
+	dst.y(src.position.y);
+	dst.z(src.position.z);
+
+	const mrpt::math::CQuaternionDouble q(src.orientation.w, src.orientation.x, src.orientation.y, src.orientation.z);
+	q.rotationMatrix( dst.m_ROT );
 }

@@ -9,10 +9,11 @@
 #include <gtest/gtest.h>
 #include <tf/tf.h>
 
-TEST(PoseConversions, checkPoseMatrixFromRotationParameters)
-{
-  double roll = M_PI, pitch = -M_PI / 2.0, yaw = 0;
+using namespace std;
+using namespace mrpt::utils; // DEG2RAD()
 
+void checkPoseMatrixFromRotationParameters(const double roll, const double pitch, const double yaw)
+{
   //TF-BULLET ROTATION
   tf::Pose original_pose;
   tf::Quaternion rotation;
@@ -28,6 +29,16 @@ TEST(PoseConversions, checkPoseMatrixFromRotationParameters)
   for (int i = 0; i < 3; i++)
     for (int j = 0; j < 3; j++)
       EXPECT_NEAR(basis[i][j], mrpt_basis(i,j), 0.01);
+}
+
+TEST(PoseConversions, checkPoseMatrixFromRotationParameters)
+{
+	checkPoseMatrixFromRotationParameters(0  , 0,   0);
+	checkPoseMatrixFromRotationParameters(0.2, 0,   0);
+	checkPoseMatrixFromRotationParameters(0,   0.2, 0);
+	checkPoseMatrixFromRotationParameters(0,   0,   0.2);
+	checkPoseMatrixFromRotationParameters(0.4, 0.3, 0.2);
+	checkPoseMatrixFromRotationParameters(M_PI,-M_PI/2.0, 0);
 }
 
 // Declare a test
@@ -70,6 +81,70 @@ TEST(PoseConversions, reference_frame_change_with_rotations)
   EXPECT_NEAR(mrpt_ros_result.position.x, tf_result.getOrigin()[0], 0.01);
   EXPECT_NEAR(mrpt_ros_result.position.y, tf_result.getOrigin()[1], 0.01);
   EXPECT_NEAR(mrpt_ros_result.position.z, tf_result.getOrigin()[2], 0.01);
+}
+
+void check_CPose3D_tofrom_ROS(double x,double y, double z, double yaw, double pitch, double roll)
+{
+	const mrpt::poses::CPose3D p3D(x,y,z,yaw,pitch,roll);
+
+	// Convert MRPT->ROS
+	geometry_msgs::Pose ros_p3D;
+	mrpt_bridge::poses::mrpt2ros(p3D, ros_p3D);
+
+	// Compare ROS quat vs. MRPT quat:
+	mrpt::math::CQuaternionDouble q;
+	p3D.getAsQuaternion(q);
+
+	EXPECT_NEAR( ros_p3D.position.x, p3D.x() , 1e-4 ) << "p: " << p3D << endl;
+	EXPECT_NEAR( ros_p3D.position.y, p3D.y() , 1e-4 ) << "p: " << p3D << endl;
+	EXPECT_NEAR( ros_p3D.position.z, p3D.z() , 1e-4 ) << "p: " << p3D << endl;
+
+	EXPECT_NEAR( ros_p3D.orientation.x, q.x() , 1e-4 ) << "p: " << p3D << endl;
+	EXPECT_NEAR( ros_p3D.orientation.y, q.y() , 1e-4 ) << "p: " << p3D << endl;
+	EXPECT_NEAR( ros_p3D.orientation.z, q.z() , 1e-4 ) << "p: " << p3D << endl;
+	EXPECT_NEAR( ros_p3D.orientation.w, q.r() , 1e-4 ) << "p: " << p3D << endl;
+
+	// Test the other path: ROS->MRPT
+	mrpt::poses::CPose3D p_bis;
+	mrpt_bridge::poses::ros2mrpt(ros_p3D, p_bis);
+
+	// p_bis==p3D?
+	EXPECT_NEAR( (p_bis.getAsVectorVal() - p3D.getAsVectorVal()).array().abs().maxCoeff(),0, 1e-4 )
+		<< "p_bis: " << p_bis<< endl
+		<< "p3D: " << p3D << endl;
+}
+
+// Declare a test
+TEST(PoseConversions, check_CPose3D_tofrom_ROS)
+{
+	check_CPose3D_tofrom_ROS(0,0,0, DEG2RAD(0),DEG2RAD(0),DEG2RAD(0) );
+	check_CPose3D_tofrom_ROS(1,2,3, DEG2RAD(0),DEG2RAD(0),DEG2RAD(0) );
+
+	check_CPose3D_tofrom_ROS(1,2,3, DEG2RAD(30),DEG2RAD(0),DEG2RAD(0) );
+	check_CPose3D_tofrom_ROS(1,2,3, DEG2RAD(0),DEG2RAD(30),DEG2RAD(0) );
+	check_CPose3D_tofrom_ROS(1,2,3, DEG2RAD(0),DEG2RAD(0),DEG2RAD(30) );
+
+	check_CPose3D_tofrom_ROS(1,2,3, DEG2RAD(-5),DEG2RAD(15),DEG2RAD(-30) );
+}
+
+// Declare a test
+TEST(PoseConversions, check_CPose2D_to_ROS)
+{
+	const mrpt::poses::CPose2D p2D(1,2, 0.56);
+
+	// Convert MRPT->ROS
+	geometry_msgs::Pose ros_p2D;
+	mrpt_bridge::poses::mrpt2ros(p2D, ros_p2D);
+
+	// Compare vs. 3D pose:
+	const mrpt::poses::CPose3D p3D = mrpt::poses::CPose3D(p2D);
+	mrpt::poses::CPose3D p3D_ros;
+	mrpt_bridge::poses::ros2mrpt(ros_p2D, p3D_ros);
+
+	// p3D_ros should equal p3D
+	EXPECT_NEAR( (p3D_ros.getAsVectorVal() - p3D.getAsVectorVal()).array().abs().maxCoeff(),0, 1e-4 )
+		<< "p3D_ros: " << p3D_ros << endl
+		<< "p3D: " << p3D << endl;
 }
 
 // Run all the tests that were declared with TEST()
