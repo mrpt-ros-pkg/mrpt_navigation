@@ -12,7 +12,10 @@
   <depend package="sensor_msgs"/>
   <depend package="mrpt_msgs"/>
   <depend package="mrpt_libs"/>
+  
   <depend package="tf"/>
+  <depend package="pcl"/>
+  <depend package="opencv2"/>
 
   <export>
     <cpp cflags="-I${prefix}/include"

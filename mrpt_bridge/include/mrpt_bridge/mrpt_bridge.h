@@ -4,6 +4,7 @@
 // This header includes all other headers in this package:
 #include <mrpt_bridge/laser_scan.h>
 #include <mrpt_bridge/point_cloud.h>
-#include <mrpt_bridge/pose_conversions.h>
+#include "pose_conversions.h"
+#include "point_cloud2.h"
 
 #endif
