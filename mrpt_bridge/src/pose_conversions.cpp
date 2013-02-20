@@ -141,13 +141,15 @@ void mrpt_bridge::poses::mrpt2ros(const mrpt::poses::CQuaternionDouble& src, geo
 }
 void mrpt_bridge::poses::ros2mrpt(const geometry_msgs::Pose& src, mrpt::poses::CPose3D& dst)
 {
+/*
   dst.x(src.position.x);
   dst.y(src.position.y);
   dst.z(src.position.z);
-
+*/
   const mrpt::math::CQuaternionDouble q(src.orientation.w, src.orientation.x, src.orientation.y, src.orientation.z);
-  mrpt::math::CMatrixDouble33 ROT;
-  q.rotationMatrix(ROT);
-  dst.setRotationMatrix(ROT);
+  //mrpt::math::CMatrixDouble33 ROT;
+  //q.rotationMatrix(ROT);
+  //dst.setRotationMatrix(ROT);
+dst= mrpt::math::CPose3D(q,src.position.x,src.position.y,src.position.z);
 }
 
