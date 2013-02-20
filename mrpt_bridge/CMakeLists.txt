@@ -12,6 +12,7 @@ set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 # and anywhere where CMake finds them (/usr, /usr/local, ...)
 
 rosbuild_add_library(mrpt_bridge src/pose_conversions.cpp src/point_cloud.cpp src/point_cloud2.cpp src/laser_scan.cpp)
+target_link_libraries(mrpt_bridge opencv_core opencv_highgui)
 
 rosbuild_add_gtest(test_mrpt_bridge src/test/test_main.cpp)
 rosbuild_add_gtest(test_mrpt_bridge src/test/test_pose_conversions.cpp)

@@ -13,8 +13,8 @@
 	<url>http://ros.org/wiki/mrpt_libs</url>
 
 	<export>
-		<cpp cflags="`pkg-config mrpt-base mrpt-bayes mrpt-slam mrpt-detectors mrpt-graphs mrpt-graphslam mrpt-hmtslam mrpt-reactivenav mrpt-scanmatching mrpt-scanmatching mrpt-topography mrpt-vision mrpt-maps mrpt-hwdrivers --cflags`" 
-		     lflags="`pkg-config mrpt-base mrpt-bayes mrpt-slam mrpt-detectors mrpt-graphs mrpt-graphslam mrpt-hmtslam mrpt-reactivenav mrpt-scanmatching mrpt-scanmatching mrpt-topography mrpt-vision mrpt-maps mrpt-hwdrivers --libs`" />
+		<cpp cflags="`pkg-config mrpt-base mrpt-bayes mrpt-slam mrpt-detectors mrpt-graphs mrpt-hmtslam mrpt-reactivenav mrpt-scanmatching mrpt-scanmatching mrpt-topography mrpt-vision mrpt-maps mrpt-hwdrivers --cflags`" 
+		     lflags="`pkg-config mrpt-base mrpt-bayes mrpt-slam mrpt-detectors mrpt-graphs mrpt-hmtslam mrpt-reactivenav mrpt-scanmatching mrpt-scanmatching mrpt-topography mrpt-vision mrpt-maps mrpt-hwdrivers --libs` " />
 	</export>
 
 	<rosdep name="mrpt" />
