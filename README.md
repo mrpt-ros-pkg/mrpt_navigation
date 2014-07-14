@@ -24,11 +24,10 @@ Compiling
 
         git clone https://github.com/mrpt-ros-pkg/mrpt_slam.git
 
-4. For ROS to find these packages, append the directory with mrpt-ros-pkg sources to the `ROS_PACKAGE_PATH` variable. Add this to your `~/.bashrc`:
-
-        export ROS_PACKAGE_PATH=$ROS_PACKAGE_PATH:[YOUR PATH TO mrpt-ros-pkg/]
+4. For ROS to find these packages, read the catkin documentation and source the devel/setup.bash of this pkg
         
 5. Build as usual with any other ROS package:
 
-        rosmake
+        caktin_make
+        catkin_make run_tests # to execute the gtests
 
