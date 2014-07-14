@@ -19,7 +19,7 @@ void checkPoseMatrixFromRotationParameters(const double roll, const double pitch
   tf::Quaternion rotation;
   rotation.setRPY(roll, pitch, yaw);
   original_pose.setRotation(rotation);
-  btMatrix3x3 basis = original_pose.getBasis();
+  tf::Matrix3x3 basis = original_pose.getBasis();
 
   //MRPT-ROTATION
   mrpt::poses::CPose3D mrpt_original_pose;
