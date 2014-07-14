@@ -9,7 +9,7 @@
 #include <mrpt_bridge/point_cloud2.h>
 #include <pcl/ros/conversions.h>
 #include <pcl/point_cloud.h>
-#include <pcl/point_types.h>
+#include <pcl_conversions/pcl_conversions.h>
 
 TEST(PointCloud2, basicTest)
 {
@@ -33,6 +33,7 @@ TEST(PointCloud2, basicTest)
   }
 
   sensor_msgs::PointCloud2 point_cloud2_msg;
+  //pcl_conversions::fromPCL(point_cloud, point_cloud2_msg);
   pcl::toROSMsg(point_cloud, point_cloud2_msg);
 
   mrpt::slam::CSimplePointsMap mrpt_pc;
