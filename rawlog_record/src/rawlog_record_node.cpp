@@ -87,7 +87,7 @@ void RawlogRecordNode::callbackLaser (const sensor_msgs::LaserScan &_msg) {
         updateLaserPose (_msg.header.frame_id);
     } else {
         mrpt::poses::CPose3D pose = laser_poses_[_msg.header.frame_id];  
-        ROS_DEBUG("LASER POSE %4.3f, %4.3f, %4.3f, %4.3f, %4.3f, %4.3f",
+        ROS_INFO("LASER POSE %4.3f, %4.3f, %4.3f, %4.3f, %4.3f, %4.3f",
                  pose.x(), pose.y(), pose.z(), pose.roll(), pose.pitch(), pose.yaw());
         mrpt_bridge::laser_scan::ros2mrpt(_msg, laser_poses_[_msg.header.frame_id],  *laser);
         incommingLaserData(laser);
