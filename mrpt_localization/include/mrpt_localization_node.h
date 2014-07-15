@@ -26,35 +26,35 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.                    *                       *
  ***********************************************************************************/
 
-#ifndef RAWLOG_RECORD_NODE_H
-#define RAWLOG_RECORD_NODE_H
+#ifndef MRPT_LOCALIZATION_NODE_H
+#define MRPT_LOCALIZATION_NODE_H
 
 #include "ros/ros.h"
 #include <tf/transform_listener.h>
 #include <nav_msgs/Odometry.h>
 #include <sensor_msgs/LaserScan.h>
 #include <dynamic_reconfigure/server.h>
-#include "rawlog_record/MotionConfig.h"
-#include "rawlog_record/rawlog_record.h"
+#include "mrpt_localization/LocalizationConfig.h"
+#include "mrpt_localization/mrpt_localization.h"
 
 /// ROS Node
-class RawlogRecordNode : public RawlogRecord {
+class PFLocalizationNode : public PFLocalization {
 public:
 	struct ParametersNode : public Parameters{
         static const int MOTION_MODEL_GAUSSIAN = 0;
         static const int MOTION_MODEL_THRUN = 1;
 		ParametersNode();
         ros::NodeHandle node;
-        void callbackParameters (rawlog_record::MotionConfig &config, uint32_t level );
-        dynamic_reconfigure::Server<rawlog_record::MotionConfig> reconfigureServer_;
-        dynamic_reconfigure::Server<rawlog_record::MotionConfig>::CallbackType reconfigureFnc_;        
+        void callbackParameters (mrpt_localization::LocalizationConfig &config, uint32_t level );
+        dynamic_reconfigure::Server<mrpt_localization::LocalizationConfig> reconfigureServer_;
+        dynamic_reconfigure::Server<mrpt_localization::LocalizationConfig>::CallbackType reconfigureFnc_;        
 		void update(const unsigned long &loop_count);
 	    double rate;
         int parameter_update_skip;
 	};
     
-    RawlogRecordNode ( ros::NodeHandle &n );
-    ~RawlogRecordNode();
+    PFLocalizationNode ( ros::NodeHandle &n );
+    ~PFLocalizationNode();
     void init ();
     void loop ();
     void callbackOdometry (const nav_msgs::Odometry&);
@@ -76,4 +76,4 @@ private: // variables
 
 };
 
-#endif // RAWLOG_RECORD_NODE_H
+#endif // MRPT_LOCALIZATION_NODE_H

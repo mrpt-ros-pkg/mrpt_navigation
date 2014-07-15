@@ -1,9 +1,8 @@
 <?xml version="1.0"?>
 <package>
-  <name>rawlog_record</name>
+  <name>mrpt_localization</name>
   <version>0.0.0</version>
-  <description>This package enables you to record a rawlog from a ROS drive robot. 
-  At the moment the package is able to deal with odometry and 2d laser scans.</description>
+  <description>The mrpt_localization package</description>
 
   <maintainer email="markus.bader@tuwien.ac.at">Markus Bader</maintainer>
 

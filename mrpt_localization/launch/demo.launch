@@ -1,0 +1,12 @@
+<launch>
+
+  <node pkg="mrpt_localization" type="mrpt_localization_node" name="mrpt_localization_node" output="screen">
+
+    <param name="ini_file" value="$(find mrpt_localization)/tutorial/pf-localization.ini"/> 
+    <param name="rawlog_file" value="$(find mrpt_localization)/tutorial/driving_in_office.rawlog"/> 
+    <param name="map_file" value="$(find mrpt_localization)/tutorial/map.simplemap"/> 
+
+  </node>
+
+</launch>
+

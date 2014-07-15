@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(rawlog_record)
+project(mrpt_localization)
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
@@ -8,13 +8,12 @@ find_package(catkin REQUIRED COMPONENTS roscpp tf std_msgs nav_msgs sensor_msgs 
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
-# MRPT
+
 find_package(MRPT REQUIRED base gui obs slam)
 #include_directories(${MRPT_INCLUDE_DIRS})
 MESSAGE( STATUS "MRPT_INCLUDE_DIRS: " ${MRPT_INCLUDE_DIRS})
 #link_directories(${MRPT_LIBRARY_DIRS})
 MESSAGE( STATUS "MRPT_LIBRARY_DIRS: " ${MRPT_LIBS})
-
 
 ## Uncomment this if the package has a setup.py. This macro ensures
 ## modules and global scripts declared therein get installed
@@ -74,7 +73,7 @@ MESSAGE( STATUS "MRPT_LIBRARY_DIRS: " ${MRPT_LIBS})
 
 #add dynamic reconfigure api
 generate_dynamic_reconfigure_options(
-  cfg/Motion.cfg
+  cfg/Localization.cfg
 )
 
 ###################################
@@ -88,9 +87,9 @@ generate_dynamic_reconfigure_options(
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
   INCLUDE_DIRS include
-#  LIBRARIES template
+#  LIBRARIES mrpt_localization
 #  CATKIN_DEPENDS other_catkin_pkg
-   DEPENDS mrpt
+  DEPENDS mrpt
 )
 
 ###########
@@ -117,9 +116,10 @@ add_executable(${PROJECT_NAME}_node
     src/${PROJECT_NAME}_node_parameters.cpp
 )
 
+
 ## Add cmake target dependencies of the executable/library
 ## as an example, message headers may need to be generated before nodes
-# add_dependencies(template_node template_generate_messages_cpp)
+# add_dependencies(mrpt_localization_node mrpt_localization_generate_messages_cpp)
 add_dependencies(${PROJECT_NAME}_node
   ${PROJECT_NAME}_gencfg) 
 
@@ -130,7 +130,6 @@ target_link_libraries(${PROJECT_NAME}_node
    ${PROJECT_NAME}
 )
 
-  
 #############
 ## Install ##
 #############
@@ -146,7 +145,7 @@ target_link_libraries(${PROJECT_NAME}_node
 # )
 
 ## Mark executables and/or libraries for installation
-# install(TARGETS template template_node
+# install(TARGETS mrpt_localization mrpt_localization_node
 #   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 #   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 #   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
@@ -171,7 +170,7 @@ target_link_libraries(${PROJECT_NAME}_node
 #############
 
 ## Add gtest based cpp test target and link libraries
-# catkin_add_gtest(${PROJECT_NAME}-test test/test_template.cpp)
+# catkin_add_gtest(${PROJECT_NAME}-test test/test_mrpt_localization.cpp)
 # if(TARGET ${PROJECT_NAME}-test)
 #   target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME})
 # endif()

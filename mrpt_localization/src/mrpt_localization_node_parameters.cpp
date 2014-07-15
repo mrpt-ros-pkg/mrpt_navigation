@@ -26,54 +26,32 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.                    *                       *
  ***********************************************************************************/
 
-#ifndef RAWLOG_RECORD_NODE_H
-#define RAWLOG_RECORD_NODE_H
+#include "mrpt_localization_node.h"
+#include "mrpt_localization_node_defaults.h"
 
-#include "ros/ros.h"
-#include <tf/transform_listener.h>
-#include <nav_msgs/Odometry.h>
-#include <sensor_msgs/LaserScan.h>
-#include <dynamic_reconfigure/server.h>
-#include "rawlog_record/MotionConfig.h"
-#include "rawlog_record/rawlog_record.h"
-
-/// ROS Node
-class RawlogRecordNode : public RawlogRecord {
-public:
-	struct ParametersNode : public Parameters{
-        static const int MOTION_MODEL_GAUSSIAN = 0;
-        static const int MOTION_MODEL_THRUN = 1;
-		ParametersNode();
-        ros::NodeHandle node;
-        void callbackParameters (rawlog_record::MotionConfig &config, uint32_t level );
-        dynamic_reconfigure::Server<rawlog_record::MotionConfig> reconfigureServer_;
-        dynamic_reconfigure::Server<rawlog_record::MotionConfig>::CallbackType reconfigureFnc_;        
-		void update(const unsigned long &loop_count);
-	    double rate;
-        int parameter_update_skip;
-	};
+PFLocalizationNode::ParametersNode::ParametersNode()
+    : Parameters(), node("~") {
+    node.param<double>("rate", rate, MRPT_LOCALIZATION_NODE_DEFAULT_RATE);
+    ROS_INFO("rate: %f", rate);
+    node.param<int>("parameter_update_skip", parameter_update_skip, MRPT_LOCALIZATION_NODE_DEFAULT_PARAMETER_UPDATE_SKIP);
+    ROS_INFO("parameter_update_skip: %i", parameter_update_skip);
+    node.getParam("ini_file", iniFile);
+    ROS_INFO("ini_file: %s", iniFile.c_str());
+    node.getParam("rawlog_file", rawlogFile);
+    ROS_INFO("rawlog_file: %s", rawlogFile.c_str());
+    node.getParam("map_file", mapFile);
+    ROS_INFO("map_file: %s", mapFile.c_str());
     
-    RawlogRecordNode ( ros::NodeHandle &n );
-    ~RawlogRecordNode();
-    void init ();
-    void loop ();
-    void callbackOdometry (const nav_msgs::Odometry&);
-    void callbackLaser (const sensor_msgs::LaserScan&);    
-private: //functions
-    ParametersNode *param();
-    void update ();
-    void updateLaserPose (std::string frame_id);
-    ros::Subscriber subOdometry_;
-    ros::Subscriber subLaser0_;
-    ros::Subscriber subLaser1_;
-    ros::Subscriber subLaser2_;
-    tf::TransformListener listenerTF_;
-    std::string base_link_;
-    std::map<std::string, mrpt::poses::CPose3D> laser_poses_;
-private: // variables
-    ros::NodeHandle n_;
-    unsigned long loop_count_;
+    reconfigureFnc_ = boost::bind(&PFLocalizationNode::ParametersNode::callbackParameters, this ,  _1, _2);
+    reconfigureServer_.setCallback(reconfigureFnc_);
+}
 
-};
+void PFLocalizationNode::ParametersNode::update(const unsigned long &loop_count) {
+    if(loop_count % parameter_update_skip) return;
+    node.getParam("debug", debug);
+    if(loop_count == 0) ROS_INFO("debug:  %s", (debug ? "true" : "false"));
+}
 
-#endif // RAWLOG_RECORD_NODE_H
+void PFLocalizationNode::ParametersNode::callbackParameters (mrpt_localization::LocalizationConfig &config, uint32_t level ) {
+    
+}

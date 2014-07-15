@@ -26,12 +26,13 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.                    *                       *
  ***********************************************************************************/
 
-#include "rawlog_record_node.h"
+#include "mrpt_localization_node.h"
 #include <boost/interprocess/sync/scoped_lock.hpp>
 
 #include <mrpt_bridge/pose_conversions.h>
 #include <mrpt_bridge/laser_scan.h>
 #include <mrpt_bridge/time.h>
+#include "../include/mrpt_localization_node.h"
 #include <mrpt/base.h>
 #include <mrpt/slam.h>
 #include <mrpt/gui.h>
@@ -41,33 +42,33 @@ int main(int argc, char **argv) {
 
     ros::init(argc, argv, "DataLogger");
     ros::NodeHandle n;
-    RawlogRecordNode my_node(n);
+    PFLocalizationNode my_node(n);
     my_node.init();
     my_node.loop();
     return 0;
 }
 
-RawlogRecordNode::~RawlogRecordNode() {
+PFLocalizationNode::~PFLocalizationNode() {
 }
 
-RawlogRecordNode::RawlogRecordNode(ros::NodeHandle &n) :
-    RawlogRecord(new RawlogRecordNode::ParametersNode()), n_(n), loop_count_(0) {
+PFLocalizationNode::PFLocalizationNode(ros::NodeHandle &n) :
+    PFLocalization(new PFLocalizationNode::ParametersNode()), n_(n), loop_count_(0) {
 
 }
 
-RawlogRecordNode::ParametersNode *RawlogRecordNode::param() {
-    return (RawlogRecordNode::ParametersNode*) param_;
+PFLocalizationNode::ParametersNode *PFLocalizationNode::param() {
+    return (PFLocalizationNode::ParametersNode*) param_;
 }
 
-void RawlogRecordNode::init() {
-    updateRawLogName(mrpt::system::getCurrentLocalTime());
-    subOdometry_ = n_.subscribe("odom", 1, &RawlogRecordNode::callbackOdometry, this);
-    subLaser0_ = n_.subscribe("scan", 1, &RawlogRecordNode::callbackLaser, this);
-    subLaser1_ = n_.subscribe("scan1", 1, &RawlogRecordNode::callbackLaser, this);
-    subLaser2_ = n_.subscribe("scan2", 1, &RawlogRecordNode::callbackLaser, this);
+void PFLocalizationNode::init() {
+    PFLocalization::init();
+    subOdometry_ = n_.subscribe("odom", 1, &PFLocalizationNode::callbackOdometry, this);
+    subLaser0_ = n_.subscribe("scan", 1, &PFLocalizationNode::callbackLaser, this);
+    subLaser1_ = n_.subscribe("scan1", 1, &PFLocalizationNode::callbackLaser, this);
+    subLaser2_ = n_.subscribe("scan2", 1, &PFLocalizationNode::callbackLaser, this);
 }
 
-void RawlogRecordNode::loop() {
+void PFLocalizationNode::loop() {
     for (ros::Rate rate(param()->rate); ros::ok(); loop_count_++) {
         param()->update(loop_count_);
         ros::spinOnce();
@@ -75,8 +76,7 @@ void RawlogRecordNode::loop() {
     }
 }
 
-void RawlogRecordNode::callbackLaser (const sensor_msgs::LaserScan &_msg) {
-    boost::interprocess::scoped_lock<boost::interprocess::interprocess_mutex> lock(mutexRawLog);
+void PFLocalizationNode::callbackLaser (const sensor_msgs::LaserScan &_msg) {
     mrpt::slam::CObservation2DRangeScanPtr laser = mrpt::slam::CObservation2DRangeScan::Create();
 
     if(laser_poses_.find(_msg.header.frame_id) == laser_poses_.end()) {
@@ -90,7 +90,7 @@ void RawlogRecordNode::callbackLaser (const sensor_msgs::LaserScan &_msg) {
     }
 }
 
-void RawlogRecordNode::updateLaserPose (std::string _frame_id) {
+void PFLocalizationNode::updateLaserPose (std::string _frame_id) {
     if(base_link_.empty()) return;
     mrpt::poses::CPose3D pose;
     tf::StampedTransform transform;
@@ -117,8 +117,7 @@ void RawlogRecordNode::updateLaserPose (std::string _frame_id) {
 
 }
 
-void RawlogRecordNode::callbackOdometry (const nav_msgs::Odometry &_odom) {
-    boost::interprocess::scoped_lock<boost::interprocess::interprocess_mutex> lock(mutexRawLog);
+void PFLocalizationNode::callbackOdometry (const nav_msgs::Odometry &_odom) {
 
     if(base_link_.empty()) {
         base_link_ = _odom.child_frame_id;

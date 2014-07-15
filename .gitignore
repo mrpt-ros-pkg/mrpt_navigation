@@ -2,3 +2,4 @@
 *.kdev*
 *~
 *.rawlog
+LOG_*
