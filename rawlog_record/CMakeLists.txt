@@ -1,26 +1,20 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(mrpt_bridge)
+project(rawlog_record)
 
-## Find catkin macros and# libraries
+## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
-find_package(catkin REQUIRED COMPONENTS roscpp std_msgs tf geometry_msgs sensor_msgs mrpt_msgs)
+find_package(catkin REQUIRED COMPONENTS roscpp std_msgs nav_msgs sensor_msgs mrpt_bridge dynamic_reconfigure)
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
-find_package( OpenCV REQUIRED )
-link_libraries(${OpenCV_LIBS})
-
-find_package(PCL 1.3 REQUIRED COMPONENTS common io)
-include_directories(${PCL_INCLUDE_DIRS})
-link_directories(${PCL_LIBRARY_DIRS})
-add_definitions(${PCL_DEFINITIONS})
-
+# MRPT
 find_package(MRPT REQUIRED base gui obs slam)
 #include_directories(${MRPT_INCLUDE_DIRS})
 MESSAGE( STATUS "MRPT_INCLUDE_DIRS: " ${MRPT_INCLUDE_DIRS})
 #link_directories(${MRPT_LIBRARY_DIRS})
 MESSAGE( STATUS "MRPT_LIBRARY_DIRS: " ${MRPT_LIBS})
+
 
 ## Uncomment this if the package has a setup.py. This macro ensures
 ## modules and global scripts declared therein get installed
@@ -78,6 +72,11 @@ MESSAGE( STATUS "MRPT_LIBRARY_DIRS: " ${MRPT_LIBS})
 #   std_msgs  # Or other packages containing msgs
 # )
 
+#add dynamic reconfigure api
+generate_dynamic_reconfigure_options(
+  cfg/Logger.cfg
+)
+
 ###################################
 ## catkin specific configuration ##
 ###################################
@@ -89,9 +88,9 @@ MESSAGE( STATUS "MRPT_LIBRARY_DIRS: " ${MRPT_LIBS})
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
   INCLUDE_DIRS include
-  LIBRARIES mrpt_bridge
+#  LIBRARIES template
 #  CATKIN_DEPENDS other_catkin_pkg
-  DEPENDS opencv pcl
+   DEPENDS mrpt
 )
 
 ###########
@@ -100,28 +99,38 @@ catkin_package(
 
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
-include_directories(include)
+include_directories(include ${catkin_INCLUDE_DIRS})
 
 ## Declare a cpp library
-add_library(${PROJECT_NAME} 
-  src/pose_conversions.cpp 
-  src/point_cloud.cpp 
-  src/point_cloud2.cpp 
-  src/laser_scan.cpp
+add_library(${PROJECT_NAME}
+   src/${PROJECT_NAME}/${PROJECT_NAME}.cpp
+   src/${PROJECT_NAME}/${PROJECT_NAME}_parameters.cpp
+)
+target_link_libraries(${PROJECT_NAME}
+  ${catkin_LIBRARIES}
+  ${MRPT_LIBS}
 )
 
 ## Declare a cpp executable
+add_executable(${PROJECT_NAME}_node 
+    src/${PROJECT_NAME}_node.cpp 
+    src/${PROJECT_NAME}_node_parameters.cpp
+)
 
 ## Add cmake target dependencies of the executable/library
 ## as an example, message headers may need to be generated before nodes
 # add_dependencies(template_node template_generate_messages_cpp)
 
 ## Specify libraries to link a library or executable target against
-target_link_libraries(${PROJECT_NAME} 
+target_link_libraries(${PROJECT_NAME}_node
    ${catkin_LIBRARIES}
    ${MRPT_LIBS}
+   ${PROJECT_NAME}
 )
 
+add_dependencies(${PROJECT_NAME}_node
+  ${PROJECT_NAME}_gencfg) 
+  
 #############
 ## Install ##
 #############
@@ -162,14 +171,10 @@ target_link_libraries(${PROJECT_NAME}
 #############
 
 ## Add gtest based cpp test target and link libraries
-catkin_add_gtest(${PROJECT_NAME}-test 
-  src/test/test_main.cpp
-  src/test/test_time.cpp
-  src/test/test_pose_conversions.cpp
-  src/test/test_pointcloud2.cpp)
-if(TARGET ${PROJECT_NAME}-test)
-   target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME} ${catkin_LIBRARIES} ${MRPT_LIBS} ${PCL_COMMON_LIBRARIES} ${PCL_IO_LIBRARIES})
-endif()
+# catkin_add_gtest(${PROJECT_NAME}-test test/test_template.cpp)
+# if(TARGET ${PROJECT_NAME}-test)
+#   target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME})
+# endif()
 
 ## Add folders to be run by python nosetests
 # catkin_add_nosetests(test)

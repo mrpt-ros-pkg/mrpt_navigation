@@ -1,4 +1,5 @@
 
+#include "mrpt_bridge/time.h"
 #include "mrpt_bridge/laser_scan.h"
 #include <ros/console.h>
 
@@ -6,12 +7,27 @@ namespace mrpt_bridge {
 
 bool laser_scan::ros2mrpt(
 	const sensor_msgs::LaserScan &msg,
+    const mrpt::poses::CPose3D &pose,
 	mrpt::slam::CObservation2DRangeScan  &obj
 	)
 {
-	MRPT_TODO("Implement me!")
-	throw std::runtime_error("Not implemented yet!");
-
+    mrpt_bridge::time::ros2mrpt(msg.header.stamp, obj.timestamp);
+    obj.rightToLeft = true;
+    obj.sensorLabel = "FLASER";
+    obj.aperture = msg.angle_max - msg.angle_min;
+    obj.maxRange = msg.range_max;
+    obj.sensorPose =  pose;
+    obj.validRange.resize(msg.ranges.size());
+    obj.scan.resize(msg.ranges.size());
+    for(std::size_t i = 0; i < msg.ranges.size(); i++) {
+        obj.scan[i] = msg.ranges[i];
+        if((obj.scan[i] < (msg.range_max*0.95)) && (obj.scan[i] > msg.range_min)) {
+            obj.validRange[i] = 1;
+        } else {
+            obj.validRange[i] = 0;
+        }
+    }
+    
 	return true;
 }
 
