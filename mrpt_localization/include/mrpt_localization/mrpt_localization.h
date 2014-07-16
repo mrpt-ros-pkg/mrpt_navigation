@@ -52,9 +52,24 @@ protected:
     Parameters *param_; 
     mrpt::slam::CRawlog *pRawLog;
     void init();
+    void update();
+    void summary();
     void incommingLaserData(mrpt::slam::CObservation2DRangeScanPtr  laser);
     void incommingOdomData( mrpt::slam::CObservationOdometryPtr odometry);
     mrpt::utils::CConfigFile iniFile_;
+
+
+    mrpt::utils::CTicTac tictac_;
+    mrpt::utils::CTicTac tictacGlobal_;
+    mrpt::slam::CMultiMetricMap metricMap_;
+    mrpt::gui::CDisplayWindow3DPtr win3D_;
+    mrpt::opengl::COpenGLScene scene_;
+    mrpt::slam::COccupancyGridMap2D::TEntropyInfo gridInfo_;
+
+    mrpt::utils::CPose2D pdfEstimation_;
+    mrpt::utils::CPose2D odometryEstimation_;
+    mrpt::utils::CMatrixDouble covEstimation_;
+    mrpt::slam::CMonteCarloLocalization2D  pdf_;
 };
 
 #endif // MRPT_LOCALIZATION_H
