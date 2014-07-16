@@ -235,9 +235,7 @@ void PFLocalization::init() {
   }
 
 
-  for ( vector_int::iterator itNum = particles_count.begin(); itNum!=particles_count.end(); ++itNum )
-  {
-    int     PARTICLE_COUNT = *itNum;
+    int     PARTICLE_COUNT = *particles_count.begin();
 
     printf("Initial PDF: %f particles/m2\n", PARTICLE_COUNT/gridInfo_.effectiveMappedArea);
 
@@ -797,7 +795,6 @@ void PFLocalization::init() {
 
     printf("\n TOTAL EXECUTION TIME = %.06f sec\n", repetitionTime );
 
-  } // end of loop for different # of particles
 
  if (win3D_)
     mrpt::system::pause();
