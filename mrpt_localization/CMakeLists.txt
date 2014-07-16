@@ -101,13 +101,13 @@ catkin_package(
 include_directories(include ${catkin_INCLUDE_DIRS})
 
 ## Declare a cpp library
+add_library(${PROJECT_NAME}_core
+   src/${PROJECT_NAME}/${PROJECT_NAME}_core.cpp
+)
+
 add_library(${PROJECT_NAME}
    src/${PROJECT_NAME}/${PROJECT_NAME}.cpp
    src/${PROJECT_NAME}/${PROJECT_NAME}_parameters.cpp
-)
-target_link_libraries(${PROJECT_NAME}
-  ${catkin_LIBRARIES}
-  ${MRPT_LIBS}
 )
 
 ## Declare a cpp executable
@@ -124,6 +124,15 @@ add_dependencies(${PROJECT_NAME}_node
   ${PROJECT_NAME}_gencfg) 
 
 ## Specify libraries to link a library or executable target against
+target_link_libraries(${PROJECT_NAME}_core
+  ${MRPT_LIBS}
+)
+
+target_link_libraries(${PROJECT_NAME}
+  ${MRPT_LIBS}
+  ${PROJECT_NAME}_core
+)
+
 target_link_libraries(${PROJECT_NAME}_node
    ${catkin_LIBRARIES}
    ${MRPT_LIBS}

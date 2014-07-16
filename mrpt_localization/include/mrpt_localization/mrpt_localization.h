@@ -28,15 +28,14 @@
 
 #include <iostream>
 #include <stdint.h>
-#include <mrpt/base.h>
-#include <mrpt/slam.h>
+#include <mrpt_localization/mrpt_localization_core.h>
 #include <mrpt/gui.h>
 
 #ifndef MRPT_LOCALIZATION_H
 #define MRPT_LOCALIZATION_H
 
 
-class PFLocalization {
+class PFLocalization : public PFLocalizationCore{
 public:
 	struct Parameters{
 		Parameters();
@@ -49,9 +48,10 @@ public:
     PFLocalization (Parameters *parm);
     ~PFLocalization();
 protected:
-    Parameters *param_; 
-    mrpt::slam::CRawlog *pRawLog;
+    Parameters *param_;
     void init();
+    bool playRawlog();
+    bool summary();
     bool process(size_t process_counter, mrpt::slam::CActionCollectionPtr action, mrpt::slam::CSensoryFramePtr observations, mrpt::slam::CObservationPtr obs);
     void incommingLaserData(mrpt::slam::CObservation2DRangeScanPtr  laser);
     void incommingOdomData( mrpt::slam::CObservationOdometryPtr odometry);
@@ -65,22 +65,15 @@ protected:
     mrpt::utils::CFileOutputStream f_pf_stats_;
     mrpt::utils::CFileOutputStream f_odo_est_;
 
-    mrpt::slam::CActionRobotMovement2D::TMotionModelOptions dummy_odom_params_;
     mrpt::utils::CTicTac tictac_;
     mrpt::utils::CTicTac tictacGlobal_;
-    mrpt::slam::CMultiMetricMap metricMap_;
     mrpt::gui::CDisplayWindow3DPtr win3D_;
     mrpt::opengl::COpenGLScene scene_;
     mrpt::slam::COccupancyGridMap2D::TEntropyInfo gridInfo_;
 
-    mrpt::utils::CPose2D pdfEstimation_;
-    mrpt::utils::CPose2D odometryEstimation_;
-    mrpt::utils::CMatrixDouble covEstimation_;
-    mrpt::utils::CMatrixDouble groundTruth_;
-    mrpt::slam::CMonteCarloLocalization2D  pdf_;
-    mrpt::bayes::CParticleFilter pf_;
-    mrpt::bayes::CParticleFilter::TParticleFilterStats   pf_stats_;
 
+    size_t      rawlog_offset_;
+    int     PARTICLE_COUNT_;
     int     NUM_REPS_;
     int     SCENE3D_FREQ_;
     bool        SCENE3D_FOLLOW_;
@@ -89,6 +82,8 @@ protected:
     bool        SHOW_PROGRESS_3D_REAL_TIME_;
     int         SHOW_PROGRESS_3D_REAL_TIME_DELAY_MS_;
     double      STATS_CONF_INTERVAL_;
+    std::string      RAWLOG_FILE_;
+    std::string      OUT_DIR_PREFIX_;
     std::string      sOUT_DIR_;
     std::string      sOUT_DIR_PARTS_;
     std::string      sOUT_DIR_3D_;

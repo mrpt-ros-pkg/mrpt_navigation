@@ -32,7 +32,6 @@
 #include <mrpt_bridge/pose_conversions.h>
 #include <mrpt_bridge/laser_scan.h>
 #include <mrpt_bridge/time.h>
-#include "../include/mrpt_localization_node.h"
 #include <mrpt/base.h>
 #include <mrpt/slam.h>
 #include <mrpt/gui.h>
