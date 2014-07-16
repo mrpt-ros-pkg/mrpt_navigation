@@ -52,13 +52,20 @@ protected:
     Parameters *param_; 
     mrpt::slam::CRawlog *pRawLog;
     void init();
-    void process(mrpt::slam::CActionCollectionPtr action, mrpt::slam::CSensoryFramePtr observations, mrpt::slam::CObservationPtr obs);
-    void summary();
+    bool process(size_t process_counter, mrpt::slam::CActionCollectionPtr action, mrpt::slam::CSensoryFramePtr observations, mrpt::slam::CObservationPtr obs);
     void incommingLaserData(mrpt::slam::CObservation2DRangeScanPtr  laser);
     void incommingOdomData( mrpt::slam::CObservationOdometryPtr odometry);
     mrpt::utils::CConfigFile iniFile_;
 
+    int nConvergenceTests_;
+    int nConvergenceOK_;
+    mrpt::vector_double covergenceErrors_;
 
+    mrpt::utils::CFileOutputStream f_cov_est_;
+    mrpt::utils::CFileOutputStream f_pf_stats_;
+    mrpt::utils::CFileOutputStream f_odo_est_;
+
+    mrpt::slam::CActionRobotMovement2D::TMotionModelOptions dummy_odom_params_;
     mrpt::utils::CTicTac tictac_;
     mrpt::utils::CTicTac tictacGlobal_;
     mrpt::slam::CMultiMetricMap metricMap_;
@@ -69,9 +76,22 @@ protected:
     mrpt::utils::CPose2D pdfEstimation_;
     mrpt::utils::CPose2D odometryEstimation_;
     mrpt::utils::CMatrixDouble covEstimation_;
+    mrpt::utils::CMatrixDouble groundTruth_;
     mrpt::slam::CMonteCarloLocalization2D  pdf_;
     mrpt::bayes::CParticleFilter pf_;
     mrpt::bayes::CParticleFilter::TParticleFilterStats   pf_stats_;
+
+    int     NUM_REPS_;
+    int     SCENE3D_FREQ_;
+    bool        SCENE3D_FOLLOW_;
+    unsigned int    testConvergenceAt_;
+    bool        SAVE_STATS_ONLY_;
+    bool        SHOW_PROGRESS_3D_REAL_TIME_;
+    int         SHOW_PROGRESS_3D_REAL_TIME_DELAY_MS_;
+    double      STATS_CONF_INTERVAL_;
+    std::string      sOUT_DIR_;
+    std::string      sOUT_DIR_PARTS_;
+    std::string      sOUT_DIR_3D_;
 };
 
 #endif // MRPT_LOCALIZATION_H

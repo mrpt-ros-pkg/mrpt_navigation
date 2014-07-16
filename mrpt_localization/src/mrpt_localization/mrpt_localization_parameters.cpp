@@ -81,16 +81,15 @@ void PFLocalization::init() {
     // Non-mandatory entries:
     size_t      rawlog_offset       = iniFile_.read_int(iniSectionName,"rawlog_offset",0);
     string      GT_FILE             = iniFile_.read_string(iniSectionName,"ground_truth_path_file","");
-    int     NUM_REPS            = iniFile_.read_int(iniSectionName,"experimentRepetitions",1);
-    int     SCENE3D_FREQ        = iniFile_.read_int(iniSectionName,"3DSceneFrequency",10);
-    bool        SCENE3D_FOLLOW = iniFile_.read_bool(iniSectionName,"3DSceneFollowRobot",true);
-    unsigned int    testConvergenceAt   = iniFile_.read_int(iniSectionName,"experimentTestConvergenceAtStep",-1);
+    NUM_REPS_          = iniFile_.read_int(iniSectionName,"experimentRepetitions",1);
+    SCENE3D_FREQ_        = iniFile_.read_int(iniSectionName,"3DSceneFrequency",10);
+    SCENE3D_FOLLOW_ = iniFile_.read_bool(iniSectionName,"3DSceneFollowRobot",true);
+    testConvergenceAt_   = iniFile_.read_int(iniSectionName,"experimentTestConvergenceAtStep",-1);
 
-    bool        SAVE_STATS_ONLY = iniFile_.read_bool(iniSectionName,"SAVE_STATS_ONLY",false);
-
-    bool        SHOW_PROGRESS_3D_REAL_TIME = iniFile_.read_bool(iniSectionName,"SHOW_PROGRESS_3D_REAL_TIME",false);
-    int         SHOW_PROGRESS_3D_REAL_TIME_DELAY_MS = iniFile_.read_int(iniSectionName,"SHOW_PROGRESS_3D_REAL_TIME_DELAY_MS",1);
-    double      STATS_CONF_INTERVAL = iniFile_.read_double(iniSectionName,"STATS_CONF_INTERVAL",0.2);
+    SAVE_STATS_ONLY_ = iniFile_.read_bool(iniSectionName,"SAVE_STATS_ONLY",false);
+    SHOW_PROGRESS_3D_REAL_TIME_ = iniFile_.read_bool(iniSectionName,"SHOW_PROGRESS_3D_REAL_TIME",false);
+    SHOW_PROGRESS_3D_REAL_TIME_DELAY_MS_ = iniFile_.read_int(iniSectionName,"SHOW_PROGRESS_3D_REAL_TIME_DELAY_MS",1);
+    STATS_CONF_INTERVAL_ = iniFile_.read_double(iniSectionName,"STATS_CONF_INTERVAL",0.2);
 
 #if !MRPT_HAS_WXWIDGETS
     SHOW_PROGRESS_3D_REAL_TIME = false;
@@ -98,10 +97,10 @@ void PFLocalization::init() {
 
     // Default odometry uncertainty parameters in "dummy_odom_params" depending on how fast the robot moves, etc...
     //  Only used for observations-only rawlogs:
-    CActionRobotMovement2D::TMotionModelOptions dummy_odom_params;
-    dummy_odom_params.modelSelection = CActionRobotMovement2D::mmGaussian;
-    dummy_odom_params.gausianModel.minStdXY  = iniFile_.read_double("DummyOdometryParams","minStdXY",0.04);
-    dummy_odom_params.gausianModel.minStdPHI = DEG2RAD(iniFile_.read_double("DummyOdometryParams","minStdPHI", 2.0));
+
+    dummy_odom_params_.modelSelection = CActionRobotMovement2D::mmGaussian;
+    dummy_odom_params_.gausianModel.minStdXY  = iniFile_.read_double("DummyOdometryParams","minStdXY",0.04);
+    dummy_odom_params_.gausianModel.minStdPHI = DEG2RAD(iniFile_.read_double("DummyOdometryParams","minStdPHI", 2.0));
 
 
     // PF-algorithm Options:
@@ -185,11 +184,11 @@ void PFLocalization::init() {
     }
 
     // Load the Ground Truth:
-    CMatrixDouble   GT(0,0);
+    groundTruth_ = CMatrixDouble(0,0);
     if ( fileExists( GT_FILE ) )
     {
         printf("Loading ground truth file...");
-        GT.loadFromTextFile( GT_FILE );
+        groundTruth_.loadFromTextFile( GT_FILE );
         printf("OK\n");
     }
     else
@@ -197,7 +196,7 @@ void PFLocalization::init() {
 
 
     // Create 3D window if requested:
-    if (SHOW_PROGRESS_3D_REAL_TIME)
+    if (SHOW_PROGRESS_3D_REAL_TIME_)
     {
         win3D_ = CDisplayWindow3D::Create("pf-localization - The MRPT project", 1000, 600);
         win3D_->setCameraZoom(20);
@@ -219,7 +218,7 @@ void PFLocalization::init() {
             scene_.insert( plane );
         }
 
-        if (SHOW_PROGRESS_3D_REAL_TIME)
+        if (SHOW_PROGRESS_3D_REAL_TIME_)
         {
             COpenGLScenePtr ptrScene = win3D_->get3DSceneAndLock();
 
@@ -240,8 +239,9 @@ void PFLocalization::init() {
 
 
     // Global stats for all the experiment loops:
-    int             nConvergenceTests = 0, nConvergenceOK = 0;
-    vector_double   covergenceErrors;
+   nConvergenceTests_ = 0;
+   nConvergenceOK_ = 0;
+   covergenceErrors_.clear();
     // --------------------------------------------------------------------
     //                  EXPERIMENT REPETITIONS LOOP
     // --------------------------------------------------------------------
@@ -255,38 +255,37 @@ void PFLocalization::init() {
     printf("OK\n");
 
     // The experiment directory is:
-    string      sOUT_DIR, sOUT_DIR_PARTS, sOUT_DIR_3D;
 
-    if (!SAVE_STATS_ONLY)
+    if (!SAVE_STATS_ONLY_)
     {
-        sOUT_DIR        = format("%s",OUT_DIR_PREFIX.c_str());
-        sOUT_DIR_PARTS  = format("%s/particles", sOUT_DIR.c_str());
-        sOUT_DIR_3D = format("%s/3D", sOUT_DIR.c_str());
+        sOUT_DIR_        = format("%s",OUT_DIR_PREFIX.c_str());
+        sOUT_DIR_PARTS_  = format("%s/particles", sOUT_DIR_.c_str());
+        sOUT_DIR_3D_ = format("%s/3D", sOUT_DIR_.c_str());
 
-        printf("Creating directory: %s\n",sOUT_DIR.c_str());
-        createDirectory( sOUT_DIR );
-        ASSERT_(fileExists(sOUT_DIR));
-        deleteFiles(format("%s/*.*",sOUT_DIR.c_str()));
+        printf("Creating directory: %s\n",sOUT_DIR_.c_str());
+        createDirectory( sOUT_DIR_ );
+        ASSERT_(fileExists(sOUT_DIR_));
+        deleteFiles(format("%s/*.*",sOUT_DIR_.c_str()));
 
-        printf("Creating directory: %s\n",sOUT_DIR_PARTS.c_str());
-        createDirectory( sOUT_DIR_PARTS );
-        ASSERT_(fileExists(sOUT_DIR_PARTS));
-        deleteFiles(format("%s/*.*",sOUT_DIR_PARTS.c_str()));
+        printf("Creating directory: %s\n",sOUT_DIR_PARTS_.c_str());
+        createDirectory( sOUT_DIR_PARTS_ );
+        ASSERT_(fileExists(sOUT_DIR_PARTS_));
+        deleteFiles(format("%s/*.*",sOUT_DIR_PARTS_.c_str()));
 
-        printf("Creating directory: %s\n",sOUT_DIR_3D.c_str());
-        createDirectory( sOUT_DIR_3D );
-        ASSERT_(fileExists(sOUT_DIR_3D));
-        deleteFiles(format("%s/*.*",sOUT_DIR_3D.c_str()));
+        printf("Creating directory: %s\n",sOUT_DIR_3D_.c_str());
+        createDirectory( sOUT_DIR_3D_ );
+        ASSERT_(fileExists(sOUT_DIR_3D_));
+        deleteFiles(format("%s/*.*",sOUT_DIR_3D_.c_str()));
 
-        metricMap_.m_gridMaps[0]->saveAsBitmapFile(format("%s/gridmap.png",sOUT_DIR.c_str()));
-        CFileOutputStream(format("%s/gridmap_limits.txt",sOUT_DIR.c_str())).printf(
+        metricMap_.m_gridMaps[0]->saveAsBitmapFile(format("%s/gridmap.png",sOUT_DIR_.c_str()));
+        CFileOutputStream(format("%s/gridmap_limits.txt",sOUT_DIR_.c_str())).printf(
                     "%f %f %f %f",
                     metricMap_.m_gridMaps[0]->getXMin(),metricMap_.m_gridMaps[0]->getXMax(),
                     metricMap_.m_gridMaps[0]->getYMin(),metricMap_.m_gridMaps[0]->getYMax() );
 
         // Save the landmarks for plot in matlab:
         if (metricMap_.m_landmarksMap)
-            metricMap_.m_landmarksMap->saveToMATLABScript2D(format("%s/plot_landmarks_map.m",sOUT_DIR.c_str()));
+            metricMap_.m_landmarksMap->saveToMATLABScript2D(format("%s/plot_landmarks_map.m",sOUT_DIR_.c_str()));
     }
 
     MRPT_TODO("Max to Jose: can I reinizialize the pdf like this, should we add a function or should I use a ptr?");
@@ -338,17 +337,16 @@ void PFLocalization::init() {
     // -----------------------------
     bool                end = false;
 
-    CFileOutputStream   f_cov_est,f_pf_stats,f_odo_est;
 
-    if (!SAVE_STATS_ONLY)
+    if (!SAVE_STATS_ONLY_)
     {
-        f_cov_est.open(sOUT_DIR.c_str()+string("/cov_est.txt"));
-        f_pf_stats.open(sOUT_DIR.c_str()+string("/PF_stats.txt"));
-        f_odo_est.open(sOUT_DIR.c_str()+string("/odo_est.txt"));
+        f_cov_est_.open(sOUT_DIR_.c_str()+string("/cov_est.txt"));
+        f_pf_stats_.open(sOUT_DIR_.c_str()+string("/PF_stats.txt"));
+        f_odo_est_.open(sOUT_DIR_.c_str()+string("/odo_est.txt"));
     }
 
-    TTimeStamp cur_obs_timestamp;
 
+    size_t process_counter = step-rawlog_offset;
     while (!end)
     {
         // Finish if ESC is pushed:
@@ -373,299 +371,148 @@ void PFLocalization::init() {
             continue;
         }
 
-        // Determine if we are reading a Act-SF or an Obs-only rawlog:
-        if (obs)
+
+        end = process(process_counter, action, observations, obs);
+        process_counter++;
+
+    }; // while rawlogEntries
+
+    double repetitionTime = tictacGlobal_.Tac();
+
+    // Avr. error:
+    double covergenceErrorMean, covergenceErrorsMin,covergenceErrorsMax;
+    math::confidenceIntervals(covergenceErrors_, covergenceErrorMean, covergenceErrorsMin,covergenceErrorsMax, STATS_CONF_INTERVAL_);
+
+    // Save overall results:
+    {
+
+        CFileOutputStream f(format("%s_SUMMARY.txt",OUT_DIR_PREFIX.c_str()), true /* append */);
+
+        f.printf("%% Ratio_covergence_success  #particles  time_for_execution  convergence_mean_error convergence_error_conf_int_inf convergence_error_conf_int_sup \n");
+        if (!nConvergenceTests_) nConvergenceTests_=1;
+        f.printf("%f %u %f %f %f %f\n",
+                 ((double)nConvergenceOK_)/nConvergenceTests_,
+                 PARTICLE_COUNT,
+                 repetitionTime,
+                 covergenceErrorMean,
+                 covergenceErrorsMin,covergenceErrorsMax );
+    }
+
+    printf("\n TOTAL EXECUTION TIME = %.06f sec\n", repetitionTime );
+
+
+    if (win3D_)
+        mrpt::system::pause();
+}
+bool PFLocalization::process(size_t process_counter, CActionCollectionPtr action, CSensoryFramePtr observations, CObservationPtr obs){
+
+
+    // Determine if we are reading a Act-SF or an Obs-only rawlog:
+    if (obs)
+    {
+        // It's an observation-only rawlog: build an auxiliary pair of action-SF, since
+        //  montecarlo-localization only accepts those pairs as input:
+
+        // SF: Just one observation:
+        // ------------------------------------------------------
+        observations = CSensoryFrame::Create();
+        observations->insert(obs);
+
+        // ActionCollection: Just one action with a dummy odometry
+        // ------------------------------------------------------
+        action       = CActionCollection::Create();
+
+        CActionRobotMovement2D dummy_odom;
+
+        // TODO: Another good idea would be to take CObservationOdometry objects and use that information, if available.
+        dummy_odom.computeFromOdometry(CPose2D(0,0,0),dummy_odom_params_);
+        action->insert(dummy_odom);
+    }
+    else
+    {
+        // Already in Act-SF format, nothing else to do!
+    }
+
+    CPose2D     expectedPose; // Ground truth
+
+    TTimeStamp cur_obs_timestamp;
+    if (observations->size()>0)
+        cur_obs_timestamp = observations->getObservationByIndex(0)->timestamp;
+
+    if (process_counter >= 0)
+    {
+        // Do not execute the PF at "step=0", to let the initial PDF to be
+        //   reflected in the logs.
+        if (process_counter > 0)
         {
-            // It's an observation-only rawlog: build an auxiliary pair of action-SF, since
-            //  montecarlo-localization only accepts those pairs as input:
-
-            // SF: Just one observation:
-            // ------------------------------------------------------
-            observations = CSensoryFrame::Create();
-            observations->insert(obs);
-
-            // ActionCollection: Just one action with a dummy odometry
-            // ------------------------------------------------------
-            action       = CActionCollection::Create();
-
-            CActionRobotMovement2D dummy_odom;
-
-            // TODO: Another good idea would be to take CObservationOdometry objects and use that information, if available.
-            dummy_odom.computeFromOdometry(CPose2D(0,0,0),dummy_odom_params);
-            action->insert(dummy_odom);
-        }
-        else
-        {
-            // Already in Act-SF format, nothing else to do!
-        }
-
-        CPose2D     expectedPose; // Ground truth
-
-        if (observations->size()>0)
-            cur_obs_timestamp = observations->getObservationByIndex(0)->timestamp;
-
-        if (step>=rawlog_offset)
-        {
-            // Do not execute the PF at "step=0", to let the initial PDF to be
-            //   reflected in the logs.
-            if (step>rawlog_offset)
+            // Show 3D?
+            if (SHOW_PROGRESS_3D_REAL_TIME_)
             {
-                // Show 3D?
-                if (SHOW_PROGRESS_3D_REAL_TIME)
+                CPose2D       meanPose;
+                CMatrixDouble33 cov;
+                pdf_.getCovarianceAndMean(cov,meanPose);
+
+                COpenGLScenePtr ptrScene = win3D_->get3DSceneAndLock();
+
+                win3D_->setCameraPointingToPoint(meanPose.x(),meanPose.y(),0);
+
+                win3D_->addTextMessage(
+                            10,10, mrpt::format("timestamp: %s", mrpt::system::dateTimeLocalToString(cur_obs_timestamp).c_str() ),
+                            mrpt::utils::TColorf(.8f,.8f,.8f),
+                            "mono", 15, mrpt::opengl::NICE, 6001 );
+
+                win3D_->addTextMessage(
+                            10,33, mrpt::format("#particles= %7u", static_cast<unsigned int>(pdf_.size()) ),
+                            mrpt::utils::TColorf(.8f,.8f,.8f),
+                            "mono", 15, mrpt::opengl::NICE, 6002 );
+
+                win3D_->addTextMessage(
+                            10,55, mrpt::format("mean pose (x y phi_deg)= %s", meanPose.asString().c_str() ),
+                            mrpt::utils::TColorf(.8f,.8f,.8f),
+                            "mono", 15, mrpt::opengl::NICE, 6003 );
+
+                // The Ground Truth (GT):
                 {
-                    CPose2D       meanPose;
-                    CMatrixDouble33 cov;
-                    pdf_.getCovarianceAndMean(cov,meanPose);
-
-                    COpenGLScenePtr ptrScene = win3D_->get3DSceneAndLock();
-
-                    win3D_->setCameraPointingToPoint(meanPose.x(),meanPose.y(),0);
-
-                    win3D_->addTextMessage(
-                                10,10, mrpt::format("timestamp: %s", mrpt::system::dateTimeLocalToString(cur_obs_timestamp).c_str() ),
-                                mrpt::utils::TColorf(.8f,.8f,.8f),
-                                "mono", 15, mrpt::opengl::NICE, 6001 );
-
-                    win3D_->addTextMessage(
-                                10,33, mrpt::format("#particles= %7u", static_cast<unsigned int>(pdf_.size()) ),
-                                mrpt::utils::TColorf(.8f,.8f,.8f),
-                                "mono", 15, mrpt::opengl::NICE, 6002 );
-
-                    win3D_->addTextMessage(
-                                10,55, mrpt::format("mean pose (x y phi_deg)= %s", meanPose.asString().c_str() ),
-                                mrpt::utils::TColorf(.8f,.8f,.8f),
-                                "mono", 15, mrpt::opengl::NICE, 6003 );
-
-                    // The Ground Truth (GT):
-                    {
-                        CRenderizablePtr GTpt = ptrScene->getByName("GT");
-                        if (!GTpt)
-                        {
-                            GTpt = CDisk::Create();
-                            GTpt->setName( "GT" );
-                            GTpt->setColor(0,0,0, 0.9);
-
-                            getAs<CDisk>(GTpt)->setDiskRadius(0.04);
-                            ptrScene->insert( GTpt );
-                        }
-
-                        GTpt->setPose( expectedPose );
-                    }
-
-
-                    // The particles:
-                    {
-                        CRenderizablePtr parts = ptrScene->getByName("particles");
-                        if (parts) ptrScene->removeObject(parts);
-
-                        CSetOfObjectsPtr p = pdf_.getAs3DObject<CSetOfObjectsPtr>();
-                        p->setName("particles");
-                        ptrScene->insert(p);
-                    }
-
-                    // The particles' cov:
-                    {
-                        CRenderizablePtr    ellip = ptrScene->getByName("parts_cov");
-                        if (!ellip)
-                        {
-                            ellip = CEllipsoid::Create();
-                            ellip->setName( "parts_cov");
-                            ellip->setColor(1,0,0, 0.6);
-
-                            getAs<CEllipsoid>(ellip)->setLineWidth(2);
-                            getAs<CEllipsoid>(ellip)->setQuantiles(3);
-                            getAs<CEllipsoid>(ellip)->set2DsegmentsCount(60);
-                            ptrScene->insert( ellip );
-                        }
-                        ellip->setLocation(meanPose.x(), meanPose.y(), 0.05 );
-
-                        getAs<CEllipsoid>(ellip)->setCovMatrix(cov,2);
-                    }
-
-
-                    // The laser scan:
-                    {
-                        CRenderizablePtr scanPts = ptrScene->getByName("scan");
-                        if (!scanPts)
-                        {
-                            scanPts = CPointCloud::Create();
-                            scanPts->setName( "scan" );
-                            scanPts->setColor(1,0,0, 0.9);
-                            getAs<CPointCloud>(scanPts)->enableColorFromZ(false);
-                            getAs<CPointCloud>(scanPts)->setPointSize(4);
-                            ptrScene->insert(scanPts);
-                        }
-
-                        CSimplePointsMap    map;
-                        static CSimplePointsMap last_map;
-
-                        CPose3D             robotPose3D( meanPose );
-
-                        map.clear();
-                        observations->insertObservationsInto( &map );
-
-                        getAs<CPointCloud>(scanPts)->loadFromPointsMap( &last_map );
-                        getAs<CPointCloud>(scanPts)->setPose( robotPose3D );
-                        last_map = map;
-                    }
-
-                    // The camera:
-                    ptrScene->enableFollowCamera(true);
-
-                    // Views:
-                    COpenGLViewportPtr view1= ptrScene->getViewport("main");
-                    {
-                        CCamera  &cam = view1->getCamera();
-                        cam.setAzimuthDegrees(-90);
-                        cam.setElevationDegrees(90);
-                        cam.setPointingAt( meanPose );
-                        cam.setZoomDistance(5);
-                        cam.setOrthogonal();
-                    }
-
-                    /*COpenGLViewportPtr view2= ptrScene->createViewport("small_view"); // Create, or get existing one.
-                                view2->setCloneView("main");
-                                view2->setCloneCamera(false);
-                                view2->setBorderSize(3);
-                                {
-                                    CCamera  &cam = view1->getCamera();
-                                    cam.setAzimuthDegrees(-90);
-                                    cam.setElevationDegrees(90);
-                                    cam.setPointingAt( meanPose );
-                                    cam.setZoomDistance(15);
-                                    cam.setOrthogonal();
-
-                                    view2->setTransparent(false);
-                                    view2->setViewportPosition(0.59,0.01,0.4,0.3);
-                                }*/
-
-                    win3D_->unlockAccess3DScene();
-
-                    // Move camera:
-                    //win3D_->setCameraPointingToPoint( curRobotPose.x, curRobotPose.y, curRobotPose.z );
-
-                    // Update:
-                    win3D_->forceRepaint();
-
-                    sleep( SHOW_PROGRESS_3D_REAL_TIME_DELAY_MS );
-                } // end show 3D real-time
-
-
-
-                // ----------------------------------------
-                // RUN ONE STEP OF THE PARTICLE FILTER:
-                // ----------------------------------------
-                tictac_.Tic();
-                if (!SAVE_STATS_ONLY)
-                    printf("Step %u -- Executing ParticleFilter on %u particles....",(unsigned int)step, (unsigned int)pdf_.particlesCount());
-
-                pf_.executeOn(
-                            pdf_,
-                            action.pointer(),           // Action
-                            observations.pointer(), // Obs.
-                            &pf_stats_       // Output statistics
-                            );
-
-                if (!SAVE_STATS_ONLY)
-                    printf(" Done! in %.03fms, ESS=%f\n", 1000.0f*tictac_.Tac(), pdf_.ESS());
-            }
-
-            // Avrg. error:
-            // ----------------------------------------
-            CActionRobotMovement2DPtr best_mov_estim = action->getBestMovementEstimation();
-            if (best_mov_estim)
-                odometryEstimation_ = odometryEstimation_ + best_mov_estim->poseChange->getMeanVal();
-
-            pdf_.getMean( pdfEstimation_ );
-
-#if 1
-            {   // Averaged error to GT
-                double sumW=0;
-                double locErr=0;
-                for (size_t k=0; k<pdf_.size(); k++) sumW+=exp(pdf_.getW(k));
-                for (size_t k=0; k<pdf_.size(); k++)
-                    locErr+= expectedPose.distanceTo( pdf_.getParticlePose(k) ) * exp(pdf_.getW(k))/ sumW;
-                covergenceErrors.push_back( locErr );
-            }
-#else
-            // Error of the mean to GT
-            covergenceErrors.push_back( expectedPose.distanceTo( pdfEstimation_ ) );
-#endif
-
-            // Text output:
-            // ----------------------------------------
-            if (!SAVE_STATS_ONLY)
-            {
-                cout << "    Odometry est: " << odometryEstimation_ << "\n";
-                cout << "         PDF est: " << pdfEstimation_ << ", ESS (B.R.)= " << pf_stats_.ESS_beforeResample << "\n";
-                if (GT.getRowCount()>0)
-                    cout << "    Ground truth: " << expectedPose << "\n";
-            }
-
-            pdf_.getCovariance(covEstimation_);
-
-            if (!SAVE_STATS_ONLY)
-            {
-                f_cov_est.printf("%e\n",sqrt(covEstimation_.det()) );
-                f_pf_stats.printf("%u %e %e\n",
-                                  (unsigned int)pdf_.size(),
-                                  pf_stats_.ESS_beforeResample,
-                                  pf_stats_.weightsVariance_beforeResample );
-                f_odo_est.printf("%f %f %f\n",odometryEstimation_.x(),odometryEstimation_.y(),odometryEstimation_.phi());
-            }
-
-            CPose2D meanPose;
-            CMatrixDouble33 cov;
-            pdf_.getCovarianceAndMean(cov,meanPose);
-
-            if ( !SAVE_STATS_ONLY && SCENE3D_FREQ>0 && (step % SCENE3D_FREQ)==0)
-            {
-                // Generate 3D scene:
-                // ------------------------------
-                MRPT_TODO("Someday I should clean up this mess, since two different 3D scenes are built -> refactor code")
-
-                        // The Ground Truth (GT):
-                {
-                    CRenderizablePtr GTpt = scene_.getByName("GT");
+                    CRenderizablePtr GTpt = ptrScene->getByName("GT");
                     if (!GTpt)
                     {
-                        GTpt = CDisk::Create();
                         GTpt = CDisk::Create();
                         GTpt->setName( "GT" );
                         GTpt->setColor(0,0,0, 0.9);
 
                         getAs<CDisk>(GTpt)->setDiskRadius(0.04);
-                        scene_.insert( GTpt );
+                        ptrScene->insert( GTpt );
                     }
 
-                    GTpt->setPose(expectedPose);
+                    GTpt->setPose( expectedPose );
                 }
+
 
                 // The particles:
                 {
-                    CRenderizablePtr parts = scene_.getByName("particles");
-                    if (parts) scene_.removeObject(parts);
+                    CRenderizablePtr parts = ptrScene->getByName("particles");
+                    if (parts) ptrScene->removeObject(parts);
 
                     CSetOfObjectsPtr p = pdf_.getAs3DObject<CSetOfObjectsPtr>();
                     p->setName("particles");
-                    scene_.insert(p);
+                    ptrScene->insert(p);
                 }
 
                 // The particles' cov:
                 {
-                    CRenderizablePtr    ellip = scene_.getByName("parts_cov");
+                    CRenderizablePtr    ellip = ptrScene->getByName("parts_cov");
                     if (!ellip)
                     {
                         ellip = CEllipsoid::Create();
                         ellip->setName( "parts_cov");
                         ellip->setColor(1,0,0, 0.6);
 
-                        getAs<CEllipsoid>(ellip)->setLineWidth(4);
+                        getAs<CEllipsoid>(ellip)->setLineWidth(2);
                         getAs<CEllipsoid>(ellip)->setQuantiles(3);
                         getAs<CEllipsoid>(ellip)->set2DsegmentsCount(60);
-                        scene_.insert( ellip );
+                        ptrScene->insert( ellip );
                     }
-                    ellip->setLocation(meanPose.x(),meanPose.y(),0);
+                    ellip->setLocation(meanPose.x(), meanPose.y(), 0.05 );
 
                     getAs<CEllipsoid>(ellip)->setCovMatrix(cov,2);
                 }
@@ -673,7 +520,7 @@ void PFLocalization::init() {
 
                 // The laser scan:
                 {
-                    CRenderizablePtr scanPts = scene_.getByName("scan");
+                    CRenderizablePtr scanPts = ptrScene->getByName("scan");
                     if (!scanPts)
                     {
                         scanPts = CPointCloud::Create();
@@ -681,7 +528,7 @@ void PFLocalization::init() {
                         scanPts->setColor(1,0,0, 0.9);
                         getAs<CPointCloud>(scanPts)->enableColorFromZ(false);
                         getAs<CPointCloud>(scanPts)->setPointSize(4);
-                        scene_.insert(scanPts);
+                        ptrScene->insert(scanPts);
                     }
 
                     CSimplePointsMap    map;
@@ -698,20 +545,20 @@ void PFLocalization::init() {
                 }
 
                 // The camera:
-                scene_.enableFollowCamera(SCENE3D_FOLLOW);
+                ptrScene->enableFollowCamera(true);
 
                 // Views:
-                COpenGLViewportPtr view1= scene_.getViewport("main");
+                COpenGLViewportPtr view1= ptrScene->getViewport("main");
                 {
                     CCamera  &cam = view1->getCamera();
                     cam.setAzimuthDegrees(-90);
                     cam.setElevationDegrees(90);
-                    cam.setPointingAt( meanPose);
+                    cam.setPointingAt( meanPose );
                     cam.setZoomDistance(5);
                     cam.setOrthogonal();
                 }
 
-                /*COpenGLViewportPtr view2= scene_.createViewport("small_view"); // Create, or get existing one.
+                /*COpenGLViewportPtr view2= ptrScene->createViewport("small_view"); // Create, or get existing one.
                             view2->setCloneView("main");
                             view2->setCloneCamera(false);
                             view2->setBorderSize(3);
@@ -726,73 +573,227 @@ void PFLocalization::init() {
                                 view2->setTransparent(false);
                                 view2->setViewportPosition(0.59,0.01,0.4,0.3);
                             }*/
-            }
 
-            if (!SAVE_STATS_ONLY && SCENE3D_FREQ!=-1 && (step % SCENE3D_FREQ)==0)
-            {
-                // Save 3D scene:
-                CFileGZOutputStream(format("%s/progress_%03u.3Dscene",sOUT_DIR_3D.c_str(),(unsigned)step)) << scene_;
+                win3D_->unlockAccess3DScene();
 
-                // Generate text files for matlab:
-                // ------------------------------------
-                pdf_.saveToTextFile(format("%s/particles_%03u.txt",sOUT_DIR_PARTS.c_str(),(unsigned)step));
+                // Move camera:
+                //win3D_->setCameraPointingToPoint( curRobotPose.x, curRobotPose.y, curRobotPose.z );
 
-                if (IS_CLASS(*observations->begin(),CObservation2DRangeScan))
-                {
-                    CObservation2DRangeScanPtr o = CObservation2DRangeScanPtr( *observations->begin() );
-                    vectorToTextFile(o->scan , format("%s/observation_scan_%03u.txt",sOUT_DIR_PARTS.c_str(),(unsigned)step) );
-                }
-            }
+                // Update:
+                win3D_->forceRepaint();
 
-        } // end if rawlog_offset
+                sleep( SHOW_PROGRESS_3D_REAL_TIME_DELAY_MS_ );
+            } // end show 3D real-time
 
-        step++;
 
-        // Test for end condition if we are testing convergence:
-        if ( step == testConvergenceAt )
-        {
-            nConvergenceTests++;
 
-            // Convergence??
-            if ( sqrt(covEstimation_.det()) < 2 )
-            {
-                if ( pdfEstimation_.distanceTo(expectedPose) < 1.00f )
-                    nConvergenceOK++;
-            }
-            end = true;
+            // ----------------------------------------
+            // RUN ONE STEP OF THE PARTICLE FILTER:
+            // ----------------------------------------
+            tictac_.Tic();
+            if (!SAVE_STATS_ONLY_)
+                printf("Step %u -- Executing ParticleFilter on %u particles....",(unsigned int)process_counter, (unsigned int)pdf_.particlesCount());
+
+            pf_.executeOn(
+                        pdf_,
+                        action.pointer(),           // Action
+                        observations.pointer(), // Obs.
+                        &pf_stats_       // Output statistics
+                        );
+
+            if (!SAVE_STATS_ONLY_)
+                printf(" Done! in %.03fms, ESS=%f\n", 1000.0f*tictac_.Tac(), pdf_.ESS());
         }
-    }; // while rawlogEntries
 
-    double repetitionTime = tictacGlobal_.Tac();
+        // Avrg. error:
+        // ----------------------------------------
+        CActionRobotMovement2DPtr best_mov_estim = action->getBestMovementEstimation();
+        if (best_mov_estim)
+            odometryEstimation_ = odometryEstimation_ + best_mov_estim->poseChange->getMeanVal();
 
-    // Avr. error:
-    double covergenceErrorMean, covergenceErrorsMin,covergenceErrorsMax;
-    math::confidenceIntervals(covergenceErrors, covergenceErrorMean, covergenceErrorsMin,covergenceErrorsMax, STATS_CONF_INTERVAL);
+        pdf_.getMean( pdfEstimation_ );
 
-    // Save overall results:
-    {
+#if 1
+        {   // Averaged error to GT
+            double sumW=0;
+            double locErr=0;
+            for (size_t k=0; k<pdf_.size(); k++) sumW+=exp(pdf_.getW(k));
+            for (size_t k=0; k<pdf_.size(); k++)
+                locErr+= expectedPose.distanceTo( pdf_.getParticlePose(k) ) * exp(pdf_.getW(k))/ sumW;
+            covergenceErrors_.push_back( locErr );
+        }
+#else
+        // Error of the mean to GT
+        covergenceErrors.push_back( expectedPose.distanceTo( pdfEstimation_ ) );
+#endif
 
-        CFileOutputStream f(format("%s_SUMMARY.txt",OUT_DIR_PREFIX.c_str()), true /* append */);
+        // Text output:
+        // ----------------------------------------
+        if (!SAVE_STATS_ONLY_)
+        {
+            cout << "    Odometry est: " << odometryEstimation_ << "\n";
+            cout << "         PDF est: " << pdfEstimation_ << ", ESS (B.R.)= " << pf_stats_.ESS_beforeResample << "\n";
+            if (groundTruth_.getRowCount()>0)
+                cout << "    Ground truth: " << expectedPose << "\n";
+        }
 
-        f.printf("%% Ratio_covergence_success  #particles  average_time_per_execution  convergence_mean_error convergence_error_conf_int_inf convergence_error_conf_int_sup \n");
-        if (!nConvergenceTests) nConvergenceTests=1;
-        f.printf("%f %u %f %f %f %f\n",
-                 ((double)nConvergenceOK)/nConvergenceTests,
-                 PARTICLE_COUNT,
-                 repetitionTime /NUM_REPS,
-                 covergenceErrorMean,
-                 covergenceErrorsMin,covergenceErrorsMax );
+        pdf_.getCovariance(covEstimation_);
+
+        if (!SAVE_STATS_ONLY_)
+        {
+            f_cov_est_.printf("%e\n",sqrt(covEstimation_.det()) );
+            f_pf_stats_.printf("%u %e %e\n",
+                              (unsigned int)pdf_.size(),
+                              pf_stats_.ESS_beforeResample,
+                              pf_stats_.weightsVariance_beforeResample );
+            f_odo_est_.printf("%f %f %f\n",odometryEstimation_.x(),odometryEstimation_.y(),odometryEstimation_.phi());
+        }
+
+        CPose2D meanPose;
+        CMatrixDouble33 cov;
+        pdf_.getCovarianceAndMean(cov,meanPose);
+
+        if ( !SAVE_STATS_ONLY_ && SCENE3D_FREQ_>0 && (process_counter % SCENE3D_FREQ_)==0)
+        {
+            // Generate 3D scene:
+            // ------------------------------
+            MRPT_TODO("Someday I should clean up this mess, since two different 3D scenes are built -> refactor code")
+
+                    // The Ground Truth (GT):
+            {
+                CRenderizablePtr GTpt = scene_.getByName("GT");
+                if (!GTpt)
+                {
+                    GTpt = CDisk::Create();
+                    GTpt = CDisk::Create();
+                    GTpt->setName( "GT" );
+                    GTpt->setColor(0,0,0, 0.9);
+
+                    getAs<CDisk>(GTpt)->setDiskRadius(0.04);
+                    scene_.insert( GTpt );
+                }
+
+                GTpt->setPose(expectedPose);
+            }
+
+            // The particles:
+            {
+                CRenderizablePtr parts = scene_.getByName("particles");
+                if (parts) scene_.removeObject(parts);
+
+                CSetOfObjectsPtr p = pdf_.getAs3DObject<CSetOfObjectsPtr>();
+                p->setName("particles");
+                scene_.insert(p);
+            }
+
+            // The particles' cov:
+            {
+                CRenderizablePtr    ellip = scene_.getByName("parts_cov");
+                if (!ellip)
+                {
+                    ellip = CEllipsoid::Create();
+                    ellip->setName( "parts_cov");
+                    ellip->setColor(1,0,0, 0.6);
+
+                    getAs<CEllipsoid>(ellip)->setLineWidth(4);
+                    getAs<CEllipsoid>(ellip)->setQuantiles(3);
+                    getAs<CEllipsoid>(ellip)->set2DsegmentsCount(60);
+                    scene_.insert( ellip );
+                }
+                ellip->setLocation(meanPose.x(),meanPose.y(),0);
+
+                getAs<CEllipsoid>(ellip)->setCovMatrix(cov,2);
+            }
+
+
+            // The laser scan:
+            {
+                CRenderizablePtr scanPts = scene_.getByName("scan");
+                if (!scanPts)
+                {
+                    scanPts = CPointCloud::Create();
+                    scanPts->setName( "scan" );
+                    scanPts->setColor(1,0,0, 0.9);
+                    getAs<CPointCloud>(scanPts)->enableColorFromZ(false);
+                    getAs<CPointCloud>(scanPts)->setPointSize(4);
+                    scene_.insert(scanPts);
+                }
+
+                CSimplePointsMap    map;
+                static CSimplePointsMap last_map;
+
+                CPose3D             robotPose3D( meanPose );
+
+                map.clear();
+                observations->insertObservationsInto( &map );
+
+                getAs<CPointCloud>(scanPts)->loadFromPointsMap( &last_map );
+                getAs<CPointCloud>(scanPts)->setPose( robotPose3D );
+                last_map = map;
+            }
+
+            // The camera:
+            scene_.enableFollowCamera(SCENE3D_FOLLOW_);
+
+            // Views:
+            COpenGLViewportPtr view1= scene_.getViewport("main");
+            {
+                CCamera  &cam = view1->getCamera();
+                cam.setAzimuthDegrees(-90);
+                cam.setElevationDegrees(90);
+                cam.setPointingAt( meanPose);
+                cam.setZoomDistance(5);
+                cam.setOrthogonal();
+            }
+
+            /*COpenGLViewportPtr view2= scene_.createViewport("small_view"); // Create, or get existing one.
+                        view2->setCloneView("main");
+                        view2->setCloneCamera(false);
+                        view2->setBorderSize(3);
+                        {
+                            CCamera  &cam = view1->getCamera();
+                            cam.setAzimuthDegrees(-90);
+                            cam.setElevationDegrees(90);
+                            cam.setPointingAt( meanPose );
+                            cam.setZoomDistance(15);
+                            cam.setOrthogonal();
+
+                            view2->setTransparent(false);
+                            view2->setViewportPosition(0.59,0.01,0.4,0.3);
+                        }*/
+        }
+
+        if (!SAVE_STATS_ONLY_ && SCENE3D_FREQ_ !=-1 && (process_counter % SCENE3D_FREQ_)==0)
+        {
+            // Save 3D scene:
+            CFileGZOutputStream(format("%s/progress_%03u.3Dscene",sOUT_DIR_3D_.c_str(),(unsigned)process_counter)) << scene_;
+
+            // Generate text files for matlab:
+            // ------------------------------------
+            pdf_.saveToTextFile(format("%s/particles_%03u.txt",sOUT_DIR_PARTS_.c_str(),(unsigned)process_counter));
+
+            if (IS_CLASS(*observations->begin(),CObservation2DRangeScan))
+            {
+                CObservation2DRangeScanPtr o = CObservation2DRangeScanPtr( *observations->begin() );
+                vectorToTextFile(o->scan , format("%s/observation_scan_%03u.txt",sOUT_DIR_PARTS_.c_str(),(unsigned)process_counter) );
+            }
+        }
+
     }
+    // end if rawlog_offset
+    // Test for end condition if we are testing convergence:
+    if ( process_counter == testConvergenceAt_ )
+    {
+        nConvergenceTests_++;
 
-    printf("\n TOTAL EXECUTION TIME = %.06f sec\n", repetitionTime );
-
-
-    if (win3D_)
-        mrpt::system::pause();
+        // Convergence??
+        if ( sqrt(covEstimation_.det()) < 2 )
+        {
+            if ( pdfEstimation_.distanceTo(expectedPose) < 1.00f )
+                nConvergenceOK_++;
+        }
+        return true;
+    }
+    return false;
 }
-void PFLocalization::process(CActionCollectionPtr action, CSensoryFramePtr observations, CObservationPtr obs){
-}
 
-
-void PFLocalization::summary(){
-}
