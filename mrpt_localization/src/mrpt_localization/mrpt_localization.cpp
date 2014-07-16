@@ -53,10 +53,24 @@ PFLocalization::PFLocalization(Parameters *param)
 }
 
 void PFLocalization::incommingLaserData(mrpt::slam::CObservation2DRangeScanPtr laser) {
+    mrpt::slam::CSensoryFramePtr sf = mrpt::slam::CSensoryFrame::Create();
+    mrpt::slam::CObservationPtr obs = mrpt::slam::CObservationPtr(laser);
 }
 
 void PFLocalization::incommingOdomData(mrpt::slam::CObservationOdometryPtr odometry) {
 
+    mrpt::slam::CActionRobotMovement2D odom_move;
+    odom_move.timestamp = odometry->timestamp;
+    mrpt::poses::CPose2D incOdoPose;
+    if(odomLastPose_.empty()) {
+        incOdoPose = mrpt::poses::CPose2D(0, 0, 0);
+    } else {
+        incOdoPose = odometry->odometry - odomLastPose_;
+    }
+    odom_move.computeFromOdometry(incOdoPose, param_->motionModelOptions);
+    mrpt::slam::CActionCollectionPtr action = mrpt::slam::CActionCollection::Create();
+    action->insert(odom_move);
+    odomLastPose_ = odometry->odometry;
 }
 
 void PFLocalization::init() {

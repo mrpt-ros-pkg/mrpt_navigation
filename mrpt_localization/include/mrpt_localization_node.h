@@ -34,7 +34,7 @@
 #include <nav_msgs/Odometry.h>
 #include <sensor_msgs/LaserScan.h>
 #include <dynamic_reconfigure/server.h>
-#include "mrpt_localization/LocalizationConfig.h"
+#include "mrpt_localization/MotionConfig.h"
 #include "mrpt_localization/mrpt_localization.h"
 
 /// ROS Node
@@ -45,9 +45,9 @@ public:
         static const int MOTION_MODEL_THRUN = 1;
 		ParametersNode();
         ros::NodeHandle node;
-        void callbackParameters (mrpt_localization::LocalizationConfig &config, uint32_t level );
-        dynamic_reconfigure::Server<mrpt_localization::LocalizationConfig> reconfigureServer_;
-        dynamic_reconfigure::Server<mrpt_localization::LocalizationConfig>::CallbackType reconfigureFnc_;        
+        void callbackParameters (mrpt_localization::MotionConfig &config, uint32_t level );
+        dynamic_reconfigure::Server<mrpt_localization::MotionConfig> reconfigureServer_;
+        dynamic_reconfigure::Server<mrpt_localization::MotionConfig>::CallbackType reconfigureFnc_;
 		void update(const unsigned long &loop_count);
 	    double rate;
         int parameter_update_skip;

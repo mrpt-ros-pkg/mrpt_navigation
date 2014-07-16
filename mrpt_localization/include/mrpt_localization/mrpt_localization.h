@@ -55,6 +55,7 @@ protected:
     bool process(size_t process_counter, mrpt::slam::CActionCollectionPtr action, mrpt::slam::CSensoryFramePtr observations, mrpt::slam::CObservationPtr obs);
     void incommingLaserData(mrpt::slam::CObservation2DRangeScanPtr  laser);
     void incommingOdomData( mrpt::slam::CObservationOdometryPtr odometry);
+    mrpt::poses::CPose2D odomLastPose_;
     mrpt::utils::CConfigFile iniFile_;
 
     int nConvergenceTests_;

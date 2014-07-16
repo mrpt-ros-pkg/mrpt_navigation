@@ -73,7 +73,7 @@ MESSAGE( STATUS "MRPT_LIBRARY_DIRS: " ${MRPT_LIBS})
 
 #add dynamic reconfigure api
 generate_dynamic_reconfigure_options(
-  cfg/Localization.cfg
+  cfg/Motion.cfg
 )
 
 ###################################
