@@ -52,7 +52,7 @@ protected:
     Parameters *param_; 
     mrpt::slam::CRawlog *pRawLog;
     void init();
-    void update();
+    void process(mrpt::slam::CActionCollectionPtr action, mrpt::slam::CSensoryFramePtr observations, mrpt::slam::CObservationPtr obs);
     void summary();
     void incommingLaserData(mrpt::slam::CObservation2DRangeScanPtr  laser);
     void incommingOdomData( mrpt::slam::CObservationOdometryPtr odometry);
@@ -70,6 +70,8 @@ protected:
     mrpt::utils::CPose2D odometryEstimation_;
     mrpt::utils::CMatrixDouble covEstimation_;
     mrpt::slam::CMonteCarloLocalization2D  pdf_;
+    mrpt::bayes::CParticleFilter pf_;
+    mrpt::bayes::CParticleFilter::TParticleFilterStats   pf_stats_;
 };
 
 #endif // MRPT_LOCALIZATION_H
