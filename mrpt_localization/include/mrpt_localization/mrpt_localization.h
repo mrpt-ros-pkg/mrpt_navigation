@@ -50,13 +50,16 @@ public:
 protected:
     Parameters *param_;
     void init();
-    void preparLogging();
-    void show3DDebug(mrpt::slam::CSensoryFramePtr observations);
+    void initLog();
+    void logResults(mrpt::slam::CSensoryFramePtr _observations);
+    void init3DDebug();
+    void show3DDebugPreprocess(mrpt::slam::CSensoryFramePtr _observations);
+    void show3DDebugPostprocess(mrpt::slam::CSensoryFramePtr _observations);
     void loadMap(const std::string &_mapFilename, const mrpt::utils::CConfigFile &_configFile);
     void configureFilter(const mrpt::utils::CConfigFile &_configFile);
     void initializeFilter(const mrpt::utils::CConfigFile &_configFile, const std::string &_sectionName);
     bool playRawlog();
-    bool process(size_t process_counter, mrpt::slam::CActionCollectionPtr action, mrpt::slam::CSensoryFramePtr observations, mrpt::slam::CObservationPtr obs);
+    bool process(mrpt::slam::CActionCollectionPtr _action, mrpt::slam::CSensoryFramePtr _observations, mrpt::slam::CObservationPtr _obs);
     void incommingLaserData(mrpt::slam::CObservation2DRangeScanPtr  laser);
     void incommingOdomData( mrpt::slam::CObservationOdometryPtr odometry);
     mrpt::slam::CObservationOdometry odomLastPoseMsg_;
