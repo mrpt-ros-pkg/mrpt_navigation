@@ -51,20 +51,22 @@ PFLocalizationNode::~PFLocalizationNode() {
 }
 
 PFLocalizationNode::PFLocalizationNode(ros::NodeHandle &n) :
-    PFLocalization(new PFLocalizationNode::ParametersNode()), n_(n), loop_count_(0) {
+    PFLocalization(new PFLocalizationNode::Parameters()), n_(n), loop_count_(0) {
 
 }
 
-PFLocalizationNode::ParametersNode *PFLocalizationNode::param() {
-    return (PFLocalizationNode::ParametersNode*) param_;
+PFLocalizationNode::Parameters *PFLocalizationNode::param() {
+    return (PFLocalizationNode::Parameters*) param_;
 }
 
 void PFLocalizationNode::init() {
     PFLocalization::init();
-    subOdometry_ = n_.subscribe("odom", 1, &PFLocalizationNode::callbackOdometry, this);
-    subLaser0_ = n_.subscribe("scan", 1, &PFLocalizationNode::callbackLaser, this);
-    subLaser1_ = n_.subscribe("scan1", 1, &PFLocalizationNode::callbackLaser, this);
-    subLaser2_ = n_.subscribe("scan2", 1, &PFLocalizationNode::callbackLaser, this);
+    if(param()->rawlogFile.empty()){
+      subOdometry_ = n_.subscribe("odom", 1, &PFLocalizationNode::callbackOdometry, this);
+      subLaser0_ = n_.subscribe("scan", 1, &PFLocalizationNode::callbackLaser, this);
+      subLaser1_ = n_.subscribe("scan1", 1, &PFLocalizationNode::callbackLaser, this);
+      subLaser2_ = n_.subscribe("scan2", 1, &PFLocalizationNode::callbackLaser, this);
+    }
 }
 
 void PFLocalizationNode::loop() {

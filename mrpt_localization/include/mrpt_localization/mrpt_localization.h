@@ -35,29 +35,32 @@
 #define MRPT_LOCALIZATION_H
 
 
-class PFLocalization : public PFLocalizationCore{
+class PFLocalization : public PFLocalizationCore {
 public:
-	struct Parameters{
-		Parameters();
-	    bool debug;
+    struct Parameters {
+        Parameters();
+        bool debug;
         std::string iniFile;
         std::string rawlogFile;
         std::string mapFile;
         mrpt::slam::CActionRobotMovement2D::TMotionModelOptions motionModelOptions;
-	};
+    };
     PFLocalization (Parameters *parm);
     ~PFLocalization();
 protected:
     Parameters *param_;
     void init();
+    void preparLogging();
+    void show3DDebug(mrpt::slam::CSensoryFramePtr observations);
+    void loadMap(const std::string &_mapFilename, const mrpt::utils::CConfigFile &_configFile);
+    void configureFilter(const mrpt::utils::CConfigFile &_configFile);
+    void initializeFilter(const mrpt::utils::CConfigFile &_configFile, const std::string &_sectionName);
     bool playRawlog();
-    bool summary();
     bool process(size_t process_counter, mrpt::slam::CActionCollectionPtr action, mrpt::slam::CSensoryFramePtr observations, mrpt::slam::CObservationPtr obs);
     void incommingLaserData(mrpt::slam::CObservation2DRangeScanPtr  laser);
     void incommingOdomData( mrpt::slam::CObservationOdometryPtr odometry);
     mrpt::slam::CObservationOdometry odomLastPoseMsg_;
     mrpt::poses::CPose2D odomLastPoseLaser_;
-    mrpt::utils::CConfigFile iniFile_;
 
     size_t process_counter_;
     int nConvergenceTests_;
@@ -69,15 +72,12 @@ protected:
     mrpt::utils::CFileOutputStream f_odo_est_;
 
     mrpt::utils::CTicTac tictac_;
-    mrpt::utils::CTicTac tictacGlobal_;
     mrpt::gui::CDisplayWindow3DPtr win3D_;
     mrpt::opengl::COpenGLScene scene_;
-    mrpt::slam::COccupancyGridMap2D::TEntropyInfo gridInfo_;
 
 
     size_t      rawlog_offset_;
-    int     PARTICLE_COUNT_;
-    int     NUM_REPS_;
+    int     INITIAL_PARTICLE_COUNT_;
     int     SCENE3D_FREQ_;
     bool        SCENE3D_FOLLOW_;
     unsigned int    testConvergenceAt_;
@@ -85,7 +85,6 @@ protected:
     bool        SHOW_PROGRESS_3D_REAL_TIME_;
     int         SHOW_PROGRESS_3D_REAL_TIME_DELAY_MS_;
     double      STATS_CONF_INTERVAL_;
-    std::string      RAWLOG_FILE_;
     std::string      OUT_DIR_PREFIX_;
     std::string      sOUT_DIR_;
     std::string      sOUT_DIR_PARTS_;

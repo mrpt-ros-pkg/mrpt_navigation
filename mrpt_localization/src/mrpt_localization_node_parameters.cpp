@@ -29,8 +29,8 @@
 #include "mrpt_localization_node.h"
 #include "mrpt_localization_node_defaults.h"
 
-PFLocalizationNode::ParametersNode::ParametersNode()
-    : Parameters(), node("~") {
+PFLocalizationNode::Parameters::Parameters()
+    : PFLocalization::Parameters(), node("~") {
     node.param<double>("rate", rate, MRPT_LOCALIZATION_NODE_DEFAULT_RATE);
     ROS_INFO("rate: %f", rate);
     node.param<int>("parameter_update_skip", parameter_update_skip, MRPT_LOCALIZATION_NODE_DEFAULT_PARAMETER_UPDATE_SKIP);
@@ -42,17 +42,17 @@ PFLocalizationNode::ParametersNode::ParametersNode()
     node.getParam("map_file", mapFile);
     ROS_INFO("map_file: %s", mapFile.c_str());
     
-    reconfigureFnc_ = boost::bind(&PFLocalizationNode::ParametersNode::callbackParameters, this ,  _1, _2);
+    reconfigureFnc_ = boost::bind(&PFLocalizationNode::Parameters::callbackParameters, this ,  _1, _2);
     reconfigureServer_.setCallback(reconfigureFnc_);
 }
 
-void PFLocalizationNode::ParametersNode::update(const unsigned long &loop_count) {
+void PFLocalizationNode::Parameters::update(const unsigned long &loop_count) {
     if(loop_count % parameter_update_skip) return;
     node.getParam("debug", debug);
     if(loop_count == 0) ROS_INFO("debug:  %s", (debug ? "true" : "false"));
 }
 
-void PFLocalizationNode::ParametersNode::callbackParameters (mrpt_localization::MotionConfig &config, uint32_t level ) {
+void PFLocalizationNode::Parameters::callbackParameters (mrpt_localization::MotionConfig &config, uint32_t level ) {
     if(config.motion_noise_type == MOTION_MODEL_GAUSSIAN) {
         motionModelOptions.modelSelection = mrpt::slam::CActionRobotMovement2D::mmGaussian;
         motionModelOptions.gausianModel.a1 = config.gaussian_alpha_1;

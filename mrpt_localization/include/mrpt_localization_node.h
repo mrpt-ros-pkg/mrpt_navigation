@@ -40,10 +40,10 @@
 /// ROS Node
 class PFLocalizationNode : public PFLocalization {
 public:
-	struct ParametersNode : public Parameters{
+	struct Parameters : public PFLocalization::Parameters{
         static const int MOTION_MODEL_GAUSSIAN = 0;
         static const int MOTION_MODEL_THRUN = 1;
-		ParametersNode();
+		Parameters();
         ros::NodeHandle node;
         void callbackParameters (mrpt_localization::MotionConfig &config, uint32_t level );
         dynamic_reconfigure::Server<mrpt_localization::MotionConfig> reconfigureServer_;
@@ -60,7 +60,7 @@ public:
     void callbackOdometry (const nav_msgs::Odometry&);
     void callbackLaser (const sensor_msgs::LaserScan&);    
 private: //functions
-    ParametersNode *param();
+    Parameters *param();
     void update ();
     void updateLaserPose (std::string frame_id);
     ros::Subscriber subOdometry_;
