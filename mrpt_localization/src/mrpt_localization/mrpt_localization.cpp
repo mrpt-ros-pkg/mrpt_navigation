@@ -55,22 +55,26 @@ PFLocalization::PFLocalization(Parameters *param)
 void PFLocalization::incommingLaserData(mrpt::slam::CObservation2DRangeScanPtr laser) {
     mrpt::slam::CSensoryFramePtr sf = mrpt::slam::CSensoryFrame::Create();
     mrpt::slam::CObservationPtr obs = mrpt::slam::CObservationPtr(laser);
+    sf->insert(obs);
+    mrpt::poses::CPose2D incOdoPose;
+    if(odomLastPoseLaser_.empty()) {
+        odomLastPoseLaser_ = odomLastPoseMsg_.odometry;
+    }
+    incOdoPose = odomLastPoseMsg_.odometry - odomLastPoseLaser_;
+
+    mrpt::slam::CActionRobotMovement2D odom_move;
+    odom_move.timestamp = laser->timestamp;
+    odom_move.computeFromOdometry(incOdoPose, param_->motionModelOptions);
+    mrpt::slam::CActionCollectionPtr action = mrpt::slam::CActionCollection::Create();
+    action->insert(odom_move);
+    process(process_counter_, action, sf, obs);
+    odomLastPoseLaser_ = odomLastPoseLaser_;
+    process_counter_++;
 }
 
 void PFLocalization::incommingOdomData(mrpt::slam::CObservationOdometryPtr odometry) {
 
-    mrpt::slam::CActionRobotMovement2D odom_move;
-    odom_move.timestamp = odometry->timestamp;
-    mrpt::poses::CPose2D incOdoPose;
-    if(odomLastPose_.empty()) {
-        incOdoPose = mrpt::poses::CPose2D(0, 0, 0);
-    } else {
-        incOdoPose = odometry->odometry - odomLastPose_;
-    }
-    odom_move.computeFromOdometry(incOdoPose, param_->motionModelOptions);
-    mrpt::slam::CActionCollectionPtr action = mrpt::slam::CActionCollection::Create();
-    action->insert(odom_move);
-    odomLastPose_ = odometry->odometry;
+    odomLastPoseMsg_ = *odometry;
 }
 
 void PFLocalization::init() {
@@ -86,7 +90,7 @@ void PFLocalization::init() {
     // Load configuration:
     // -----------------------------------------
     string iniSectionName ( "LocalizationExperiment" );
-
+    process_counter_ = 0;
 
     // Mandatory entries:
     iniFile_.read_vector(iniSectionName, "particles_count", vector_int(1,0), particles_count, /*Fail if not found*/true );
@@ -263,9 +267,9 @@ void PFLocalization::init() {
 
 
     // Global stats for all the experiment loops:
-   nConvergenceTests_ = 0;
-   nConvergenceOK_ = 0;
-   covergenceErrors_.clear();
+    nConvergenceTests_ = 0;
+    nConvergenceOK_ = 0;
+    covergenceErrors_.clear();
     // --------------------------------------------------------------------
     //                  EXPERIMENT REPETITIONS LOOP
     // --------------------------------------------------------------------
@@ -359,13 +363,11 @@ void PFLocalization::init() {
         f_odo_est_.open(sOUT_DIR_.c_str()+string("/odo_est.txt"));
     }
 
+    if(RAWLOG_FILE_.empty()){
 
-
-    playRawlog();
-    summary();
-
-    if (win3D_)
-        mrpt::system::pause();
+    } else {
+        playRawlog();
+    }
 }
 
 bool PFLocalization::playRawlog(){
@@ -379,7 +381,7 @@ bool PFLocalization::playRawlog(){
     bool                end = false;
     size_t  step = 0;
     size_t rawlogEntry = 0;
-    size_t process_counter = step-rawlog_offset_;
+    process_counter_ = step-rawlog_offset_;
     while (!end)
     {
         // Finish if ESC is pushed:
@@ -405,10 +407,13 @@ bool PFLocalization::playRawlog(){
         }
 
 
-        end = process(process_counter, action, observations, obs);
-        process_counter++;
+        end = process(process_counter_, action, observations, obs);
+        process_counter_++;
 
     }; // while rawlogEntries
+
+    summary();
+
 }
 
 bool PFLocalization::summary(){
@@ -435,6 +440,8 @@ bool PFLocalization::summary(){
 
     printf("\n TOTAL EXECUTION TIME = %.06f sec\n", repetitionTime );
 
+    if (win3D_)
+        mrpt::system::pause();
 }
 
 bool PFLocalization::process(size_t process_counter, CActionCollectionPtr action, CSensoryFramePtr observations, CObservationPtr obs){
@@ -676,9 +683,9 @@ bool PFLocalization::process(size_t process_counter, CActionCollectionPtr action
         {
             f_cov_est_.printf("%e\n",sqrt(covEstimation_.det()) );
             f_pf_stats_.printf("%u %e %e\n",
-                              (unsigned int)pdf_.size(),
-                              pf_stats_.ESS_beforeResample,
-                              pf_stats_.weightsVariance_beforeResample );
+                               (unsigned int)pdf_.size(),
+                               pf_stats_.ESS_beforeResample,
+                               pf_stats_.weightsVariance_beforeResample );
             f_odo_est_.printf("%f %f %f\n",odometryEstimation_.x(),odometryEstimation_.y(),odometryEstimation_.phi());
         }
 
