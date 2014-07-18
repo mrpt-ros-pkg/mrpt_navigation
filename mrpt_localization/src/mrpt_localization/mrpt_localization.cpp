@@ -186,9 +186,12 @@ void PFLocalization::init() {
     initLog();
     init3DDebug();
 
+    printf("--------------  param_->rawlogFile.empty()  \n");
     if(param_->rawlogFile.empty()) {
+        printf("wait for msgs\n");
         // There was no rawlog therfore I am waiting for ros massages
     } else {
+        printf("playRawlog\n");
         // There was no rawlog therfore I am waiting for ros massages
         playRawlog();
     }
@@ -521,6 +524,8 @@ void PFLocalization::initLog() {
     f_cov_est_.open(sOUT_DIR_.c_str()+string("/cov_est.txt"));
     f_pf_stats_.open(sOUT_DIR_.c_str()+string("/PF_stats.txt"));
     f_odo_est_.open(sOUT_DIR_.c_str()+string("/odo_est.txt"));
+    if(param_->debug) printf(" --------------------------- initLog done \n");
+    if(param_->debug) fflush(stdout);
 }
 
 void PFLocalization::initializeFilter(const mrpt::utils::CConfigFile &_configFile, const std::string &_sectionName) {
@@ -590,6 +595,8 @@ void PFLocalization::init3DDebug() {
         }
         printf("Initial PDF: %f particles/m2\n", INITIAL_PARTICLE_COUNT_/gridInfo.effectiveMappedArea);
     } // Show 3D?
+    if(param_->debug) printf(" --------------------------- init3DDebug done \n");
+    if(param_->debug) fflush(stdout);
 }
 
 void PFLocalization::show3DDebugPreprocess(CSensoryFramePtr _observations) {

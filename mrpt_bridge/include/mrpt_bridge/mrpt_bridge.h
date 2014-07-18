@@ -5,6 +5,7 @@
 #include <mrpt_bridge/time.h>
 #include <mrpt_bridge/laser_scan.h>
 #include <mrpt_bridge/point_cloud.h>
+#include <mrpt_bridge/map.h>
 #include "pose_conversions.h"
 #include "point_cloud2.h"
 

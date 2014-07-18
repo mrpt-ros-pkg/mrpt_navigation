@@ -43,7 +43,7 @@ public:
 protected:
     mrpt::slam::CActionRobotMovement2D::TMotionModelOptions dummy_odom_params_;
     mrpt::slam::CMultiMetricMap metricMap_;
-    mrpt::utils::CPose2D     expectedPose_;
+    mrpt::utils::CPose2D expectedPose_;
     mrpt::utils::CPose2D pdfEstimation_;
     mrpt::utils::CPose2D odometryEstimation_;
     mrpt::utils::CMatrixDouble covEstimation_;
@@ -54,3 +54,4 @@ protected:
 };
 
 #endif // MRPT_LOCALIZATION_CORE_H
+

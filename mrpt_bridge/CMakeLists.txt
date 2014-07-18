@@ -108,6 +108,7 @@ add_library(${PROJECT_NAME}
   src/point_cloud.cpp 
   src/point_cloud2.cpp 
   src/laser_scan.cpp
+  src/map.cpp
 )
 
 ## Declare a cpp executable

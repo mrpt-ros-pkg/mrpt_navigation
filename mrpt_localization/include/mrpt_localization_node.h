@@ -33,9 +33,12 @@
 #include <tf/transform_listener.h>
 #include <nav_msgs/Odometry.h>
 #include <sensor_msgs/LaserScan.h>
+#include <geometry_msgs/PoseWithCovarianceStamped.h>
+#include <nav_msgs/OccupancyGrid.h>
 #include <dynamic_reconfigure/server.h>
 #include "mrpt_localization/MotionConfig.h"
 #include "mrpt_localization/mrpt_localization.h"
+#include "nav_msgs/MapMetaData.h"
 
 /// ROS Node
 class PFLocalizationNode : public PFLocalization {
@@ -58,22 +61,27 @@ public:
     void init ();
     void loop ();
     void callbackOdometry (const nav_msgs::Odometry&);
-    void callbackLaser (const sensor_msgs::LaserScan&);    
+    void callbackLaser (const sensor_msgs::LaserScan&);   
+    void callbackInitPose (const geometry_msgs::PoseWithCovarianceStamped&);   
 private: //functions
     Parameters *param();
     void update ();
     void updateLaserPose (std::string frame_id);
     ros::Subscriber subOdometry_;
+    ros::Subscriber subInitPose_;
     ros::Subscriber subLaser0_;
     ros::Subscriber subLaser1_;
     ros::Subscriber subLaser2_;
+    ros::Publisher pubMap_;
+    ros::Publisher pubMetadata_;
     tf::TransformListener listenerTF_;
     std::string base_link_;
     std::map<std::string, mrpt::poses::CPose3D> laser_poses_;
 private: // variables
     ros::NodeHandle n_;
     unsigned long loop_count_;
-
+    void publishMap(const mrpt::slam::COccupancyGridMap2DPtr mrptMap);
+    nav_msgs::OccupancyGrid rosOccupancyGrid_;
 };
 
 #endif // MRPT_LOCALIZATION_NODE_H

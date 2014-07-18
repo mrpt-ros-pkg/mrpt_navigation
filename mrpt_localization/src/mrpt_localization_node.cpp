@@ -32,14 +32,14 @@
 #include <mrpt_bridge/pose_conversions.h>
 #include <mrpt_bridge/laser_scan.h>
 #include <mrpt_bridge/time.h>
+#include <mrpt_bridge/map.h>
 #include <mrpt/base.h>
 #include <mrpt/slam.h>
 #include <mrpt/gui.h>
 
-
 int main(int argc, char **argv) {
 
-    ros::init(argc, argv, "DataLogger");
+    ros::init(argc, argv, "localization");
     ros::NodeHandle n;
     PFLocalizationNode my_node(n);
     my_node.init();
@@ -61,17 +61,26 @@ PFLocalizationNode::Parameters *PFLocalizationNode::param() {
 
 void PFLocalizationNode::init() {
     PFLocalization::init();
-    if(param()->rawlogFile.empty()){
-      subOdometry_ = n_.subscribe("odom", 1, &PFLocalizationNode::callbackOdometry, this);
-      subLaser0_ = n_.subscribe("scan", 1, &PFLocalizationNode::callbackLaser, this);
-      subLaser1_ = n_.subscribe("scan1", 1, &PFLocalizationNode::callbackLaser, this);
-      subLaser2_ = n_.subscribe("scan2", 1, &PFLocalizationNode::callbackLaser, this);
+    if(param()->rawlogFile.empty()) {
+        if(param_->debug) printf(" --------------------------- init subsriber \n");
+        subOdometry_ = n_.subscribe("odom", 1, &PFLocalizationNode::callbackOdometry, this);
+        subLaser0_ = n_.subscribe("scan", 1, &PFLocalizationNode::callbackLaser, this);
+        subLaser1_ = n_.subscribe("scan1", 1, &PFLocalizationNode::callbackLaser, this);
+        subLaser2_ = n_.subscribe("scan2", 1, &PFLocalizationNode::callbackLaser, this);
+
+        // Latched publisher for data
+        if(param_->debug) printf(" --------------------------- init publisher \n");
+        pubMap_ = n_.advertise<nav_msgs::OccupancyGrid>("map_mrpt", 1, true);
+        if(param_->debug) fflush(stdout);
     }
 }
 
 void PFLocalizationNode::loop() {
+    if(param_->debug) printf(" --------------------------- start loop \n");
+    if(param_->debug) fflush(stdout);
     for (ros::Rate rate(param()->rate); ros::ok(); loop_count_++) {
         param()->update(loop_count_);
+        publishMap(metricMap_.m_gridMaps[0]);
         ros::spinOnce();
         rate.sleep();
     }
@@ -83,7 +92,7 @@ void PFLocalizationNode::callbackLaser (const sensor_msgs::LaserScan &_msg) {
     if(laser_poses_.find(_msg.header.frame_id) == laser_poses_.end()) {
         updateLaserPose (_msg.header.frame_id);
     } else {
-        mrpt::poses::CPose3D pose = laser_poses_[_msg.header.frame_id];  
+        mrpt::poses::CPose3D pose = laser_poses_[_msg.header.frame_id];
         ROS_INFO("LASER POSE %4.3f, %4.3f, %4.3f, %4.3f, %4.3f, %4.3f",
                  pose.x(), pose.y(), pose.z(), pose.roll(), pose.pitch(), pose.yaw());
         mrpt_bridge::laser_scan::ros2mrpt(_msg, laser_poses_[_msg.header.frame_id],  *laser);
@@ -123,10 +132,10 @@ void PFLocalizationNode::callbackOdometry (const nav_msgs::Odometry &_odom) {
     if(base_link_.empty()) {
         base_link_ = _odom.child_frame_id;
     }
-    
+
     mrpt::poses::CPose2D odoPose;
     mrpt_bridge::poses::ros2mrpt(_odom.pose.pose, odoPose);
-    
+
     mrpt::slam::CObservationOdometryPtr odometry = mrpt::slam::CObservationOdometry::Create();
     odometry->sensorLabel = "ODOMETRY";
     odometry->hasEncodersInfo = false;
@@ -134,4 +143,14 @@ void PFLocalizationNode::callbackOdometry (const nav_msgs::Odometry &_odom) {
     odometry->odometry = odoPose;
     mrpt_bridge::time::ros2mrpt(_odom.header.stamp, odometry->timestamp);
     incommingOdomData(odometry);
+}
+
+void PFLocalizationNode::publishMap (const mrpt::slam::COccupancyGridMap2DPtr mrptMap) {
+    std_msgs::Header header;
+    header.frame_id = "map",  header.seq = process_counter_, header.stamp = ros::Time::now();
+    geometry_msgs::Pose pose;
+    pose.position.x = 0, pose.position.y = 0, pose.position.z = 0;
+    pose.orientation.x = 0, pose.orientation.y = 0, pose.orientation.z = 0, pose.orientation.w = 1;
+    mrpt_bridge::map::instance()->mrpt2ros(*mrptMap, header, pose, rosOccupancyGrid_);
+    pubMap_.publish(rosOccupancyGrid_ );
 }
