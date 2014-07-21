@@ -22,9 +22,11 @@ class map
 private:
     static map* instance_; // singeleton instance
 #ifdef  OCCUPANCY_GRIDMAP_CELL_SIZE_8BITS
-    int8_t lut_mrpt2ros[0xFF];
+    int8_t lut_mrpt2ros[0xFF]; // lookup table for entry convertion
+    int8_t *lut_mrpt2rosPtr;   // pointer to the center of the lookup table neede to work with neg. indexes
 #else
-    int8_t lut_mrpt2ros[0xFFFF];
+    int16_t lut_mrpt2ros[0xFFFF]; // lookup table for entry convertion
+    int16_t *lut_mrpt2rosPtr; // pointer to the center of the lookup table neede to work with neg. indexes
 #endif
     map ( );
     map ( const map& );

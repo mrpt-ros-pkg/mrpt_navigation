@@ -3,6 +3,11 @@
 #include <mrpt/slam/COccupancyGridMap2D.h>
 #include <ros/console.h>
 
+#define INT8_MAX    0x7f
+#define INT8_MIN    (-INT8_MAX - 1)
+#define INT16_MAX   0x7fff
+#define INT16_MIN   (-INT16_MAX - 1)
+
 class COccupancyGridMap2DBridge : public mrpt::slam::COccupancyGridMap2D
 {
 public:
@@ -17,19 +22,16 @@ map* map::instance_ = NULL;
 
 map::map ()
 {
+    mrpt::slam::CLogOddsGridMapLUT<mrpt::slam::COccupancyGridMap2D::cellType> table;
 #ifdef  OCCUPANCY_GRIDMAP_CELL_SIZE_8BITS
-    mrpt::slam::CLogOddsGridMapLUT<mrpt::slam::COccupancyGridMap2D::cellType> table;
-    printf(" --------------------------- COccupancyGridMap2D  cellType = int8_t \n");
-    for ( unsigned int i = 0; i < 0xFF; i++ ) {
+    lut_mrpt2rosPtr = lut_mrpt2ros + INT8_MAX + 1; // center the pointer
+    for ( int i = INT8_MIN; i < INT8_MAX; i++ ) {
 #else
-    mrpt::slam::CLogOddsGridMapLUT<mrpt::slam::COccupancyGridMap2D::cellType> table;
-    printf(" --------------------------- COccupancyGridMap2D  cellType = int16_t \n");
-    for ( unsigned int i = 0; i < 0xFFFF; i++ ) {
+    lut_mrpt2rosPtr = lut_mrpt2ros + INT16_MAX + 1; // center the pointer
+    for ( int i = INT16_MIN; INT16_MIN < INT16_MAX; i++ ) {
 #endif
-        MRPT_TODO ( "Markus Bader: This is not working and I don't know " );
-        lut_mrpt2ros[i] = ( 1.0-table.l2p ( i ) ) *100;
+        lut_mrpt2rosPtr[i] = ( 1.0-table.l2p ( i )) * 100;
     }
-    fflush(stdout);
 }
 map::~map () { }
 
@@ -59,12 +61,14 @@ bool map::mrpt2ros (
     des.info.resolution = mrptMap.getResolution ();
     des.info.origin = pose;
 
-    const std::vector<mrpt::slam::COccupancyGridMap2D::cellType> &srcData = mrptMap.getData();
-    des.data.resize ( srcData.size() );
-    for ( size_t i = 0; i < srcData.size(); i++ ) {
-        MRPT_TODO ( "Markus Bader: The lut table would be faster " );
-        //des.data[i] = lut_mrpt2ros[srcData[i]];
-        des.data[i]  = ( 1.0-src.l2p ( srcData[i] ) ) *100;
+    //const std::vector<mrpt::slam::COccupancyGridMap2D::cellType> &srcData = mrptMap.getData();
+    des.data.resize ( des.info.width*des.info.height );
+    for ( int h = 0; h < des.info.height; h++ ) {
+        const mrpt::slam::COccupancyGridMap2D::cellType *pSrc = src.getRow (h);
+        int8_t *pDes = &des.data[h * des.info.width];
+        for ( int w = 0; w < des.info.width; w++ ) {
+            *pDes++ = lut_mrpt2rosPtr[*pSrc++];
+        }
     }
     return true;
 }
