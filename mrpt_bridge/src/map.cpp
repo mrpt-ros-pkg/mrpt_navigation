@@ -8,20 +8,13 @@
 #define INT16_MAX   0x7fff
 #define INT16_MIN   (-INT16_MAX - 1)
 
-class COccupancyGridMap2DBridge : public mrpt::slam::COccupancyGridMap2D
-{
-public:
-    const std::vector<mrpt::slam::COccupancyGridMap2D::cellType>  getData() const {
-        return this->map;
-    }
-};
-
 namespace mrpt_bridge
 {
 map* map::instance_ = NULL;
 
 map::map ()
 {
+    /// ceation of the lookup table and pointers
     mrpt::slam::CLogOddsGridMapLUT<mrpt::slam::COccupancyGridMap2D::cellType> table;
 #ifdef  OCCUPANCY_GRIDMAP_CELL_SIZE_8BITS
     lut_mrpt2rosPtr = lut_mrpt2ros + INT8_MAX + 1; // center the pointer
@@ -30,7 +23,7 @@ map::map ()
     lut_mrpt2rosPtr = lut_mrpt2ros + INT16_MAX + 1; // center the pointer
     for ( int i = INT16_MIN; INT16_MIN < INT16_MAX; i++ ) {
 #endif
-        lut_mrpt2rosPtr[i] = ( 1.0-table.l2p ( i )) * 100;
+        lut_mrpt2rosPtr[i] = round(( 1.0-table.l2p ( i )) * 100.);
     }
 }
 map::~map () { }
@@ -54,14 +47,13 @@ bool map::mrpt2ros (
     nav_msgs::OccupancyGrid &des
 )
 {
-    COccupancyGridMap2DBridge &mrptMap = ( COccupancyGridMap2DBridge & ) src;
     des.header = header;
-    des.info.width = mrptMap.getSizeX();
-    des.info.height = mrptMap.getSizeY();
-    des.info.resolution = mrptMap.getResolution ();
+    des.info.width = src.getSizeX();
+    des.info.height = src.getSizeY();
+    des.info.resolution = src.getResolution ();
     des.info.origin = pose;
 
-    //const std::vector<mrpt::slam::COccupancyGridMap2D::cellType> &srcData = mrptMap.getData();
+    /// I hope the data is allways aligned
     des.data.resize ( des.info.width*des.info.height );
     for ( int h = 0; h < des.info.height; h++ ) {
         const mrpt::slam::COccupancyGridMap2D::cellType *pSrc = src.getRow (h);
