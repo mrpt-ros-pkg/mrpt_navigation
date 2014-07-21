@@ -74,6 +74,7 @@ private: //functions
     ros::Subscriber subLaser2_;
     ros::Publisher pubMap_;
     ros::Publisher pubMetadata_;
+    ros::Publisher pubParticles_;
     tf::TransformListener listenerTF_;
     std::string base_link_;
     std::map<std::string, mrpt::poses::CPose3D> laser_poses_;
@@ -81,6 +82,7 @@ private: // variables
     ros::NodeHandle n_;
     unsigned long loop_count_;
     void publishMap(const mrpt::slam::COccupancyGridMap2DPtr mrptMap);
+    void publishParticles();
     nav_msgs::OccupancyGrid rosOccupancyGrid_;
 };
 

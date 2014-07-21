@@ -28,6 +28,7 @@
 
 #include "mrpt_localization_node.h"
 #include <boost/interprocess/sync/scoped_lock.hpp>
+#include <geometry_msgs/PoseArray.h>
 
 #include <mrpt_bridge/pose.h>
 #include <mrpt_bridge/laser_scan.h>
@@ -62,22 +63,18 @@ PFLocalizationNode::Parameters *PFLocalizationNode::param() {
 void PFLocalizationNode::init() {
     PFLocalization::init();
     if(param()->rawlogFile.empty()) {
-        if(param_->debug) printf(" --------------------------- init subsriber \n");
         subOdometry_ = n_.subscribe("odom", 1, &PFLocalizationNode::callbackOdometry, this);
         subLaser0_ = n_.subscribe("scan", 1, &PFLocalizationNode::callbackLaser, this);
         subLaser1_ = n_.subscribe("scan1", 1, &PFLocalizationNode::callbackLaser, this);
         subLaser2_ = n_.subscribe("scan2", 1, &PFLocalizationNode::callbackLaser, this);
 
-        // Latched publisher for data
-        if(param_->debug) printf(" --------------------------- init publisher \n");
-        pubMap_ = n_.advertise<nav_msgs::OccupancyGrid>("map_mrpt", 1, true);
-        if(param_->debug) fflush(stdout);
     }
+    // Latched publisher for data
+    pubMap_ = n_.advertise<nav_msgs::OccupancyGrid>("map", 1, true);
+    pubParticles_ = n_.advertise<geometry_msgs::PoseArray>("particlecloud", 1, true);
 }
 
 void PFLocalizationNode::loop() {
-    if(param_->debug) printf(" --------------------------- start loop \n");
-    if(param_->debug) fflush(stdout);
     for (ros::Rate rate(param()->rate); ros::ok(); loop_count_++) {
         param()->update(loop_count_);
         publishMap(metricMap_.m_gridMaps[0]);
@@ -154,3 +151,11 @@ void PFLocalizationNode::publishMap (const mrpt::slam::COccupancyGridMap2DPtr mr
     mrpt_bridge::map::instance()->mrpt2ros(*mrptMap, header, rosOccupancyGrid_);
     pubMap_.publish(rosOccupancyGrid_ );
 }
+
+
+void PFLocalizationNode::publishParticles () {
+  for(size_t i = 0; i < pdf_.particlesCount(); i++){
+    mrpt::poses::CPose2D p = pdf_.getParticlePose(i);
+  }
+}
+
