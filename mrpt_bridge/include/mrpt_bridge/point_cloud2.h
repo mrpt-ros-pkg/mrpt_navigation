@@ -1,5 +1,5 @@
-#ifndef MRPT_POINT_CLOUD_H
-#define MRPT_POINT_CLOUD_H
+#ifndef MRPT_BRIDGE_POINT_CLOUD2_H
+#define MRPT_BRIDGE_POINT_CLOUD2_H
 
 #include <sensor_msgs/PointCloud2.h>
 #include <mrpt/slam/CSimplePointsMap.h>
@@ -35,4 +35,4 @@ bool mrpt2ros(const mrpt::slam::CSimplePointsMap &obj, const std_msgs::Header &m
 // end of PointCloud
 }//namespace mrpt_bridge
 
-#endif
+#endif //MRPT_BRIDGE_POINT_CLOUD2_H

@@ -29,7 +29,7 @@
 #include "mrpt_localization_node.h"
 #include <boost/interprocess/sync/scoped_lock.hpp>
 
-#include <mrpt_bridge/pose_conversions.h>
+#include <mrpt_bridge/pose.h>
 #include <mrpt_bridge/laser_scan.h>
 #include <mrpt_bridge/time.h>
 #include <mrpt_bridge/map.h>
@@ -151,6 +151,6 @@ void PFLocalizationNode::publishMap (const mrpt::slam::COccupancyGridMap2DPtr mr
     geometry_msgs::Pose pose;
     pose.position.x = 0, pose.position.y = 0, pose.position.z = 0;
     pose.orientation.x = 0, pose.orientation.y = 0, pose.orientation.z = 0, pose.orientation.w = 1;
-    mrpt_bridge::map::instance()->mrpt2ros(*mrptMap, header, pose, rosOccupancyGrid_);
+    mrpt_bridge::map::instance()->mrpt2ros(*mrptMap, header, rosOccupancyGrid_);
     pubMap_.publish(rosOccupancyGrid_ );
 }

@@ -1,11 +1,11 @@
 /*
- * test_pose_conversions.cpp
+ * test_pose.cpp
  *
  *  Created on: Mar 15, 2012
  *      Author: Pablo Iñigo Blasco
  */
 
-#include <mrpt_bridge/pose_conversions.h>
+#include <mrpt_bridge/pose.h>
 #include <gtest/gtest.h>
 #include <tf/tf.h>
 

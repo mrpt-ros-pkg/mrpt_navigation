@@ -1,5 +1,5 @@
-#ifndef MRPT_POSE_CONVERSIONS_H_
-#define MRPT_POSE_CONVERSIONS_H_
+#ifndef MRPT_BRIDGE_POSE_H
+#define MRPT_BRIDGE_POSE_H
 
 #include <mrpt/poses/CPose2D.h>
 #include <mrpt/poses/CPose3D.h>
@@ -69,4 +69,4 @@ namespace poses
 
 }
 }
-#endif /* POSE_CONVERSIONS_H_ */
+#endif /* MRPT_BRIDGE_POSE_H */

@@ -29,7 +29,7 @@
 #include "rawlog_record_node.h"
 #include <boost/interprocess/sync/scoped_lock.hpp>
 
-#include <mrpt_bridge/pose_conversions.h>
+#include <mrpt_bridge/pose.h>
 #include <mrpt_bridge/laser_scan.h>
 #include <mrpt_bridge/time.h>
 #include <mrpt/base.h>

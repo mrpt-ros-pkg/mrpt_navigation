@@ -42,7 +42,7 @@ public:
       * \return true on sucessful conversion, false on any error.
       * \sa mrpt2ros
       */
-    bool ros2mrpt ( const mrpt::slam::COccupancyGridMap2D &src, nav_msgs::OccupancyGrid  &des );
+    bool ros2mrpt ( const nav_msgs::OccupancyGrid  &des, mrpt::slam::COccupancyGridMap2D  &src );
 
     /**
       * \return true on sucessful conversion, false on any error.
@@ -51,7 +51,6 @@ public:
     bool mrpt2ros (
         const mrpt::slam::COccupancyGridMap2D &src,
         const std_msgs::Header &header,
-        const geometry_msgs::Pose &pose,
         nav_msgs::OccupancyGrid &msg
     );
 };

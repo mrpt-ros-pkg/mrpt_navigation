@@ -1,5 +1,5 @@
-#ifndef MRPT_LASER_SCAN_H
-#define MRPT_LASER_SCAN_H
+#ifndef MRPT_BRIDGE_LASER_SCAN_H
+#define MRPT_BRIDGE_LASER_SCAN_H
 
 #include <sensor_msgs/LaserScan.h>
 #include <mrpt/slam/CObservation2DRangeScan.h>
@@ -33,4 +33,4 @@ namespace laser_scan
 
 } //namespace mrpt_bridge
 
-#endif
+#endif //MRPT_BRIDGE_LASER_SCAN_H

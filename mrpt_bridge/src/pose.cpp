@@ -1,5 +1,5 @@
 /*
- * pose_conversions.cpp
+ * pose.cpp
  *
  *  Created on: Mar 14, 2012
  *      Author: Pablo Iñigo Blasco
@@ -9,7 +9,7 @@
  *
  */
 
-#include "mrpt_bridge/pose_conversions.h"
+#include "mrpt_bridge/pose.h"
 
 void mrpt_bridge::poses::mrpt2ros(const mrpt::poses::CPose3DPDFGaussian& src, geometry_msgs::PoseWithCovariance& dst)
 {
