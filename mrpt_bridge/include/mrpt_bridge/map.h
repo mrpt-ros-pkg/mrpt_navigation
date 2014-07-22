@@ -8,6 +8,10 @@ namespace mrpt
 namespace slam
 {
 class COccupancyGridMap2D;
+class CMultiMetricMap;
+}
+namespace utils {
+class CConfigFile;
 }
 }
 
@@ -33,26 +37,52 @@ private:
     ~map ();
 public:
     /**
-      * \return returns singeleton instance
-      * \brief it creates a instance with some look up table to speed up the conversions
+      * @return returns singeleton instance
+      * @brief it creates a instance with some look up table to speed up the conversions
       */
     static map* instance ();
     
     /**
-      * \return true on sucessful conversion, false on any error.
-      * \sa mrpt2ros
+      * converts ros msg to mrpt object
+      * @return true on sucessful conversion, false on any error.
+      * @param src
+      * @param des
       */
-    bool ros2mrpt ( const nav_msgs::OccupancyGrid  &des, mrpt::slam::COccupancyGridMap2D  &src );
+    bool ros2mrpt ( const nav_msgs::OccupancyGrid  &src, mrpt::slam::COccupancyGridMap2D  &des );
 
     /**
-      * \return true on sucessful conversion, false on any error.
-      * \sa ros2mrpt
+      * converts mrpt object to ros msg and updates the msg header
+      * @return true on sucessful conversion, false on any error.
+      * @param src
+      * @param des
+      * @param header
       */
     bool mrpt2ros (
         const mrpt::slam::COccupancyGridMap2D &src,
-        const std_msgs::Header &header,
-        nav_msgs::OccupancyGrid &msg
-    );
+        nav_msgs::OccupancyGrid &msg,
+        const std_msgs::Header &header);
+    /**
+      * converts mrpt object to ros msg
+      * @return true on sucessful conversion, false on any error.
+      * @param src
+      * @param des
+      * @param header
+      */
+    bool mrpt2ros (
+        const mrpt::slam::COccupancyGridMap2D &src,
+        nav_msgs::OccupancyGrid &msg);
+
+
+    /**
+      * loads a mprt map
+      * @return true on sucess.
+      * @param _metric_map
+      * @param _config_file
+      * @param _map_file  default: map.simplemap
+      * @param _section_name default: metricMap
+      * @param _debug default: false
+      */
+    static const bool loadMap(mrpt::slam::CMultiMetricMap &_metric_map, const mrpt::utils::CConfigFile &_config_file, const std::string &_map_file="map.simplemap", const std::string &_section_name="metricMap", bool _debug = false);
 };
 
 

@@ -23,46 +23,85 @@
  * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND     *
  * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT      *
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS   *
- * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.                    * 
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.                    *
  ***********************************************************************************/
 
 #include <map_server_node.h>
 #include <mrpt/base.h>
 #include <mrpt/slam.h>
+#include <mrpt_bridge/map.h>
 
 MapServer::MapServer(ros::NodeHandle &n)
     : n_(n)
     , n_param_("~")
     , loop_count_(0)
+    , frequency_(0)
     , debug_(true) {
 }
+
 MapServer::~MapServer() {
 }
+
 void MapServer::init() {
-    std::string init_file;
+    std::string ini_file;
     std::string map_file;
-    n_param_.getParam("debug", debug_);
+    n_param_.param<bool>("debug", debug_, true);
     ROS_INFO("debug: %s", (debug_?"true":"false"));
-    n_param_.getParam("init_file", init_file);
-    ROS_INFO("init_file: %s", init_file.c_str());
-    n_param_.getParam("map_file", map_file);
+    n_param_.param<std::string>("ini_file", ini_file, "map.ini");
+    ROS_INFO("ini_file: %s", ini_file.c_str());
+    n_param_.param<std::string>("map_file", map_file, "map.simplemap");
     ROS_INFO("map_file: %s", map_file.c_str());
+    n_param_.param<std::string>("frame_id", resp_.map.header.frame_id, "map");
+    ROS_INFO("frame_id: %s", resp_.map.header.frame_id.c_str());
+    n_param_.param<double>("frequency", frequency_, 0.1);
+    ROS_INFO("frequency: %f", frequency_);
 
-    //ASSERT_FILE_EXISTS_(init_file);
+    pub_map_ = n_.advertise<nav_msgs::OccupancyGrid>("map", 1, true);
+    service_map_ = n_.advertiseService("static_map", &MapServer::mapCallback, this);
+    pub_metadata_= n_.advertise<nav_msgs::MapMetaData>("map_metadata", 1, true);
+
+    if(!mrpt::utils::fileExists(ini_file)){
+      ROS_ERROR("ini_file: %s does not exit", ini_file.c_str());
+    }
+    if(!mrpt::utils::fileExists(map_file)){
+      ROS_ERROR("map_file: %s does not exit", map_file.c_str());
+    }
+    ASSERT_FILE_EXISTS_(ini_file);
     mrpt::utils::CConfigFile config_file;
-    config_file.setFileName(init_file);
-    mrpt::slam::CMultiMetricMap metric_map;
-    loadMap(config_file, map_file, metric_map);
+    config_file.setFileName(ini_file);
+    metric_map_ = boost::shared_ptr<mrpt::slam::CMultiMetricMap>(new  mrpt::slam::CMultiMetricMap);
+    mrpt_bridge::map::loadMap(*metric_map_, config_file, map_file, "metricMap", debug_);
+    mrpt_bridge::map::instance()->mrpt2ros(*metric_map_->m_gridMaps[0], resp_.map);
 }
-void MapServer::loop() {
-    ros::Rate rate(10);
-    while (ros::ok())
-    {
 
+bool MapServer::mapCallback(nav_msgs::GetMap::Request  &req, nav_msgs::GetMap::Response &res )
+{
+  res = resp_;
+  return true;
+}
+void MapServer::publishMap () {
+    resp_.map.header.stamp = ros::Time::now();
+    resp_.map.header.seq = loop_count_;
+    if(pub_map_.getNumSubscribers() > 0){
+        pub_map_.publish(resp_.map );
+    }
+    if(pub_metadata_.getNumSubscribers() > 0){
+        pub_metadata_.publish( resp_.map.info );
     }
 }
 
-bool MapServer::loadMap(const mrpt::utils::CConfigFile &_config_file, const std::string &_map_file, mrpt::slam::CMultiMetricMap &_metric_map) {
+void MapServer::loop() {
+    if(frequency_ > 0){
+        ros::Rate rate(frequency_);
+        for(loop_count_ = 0; ros::ok(); loop_count_++) {
+          publishMap ();
+          ros::spinOnce();
+          rate.sleep();
+        }
+    } else {
+        publishMap ();
+        ros::spin();
+    }
 }
 
 int main(int argc, char **argv)
@@ -71,6 +110,7 @@ int main(int argc, char **argv)
     ros::init(argc, argv, "mrpt_map_server");
     ros::NodeHandle node;
     MapServer my_node(node);
+    my_node.init();
     my_node.loop();
     return 0;
 }

@@ -103,18 +103,32 @@ include_directories(include ${catkin_INCLUDE_DIRS})
 
 ## Declare a cpp library
 add_library(rawlog_record
-   src/rawlog_record/rawlog_record.cpp
-   src/rawlog_record/rawlog_record_parameters.cpp
+   src/mrpt_rawlog_record/rawlog_record.cpp
+   src/mrpt_rawlog_record/rawlog_record_parameters.cpp
 )
 target_link_libraries(rawlog_record
   ${catkin_LIBRARIES}
   ${MRPT_LIBS}
 )
 
+add_library(rawlog_play
+   src/mrpt_rawlog_play/rawlog_play.cpp
+   src/mrpt_rawlog_play/rawlog_play_parameters.cpp
+)
+target_link_libraries(rawlog_play
+  ${catkin_LIBRARIES}
+  ${MRPT_LIBS}
+)
+
 ## Declare a cpp executable
 add_executable(rawlog_record_node 
-    src/rawlog_record_node.cpp 
+    src/rawlog_record_node.cpp
     src/rawlog_record_node_parameters.cpp
+)
+
+add_executable(rawlog_play_node 
+    src/rawlog_play_node.cpp
+    src/rawlog_play_node_parameters.cpp
 )
 
 ## Add cmake target dependencies of the executable/library
@@ -123,11 +137,19 @@ add_executable(rawlog_record_node
 add_dependencies(rawlog_record_node
   rawlog_record_gencfg) 
 
+add_dependencies(rawlog_play_node
+  rawlog_record_gencfg) 
+
 ## Specify libraries to link a library or executable target against
 target_link_libraries(rawlog_record_node
    ${catkin_LIBRARIES}
    ${MRPT_LIBS}
    rawlog_record
+)
+target_link_libraries(rawlog_play_node
+   ${catkin_LIBRARIES}
+   ${MRPT_LIBS}
+   rawlog_play
 )
 
   

@@ -26,43 +26,11 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.                    *                       *
  ***********************************************************************************/
 
-#ifndef MRPT_MAP_SERVER_NODE_H
-#define MRPT_MAP_SERVER_NODE_H
+#ifndef MRPT_RAWLOG_PLAY_NODE_DEFAULTS_H
+#define MRPT_RAWLOG_PLAY_NODE_DEFAULTS_H
 
-#include "ros/ros.h"
-#include "nav_msgs/MapMetaData.h"
-#include "nav_msgs/GetMap.h"
-#include "boost/smart_ptr.hpp"
+#define RAWLOG_PLAY_NODE_DEFAULT_RATE 10.0
+#define RAWLOG_PLAY_NODE_DEFAULT_PARAMETER_UPDATE_SKIP 1
+#define RAWLOG_PLAY_NODE_DEFAULT_BASE_LINK "base_link"
 
-namespace mrpt {
-  namespace utils {
-    class CConfigFile;
-  }
-  namespace slam {
-    class CMultiMetricMap;
-  }
-}
-
-class MapServer {
-public:
-    MapServer(ros::NodeHandle &n);
-    ~MapServer();
-    void init();
-    void loop();
-private: 
-    ros::NodeHandle n_;
-    ros::NodeHandle n_param_;
-    double frequency_;
-    unsigned long loop_count_;
-    bool debug_;
-    ros::Publisher pub_map_;
-    ros::Publisher pub_metadata_;
-    ros::ServiceServer service_map_;
-    nav_msgs::GetMap::Response resp_;
-    boost::shared_ptr<mrpt::slam::CMultiMetricMap> metric_map_;
-    void publishMap ();
-    bool mapCallback(nav_msgs::GetMap::Request  &req, nav_msgs::GetMap::Response &res );
-};
-
-
-#endif // MRPT_MAP_SERVER_NODE_H
+#endif // MRPT_RAWLOG_PLAY_NODE_DEFAULTS_H

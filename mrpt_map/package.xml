@@ -2,7 +2,7 @@
 <package>
   <name>mrpt_map</name>
   <version>0.0.0</version>
-  <description>The mrpt_map package</description>
+  <description>The mrpt_map is able to publish a mrpt map as ros occupancy grid like the map_server</description>
 
   <maintainer email="markus.bader@tuwien.ac.at">Markus Bader</maintainer>
 

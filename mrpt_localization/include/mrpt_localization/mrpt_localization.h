@@ -55,7 +55,6 @@ protected:
     void init3DDebug();
     void show3DDebugPreprocess(mrpt::slam::CSensoryFramePtr _observations);
     void show3DDebugPostprocess(mrpt::slam::CSensoryFramePtr _observations);
-    void loadMap(const std::string &_mapFilename, const mrpt::utils::CConfigFile &_configFile);
     void configureFilter(const mrpt::utils::CConfigFile &_configFile);
     void initializeFilter(const mrpt::utils::CConfigFile &_configFile, const std::string &_sectionName);
     bool playRawlog();

@@ -26,43 +26,17 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.                    *                       *
  ***********************************************************************************/
 
-#ifndef MRPT_MAP_SERVER_NODE_H
-#define MRPT_MAP_SERVER_NODE_H
 
-#include "ros/ros.h"
-#include "nav_msgs/MapMetaData.h"
-#include "nav_msgs/GetMap.h"
-#include "boost/smart_ptr.hpp"
+#include <mrpt_rawlog_play/rawlog_play.h>
+#include <mrpt_rawlog_play/rawlog_play_defaults.h>
 
-namespace mrpt {
-  namespace utils {
-    class CConfigFile;
-  }
-  namespace slam {
-    class CMultiMetricMap;
-  }
+#include <mrpt/base.h>
+#include <mrpt/slam.h>
+
+RawlogPlay::~RawlogPlay()
+{
 }
 
-class MapServer {
-public:
-    MapServer(ros::NodeHandle &n);
-    ~MapServer();
-    void init();
-    void loop();
-private: 
-    ros::NodeHandle n_;
-    ros::NodeHandle n_param_;
-    double frequency_;
-    unsigned long loop_count_;
-    bool debug_;
-    ros::Publisher pub_map_;
-    ros::Publisher pub_metadata_;
-    ros::ServiceServer service_map_;
-    nav_msgs::GetMap::Response resp_;
-    boost::shared_ptr<mrpt::slam::CMultiMetricMap> metric_map_;
-    void publishMap ();
-    bool mapCallback(nav_msgs::GetMap::Request  &req, nav_msgs::GetMap::Response &res );
-};
-
-
-#endif // MRPT_MAP_SERVER_NODE_H
+RawlogPlay::RawlogPlay(Parameters *param)
+    :param_(param), entry_(0){
+}

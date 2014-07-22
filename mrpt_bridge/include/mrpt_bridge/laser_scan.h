@@ -2,6 +2,7 @@
 #define MRPT_BRIDGE_LASER_SCAN_H
 
 #include <sensor_msgs/LaserScan.h>
+#include <geometry_msgs/Pose.h>
 #include <mrpt/slam/CObservation2DRangeScan.h>
 
 namespace mrpt_bridge {
@@ -14,21 +15,19 @@ namespace laser_scan
 	  * \return true on sucessful conversion, false on any error.
 	  * \sa mrpt2ros
 	  */
-	bool ros2mrpt(
-		const sensor_msgs::LaserScan &msg,
-        const mrpt::poses::CPose3D &pose,
-		mrpt::slam::CObservation2DRangeScan  &obj
-		);
+	bool ros2mrpt(const sensor_msgs::LaserScan &_msg, const mrpt::poses::CPose3D &_pose, mrpt::slam::CObservation2DRangeScan &_obj);
 
-	/**
-	  * \return true on sucessful conversion, false on any error.
-	  * \sa ros2mrpt
-	  */
-	bool mrpt2ros(
-		const mrpt::slam::CObservation2DRangeScan  &obj,
-		const std_msgs::Header &msg_header,
-		sensor_msgs::LaserScan &msg
-		);
+    /**
+      * \return true on sucessful conversion, false on any error.
+      * \sa ros2mrpt
+      */
+    bool mrpt2ros(const mrpt::slam::CObservation2DRangeScan &_obj, sensor_msgs::LaserScan &_msg);
+    
+    /**
+      * \return true on sucessful conversion, false on any error.
+      * \sa ros2mrpt
+      */
+    bool mrpt2ros(const mrpt::slam::CObservation2DRangeScan &_obj, sensor_msgs::LaserScan &_msg, geometry_msgs::Pose &_pose);
 };
 
 } //namespace mrpt_bridge

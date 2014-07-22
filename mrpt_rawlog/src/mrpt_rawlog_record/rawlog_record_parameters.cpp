@@ -26,12 +26,12 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.                    *                       *
  ***********************************************************************************/
 
-#ifndef RAWLOG_RECORD_DEFAULTS_H
-#define RAWLOG_RECORD_DEFAULTS_H
 
-#define RAWLOG_RECORD_DEFAULT_DEBUG false
-#define RAWLOG_RECORD_DEFAULT_RAW_LOG_NAME "ros_log.rawlog"
-#define RAWLOG_RECORD_DEFAULT_RAW_LOG_NAME_ASF "ros_log_asf.rawlog"
+#include <mrpt_rawlog_record/rawlog_record.h>
+#include <mrpt_rawlog_record/rawlog_record_defaults.h>
 
 
-#endif // RAWLOG_RECORD_DEFAULTS_H
+RawlogRecord::Parameters::Parameters()
+: debug(RAWLOG_RECORD_DEFAULT_DEBUG), raw_log_name(RAWLOG_RECORD_DEFAULT_RAW_LOG_NAME), raw_log_name_asf(RAWLOG_RECORD_DEFAULT_RAW_LOG_NAME_ASF){
+   
+}

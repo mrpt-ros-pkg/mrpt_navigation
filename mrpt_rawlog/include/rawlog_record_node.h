@@ -26,8 +26,8 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.                    *                       *
  ***********************************************************************************/
 
-#ifndef RAWLOG_RECORD_NODE_H
-#define RAWLOG_RECORD_NODE_H
+#ifndef MRPT_RAWLOG_RECORD_NODE_H
+#define MRPT_RAWLOG_RECORD_NODE_H
 
 #include "ros/ros.h"
 #include <tf/transform_listener.h>
@@ -35,7 +35,7 @@
 #include <sensor_msgs/LaserScan.h>
 #include <dynamic_reconfigure/server.h>
 #include "mrpt_rawlog/MotionConfig.h"
-#include "rawlog_record/rawlog_record.h"
+#include "mrpt_rawlog_record/rawlog_record.h"
 
 /// ROS Node
 class RawlogRecordNode : public RawlogRecord {
@@ -76,4 +76,4 @@ private: // variables
 
 };
 
-#endif // RAWLOG_RECORD_NODE_H
+#endif // MRPT_RAWLOG_RECORD_NODE_H

@@ -26,43 +26,77 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.                    *                       *
  ***********************************************************************************/
 
-#ifndef MRPT_MAP_SERVER_NODE_H
-#define MRPT_MAP_SERVER_NODE_H
+#include "rawlog_play_node.h"
+#include <boost/interprocess/sync/scoped_lock.hpp>
+#include <mrpt_bridge/pose.h>
+#include <mrpt_bridge/laser_scan.h>
+#include <mrpt_bridge/time.h>
+#include <mrpt/base.h>
+#include <mrpt/slam.h>
+#include <mrpt/gui.h>
 
-#include "ros/ros.h"
-#include "nav_msgs/MapMetaData.h"
-#include "nav_msgs/GetMap.h"
-#include "boost/smart_ptr.hpp"
 
-namespace mrpt {
-  namespace utils {
-    class CConfigFile;
-  }
-  namespace slam {
-    class CMultiMetricMap;
-  }
+int main(int argc, char **argv) {
+
+    ros::init(argc, argv, "DataLogger");
+    ros::NodeHandle n;
+    RawlogPlayNode my_node(n);
+    my_node.init();
+    my_node.loop();
+    return 0;
 }
 
-class MapServer {
-public:
-    MapServer(ros::NodeHandle &n);
-    ~MapServer();
-    void init();
-    void loop();
-private: 
-    ros::NodeHandle n_;
-    ros::NodeHandle n_param_;
-    double frequency_;
-    unsigned long loop_count_;
-    bool debug_;
-    ros::Publisher pub_map_;
-    ros::Publisher pub_metadata_;
-    ros::ServiceServer service_map_;
-    nav_msgs::GetMap::Response resp_;
-    boost::shared_ptr<mrpt::slam::CMultiMetricMap> metric_map_;
-    void publishMap ();
-    bool mapCallback(nav_msgs::GetMap::Request  &req, nav_msgs::GetMap::Response &res );
-};
+RawlogPlayNode::~RawlogPlayNode() {
+}
 
+RawlogPlayNode::RawlogPlayNode(ros::NodeHandle &n) :
+    RawlogPlay(new RawlogPlayNode::ParametersNode()), n_(n), loop_count_(0) {
 
-#endif // MRPT_MAP_SERVER_NODE_H
+}
+
+RawlogPlayNode::ParametersNode *RawlogPlayNode::param() {
+    return (RawlogPlayNode::ParametersNode*) param_;
+}
+
+void RawlogPlayNode::init() {
+
+    if(!mrpt::utils::fileExists(param_->rawlog_file)) {
+        ROS_ERROR("raw_file: %s does not exit", param_->rawlog_file.c_str());
+    }
+    rawlog_stream_.open(param_->rawlog_file);
+    pub_laser_ = n_.advertise<sensor_msgs::LaserScan>("scan", 1000);
+
+}
+
+bool RawlogPlayNode::nextEntry() {
+    mrpt::slam::CActionCollectionPtr action;
+    mrpt::slam::CSensoryFramePtr     observations;
+    mrpt::slam::CObservationPtr      obs;
+
+    if(!mrpt::slam::CRawlog::getActionObservationPairOrObservation( rawlog_stream_, action, observations, obs, entry_)) {
+        ROS_INFO("end of stream!");
+        return true;
+    }
+    mrpt::poses::CPose3D pose_laser;
+    geometry_msgs::Pose msg_pose_laser;
+    tf::Transform transform;
+    mrpt::slam::CObservation2DRangeScanPtr laser = observations->getObservationByClass<mrpt::slam::CObservation2DRangeScan>();
+    mrpt_bridge::laser_scan::mrpt2ros(*laser, msg_laser_, msg_pose_laser);
+    laser->getSensorPose(pose_laser);
+    mrpt_bridge::poses::mrpt2ros(pose_laser, transform);
+    tf_broadcaster_.sendTransform(tf::StampedTransform(transform, msg_laser_.header.stamp, param()->base_link, msg_laser_.header.frame_id));
+    pub_laser_.publish(msg_laser_);
+    ROS_INFO("read %zu", entry_);
+    return false;
+
+}
+
+void RawlogPlayNode::loop() {
+    bool end = false;
+    for (ros::Rate rate(param()->rate); ros::ok() && !end; loop_count_++) {
+        param()->update(loop_count_);
+        end = nextEntry();
+        ros::spinOnce();
+        rate.sleep();
+    }
+}

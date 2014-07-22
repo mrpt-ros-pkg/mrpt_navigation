@@ -1,66 +1,65 @@
 
 #include "mrpt_bridge/time.h"
+#include "mrpt_bridge/pose.h"
 #include "mrpt_bridge/laser_scan.h"
 #include <ros/console.h>
 
 namespace mrpt_bridge {
 
-bool laser_scan::ros2mrpt(
-	const sensor_msgs::LaserScan &msg,
-    const mrpt::poses::CPose3D &pose,
-	mrpt::slam::CObservation2DRangeScan  &obj
-	)
+bool laser_scan::ros2mrpt(const sensor_msgs::LaserScan &_msg, const mrpt::poses::CPose3D &_pose, mrpt::slam::CObservation2DRangeScan  &_obj
+                         )
 {
-    mrpt_bridge::time::ros2mrpt(msg.header.stamp, obj.timestamp);
-    obj.rightToLeft = true;
-    obj.sensorLabel = "FLASER";
-    obj.aperture = msg.angle_max - msg.angle_min;
-    obj.maxRange = msg.range_max;
-    obj.sensorPose =  pose;
-    obj.validRange.resize(msg.ranges.size());
-    obj.scan.resize(msg.ranges.size());
-    for(std::size_t i = 0; i < msg.ranges.size(); i++) {
-        obj.scan[i] = msg.ranges[i];
-        if((obj.scan[i] < (msg.range_max*0.95)) && (obj.scan[i] > msg.range_min)) {
-            obj.validRange[i] = 1;
+    mrpt_bridge::time::ros2mrpt(_msg.header.stamp, _obj.timestamp);
+    _obj.rightToLeft = true;
+    _obj.sensorLabel = _msg.header.frame_id;
+    _obj.aperture = _msg.angle_max - _msg.angle_min;
+    _obj.maxRange = _msg.range_max;
+    _obj.sensorPose =  _pose;
+    _obj.validRange.resize(_msg.ranges.size());
+    _obj.scan.resize(_msg.ranges.size());
+    for(std::size_t i = 0; i < _msg.ranges.size(); i++) {
+        _obj.scan[i] = _msg.ranges[i];
+        if((_obj.scan[i] < (_msg.range_max*0.95)) && (_obj.scan[i] > _msg.range_min)) {
+            _obj.validRange[i] = 1;
         } else {
-            obj.validRange[i] = 0;
+            _obj.validRange[i] = 0;
         }
     }
-    
-	return true;
+
+    return true;
 }
 
-bool laser_scan::mrpt2ros(
-	const mrpt::slam::CObservation2DRangeScan  &obj,
-	const std_msgs::Header &msg_header,
-	sensor_msgs::LaserScan &msg
-	)
-{
-	const size_t nRays = obj.scan.size();
-	if (!nRays) return false;
+bool laser_scan::mrpt2ros(const mrpt::slam::CObservation2DRangeScan  &_obj, sensor_msgs::LaserScan &_msg) {
+    const size_t nRays = _obj.scan.size();
+    if (!nRays) return false;
 
-	ASSERT_EQUAL_(obj.scan.size(),obj.validRange.size() )
+    ASSERT_EQUAL_(_obj.scan.size(),_obj.validRange.size() )
 
-    msg.angle_min = -0.5f*obj.aperture;
-    msg.angle_max =  0.5f*obj.aperture;
-    msg.angle_increment = obj.aperture/(obj.scan.size()-1);
+    _msg.angle_min = -0.5f * _obj.aperture;
+    _msg.angle_max =  0.5f * _obj.aperture;
+    _msg.angle_increment = _obj.aperture/(_obj.scan.size()-1);
 
-    msg.time_increment = 1./30.; // Anything better?
-    msg.scan_time = msg.time_increment; // idem?
+    _msg.time_increment = 0.0; // 1./30.; // Anything better?
+    _msg.scan_time = 0.0; // _msg.time_increment; // idem?
 
-    msg.range_min = 0.02;
-    msg.range_max = obj.maxRange;
+    _msg.range_min = 0.02;
+    _msg.range_max = _obj.maxRange;
 
-    msg.ranges.resize(nRays);
-    for (size_t i=0;i<nRays;i++)
-		msg.ranges[i] = obj.scan[i];
+    _msg.ranges.resize(nRays);
+    for (size_t i=0; i<nRays; i++)
+        _msg.ranges[i] = _obj.scan[i];
 
-	// Set header data:
-	msg.header.stamp = msg_header.stamp;
-	msg.header.frame_id = msg_header.frame_id;
+    // Set header data:
+    mrpt_bridge::time::mrpt2ros(_obj.timestamp, _msg.header.stamp);
+    _msg.header.frame_id = _obj.sensorLabel;
 
-	return true;
+    return true;
 }
 
+bool laser_scan::mrpt2ros(const mrpt::slam::CObservation2DRangeScan  &_obj, sensor_msgs::LaserScan &_msg, geometry_msgs::Pose &_pose) {
+    laser_scan::mrpt2ros(_obj, _msg);
+    mrpt::poses::CPose3D pose;
+    _obj.getSensorPose(pose);
+    poses::mrpt2ros(pose,_pose);
+}
 } // end namespace

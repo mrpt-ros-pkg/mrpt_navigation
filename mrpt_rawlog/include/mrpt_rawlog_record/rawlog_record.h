@@ -26,12 +26,38 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.                    *                       *
  ***********************************************************************************/
 
+#include <iostream>
+#include <stdint.h>
+#include <boost/interprocess/sync/interprocess_mutex.hpp>
 
-#include <rawlog_record/rawlog_record.h>
-#include <rawlog_record/rawlog_record_defaults.h>
+#ifndef MRPT_RAWLOG_RECORD_H
+#define MRPT_RAWLOG_RECORD_H
 
 
-RawlogRecord::Parameters::Parameters()
-: debug(RAWLOG_RECORD_DEFAULT_DEBUG), raw_log_name(RAWLOG_RECORD_DEFAULT_RAW_LOG_NAME), raw_log_name_asf(RAWLOG_RECORD_DEFAULT_RAW_LOG_NAME_ASF){
-   
-}
+
+#include <mrpt/slam.h>
+
+class RawlogRecord {
+public:
+	struct Parameters{
+		Parameters();
+	    bool debug;
+        std::string raw_log_name;
+        std::string raw_log_name_asf;
+        mrpt::slam::CActionRobotMovement2D::TMotionModelOptions motionModelOptions;
+	};
+    RawlogRecord (Parameters *parm);
+    ~RawlogRecord();
+protected:
+    Parameters *param_; 
+    mrpt::slam::CRawlog *pRawLog;
+    mrpt::slam::CRawlog *pRawLogASF;
+    mrpt::poses::CPose2D odomLastPose_;
+    void updateRawLogName(const mrpt::system::TTimeStamp &t);
+    void incommingLaserData(mrpt::slam::CObservation2DRangeScanPtr  laser);
+    void incommingOdomData( mrpt::slam::CObservationOdometryPtr odometry);
+    boost::interprocess::interprocess_mutex mutexRawLog;
+    
+};
+
+#endif // MRPT_RAWLOG_RECORD_H

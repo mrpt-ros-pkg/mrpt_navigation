@@ -30,6 +30,17 @@ void mrpt_bridge::poses::mrpt2ros(const mrpt::poses::CPose3DPDFGaussian& src, ge
       dst.covariance[indxs_map[i] * 6 + indxs_map[j]] = src.cov(i, j);
 }
 
+void mrpt_bridge::poses::mrpt2ros(const mrpt::poses::CPose3D& _src, tf::Transform& _tf){
+    tf::Vector3 origin(_src[0], _src[1], _src[2]);
+    mrpt::math::CMatrixDouble33 R;
+    _src.getRotationMatrix(R);
+    tf::Matrix3x3 basis( R(0,0), R(0,1), R(0,2), 
+                         R(1,0), R(1,1), R(1,2), 
+                         R(2,0), R(2,1), R(2,2));
+    _tf.setBasis(basis);
+    _tf.setOrigin(origin);
+}
+
 void mrpt_bridge::poses::mrpt2ros(const mrpt::poses::CPose3D& src, geometry_msgs::Pose& dst)
 {
 
@@ -44,7 +55,6 @@ void mrpt_bridge::poses::mrpt2ros(const mrpt::poses::CPose3D& src, geometry_msgs
   dst.orientation.y = q.y();
   dst.orientation.z = q.z();
   dst.orientation.w = q.r();
-
 }
 
 /** Convert: MRPT's CPose2D (x,y,yaw) -> ROS's Pose */
@@ -152,4 +162,5 @@ void mrpt_bridge::poses::ros2mrpt(const geometry_msgs::Pose& src, mrpt::poses::C
   //dst.setRotationMatrix(ROT);
 dst= mrpt::math::CPose3D(q,src.position.x,src.position.y,src.position.z);
 }
+
 

@@ -32,6 +32,7 @@
 
 #include <mrpt/base.h>
 #include <mrpt/slam.h>
+#include <mrpt_bridge/map.h>
 
 using namespace mrpt;
 using namespace mrpt::slam;
@@ -149,7 +150,7 @@ void PFLocalization::init() {
 
     configureFilter(iniFile);
     // Metric map options:
-    loadMap(MAP_FILE, iniFile);
+    mrpt_bridge::map::loadMap(metric_map_, iniFile, MAP_FILE, "metricMap", param_->debug);
 
     // Load the Ground Truth:
     groundTruth_ = CMatrixDouble(0,0);
@@ -175,12 +176,6 @@ void PFLocalization::init() {
     nConvergenceTests_ = 0;
     nConvergenceOK_ = 0;
     covergenceErrors_.clear();
-
-    // --------------------------------------------------------------------
-    //                  EXPERIMENT REPETITIONS LOOP
-    // --------------------------------------------------------------------
-
-    // The experiment directory is:
 
     initializeFilter(iniFile, iniSectionName);
     initLog();
@@ -407,62 +402,6 @@ void PFLocalization::logResults(CSensoryFramePtr _observations) {
         }
 }
 
-void PFLocalization::loadMap(const std::string &_mapFilename, const mrpt::utils::CConfigFile &_configFile) {
-
-    TSetOfMetricMapInitializers mapInitializers;
-    mapInitializers.loadFromConfigFile( _configFile,"metricMap");
-    if(param_->debug) mapInitializers.dumpToConsole();
-
-    CSimpleMap  simpleMap;
-
-    // Load the set of metric maps to consider in the experiments:
-    metricMap_.setListOfMaps( &mapInitializers );
-    if(param_->debug) mapInitializers.dumpToConsole();
-
-    randomGenerator.randomize();
-
-    // Load the map (if any):
-    // -------------------------
-    if (_mapFilename.size())
-    {
-        ASSERT_( fileExists(_mapFilename) );
-
-        // Detect file extension:
-        // -----------------------------
-        string mapExt = lowerCase( extractFileExtension( _mapFilename, true ) ); // Ignore possible .gz extensions
-
-        if ( !mapExt.compare( "simplemap" ) )
-        {
-            // It's a ".simplemap":
-            // -------------------------
-            if(param_->debug) ("Loading '.simplemap' file...");
-            CFileGZInputStream(_mapFilename) >> simpleMap;
-            printf("Ok\n");
-
-            ASSERT_( simpleMap.size()>0 );
-
-            // Build metric map:
-            // ------------------------------
-            if(param_->debug) printf("Building metric map(s) from '.simplemap'...");
-            metricMap_.loadFromProbabilisticPosesAndObservations(simpleMap);
-            if(param_->debug) printf("Ok\n");
-        }
-        else if ( !mapExt.compare( "gridmap" ) )
-        {
-            // It's a ".gridmap":
-            // -------------------------
-            if(param_->debug) printf("Loading gridmap from '.gridmap'...");
-            ASSERT_( metricMap_.m_gridMaps.size()==1 );
-            CFileGZInputStream(_mapFilename) >> (*metricMap_.m_gridMaps[0]);
-            if(param_->debug) printf("Ok\n");
-        }
-        else
-        {
-            THROW_EXCEPTION_CUSTOM_MSG1("Map file has unknown extension: '%s'",mapExt.c_str());
-        }
-
-    }
-}
 
 void PFLocalization::configureFilter(const mrpt::utils::CConfigFile &_configFile) {
 
@@ -483,7 +422,7 @@ void PFLocalization::configureFilter(const mrpt::utils::CConfigFile &_configFile
     // PDF Options:
     pdf_.options = pdfPredictionOptions;
 
-    pdf_.options.metricMap = &metricMap_;
+    pdf_.options.metricMap = &metric_map_;
 
     // Create the PF object:
     pf_.m_options = pfOptions;
@@ -511,15 +450,15 @@ void PFLocalization::initLog() {
     ASSERT_(fileExists(sOUT_DIR_3D_));
     deleteFiles(format("%s/*.*",sOUT_DIR_3D_.c_str()));
 
-    metricMap_.m_gridMaps[0]->saveAsBitmapFile(format("%s/gridmap.png",sOUT_DIR_.c_str()));
+    metric_map_.m_gridMaps[0]->saveAsBitmapFile(format("%s/gridmap.png",sOUT_DIR_.c_str()));
     CFileOutputStream(format("%s/gridmap_limits.txt",sOUT_DIR_.c_str())).printf(
         "%f %f %f %f",
-        metricMap_.m_gridMaps[0]->getXMin(),metricMap_.m_gridMaps[0]->getXMax(),
-        metricMap_.m_gridMaps[0]->getYMin(),metricMap_.m_gridMaps[0]->getYMax() );
+        metric_map_.m_gridMaps[0]->getXMin(),metric_map_.m_gridMaps[0]->getXMax(),
+        metric_map_.m_gridMaps[0]->getYMin(),metric_map_.m_gridMaps[0]->getYMax() );
 
     // Save the landmarks for plot in matlab:
-    if (metricMap_.m_landmarksMap)
-        metricMap_.m_landmarksMap->saveToMATLABScript2D(format("%s/plot_landmarks_map.m",sOUT_DIR_.c_str()));
+    if (metric_map_.m_landmarksMap)
+        metric_map_.m_landmarksMap->saveToMATLABScript2D(format("%s/plot_landmarks_map.m",sOUT_DIR_.c_str()));
 
     f_cov_est_.open(sOUT_DIR_.c_str()+string("/cov_est.txt"));
     f_pf_stats_.open(sOUT_DIR_.c_str()+string("/PF_stats.txt"));
@@ -535,7 +474,7 @@ void PFLocalization::initializeFilter(const mrpt::utils::CConfigFile &_configFil
     tictac_.Tic();
     if ( !_configFile.read_bool(_sectionName,"init_PDF_mode",false, /*Fail if not found*/true) )
         pdf_.resetUniformFreeSpace(
-            metricMap_.m_gridMaps[0].pointer(),
+            metric_map_.m_gridMaps[0].pointer(),
             0.7f,
             INITIAL_PARTICLE_COUNT_ ,
             _configFile.read_float(_sectionName,"init_PDF_min_x",0,true),
@@ -569,14 +508,14 @@ void PFLocalization::init3DDebug() {
         // Create the 3D scene and get the map only once, later we'll modify only the particles, etc..
         mrpt::slam::COccupancyGridMap2D::TEntropyInfo gridInfo;
         // The gridmap:
-        if (metricMap_.m_gridMaps.size())
+        if (metric_map_.m_gridMaps.size())
         {
-            metricMap_.m_gridMaps[0]->computeEntropy( gridInfo );
+            metric_map_.m_gridMaps[0]->computeEntropy( gridInfo );
             printf("The gridmap has %.04fm2 observed area, %u observed cells\n", gridInfo.effectiveMappedArea, (unsigned) gridInfo.effectiveMappedCells );
 
             {
                 CSetOfObjectsPtr plane = CSetOfObjects::Create();
-                metricMap_.m_gridMaps[0]->getAs3DObject( plane );
+                metric_map_.m_gridMaps[0]->getAs3DObject( plane );
                 scene_.insert( plane );
             }
 
@@ -585,7 +524,7 @@ void PFLocalization::init3DDebug() {
                 COpenGLScenePtr ptrScene = win3D_->get3DSceneAndLock();
 
                 CSetOfObjectsPtr plane = CSetOfObjects::Create();
-                metricMap_.m_gridMaps[0]->getAs3DObject( plane );
+                metric_map_.m_gridMaps[0]->getAs3DObject( plane );
                 ptrScene->insert( plane );
 
                 ptrScene->enableFollowCamera(true);

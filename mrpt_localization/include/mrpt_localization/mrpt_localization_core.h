@@ -42,7 +42,7 @@ public:
     void init();
 protected:
     mrpt::slam::CActionRobotMovement2D::TMotionModelOptions dummy_odom_params_;
-    mrpt::slam::CMultiMetricMap metricMap_;
+    mrpt::slam::CMultiMetricMap metric_map_;
     mrpt::utils::CPose2D expectedPose_;
     mrpt::utils::CPose2D pdfEstimation_;
     mrpt::utils::CPose2D odometryEstimation_;

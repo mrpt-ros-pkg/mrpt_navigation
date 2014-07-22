@@ -66,7 +66,7 @@ TEST(Map, check_ros2mrpt_and_back)
 
 
     ASSERT_TRUE( mrpt_bridge::map::instance()->ros2mrpt(srcRos, desMrpt));
-    ASSERT_TRUE( mrpt_bridge::map::instance()->mrpt2ros(desMrpt, desRos.header, desRos));
+    ASSERT_TRUE( mrpt_bridge::map::instance()->mrpt2ros(desMrpt, desRos, desRos.header));
     for(int h = 0; h < srcRos.info.width; h++) {
         for(int w = 0; w < srcRos.info.width; w++) {
           EXPECT_EQ(desRos.data[h*srcRos.info.width+h], 50); // all -1 entreis should map to 50
@@ -77,7 +77,7 @@ TEST(Map, check_ros2mrpt_and_back)
       srcRos.data[i] = i;
     }
     EXPECT_TRUE( mrpt_bridge::map::instance()->ros2mrpt(srcRos, desMrpt));
-    EXPECT_TRUE( mrpt_bridge::map::instance()->mrpt2ros(desMrpt, desRos.header, desRos));
+    EXPECT_TRUE( mrpt_bridge::map::instance()->mrpt2ros(desMrpt, desRos, desRos.header));
     for(int i = 0; i <= 100; i++){
           //printf("%4i, %4.3f = %4.3f,%4i\n", srcRos.data[i], 1-((float)i)/100.0, desMrpt.getCell(i,0), desRos.data[i]);
           EXPECT_NEAR(1-((float)i)/100.0, desMrpt.getCell(i,0), 0.03) << "ros to mprt";  

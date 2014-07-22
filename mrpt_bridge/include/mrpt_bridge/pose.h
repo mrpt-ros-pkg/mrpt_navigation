@@ -9,15 +9,21 @@
 #include <geometry_msgs/PoseWithCovariance.h>
 #include <geometry_msgs/Pose.h>
 #include <geometry_msgs/Quaternion.h>
+#include <tf/tf.h>
 
 namespace mrpt_bridge
 {
 namespace poses
 {
-	/** Convert: MRPT's CPose3D -> ROS's Pose */
-	void mrpt2ros(
-		const mrpt::poses::CPose3D& src,
-		geometry_msgs::Pose& dst);
+    /** Convert: MRPT's CPose3D -> ROS's Transform */
+    void mrpt2ros(
+        const mrpt::poses::CPose3D& src,
+        tf::Transform& tf);
+    
+    /** Convert: MRPT's CPose3D -> ROS's Pose */
+    void mrpt2ros(
+        const mrpt::poses::CPose3D& src,
+        geometry_msgs::Pose& dst);
 
 	/** Convert: MRPT's CPose2D (x,y,yaw) -> ROS's Pose */
 	void mrpt2ros(

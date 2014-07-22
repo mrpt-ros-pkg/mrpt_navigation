@@ -26,38 +26,49 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.                    *                       *
  ***********************************************************************************/
 
-#include <iostream>
-#include <stdint.h>
-#include <boost/interprocess/sync/interprocess_mutex.hpp>
+#ifndef MRPT_RAWLOG_PLAY_NODE_H
+#define MRPT_RAWLOG_PLAY_NODE_H
 
-#ifndef RAWLOG_RECORD_H
-#define RAWLOG_RECORD_H
+#include "ros/ros.h"
+#include <tf/transform_broadcaster.h>
+#include <tf/transform_listener.h>
+#include <nav_msgs/Odometry.h>
+#include <sensor_msgs/LaserScan.h>
+#include <dynamic_reconfigure/server.h>
+#include "mrpt_rawlog/MotionConfig.h"
+#include "mrpt_rawlog_play/rawlog_play.h"
 
-
-
-#include <mrpt/slam.h>
-
-class RawlogRecord {
+/// ROS Node
+class RawlogPlayNode : public RawlogPlay {
 public:
-	struct Parameters{
-		Parameters();
-	    bool debug;
-        std::string raw_log_name;
-        std::string raw_log_name_asf;
-        mrpt::slam::CActionRobotMovement2D::TMotionModelOptions motionModelOptions;
-	};
-    RawlogRecord (Parameters *parm);
-    ~RawlogRecord();
-protected:
-    Parameters *param_; 
-    mrpt::slam::CRawlog *pRawLog;
-    mrpt::slam::CRawlog *pRawLogASF;
-    mrpt::poses::CPose2D odomLastPose_;
-    void updateRawLogName(const mrpt::system::TTimeStamp &t);
-    void incommingLaserData(mrpt::slam::CObservation2DRangeScanPtr  laser);
-    void incommingOdomData( mrpt::slam::CObservationOdometryPtr odometry);
-    boost::interprocess::interprocess_mutex mutexRawLog;
-    
+    struct ParametersNode : public Parameters {
+        static const int MOTION_MODEL_GAUSSIAN = 0;
+        static const int MOTION_MODEL_THRUN = 1;
+        ParametersNode();
+        ros::NodeHandle node;
+        void callbackParameters (mrpt_rawlog::MotionConfig &config, uint32_t level );
+        dynamic_reconfigure::Server<mrpt_rawlog::MotionConfig> reconfigureServer_;
+        dynamic_reconfigure::Server<mrpt_rawlog::MotionConfig>::CallbackType reconfigureFnc_;
+        void update(const unsigned long &loop_count);
+        double rate;
+        std::string base_link;
+        int parameter_update_skip;
+    };
+
+    RawlogPlayNode ( ros::NodeHandle &n );
+    ~RawlogPlayNode();
+    void init ();
+    void loop ();
+private: //functions
+    ParametersNode *param();
+    bool nextEntry();
+private: // variables
+    ros::NodeHandle n_;
+    unsigned long loop_count_;
+    sensor_msgs::LaserScan msg_laser_;
+    ros::Publisher pub_laser_;
+    tf::TransformBroadcaster tf_broadcaster_;
+
 };
 
-#endif // RAWLOG_RECORD_H
+#endif // MRPT_RAWLOG_PLAY_NODE_H

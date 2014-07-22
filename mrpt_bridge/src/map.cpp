@@ -3,6 +3,8 @@
 #include "mrpt_bridge/pose.h"
 #include <mrpt/slam/COccupancyGridMap2D.h>
 #include <ros/console.h>
+#include <mrpt/base.h>
+#include <mrpt/slam.h>
 
 #define INT8_MAX    0x7f
 #define INT8_MIN    (-INT8_MAX - 1)
@@ -75,15 +77,22 @@ bool map::ros2mrpt ( const nav_msgs::OccupancyGrid  &src, mrpt::slam::COccupancy
     }
     return true;
 }
+bool map::mrpt2ros (
+    const mrpt::slam::COccupancyGridMap2D &src,
+    nav_msgs::OccupancyGrid &des,
+    const std_msgs::Header &header
+)
+{
+    des.header = header;
+    return mrpt2ros(src, des);
+}
 
 bool map::mrpt2ros (
     const mrpt::slam::COccupancyGridMap2D &src,
-    const std_msgs::Header &header,
     nav_msgs::OccupancyGrid &des
 )
 {
     //printf("--------mrpt2ros:  %f, %f, %f, %f, r:%f\n",src.getXMin(), src.getXMax(), src.getYMin(), src.getYMax(), src.getResolution());
-    des.header = header;
     des.info.width = src.getSizeX();
     des.info.height = src.getSizeY();
     des.info.resolution = src.getResolution ();
@@ -105,6 +114,61 @@ bool map::mrpt2ros (
         for ( int w = 0; w < des.info.width; w++ ) {
             *pDes++ = lut_mrpt2rosPtr[*pSrc++];
         }
+    }
+    return true;
+}
+
+const bool map::loadMap(mrpt::slam::CMultiMetricMap &_metric_map, const mrpt::utils::CConfigFile &_config_file, const std::string &_map_file, const std::string &_section_name, bool _debug) {
+
+    mrpt::slam::TSetOfMetricMapInitializers mapInitializers;
+    mapInitializers.loadFromConfigFile( _config_file, _section_name);
+    if(_debug) mapInitializers.dumpToConsole();
+
+    mrpt::slam::CSimpleMap  simpleMap;
+
+    // Load the set of metric maps to consider in the experiments:
+    _metric_map.setListOfMaps( &mapInitializers );
+    if(_debug) mapInitializers.dumpToConsole();
+
+    mrpt::random::randomGenerator.randomize();
+
+    // Load the map (if any):
+    if (_map_file.empty()) {
+        return false;
+    } else {
+        ASSERT_( mrpt::utils::fileExists(_map_file) );
+
+        // Detect file extension:
+        std::string mapExt = mrpt::utils::lowerCase( mrpt::utils::extractFileExtension( _map_file, true ) ); // Ignore possible .gz extensions
+
+        if ( !mapExt.compare( "simplemap" ) )
+        {
+            // It's a ".simplemap":
+            if(_debug) ("Loading '.simplemap' file...");
+            mrpt::utils::CFileGZInputStream(_map_file) >> simpleMap;
+            printf("Ok\n");
+
+            ASSERT_( simpleMap.size()>0 );
+
+            // Build metric map:
+            if(_debug) printf("Building metric map(s) from '.simplemap'...");
+            _metric_map.loadFromProbabilisticPosesAndObservations(simpleMap);
+            if(_debug) printf("Ok\n");
+        }
+        else if ( !mapExt.compare( "gridmap" ) )
+        {
+            // It's a ".gridmap":
+            if(_debug) printf("Loading gridmap from '.gridmap'...");
+            ASSERT_( _metric_map.m_gridMaps.size()==1 );
+            mrpt::utils::CFileGZInputStream(_map_file) >> (*_metric_map.m_gridMaps[0]);
+            if(_debug) printf("Ok\n");
+        }
+        else
+        {
+            THROW_EXCEPTION_CUSTOM_MSG1("Map file has unknown extension: '%s'",mapExt.c_str());
+            return false;
+        }
+
     }
     return true;
 }

@@ -26,43 +26,33 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.                    *                       *
  ***********************************************************************************/
 
-#ifndef MRPT_MAP_SERVER_NODE_H
-#define MRPT_MAP_SERVER_NODE_H
+#include <iostream>
+#include <stdint.h>
+#include <boost/interprocess/sync/interprocess_mutex.hpp>
 
-#include "ros/ros.h"
-#include "nav_msgs/MapMetaData.h"
-#include "nav_msgs/GetMap.h"
-#include "boost/smart_ptr.hpp"
+#ifndef MRPT_RAWLOG_RECORD_H
+#define MRPT_RAWLOG_RECORD_H
 
-namespace mrpt {
-  namespace utils {
-    class CConfigFile;
-  }
-  namespace slam {
-    class CMultiMetricMap;
-  }
-}
 
-class MapServer {
+#include <mrpt/base.h>
+#include <mrpt/slam.h>
+
+class RawlogPlay {
 public:
-    MapServer(ros::NodeHandle &n);
-    ~MapServer();
-    void init();
-    void loop();
-private: 
-    ros::NodeHandle n_;
-    ros::NodeHandle n_param_;
-    double frequency_;
-    unsigned long loop_count_;
-    bool debug_;
-    ros::Publisher pub_map_;
-    ros::Publisher pub_metadata_;
-    ros::ServiceServer service_map_;
-    nav_msgs::GetMap::Response resp_;
-    boost::shared_ptr<mrpt::slam::CMultiMetricMap> metric_map_;
-    void publishMap ();
-    bool mapCallback(nav_msgs::GetMap::Request  &req, nav_msgs::GetMap::Response &res );
+	struct Parameters{
+		Parameters();
+	    bool debug;
+        std::string rawlog_file;
+        mrpt::slam::CActionRobotMovement2D::TMotionModelOptions motionModelOptions;
+	};
+    RawlogPlay (Parameters *parm);
+    ~RawlogPlay();
+protected:
+    Parameters *param_; 
+    mrpt::utils::CFileGZInputStream rawlog_stream_;
+    size_t entry_;
+
+    
 };
 
-
-#endif // MRPT_MAP_SERVER_NODE_H
+#endif // MRPT_RAWLOG_RECORD_H

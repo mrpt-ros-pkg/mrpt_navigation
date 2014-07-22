@@ -77,7 +77,7 @@ void PFLocalizationNode::init() {
 void PFLocalizationNode::loop() {
     for (ros::Rate rate(param()->rate); ros::ok(); loop_count_++) {
         param()->update(loop_count_);
-        publishMap(metricMap_.m_gridMaps[0]);
+        publishMap(metric_map_.m_gridMaps[0]);
         ros::spinOnce();
         rate.sleep();
     }
@@ -143,12 +143,11 @@ void PFLocalizationNode::callbackOdometry (const nav_msgs::Odometry &_odom) {
 }
 
 void PFLocalizationNode::publishMap (const mrpt::slam::COccupancyGridMap2DPtr mrptMap) {
-    std_msgs::Header header;
-    header.frame_id = "map",  header.seq = process_counter_, header.stamp = ros::Time::now();
-    geometry_msgs::Pose pose;
-    pose.position.x = 0, pose.position.y = 0, pose.position.z = 0;
-    pose.orientation.x = 0, pose.orientation.y = 0, pose.orientation.z = 0, pose.orientation.w = 1;
-    mrpt_bridge::map::instance()->mrpt2ros(*mrptMap, header, rosOccupancyGrid_);
+    if(pubMap_.getNumSubscribers() < 1) return;
+    rosOccupancyGrid_.header.frame_id = "map";
+    rosOccupancyGrid_.header.seq = process_counter_;
+    rosOccupancyGrid_.header.stamp = ros::Time::now();
+    mrpt_bridge::map::instance()->mrpt2ros(*mrptMap, rosOccupancyGrid_);
     pubMap_.publish(rosOccupancyGrid_ );
 }
 
