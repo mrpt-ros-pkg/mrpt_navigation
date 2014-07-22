@@ -39,6 +39,7 @@ bool laser_scan::mrpt2ros(const mrpt::slam::CObservation2DRangeScan  &_obj, sens
     _msg.angle_max =  0.5f * _obj.aperture;
     _msg.angle_increment = _obj.aperture/(_obj.scan.size()-1);
 
+    // setting the following values to zero solves a rviz visualization problem
     _msg.time_increment = 0.0; // 1./30.; // Anything better?
     _msg.scan_time = 0.0; // _msg.time_increment; // idem?
 

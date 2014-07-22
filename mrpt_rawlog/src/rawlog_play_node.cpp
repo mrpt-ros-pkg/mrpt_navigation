@@ -86,7 +86,6 @@ bool RawlogPlayNode::nextEntry() {
     mrpt_bridge::poses::mrpt2ros(pose_laser, transform);
     tf_broadcaster_.sendTransform(tf::StampedTransform(transform, msg_laser_.header.stamp, param()->base_link, msg_laser_.header.frame_id));
     pub_laser_.publish(msg_laser_);
-    ROS_INFO("read %zu", entry_);
     return false;
 
 }
