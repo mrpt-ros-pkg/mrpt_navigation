@@ -1,7 +1,23 @@
 #ifndef MRPT_BRIDGE_MAP_H
 #define MRPT_BRIDGE_MAP_H
 
-#include <nav_msgs/OccupancyGrid.h>
+#include <stdint.h>
+#include <string>
+
+namespace std{
+    template <class T> class allocator;
+}
+
+namespace std_msgs{
+    template <class ContainerAllocator> struct Header_;
+    typedef Header_<std::allocator<void> > Header;
+}
+
+namespace nav_msgs{
+    template <class ContainerAllocator> struct OccupancyGrid_;
+    typedef OccupancyGrid_<std::allocator<void> > OccupancyGrid;
+}
+
 
 namespace mrpt
 {

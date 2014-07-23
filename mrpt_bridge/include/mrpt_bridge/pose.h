@@ -1,78 +1,87 @@
 #ifndef MRPT_BRIDGE_POSE_H
 #define MRPT_BRIDGE_POSE_H
 
-#include <mrpt/poses/CPose2D.h>
-#include <mrpt/poses/CPose3D.h>
-#include <mrpt/poses/CPosePDFGaussian.h>
-#include <mrpt/poses/CPose3DPDFGaussian.h>
-#include <mrpt/math/CQuaternion.h>
-#include <geometry_msgs/PoseWithCovariance.h>
-#include <geometry_msgs/Pose.h>
-#include <geometry_msgs/Quaternion.h>
-#include <tf/tf.h>
+
+namespace std{
+    template <class T> class allocator;
+}
+
+namespace tf{
+    class Transform;
+    class Matrix3x3;
+}
+
+namespace geometry_msgs{
+    template <class ContainerAllocator> struct Pose_;
+    typedef Pose_<std::allocator<void> > Pose;
+    template <class ContainerAllocator> struct PoseWithCovariance_;
+    typedef PoseWithCovariance_<std::allocator<void> > PoseWithCovariance;
+    template <class ContainerAllocator> struct Quaternion_;
+    typedef Quaternion_<std::allocator<void> > Quaternion;
+}
+
+namespace mrpt{
+namespace math{
+    template<class T> class CQuaternion;
+    template <typename T,size_t NROWS,size_t NCOLS> class CMatrixFixedNumeric;
+    typedef CMatrixFixedNumeric<double,3,3> CMatrixDouble33;
+}
+namespace poses{
+        class CPose2D;
+        class CPose3D;
+        class CPosePDFGaussian;
+        class CPose3DPDFGaussian;
+        typedef math::CQuaternion<double> CQuaternionDouble;
+    }
+}
 
 namespace mrpt_bridge
 {
 namespace poses
 {
+    /** Convert: ROS's Matrix -> MRPT's Matrix */
+    mrpt::math::CMatrixDouble33& ros2mrpt( const tf::Matrix3x3& _src, mrpt::math::CMatrixDouble33& _des);
+
+    /** Convert: MRPT's Matrix -> Matrix */
+    tf::Matrix3x3& mrpt2ros( const mrpt::math::CMatrixDouble33& _src, tf::Matrix3x3& _des);
+
     /** Convert: MRPT's CPose3D -> ROS's Transform */
-    void mrpt2ros(
-        const mrpt::poses::CPose3D& src,
-        tf::Transform& tf);
+    tf::Transform& mrpt2ros( const mrpt::poses::CPose3D& _src, tf::Transform&  _des);
     
     /** Convert: MRPT's CPose3D -> ROS's Pose */
-    void mrpt2ros(
-        const mrpt::poses::CPose3D& src,
-        geometry_msgs::Pose& dst);
+    geometry_msgs::Pose&  mrpt2ros( const mrpt::poses::CPose3D& _src, geometry_msgs::Pose& _des);
 
 	/** Convert: MRPT's CPose2D (x,y,yaw) -> ROS's Pose */
-	void mrpt2ros(
-		const mrpt::poses::CPose2D& src,
-		geometry_msgs::Pose& dst);
+    geometry_msgs::Pose& mrpt2ros( const mrpt::poses::CPose2D& _src, geometry_msgs::Pose& _des);
 
 	/** Convert: MRPT's CPose3DPDFGaussian -> ROS's PoseWithCovariance */
-	void mrpt2ros(
-		const mrpt::poses::CPose3DPDFGaussian& src,
-		geometry_msgs::PoseWithCovariance& dst);
+    geometry_msgs::PoseWithCovariance& mrpt2ros( const mrpt::poses::CPose3DPDFGaussian& _src, geometry_msgs::PoseWithCovariance& _des);
+
+    /** Convert: MRPT's CPose3DPDFGaussian -> ROS's Transform */
+    tf::Transform& mrpt2ros( const mrpt::poses::CPose3DPDFGaussian& _src, tf::Transform&);
 
 	/** Convert: MRPT's CPosePDFGaussian (x,y,yaw) -> ROS's PoseWithCovariance */
-	void mrpt2ros(
-		const mrpt::poses::CPosePDFGaussian& src,
-		geometry_msgs::PoseWithCovariance& dst);
+    geometry_msgs::PoseWithCovariance& mrpt2ros( const mrpt::poses::CPosePDFGaussian& _src, geometry_msgs::PoseWithCovariance& _des);
 
 	/** Convert: MRPT's CQuaternionDouble -> ROS's Quaternion  */
-	void mrpt2ros(
-	        const mrpt::poses::CQuaternionDouble& src,
-	        geometry_msgs::Quaternion& dst);
-
+    geometry_msgs::Quaternion& mrpt2ros(  const mrpt::poses::CQuaternionDouble& _src, geometry_msgs::Quaternion& _des);
 
 	/** Convert: ROS's Pose -> MRPT's CPose2D  */
-	void ros2mrpt(const geometry_msgs::Pose& src,
-	                 mrpt::poses::CPose2D& dst);
+    mrpt::poses::CPose2D& ros2mrpt(const geometry_msgs::Pose& _src, mrpt::poses::CPose2D& _des);
 
 	/** Convert: ROS's Pose -> MRPT's CPose3D  */
-	void ros2mrpt(
-		const geometry_msgs::Pose& src,
-		mrpt::poses::CPose3D& dst);
-
+    mrpt::poses::CPose3D& ros2mrpt( const geometry_msgs::Pose& _src, mrpt::poses::CPose3D& _des);
 
 	/** Convert: ROS's PoseWithCovariance -> MRPT's CPose3DPDFGaussian */
-	void ros2mrpt(
-		const geometry_msgs::PoseWithCovariance& src,
-		mrpt::poses::CPose3DPDFGaussian& dst);
+    mrpt::poses::CPose3DPDFGaussian& ros2mrpt( const geometry_msgs::PoseWithCovariance& _src, mrpt::poses::CPose3DPDFGaussian& _des);
 
 	/** Convert: ROS's PoseWithCovariance -> MRPT's CPosePDFGaussian (x,y,yaw) */
-	void ros2mrpt(
-		const geometry_msgs::PoseWithCovariance& src,
-		mrpt::poses::CPosePDFGaussian& dst);
+    mrpt::poses::CPosePDFGaussian& ros2mrpt( const geometry_msgs::PoseWithCovariance& _src, mrpt::poses::CPosePDFGaussian& _des);
 
 	/** Convert: ROS's Quaternion -> MRPT's CQuaternionDouble  */
-	void ros2mrpt(
-	        const geometry_msgs::Quaternion& src,
-	        mrpt::poses::CQuaternionDouble& dst);
-
-
+    mrpt::poses::CQuaternionDouble& ros2mrpt( const geometry_msgs::Quaternion& _src, mrpt::poses::CQuaternionDouble& _des);
 
 }
 }
+
 #endif /* MRPT_BRIDGE_POSE_H */

@@ -1,10 +1,29 @@
 #ifndef MRPT_BRIDGE_POINT_CLOUD2_H
 #define MRPT_BRIDGE_POINT_CLOUD2_H
 
-#include <sensor_msgs/PointCloud2.h>
-#include <mrpt/slam/CSimplePointsMap.h>
-#include <mrpt/slam/CColouredPointsMap.h>
 
+namespace std{
+    template <class T> class allocator;
+}
+
+namespace std_msgs{
+    template <class ContainerAllocator> struct Header_;
+    typedef Header_<std::allocator<void> > Header;
+}
+
+namespace sensor_msgs{
+    template <class ContainerAllocator> struct PointCloud2_;
+    typedef PointCloud2_<std::allocator<void> > PointCloud2;
+}
+
+namespace mrpt
+{
+namespace slam
+{
+class CSimplePointsMap;
+class CColouredPointsMap;
+}
+}
 namespace mrpt_bridge
 {
 

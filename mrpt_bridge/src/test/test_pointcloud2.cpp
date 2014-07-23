@@ -5,11 +5,13 @@
  *      Author: Pablo Iñigo Blasco
  */
 
-#include <gtest/gtest.h>
+#include <mrpt/slam/CSimplePointsMap.h>
+#include <mrpt/slam/CColouredPointsMap.h>
 #include <mrpt_bridge/point_cloud2.h>
 #include <pcl/ros/conversions.h>
 #include <pcl/point_cloud.h>
 #include <pcl_conversions/pcl_conversions.h>
+#include <gtest/gtest.h>
 
 TEST(PointCloud2, basicTest)
 {

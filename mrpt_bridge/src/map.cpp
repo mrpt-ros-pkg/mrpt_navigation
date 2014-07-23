@@ -1,6 +1,7 @@
 
 #include "mrpt_bridge/map.h"
 #include "mrpt_bridge/pose.h"
+#include <nav_msgs/OccupancyGrid.h>
 #include <mrpt/slam/COccupancyGridMap2D.h>
 #include <ros/console.h>
 #include <mrpt/base.h>

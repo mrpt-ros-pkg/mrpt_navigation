@@ -1,5 +1,8 @@
-#include "mrpt_bridge/point_cloud2.h"
 #include <sensor_msgs/PointField.h>
+#include <sensor_msgs/PointCloud2.h>
+#include <mrpt/slam/CSimplePointsMap.h>
+#include <mrpt/slam/CColouredPointsMap.h>
+#include "mrpt_bridge/point_cloud2.h"
 #include <ros/console.h>
 
 namespace mrpt_bridge

@@ -5,9 +5,15 @@
  *      Author: Pablo Iñigo Blasco
  */
 
+#include <mrpt/poses/CPosePDFGaussian.h>
+#include <mrpt/poses/CPose3DPDFGaussian.h>
+#include <mrpt/math/CQuaternion.h>
+#include <geometry_msgs/PoseWithCovariance.h>
+#include <geometry_msgs/Pose.h>
+#include <geometry_msgs/Quaternion.h>
+#include <tf/tf.h>
 #include <mrpt_bridge/pose.h>
 #include <gtest/gtest.h>
-#include <tf/tf.h>
 
 using namespace std;
 using namespace mrpt::utils; // DEG2RAD()
@@ -30,6 +36,27 @@ void checkPoseMatrixFromRotationParameters(const double roll, const double pitch
     for (int j = 0; j < 3; j++)
       EXPECT_NEAR(basis[i][j], mrpt_basis(i,j), 0.01);
 }
+
+TEST(PoseConversions, copyMatrix3x3ToCMatrixDouble33)
+{
+    tf::Matrix3x3 src(0, 1, 2, 3, 4, 5, 6, 7, 8);
+    mrpt::math::CMatrixDouble33 des;
+    mrpt_bridge::poses::ros2mrpt(src, des);
+    for(int r = 0; r < 3; r++)
+        for(int c = 0; c < 3; c++)
+            EXPECT_FLOAT_EQ(des(r,c), src[r][c]);
+}
+TEST(PoseConversions, copyCMatrixDouble33ToMatrix3x3)
+{
+    mrpt::math::CMatrixDouble33 src;
+    src << 0, 1, 2, 3, 4, 5, 6, 7, 8;
+    tf::Matrix3x3 des;
+    mrpt_bridge::poses::mrpt2ros(src, des);
+    for(int r = 0; r < 3; r++)
+        for(int c = 0; c < 3; c++)
+            EXPECT_FLOAT_EQ(des[r][c],src(r,c));
+}
+
 
 TEST(PoseConversions, checkPoseMatrixFromRotationParameters)
 {

@@ -1,8 +1,10 @@
 
+#include <geometry_msgs/Pose.h>
+#include <sensor_msgs/LaserScan.h>
+#include <mrpt/slam/CObservation2DRangeScan.h>
 #include "mrpt_bridge/time.h"
 #include "mrpt_bridge/pose.h"
 #include "mrpt_bridge/laser_scan.h"
-#include <ros/console.h>
 
 namespace mrpt_bridge {
 

@@ -9,11 +9,41 @@
  *
  */
 
+#include <mrpt/poses/CPose2D.h>
+#include <mrpt/poses/CPose3D.h>
+#include <mrpt/poses/CPosePDFGaussian.h>
+#include <mrpt/poses/CPose3DPDFGaussian.h>
+#include <mrpt/math/CQuaternion.h>
+#include <geometry_msgs/PoseWithCovariance.h>
+#include <geometry_msgs/Pose.h>
+#include <geometry_msgs/Quaternion.h>
+#include <mrpt/math/CMatrixFixedNumeric.h>
+#include <tf/tf.h>
 #include "mrpt_bridge/pose.h"
 
-void mrpt_bridge::poses::mrpt2ros(const mrpt::poses::CPose3DPDFGaussian& src, geometry_msgs::PoseWithCovariance& dst)
+mrpt::math::CMatrixDouble33 &mrpt_bridge::poses::ros2mrpt( const tf::Matrix3x3& _src, mrpt::math::CMatrixDouble33& _des){
+    MRPT_TODO("MRPT this can be done faster with memcopy, but one has to check the obj structure!");
+    for(int r = 0; r < 3; r++)
+        for(int c = 0; c < 3; c++)
+            _des(r,c) = _src[r][c];
+    return _des;
+}
+
+tf::Matrix3x3 &mrpt_bridge::poses::mrpt2ros( const mrpt::math::CMatrixDouble33& _src, tf::Matrix3x3& _des){
+    MRPT_TODO("MRPT this can be done faster with memcopy, but one has to check the obj structure!");
+    for(int r = 0; r < 3; r++)
+        for(int c = 0; c < 3; c++)
+             _des[r][c] = _src(r,c);
+    return _des;
+}
+
+tf::Transform& mrpt_bridge::poses::mrpt2ros( const mrpt::poses::CPose3DPDFGaussian& _src, tf::Transform& _des){
+    return mrpt2ros(_src.mean, _des);
+}
+
+geometry_msgs::PoseWithCovariance& mrpt_bridge::poses::mrpt2ros(const mrpt::poses::CPose3DPDFGaussian& _src, geometry_msgs::PoseWithCovariance& _des)
 {
-  mrpt2ros(src.mean, dst.pose);
+  mrpt2ros(_src.mean, _des.pose);
 
   // Read REP103: http://ros.org/reps/rep-0103.html#covariance-representation
   // # Row-major representation of the 6x6 covariance matrix
@@ -27,80 +57,82 @@ void mrpt_bridge::poses::mrpt2ros(const mrpt::poses::CPose3DPDFGaussian& src, ge
 
   for (int i = 0; i < 6; i++)
     for (int j = 0; j < 6; j++)
-      dst.covariance[indxs_map[i] * 6 + indxs_map[j]] = src.cov(i, j);
+      _des.covariance[indxs_map[i] * 6 + indxs_map[j]] = _src.cov(i, j);
+  return _des;
 }
 
-void mrpt_bridge::poses::mrpt2ros(const mrpt::poses::CPose3D& _src, tf::Transform& _tf){
+tf::Transform &mrpt_bridge::poses::mrpt2ros(const mrpt::poses::CPose3D& _src, tf::Transform &_des){
     tf::Vector3 origin(_src[0], _src[1], _src[2]);
     mrpt::math::CMatrixDouble33 R;
     _src.getRotationMatrix(R);
-    tf::Matrix3x3 basis( R(0,0), R(0,1), R(0,2), 
-                         R(1,0), R(1,1), R(1,2), 
-                         R(2,0), R(2,1), R(2,2));
-    _tf.setBasis(basis);
-    _tf.setOrigin(origin);
+    tf::Matrix3x3 basis;
+    _des.setBasis(mrpt2ros(R,basis));
+    _des.setOrigin(origin);
+    return _des;
 }
 
-void mrpt_bridge::poses::mrpt2ros(const mrpt::poses::CPose3D& src, geometry_msgs::Pose& dst)
+geometry_msgs::Pose &mrpt_bridge::poses::mrpt2ros(const mrpt::poses::CPose3D& _src, geometry_msgs::Pose& _des)
 {
-
-  dst.position.x = src[0];
-  dst.position.y = src[1];
-  dst.position.z = src[2];
+  _des.position.x = _src[0];
+  _des.position.y = _src[1];
+  _des.position.z = _src[2];
 
   mrpt::math::CQuaternionDouble q;
-  src.getAsQuaternion(q);
+  _src.getAsQuaternion(q);
 
-  dst.orientation.x = q.x();
-  dst.orientation.y = q.y();
-  dst.orientation.z = q.z();
-  dst.orientation.w = q.r();
+  _des.orientation.x = q.x();
+  _des.orientation.y = q.y();
+  _des.orientation.z = q.z();
+  _des.orientation.w = q.r();
+  return _des;
 }
 
 /** Convert: MRPT's CPose2D (x,y,yaw) -> ROS's Pose */
-void mrpt_bridge::poses::mrpt2ros(const mrpt::poses::CPose2D& src, geometry_msgs::Pose& dst)
+geometry_msgs::Pose& mrpt_bridge::poses::mrpt2ros(const mrpt::poses::CPose2D& _src, geometry_msgs::Pose& _des)
 {
-  dst.position.x = src.x();
-  dst.position.y = src.y();
-  dst.position.z = 0;
+  _des.position.x = _src.x();
+  _des.position.y = _src.y();
+  _des.position.z = 0;
 
-  const double yaw = src.phi();
+  const double yaw = _src.phi();
   if (std::abs(yaw) < 1e-10)
   {
-    dst.orientation.x = 0.;
-    dst.orientation.y = 0.;
-    dst.orientation.z = .5 * yaw;
-    dst.orientation.w = 1.;
+    _des.orientation.x = 0.;
+    _des.orientation.y = 0.;
+    _des.orientation.z = .5 * yaw;
+    _des.orientation.w = 1.;
   }
   else
   {
     const double s = ::sin(yaw * .5);
     const double c = ::cos(yaw * .5);
-    dst.orientation.x = 0.;
-    dst.orientation.y = 0.;
-    dst.orientation.z = s;
-    dst.orientation.w = c;
+    _des.orientation.x = 0.;
+    _des.orientation.y = 0.;
+    _des.orientation.z = s;
+    _des.orientation.w = c;
   }
+  return _des;
 }
 
-void mrpt_bridge::poses::ros2mrpt(const geometry_msgs::Pose& src, mrpt::poses::CPose2D& dst)
+mrpt::poses::CPose2D& mrpt_bridge::poses::ros2mrpt(const geometry_msgs::Pose& _src, mrpt::poses::CPose2D& _des)
 {
-  dst.x(src.position.x);
-  dst.y(src.position.y);
+  _des.x(_src.position.x);
+  _des.y(_src.position.y);
 
   MRPT_TODO("Optimize this?");
   mrpt::math::CQuaternionDouble quat;
-  ros2mrpt(src.orientation, quat);
+  ros2mrpt(_src.orientation, quat);
 
   double roll, pitch, yaw;
   quat.rpy(roll, pitch, yaw);
 
-  dst.phi(yaw);
+  _des.phi(yaw);
+  return _des;
 }
 
-void mrpt_bridge::poses::mrpt2ros(const mrpt::poses::CPosePDFGaussian& src, geometry_msgs::PoseWithCovariance& dst)
+geometry_msgs::PoseWithCovariance& mrpt_bridge::poses::mrpt2ros(const mrpt::poses::CPosePDFGaussian& _src, geometry_msgs::PoseWithCovariance& _des)
 {
-  mrpt2ros(src.mean, dst.pose);
+  mrpt2ros(_src.mean, _des.pose);
 
   // Read REP103: http://ros.org/reps/rep-0103.html#covariance-representation
   MRPT_TODO("MRPT uses non-fixed axis for 6x6 covariance: should use a transform Jacobian here!")
@@ -117,50 +149,48 @@ void mrpt_bridge::poses::mrpt2ros(const mrpt::poses::CPosePDFGaussian& src, geom
       {
         ros_i = i == 2 ? 5 : i;
         ros_j = j == 2 ? 5 : j;
-        cov_val = src.cov(i, j);
+        cov_val = _src.cov(i, j);
       }
-      dst.covariance[ros_i * 6 + ros_j] = cov_val;
+      _des.covariance[ros_i * 6 + ros_j] = cov_val;
     }
+  return _des;
 }
 
-void mrpt_bridge::poses::ros2mrpt(const geometry_msgs::PoseWithCovariance& src, mrpt::poses::CPose3DPDFGaussian& dst)
+mrpt::poses::CPose3DPDFGaussian& mrpt_bridge::poses::ros2mrpt(const geometry_msgs::PoseWithCovariance& _src, mrpt::poses::CPose3DPDFGaussian& _des)
 {
-  ros2mrpt(src.pose, dst.mean);
+  ros2mrpt(_src.pose, _des.mean);
 
   const unsigned int indxs_map[6] = {0, 1, 2, 5, 4, 3};
 
   for (int i = 0; i < 6; i++)
     for (int j = 0; j < 6; j++)
-      dst.cov(i, j) = src.covariance[indxs_map[i] * 6 + indxs_map[j]];
+      _des.cov(i, j) = _src.covariance[indxs_map[i] * 6 + indxs_map[j]];
+  return _des;
 }
 
-void mrpt_bridge::poses::ros2mrpt(const geometry_msgs::Quaternion& src, mrpt::poses::CQuaternionDouble& dst)
+mrpt::poses::CQuaternionDouble&  mrpt_bridge::poses::ros2mrpt(const geometry_msgs::Quaternion& _src, mrpt::poses::CQuaternionDouble& _des)
 {
-  dst.x(src.x);
-  dst.y(src.y);
-  dst.z(src.z);
-  dst.r(src.w);
+  _des.x(_src.x);
+  _des.y(_src.y);
+  _des.z(_src.z);
+  _des.r(_src.w);
+  return _des;
 }
 
-void mrpt_bridge::poses::mrpt2ros(const mrpt::poses::CQuaternionDouble& src, geometry_msgs::Quaternion& dst)
+geometry_msgs::Quaternion& mrpt_bridge::poses::mrpt2ros(const mrpt::poses::CQuaternionDouble& _src, geometry_msgs::Quaternion& _des)
 {
-  dst.x=src.x();
-  dst.y=src.y();
-  dst.z=src.z();
-  dst.w=src.r();
+  _des.x=_src.x();
+  _des.y=_src.y();
+  _des.z=_src.z();
+  _des.w=_src.r();
+  return _des;
 }
-void mrpt_bridge::poses::ros2mrpt(const geometry_msgs::Pose& src, mrpt::poses::CPose3D& dst)
+
+mrpt::poses::CPose3D& mrpt_bridge::poses::ros2mrpt(const geometry_msgs::Pose& _src, mrpt::poses::CPose3D& _des)
 {
-/*
-  dst.x(src.position.x);
-  dst.y(src.position.y);
-  dst.z(src.position.z);
-*/
-  const mrpt::math::CQuaternionDouble q(src.orientation.w, src.orientation.x, src.orientation.y, src.orientation.z);
-  //mrpt::math::CMatrixDouble33 ROT;
-  //q.rotationMatrix(ROT);
-  //dst.setRotationMatrix(ROT);
-dst= mrpt::math::CPose3D(q,src.position.x,src.position.y,src.position.z);
+  const mrpt::math::CQuaternionDouble q(_src.orientation.w, _src.orientation.x, _src.orientation.y, _src.orientation.z);
+    _des= mrpt::math::CPose3D(q,_src.position.x,_src.position.y,_src.position.z);
+    return _des;
 }
 
 

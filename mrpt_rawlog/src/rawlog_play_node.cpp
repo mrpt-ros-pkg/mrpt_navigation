@@ -64,8 +64,11 @@ void RawlogPlayNode::init() {
         ROS_ERROR("raw_file: %s does not exit", param_->rawlog_file.c_str());
     }
     rawlog_stream_.open(param_->rawlog_file);
-    pub_laser_ = n_.advertise<sensor_msgs::LaserScan>("scan", 1000);
-
+    pub_laser_ = n_.advertise<sensor_msgs::LaserScan>("scan", 10);
+    pub_odom_ = n_.advertise<nav_msgs::Odometry>("odom", 10);
+    odom_frame_ = tf::resolve(param()->tf_prefix, param()->odom_frame);
+    base_frame_ = tf::resolve(param()->tf_prefix, param()->base_frame);
+    robotPose = mrpt::poses::CPose3DPDFGaussian();
 }
 
 bool RawlogPlayNode::nextEntry() {
@@ -80,12 +83,30 @@ bool RawlogPlayNode::nextEntry() {
     mrpt::poses::CPose3D pose_laser;
     geometry_msgs::Pose msg_pose_laser;
     tf::Transform transform;
-    mrpt::slam::CObservation2DRangeScanPtr laser = observations->getObservationByClass<mrpt::slam::CObservation2DRangeScan>();
-    mrpt_bridge::laser_scan::mrpt2ros(*laser, msg_laser_, msg_pose_laser);
-    laser->getSensorPose(pose_laser);
-    mrpt_bridge::poses::mrpt2ros(pose_laser, transform);
-    tf_broadcaster_.sendTransform(tf::StampedTransform(transform, msg_laser_.header.stamp, param()->base_link, msg_laser_.header.frame_id));
-    pub_laser_.publish(msg_laser_);
+
+    // loop over laser overservations
+    for(size_t i = 0;i < observations->size() ;i++){
+        mrpt::slam::CObservation2DRangeScanPtr laser = observations->getObservationByClass<mrpt::slam::CObservation2DRangeScan>(i);
+        if(laser.pointer() == NULL) break;
+        mrpt_bridge::laser_scan::mrpt2ros(*laser, msg_laser_, msg_pose_laser);
+        laser->getSensorPose(pose_laser);
+        mrpt_bridge::poses::mrpt2ros(pose_laser, transform);
+        std::string childframe = tf::resolve(param()->tf_prefix, msg_laser_.header.frame_id);
+        tf_broadcaster_.sendTransform(tf::StampedTransform(transform, msg_laser_.header.stamp, base_frame_, childframe));
+        pub_laser_.publish(msg_laser_);
+        laser = observations->getObservationByClass<mrpt::slam::CObservation2DRangeScan>();
+    }
+    mrpt::poses::CPose3DPDFGaussian out_pose_increment;
+    action->getFirstMovementEstimation (out_pose_increment);
+    robotPose -= out_pose_increment;
+
+    msg_odom_.header.frame_id = base_frame_;
+    msg_odom_.header.stamp = msg_laser_.header.stamp;
+    msg_odom_.header.seq = msg_laser_.header.seq;
+    mrpt_bridge::poses::mrpt2ros(robotPose, msg_odom_.pose);
+    pub_odom_.publish(msg_odom_);
+    mrpt_bridge::poses::mrpt2ros(robotPose, transform);
+    tf_broadcaster_.sendTransform(tf::StampedTransform(transform, msg_odom_.header.stamp, base_frame_, odom_frame_));
     return false;
 
 }

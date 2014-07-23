@@ -1,9 +1,32 @@
 #ifndef MRPT_BRIDGE_LASER_SCAN_H
 #define MRPT_BRIDGE_LASER_SCAN_H
 
-#include <sensor_msgs/LaserScan.h>
-#include <geometry_msgs/Pose.h>
-#include <mrpt/slam/CObservation2DRangeScan.h>
+
+
+#include <stdint.h>
+#include <string>
+
+namespace std{
+    template <class T> class allocator;
+}
+
+namespace geometry_msgs{
+    template <class ContainerAllocator> struct Pose_;
+    typedef Pose_<std::allocator<void> > Pose;
+}
+
+namespace sensor_msgs{
+    template <class ContainerAllocator> struct LaserScan_;
+    typedef LaserScan_<std::allocator<void> > LaserScan;
+}
+
+namespace mrpt
+{
+namespace slam
+{
+class CObservation2DRangeScan;
+}
+}
 
 namespace mrpt_bridge {
 

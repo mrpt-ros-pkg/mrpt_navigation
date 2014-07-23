@@ -50,6 +50,7 @@ public:
 protected:
     Parameters *param_; 
     mrpt::utils::CFileGZInputStream rawlog_stream_;
+    mrpt::poses::CPose3DPDFGaussian robotPose;
     size_t entry_;
 
     

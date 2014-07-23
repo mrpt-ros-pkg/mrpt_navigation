@@ -51,7 +51,9 @@ public:
         dynamic_reconfigure::Server<mrpt_rawlog::MotionConfig>::CallbackType reconfigureFnc_;
         void update(const unsigned long &loop_count);
         double rate;
-        std::string base_link;
+        std::string base_frame;
+        std::string odom_frame;
+        std::string tf_prefix;
         int parameter_update_skip;
     };
 
@@ -66,7 +68,11 @@ private: // variables
     ros::NodeHandle n_;
     unsigned long loop_count_;
     sensor_msgs::LaserScan msg_laser_;
+    nav_msgs::Odometry msg_odom_;
     ros::Publisher pub_laser_;
+    ros::Publisher pub_odom_;
+    std::string odom_frame_;
+    std::string base_frame_;
     tf::TransformBroadcaster tf_broadcaster_;
 
 };
