@@ -92,7 +92,7 @@ void PFLocalizationNode::callbackLaser (const sensor_msgs::LaserScan &_msg) {
         mrpt::poses::CPose3D pose = laser_poses_[_msg.header.frame_id];
         ROS_INFO("LASER POSE %4.3f, %4.3f, %4.3f, %4.3f, %4.3f, %4.3f",
                  pose.x(), pose.y(), pose.z(), pose.roll(), pose.pitch(), pose.yaw());
-        mrpt_bridge::laser_scan::ros2mrpt(_msg, laser_poses_[_msg.header.frame_id],  *laser);
+        mrpt_bridge::convert(_msg, laser_poses_[_msg.header.frame_id],  *laser);
         incommingLaserData(laser);
     }
 }
@@ -131,14 +131,14 @@ void PFLocalizationNode::callbackOdometry (const nav_msgs::Odometry &_odom) {
     }
 
     mrpt::poses::CPose2D odoPose;
-    mrpt_bridge::poses::ros2mrpt(_odom.pose.pose, odoPose);
+    mrpt_bridge::convert(_odom.pose.pose, odoPose);
 
     mrpt::slam::CObservationOdometryPtr odometry = mrpt::slam::CObservationOdometry::Create();
     odometry->sensorLabel = "ODOMETRY";
     odometry->hasEncodersInfo = false;
     odometry->hasVelocities = false;
     odometry->odometry = odoPose;
-    mrpt_bridge::time::ros2mrpt(_odom.header.stamp, odometry->timestamp);
+    mrpt_bridge::convert(_odom.header.stamp, odometry->timestamp);
     incommingOdomData(odometry);
 }
 
@@ -147,7 +147,7 @@ void PFLocalizationNode::publishMap (const mrpt::slam::COccupancyGridMap2DPtr mr
     rosOccupancyGrid_.header.frame_id = "map";
     rosOccupancyGrid_.header.seq = process_counter_;
     rosOccupancyGrid_.header.stamp = ros::Time::now();
-    mrpt_bridge::map::instance()->mrpt2ros(*mrptMap, rosOccupancyGrid_);
+    mrpt_bridge::convert(*mrptMap, rosOccupancyGrid_);
     pubMap_.publish(rosOccupancyGrid_ );
 }
 

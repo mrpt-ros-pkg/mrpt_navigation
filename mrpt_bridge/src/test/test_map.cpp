@@ -41,9 +41,9 @@ TEST(Map, basicTestHeader)
 
 
     srcRos.info.origin.orientation.x = 1; // roated maps are not supported
-    EXPECT_FALSE( mrpt_bridge::map::instance()->ros2mrpt(srcRos, desMrpt));
+    EXPECT_FALSE( mrpt_bridge::convert(srcRos, desMrpt));
     srcRos.info.origin.orientation.x = 0; // fix rotation
-    EXPECT_TRUE( mrpt_bridge::map::instance()->ros2mrpt(srcRos, desMrpt));
+    EXPECT_TRUE( mrpt_bridge::convert(srcRos, desMrpt));
 
     EXPECT_EQ(srcRos.info.width, desMrpt.getSizeX());
     EXPECT_EQ(srcRos.info.height, desMrpt.getSizeY());
@@ -65,8 +65,8 @@ TEST(Map, check_ros2mrpt_and_back)
     getEmptyRosMsg(srcRos);
 
 
-    ASSERT_TRUE( mrpt_bridge::map::instance()->ros2mrpt(srcRos, desMrpt));
-    ASSERT_TRUE( mrpt_bridge::map::instance()->mrpt2ros(desMrpt, desRos, desRos.header));
+    ASSERT_TRUE( mrpt_bridge::convert(srcRos, desMrpt));
+    ASSERT_TRUE( mrpt_bridge::convert(desMrpt, desRos, desRos.header));
     for(int h = 0; h < srcRos.info.width; h++) {
         for(int w = 0; w < srcRos.info.width; w++) {
           EXPECT_EQ(desRos.data[h*srcRos.info.width+h], 50); // all -1 entreis should map to 50
@@ -76,8 +76,8 @@ TEST(Map, check_ros2mrpt_and_back)
     for(int i = 0; i <= 100; i++){
       srcRos.data[i] = i;
     }
-    EXPECT_TRUE( mrpt_bridge::map::instance()->ros2mrpt(srcRos, desMrpt));
-    EXPECT_TRUE( mrpt_bridge::map::instance()->mrpt2ros(desMrpt, desRos, desRos.header));
+    EXPECT_TRUE( mrpt_bridge::convert(srcRos, desMrpt));
+    EXPECT_TRUE( mrpt_bridge::convert(desMrpt, desRos, desRos.header));
     for(int i = 0; i <= 100; i++){
           //printf("%4i, %4.3f = %4.3f,%4i\n", srcRos.data[i], 1-((float)i)/100.0, desMrpt.getCell(i,0), desRos.data[i]);
           EXPECT_NEAR(1-((float)i)/100.0, desMrpt.getCell(i,0), 0.03) << "ros to mprt";  

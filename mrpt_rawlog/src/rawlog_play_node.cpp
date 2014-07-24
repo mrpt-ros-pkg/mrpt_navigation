@@ -88,9 +88,9 @@ bool RawlogPlayNode::nextEntry() {
     for(size_t i = 0;i < observations->size() ;i++){
         mrpt::slam::CObservation2DRangeScanPtr laser = observations->getObservationByClass<mrpt::slam::CObservation2DRangeScan>(i);
         if(laser.pointer() == NULL) break;
-        mrpt_bridge::laser_scan::mrpt2ros(*laser, msg_laser_, msg_pose_laser);
+        mrpt_bridge::convert(*laser, msg_laser_, msg_pose_laser);
         laser->getSensorPose(pose_laser);
-        mrpt_bridge::poses::mrpt2ros(pose_laser, transform);
+        mrpt_bridge::convert(pose_laser, transform);
         std::string childframe = tf::resolve(param()->tf_prefix, msg_laser_.header.frame_id);
         tf_broadcaster_.sendTransform(tf::StampedTransform(transform, msg_laser_.header.stamp, base_frame_, childframe));
         pub_laser_.publish(msg_laser_);
@@ -103,9 +103,9 @@ bool RawlogPlayNode::nextEntry() {
     msg_odom_.header.frame_id = base_frame_;
     msg_odom_.header.stamp = msg_laser_.header.stamp;
     msg_odom_.header.seq = msg_laser_.header.seq;
-    mrpt_bridge::poses::mrpt2ros(robotPose, msg_odom_.pose);
+    mrpt_bridge::convert(robotPose, msg_odom_.pose);
     pub_odom_.publish(msg_odom_);
-    mrpt_bridge::poses::mrpt2ros(robotPose, transform);
+    mrpt_bridge::convert(robotPose, transform);
     tf_broadcaster_.sendTransform(tf::StampedTransform(transform, msg_odom_.header.stamp, base_frame_, odom_frame_));
     return false;
 

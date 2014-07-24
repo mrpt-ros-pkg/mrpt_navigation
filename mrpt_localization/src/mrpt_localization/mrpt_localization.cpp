@@ -150,7 +150,7 @@ void PFLocalization::init() {
 
     configureFilter(iniFile);
     // Metric map options:
-    mrpt_bridge::map::loadMap(metric_map_, iniFile, MAP_FILE, "metricMap", param_->debug);
+    mrpt_bridge::MapHdl::loadMap(metric_map_, iniFile, MAP_FILE, "metricMap", param_->debug);
 
     // Load the Ground Truth:
     groundTruth_ = CMatrixDouble(0,0);

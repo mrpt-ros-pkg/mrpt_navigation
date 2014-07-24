@@ -41,7 +41,7 @@ TEST(PoseConversions, copyMatrix3x3ToCMatrixDouble33)
 {
     tf::Matrix3x3 src(0, 1, 2, 3, 4, 5, 6, 7, 8);
     mrpt::math::CMatrixDouble33 des;
-    mrpt_bridge::poses::ros2mrpt(src, des);
+    mrpt_bridge::convert(src, des);
     for(int r = 0; r < 3; r++)
         for(int c = 0; c < 3; c++)
             EXPECT_FLOAT_EQ(des(r,c), src[r][c]);
@@ -51,7 +51,7 @@ TEST(PoseConversions, copyCMatrixDouble33ToMatrix3x3)
     mrpt::math::CMatrixDouble33 src;
     src << 0, 1, 2, 3, 4, 5, 6, 7, 8;
     tf::Matrix3x3 des;
-    mrpt_bridge::poses::mrpt2ros(src, des);
+    mrpt_bridge::convert(src, des);
     for(int r = 0; r < 3; r++)
         for(int c = 0; c < 3; c++)
             EXPECT_FLOAT_EQ(des[r][c],src(r,c));
@@ -80,7 +80,7 @@ TEST(PoseConversions, reference_frame_change_with_rotations)
 
   //to mrpt
   mrpt::poses::CPose3DPDFGaussian mrpt_original_pose;
-  mrpt_bridge::poses::ros2mrpt(ros_msg_original_pose, mrpt_original_pose);
+  mrpt_bridge::convert(ros_msg_original_pose, mrpt_original_pose);
   EXPECT_EQ(ros_msg_original_pose.pose.position.x, mrpt_original_pose.mean[0]);
 
   //to tf
@@ -103,7 +103,7 @@ TEST(PoseConversions, reference_frame_change_with_rotations)
   EXPECT_NEAR(tf_result.getOrigin()[1], 1.0, 0.01);
 
   geometry_msgs::Pose mrpt_ros_result;
-  mrpt_bridge::poses::mrpt2ros(mrpt_result, mrpt_ros_result);
+  mrpt_bridge::convert(mrpt_result, mrpt_ros_result);
 
   EXPECT_NEAR(mrpt_ros_result.position.x, tf_result.getOrigin()[0], 0.01);
   EXPECT_NEAR(mrpt_ros_result.position.y, tf_result.getOrigin()[1], 0.01);
@@ -116,7 +116,7 @@ void check_CPose3D_tofrom_ROS(double x,double y, double z, double yaw, double pi
 
 	// Convert MRPT->ROS
 	geometry_msgs::Pose ros_p3D;
-	mrpt_bridge::poses::mrpt2ros(p3D, ros_p3D);
+    mrpt_bridge::convert(p3D, ros_p3D);
 
 	// Compare ROS quat vs. MRPT quat:
 	mrpt::math::CQuaternionDouble q;
@@ -133,7 +133,7 @@ void check_CPose3D_tofrom_ROS(double x,double y, double z, double yaw, double pi
 
 	// Test the other path: ROS->MRPT
 	mrpt::poses::CPose3D p_bis;
-	mrpt_bridge::poses::ros2mrpt(ros_p3D, p_bis);
+    mrpt_bridge::convert(ros_p3D, p_bis);
 
 	// p_bis==p3D?
 	EXPECT_NEAR( (p_bis.getAsVectorVal() - p3D.getAsVectorVal()).array().abs().maxCoeff(),0, 1e-4 )
@@ -161,12 +161,12 @@ TEST(PoseConversions, check_CPose2D_to_ROS)
 
 	// Convert MRPT->ROS
 	geometry_msgs::Pose ros_p2D;
-	mrpt_bridge::poses::mrpt2ros(p2D, ros_p2D);
+    mrpt_bridge::convert(p2D, ros_p2D);
 
 	// Compare vs. 3D pose:
 	const mrpt::poses::CPose3D p3D = mrpt::poses::CPose3D(p2D);
 	mrpt::poses::CPose3D p3D_ros;
-	mrpt_bridge::poses::ros2mrpt(ros_p2D, p3D_ros);
+    mrpt_bridge::convert(ros_p2D, p3D_ros);
 
 	// p3D_ros should equal p3D
 	EXPECT_NEAR( (p3D_ros.getAsVectorVal() - p3D.getAsVectorVal()).array().abs().maxCoeff(),0, 1e-4 )

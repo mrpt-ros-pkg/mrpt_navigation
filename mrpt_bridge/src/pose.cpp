@@ -21,7 +21,7 @@
 #include <tf/tf.h>
 #include "mrpt_bridge/pose.h"
 
-mrpt::math::CMatrixDouble33 &mrpt_bridge::poses::ros2mrpt( const tf::Matrix3x3& _src, mrpt::math::CMatrixDouble33& _des){
+mrpt::math::CMatrixDouble33 &mrpt_bridge::convert( const tf::Matrix3x3& _src, mrpt::math::CMatrixDouble33& _des){
     MRPT_TODO("MRPT this can be done faster with memcopy, but one has to check the obj structure!");
     for(int r = 0; r < 3; r++)
         for(int c = 0; c < 3; c++)
@@ -29,7 +29,7 @@ mrpt::math::CMatrixDouble33 &mrpt_bridge::poses::ros2mrpt( const tf::Matrix3x3& 
     return _des;
 }
 
-tf::Matrix3x3 &mrpt_bridge::poses::mrpt2ros( const mrpt::math::CMatrixDouble33& _src, tf::Matrix3x3& _des){
+tf::Matrix3x3 &mrpt_bridge::convert( const mrpt::math::CMatrixDouble33& _src, tf::Matrix3x3& _des){
     MRPT_TODO("MRPT this can be done faster with memcopy, but one has to check the obj structure!");
     for(int r = 0; r < 3; r++)
         for(int c = 0; c < 3; c++)
@@ -37,13 +37,13 @@ tf::Matrix3x3 &mrpt_bridge::poses::mrpt2ros( const mrpt::math::CMatrixDouble33& 
     return _des;
 }
 
-tf::Transform& mrpt_bridge::poses::mrpt2ros( const mrpt::poses::CPose3DPDFGaussian& _src, tf::Transform& _des){
-    return mrpt2ros(_src.mean, _des);
+tf::Transform& mrpt_bridge::convert( const mrpt::poses::CPose3DPDFGaussian& _src, tf::Transform& _des){
+    return convert(_src.mean, _des);
 }
 
-geometry_msgs::PoseWithCovariance& mrpt_bridge::poses::mrpt2ros(const mrpt::poses::CPose3DPDFGaussian& _src, geometry_msgs::PoseWithCovariance& _des)
+geometry_msgs::PoseWithCovariance& mrpt_bridge::convert(const mrpt::poses::CPose3DPDFGaussian& _src, geometry_msgs::PoseWithCovariance& _des)
 {
-  mrpt2ros(_src.mean, _des.pose);
+  convert(_src.mean, _des.pose);
 
   // Read REP103: http://ros.org/reps/rep-0103.html#covariance-representation
   // # Row-major representation of the 6x6 covariance matrix
@@ -61,17 +61,17 @@ geometry_msgs::PoseWithCovariance& mrpt_bridge::poses::mrpt2ros(const mrpt::pose
   return _des;
 }
 
-tf::Transform &mrpt_bridge::poses::mrpt2ros(const mrpt::poses::CPose3D& _src, tf::Transform &_des){
+tf::Transform &mrpt_bridge::convert(const mrpt::poses::CPose3D& _src, tf::Transform &_des){
     tf::Vector3 origin(_src[0], _src[1], _src[2]);
     mrpt::math::CMatrixDouble33 R;
     _src.getRotationMatrix(R);
     tf::Matrix3x3 basis;
-    _des.setBasis(mrpt2ros(R,basis));
+    _des.setBasis(convert(R,basis));
     _des.setOrigin(origin);
     return _des;
 }
 
-geometry_msgs::Pose &mrpt_bridge::poses::mrpt2ros(const mrpt::poses::CPose3D& _src, geometry_msgs::Pose& _des)
+geometry_msgs::Pose &mrpt_bridge::convert(const mrpt::poses::CPose3D& _src, geometry_msgs::Pose& _des)
 {
   _des.position.x = _src[0];
   _des.position.y = _src[1];
@@ -88,7 +88,7 @@ geometry_msgs::Pose &mrpt_bridge::poses::mrpt2ros(const mrpt::poses::CPose3D& _s
 }
 
 /** Convert: MRPT's CPose2D (x,y,yaw) -> ROS's Pose */
-geometry_msgs::Pose& mrpt_bridge::poses::mrpt2ros(const mrpt::poses::CPose2D& _src, geometry_msgs::Pose& _des)
+geometry_msgs::Pose& mrpt_bridge::convert(const mrpt::poses::CPose2D& _src, geometry_msgs::Pose& _des)
 {
   _des.position.x = _src.x();
   _des.position.y = _src.y();
@@ -114,14 +114,14 @@ geometry_msgs::Pose& mrpt_bridge::poses::mrpt2ros(const mrpt::poses::CPose2D& _s
   return _des;
 }
 
-mrpt::poses::CPose2D& mrpt_bridge::poses::ros2mrpt(const geometry_msgs::Pose& _src, mrpt::poses::CPose2D& _des)
+mrpt::poses::CPose2D& mrpt_bridge::convert(const geometry_msgs::Pose& _src, mrpt::poses::CPose2D& _des)
 {
   _des.x(_src.position.x);
   _des.y(_src.position.y);
 
   MRPT_TODO("Optimize this?");
   mrpt::math::CQuaternionDouble quat;
-  ros2mrpt(_src.orientation, quat);
+  convert(_src.orientation, quat);
 
   double roll, pitch, yaw;
   quat.rpy(roll, pitch, yaw);
@@ -130,9 +130,9 @@ mrpt::poses::CPose2D& mrpt_bridge::poses::ros2mrpt(const geometry_msgs::Pose& _s
   return _des;
 }
 
-geometry_msgs::PoseWithCovariance& mrpt_bridge::poses::mrpt2ros(const mrpt::poses::CPosePDFGaussian& _src, geometry_msgs::PoseWithCovariance& _des)
+geometry_msgs::PoseWithCovariance& mrpt_bridge::convert(const mrpt::poses::CPosePDFGaussian& _src, geometry_msgs::PoseWithCovariance& _des)
 {
-  mrpt2ros(_src.mean, _des.pose);
+  convert(_src.mean, _des.pose);
 
   // Read REP103: http://ros.org/reps/rep-0103.html#covariance-representation
   MRPT_TODO("MRPT uses non-fixed axis for 6x6 covariance: should use a transform Jacobian here!")
@@ -156,9 +156,9 @@ geometry_msgs::PoseWithCovariance& mrpt_bridge::poses::mrpt2ros(const mrpt::pose
   return _des;
 }
 
-mrpt::poses::CPose3DPDFGaussian& mrpt_bridge::poses::ros2mrpt(const geometry_msgs::PoseWithCovariance& _src, mrpt::poses::CPose3DPDFGaussian& _des)
+mrpt::poses::CPose3DPDFGaussian& mrpt_bridge::convert(const geometry_msgs::PoseWithCovariance& _src, mrpt::poses::CPose3DPDFGaussian& _des)
 {
-  ros2mrpt(_src.pose, _des.mean);
+  convert(_src.pose, _des.mean);
 
   const unsigned int indxs_map[6] = {0, 1, 2, 5, 4, 3};
 
@@ -168,7 +168,7 @@ mrpt::poses::CPose3DPDFGaussian& mrpt_bridge::poses::ros2mrpt(const geometry_msg
   return _des;
 }
 
-mrpt::poses::CQuaternionDouble&  mrpt_bridge::poses::ros2mrpt(const geometry_msgs::Quaternion& _src, mrpt::poses::CQuaternionDouble& _des)
+mrpt::poses::CQuaternionDouble&  mrpt_bridge::convert(const geometry_msgs::Quaternion& _src, mrpt::poses::CQuaternionDouble& _des)
 {
   _des.x(_src.x);
   _des.y(_src.y);
@@ -177,7 +177,7 @@ mrpt::poses::CQuaternionDouble&  mrpt_bridge::poses::ros2mrpt(const geometry_msg
   return _des;
 }
 
-geometry_msgs::Quaternion& mrpt_bridge::poses::mrpt2ros(const mrpt::poses::CQuaternionDouble& _src, geometry_msgs::Quaternion& _des)
+geometry_msgs::Quaternion& mrpt_bridge::convert(const mrpt::poses::CQuaternionDouble& _src, geometry_msgs::Quaternion& _des)
 {
   _des.x=_src.x();
   _des.y=_src.y();
@@ -186,7 +186,7 @@ geometry_msgs::Quaternion& mrpt_bridge::poses::mrpt2ros(const mrpt::poses::CQuat
   return _des;
 }
 
-mrpt::poses::CPose3D& mrpt_bridge::poses::ros2mrpt(const geometry_msgs::Pose& _src, mrpt::poses::CPose3D& _des)
+mrpt::poses::CPose3D& mrpt_bridge::convert(const geometry_msgs::Pose& _src, mrpt::poses::CPose3D& _des)
 {
   const mrpt::math::CQuaternionDouble q(_src.orientation.w, _src.orientation.x, _src.orientation.y, _src.orientation.z);
     _des= mrpt::math::CPose3D(q,_src.position.x,_src.position.y,_src.position.z);

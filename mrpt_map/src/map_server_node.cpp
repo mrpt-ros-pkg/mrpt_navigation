@@ -70,8 +70,8 @@ void MapServer::init() {
     mrpt::utils::CConfigFile config_file;
     config_file.setFileName(ini_file);
     metric_map_ = boost::shared_ptr<mrpt::slam::CMultiMetricMap>(new  mrpt::slam::CMultiMetricMap);
-    mrpt_bridge::map::loadMap(*metric_map_, config_file, map_file, "metricMap", debug_);
-    mrpt_bridge::map::instance()->mrpt2ros(*metric_map_->m_gridMaps[0], resp_.map);
+    mrpt_bridge::MapHdl::loadMap(*metric_map_, config_file, map_file, "metricMap", debug_);
+    mrpt_bridge::convert(*metric_map_->m_gridMaps[0], resp_.map);
 }
 
 bool MapServer::mapCallback(nav_msgs::GetMap::Request  &req, nav_msgs::GetMap::Response &res )

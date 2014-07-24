@@ -40,7 +40,7 @@ TEST(PointCloud2, basicTest)
 
   mrpt::slam::CSimplePointsMap mrpt_pc;
   //printf("step 3\n");
-  mrpt_bridge::PointCloud2::ros2mrpt(point_cloud2_msg, mrpt_pc);
+  mrpt_bridge::copy(point_cloud2_msg, mrpt_pc);
 
   i_f = 0;
   for (int i = 0; i < num_points; i++)

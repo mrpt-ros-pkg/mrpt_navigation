@@ -14,34 +14,34 @@
 
 namespace mrpt_bridge
 {
-map* map::instance_ = NULL;
+MapHdl* MapHdl::instance_ = NULL;
 
-map::map ()
+MapHdl::MapHdl ()
 {
     /// ceation of the lookup table and pointers
     mrpt::slam::CLogOddsGridMapLUT<mrpt::slam::COccupancyGridMap2D::cellType> table;
 #ifdef  OCCUPANCY_GRIDMAP_CELL_SIZE_8BITS
-    lut_mrpt2rosPtr = lut_mrpt2ros + INT8_MAX + 1; // center the pointer
+    lut_cellmrpt2rosPtr = lut_cellmrpt2ros + INT8_MAX + 1; // center the pointer
     for ( int i = INT8_MIN; i < INT8_MAX; i++ ) {
 #else
-    lut_mrpt2rosPtr = lut_mrpt2ros + INT16_MAX + 1; // center the pointer
+    lut_cellmrpt2rosPtr = lut_cellmrpt2ros + INT16_MAX + 1; // center the pointer
     for ( int i = INT16_MIN; INT16_MIN < INT16_MAX; i++ ) {
 #endif
         float v = 1.0-table.l2p ( i );
         int idx = v * 100.;
-        lut_mrpt2rosPtr[i] = idx;
+        lut_cellmrpt2rosPtr[i] = idx;
         //printf("%4i, %4.3f, %4i\n", i, v, idx);
     }
 }
-map::~map () { }
+MapHdl::~MapHdl () { }
 
-map* map::instance ()
+MapHdl* MapHdl::instance ()
 {
-    if ( instance_ == NULL ) instance_ = new map ();
+    if ( instance_ == NULL ) instance_ = new MapHdl ();
     return instance_;
 }
 
-bool map::ros2mrpt ( const nav_msgs::OccupancyGrid  &src, mrpt::slam::COccupancyGridMap2D  &des )
+bool convert ( const nav_msgs::OccupancyGrid  &src, mrpt::slam::COccupancyGridMap2D  &des )
 {
     if((src.info.origin.orientation.x != 0) ||
             (src.info.origin.orientation.y != 0) ||
@@ -78,17 +78,17 @@ bool map::ros2mrpt ( const nav_msgs::OccupancyGrid  &src, mrpt::slam::COccupancy
     }
     return true;
 }
-bool map::mrpt2ros (
+bool convert (
     const mrpt::slam::COccupancyGridMap2D &src,
     nav_msgs::OccupancyGrid &des,
     const std_msgs::Header &header
 )
 {
     des.header = header;
-    return mrpt2ros(src, des);
+    return convert(src, des);
 }
 
-bool map::mrpt2ros (
+bool convert (
     const mrpt::slam::COccupancyGridMap2D &src,
     nav_msgs::OccupancyGrid &des
 )
@@ -113,13 +113,13 @@ bool map::mrpt2ros (
         const mrpt::slam::COccupancyGridMap2D::cellType *pSrc = src.getRow (h);
         int8_t *pDes = &des.data[h * des.info.width];
         for ( int w = 0; w < des.info.width; w++ ) {
-            *pDes++ = lut_mrpt2rosPtr[*pSrc++];
+            *pDes++ = MapHdl::instance()->cellMrpt2Ros(*pSrc++);
         }
     }
     return true;
 }
 
-const bool map::loadMap(mrpt::slam::CMultiMetricMap &_metric_map, const mrpt::utils::CConfigFile &_config_file, const std::string &_map_file, const std::string &_section_name, bool _debug) {
+const bool MapHdl::loadMap(mrpt::slam::CMultiMetricMap &_metric_map, const mrpt::utils::CConfigFile &_config_file, const std::string &_map_file, const std::string &_section_name, bool _debug) {
 
     mrpt::slam::TSetOfMetricMapInitializers mapInitializers;
     mapInitializers.loadFromConfigFile( _config_file, _section_name);
@@ -173,4 +173,6 @@ const bool map::loadMap(mrpt::slam::CMultiMetricMap &_metric_map, const mrpt::ut
     }
     return true;
 }
+
+
 } // end namespace

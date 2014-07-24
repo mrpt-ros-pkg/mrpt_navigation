@@ -46,7 +46,7 @@ inline void get_float_from_field(const sensor_msgs::PointField* field, const uns
  *
  * \return true on sucessful conversion, false on any error.
  */
-bool PointCloud2::ros2mrpt(const sensor_msgs::PointCloud2 &msg, mrpt::slam::CSimplePointsMap &obj)
+bool copy(const sensor_msgs::PointCloud2 &msg, mrpt::slam::CSimplePointsMap &obj)
 {
   // Copy point data
   unsigned int num_points = msg.width * msg.height;
@@ -91,7 +91,7 @@ bool PointCloud2::ros2mrpt(const sensor_msgs::PointCloud2 &msg, mrpt::slam::CSim
  *  Since CSimplePointsMap only contains (x,y,z) data, sensor_msgs::PointCloud2::channels will be empty.
  * \return true on sucessful conversion, false on any error.
  */
-bool PointCloud2::mrpt2ros(const mrpt::slam::CSimplePointsMap &obj, const std_msgs::Header &msg_header,
+bool copy(const mrpt::slam::CSimplePointsMap &obj, const std_msgs::Header &msg_header,
                            sensor_msgs::PointCloud2 &msg)
 {
   MRPT_TODO("Implement pointcloud2 mrpt2ros");

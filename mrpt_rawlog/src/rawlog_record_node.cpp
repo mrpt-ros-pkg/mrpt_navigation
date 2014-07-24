@@ -85,7 +85,7 @@ void RawlogRecordNode::callbackLaser (const sensor_msgs::LaserScan &_msg) {
         mrpt::poses::CPose3D pose = laser_poses_[_msg.header.frame_id];  
         ROS_INFO("LASER POSE %4.3f, %4.3f, %4.3f, %4.3f, %4.3f, %4.3f",
                  pose.x(), pose.y(), pose.z(), pose.roll(), pose.pitch(), pose.yaw());
-        mrpt_bridge::laser_scan::ros2mrpt(_msg, laser_poses_[_msg.header.frame_id],  *laser);
+        mrpt_bridge::convert(_msg, laser_poses_[_msg.header.frame_id],  *laser);
         incommingLaserData(laser);
     }
 }
@@ -125,13 +125,13 @@ void RawlogRecordNode::callbackOdometry (const nav_msgs::Odometry &_odom) {
     }
     
     mrpt::poses::CPose2D odoPose;
-    mrpt_bridge::poses::ros2mrpt(_odom.pose.pose, odoPose);
+    mrpt_bridge::convert(_odom.pose.pose, odoPose);
     
     mrpt::slam::CObservationOdometryPtr odometry = mrpt::slam::CObservationOdometry::Create();
-    odometry->sensorLabel = "ODOMETRY";
+    odometry->sensorLabel = "odom";
     odometry->hasEncodersInfo = false;
     odometry->hasVelocities = false;
     odometry->odometry = odoPose;
-    mrpt_bridge::time::ros2mrpt(_odom.header.stamp, odometry->timestamp);
+    mrpt_bridge::convert(_odom.header.stamp, odometry->timestamp);
     incommingOdomData(odometry);
 }

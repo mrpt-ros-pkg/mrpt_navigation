@@ -37,58 +37,36 @@ namespace mrpt_bridge
 /** Methods to convert between ROS msgs and MRPT objects for map datatypes.
  * @brief the map class is implemented as singeleton use map::instance ()->ros2mrpt ...
   */
-class map
+class MapHdl
 {
 private:
-    static map* instance_; // singeleton instance
+    static MapHdl* instance_; // singeleton instance
 #ifdef  OCCUPANCY_GRIDMAP_CELL_SIZE_8BITS
-    int8_t lut_mrpt2ros[0xFF]; // lookup table for entry convertion
-    int8_t *lut_mrpt2rosPtr;   // pointer to the center of the lookup table neede to work with neg. indexes
+    int8_t lut_cellmrpt2ros[0xFF]; // lookup table for entry convertion
+    int8_t *lut_cellmrpt2rosPtr;   // pointer to the center of the lookup table neede to work with neg. indexes
 #else
-    int16_t lut_mrpt2ros[0xFFFF]; // lookup table for entry convertion
-    int16_t *lut_mrpt2rosPtr; // pointer to the center of the lookup table neede to work with neg. indexes
+    int16_t lut_cellmrpt2ros[0xFFFF]; // lookup table for entry convertion
+    int16_t *lut_cellmrpt2rosPtr; // pointer to the center of the lookup table neede to work with neg. indexes
 #endif
-    map ( );
-    map ( const map& );
-    ~map ();
+    MapHdl ( );
+    MapHdl ( const MapHdl& );
+    ~MapHdl ();
 public:
     /**
       * @return returns singeleton instance
       * @brief it creates a instance with some look up table to speed up the conversions
       */
-    static map* instance ();
-    
-    /**
-      * converts ros msg to mrpt object
-      * @return true on sucessful conversion, false on any error.
-      * @param src
-      * @param des
-      */
-    bool ros2mrpt ( const nav_msgs::OccupancyGrid  &src, mrpt::slam::COccupancyGridMap2D  &des );
+    static MapHdl* instance ();
 
-    /**
-      * converts mrpt object to ros msg and updates the msg header
-      * @return true on sucessful conversion, false on any error.
-      * @param src
-      * @param des
-      * @param header
-      */
-    bool mrpt2ros (
-        const mrpt::slam::COccupancyGridMap2D &src,
-        nav_msgs::OccupancyGrid &msg,
-        const std_msgs::Header &header);
-    /**
-      * converts mrpt object to ros msg
-      * @return true on sucessful conversion, false on any error.
-      * @param src
-      * @param des
-      * @param header
-      */
-    bool mrpt2ros (
-        const mrpt::slam::COccupancyGridMap2D &src,
-        nav_msgs::OccupancyGrid &msg);
-
-
+#ifdef  OCCUPANCY_GRIDMAP_CELL_SIZE_8BITS
+    const int8_t cellMrpt2Ros(int i){
+        return lut_cellmrpt2rosPtr[i];
+    }
+#else
+    const int16_t cellMrpt2Ros(int i){
+        return lut_cellmrpt2rosPtr[i];
+    }
+#endif
     /**
       * loads a mprt map
       * @return true on sucess.
@@ -99,7 +77,39 @@ public:
       * @param _debug default: false
       */
     static const bool loadMap(mrpt::slam::CMultiMetricMap &_metric_map, const mrpt::utils::CConfigFile &_config_file, const std::string &_map_file="map.simplemap", const std::string &_section_name="metricMap", bool _debug = false);
+
 };
+
+/**
+  * converts ros msg to mrpt object
+  * @return true on sucessful conversion, false on any error.
+  * @param src
+  * @param des
+  */
+bool convert ( const nav_msgs::OccupancyGrid  &src, mrpt::slam::COccupancyGridMap2D  &des );
+
+/**
+  * converts mrpt object to ros msg and updates the msg header
+  * @return true on sucessful conversion, false on any error.
+  * @param src
+  * @param des
+  * @param header
+  */
+bool convert (
+    const mrpt::slam::COccupancyGridMap2D &src,
+    nav_msgs::OccupancyGrid &msg,
+    const std_msgs::Header &header);
+/**
+  * converts mrpt object to ros msg
+  * @return true on sucessful conversion, false on any error.
+  * @param src
+  * @param des
+  * @param header
+  */
+bool convert (
+    const mrpt::slam::COccupancyGridMap2D &src,
+    nav_msgs::OccupancyGrid &msg);
+
 
 
 }; //namespace mrpt_bridge

@@ -8,10 +8,10 @@
 
 namespace mrpt_bridge {
 
-bool laser_scan::ros2mrpt(const sensor_msgs::LaserScan &_msg, const mrpt::poses::CPose3D &_pose, mrpt::slam::CObservation2DRangeScan  &_obj
+bool convert(const sensor_msgs::LaserScan &_msg, const mrpt::poses::CPose3D &_pose, mrpt::slam::CObservation2DRangeScan  &_obj
                          )
 {
-    mrpt_bridge::time::ros2mrpt(_msg.header.stamp, _obj.timestamp);
+    mrpt_bridge::convert(_msg.header.stamp, _obj.timestamp);
     _obj.rightToLeft = true;
     _obj.sensorLabel = _msg.header.frame_id;
     _obj.aperture = _msg.angle_max - _msg.angle_min;
@@ -31,7 +31,7 @@ bool laser_scan::ros2mrpt(const sensor_msgs::LaserScan &_msg, const mrpt::poses:
     return true;
 }
 
-bool laser_scan::mrpt2ros(const mrpt::slam::CObservation2DRangeScan  &_obj, sensor_msgs::LaserScan &_msg) {
+bool convert(const mrpt::slam::CObservation2DRangeScan  &_obj, sensor_msgs::LaserScan &_msg) {
     const size_t nRays = _obj.scan.size();
     if (!nRays) return false;
 
@@ -53,16 +53,16 @@ bool laser_scan::mrpt2ros(const mrpt::slam::CObservation2DRangeScan  &_obj, sens
         _msg.ranges[i] = _obj.scan[i];
 
     // Set header data:
-    mrpt_bridge::time::mrpt2ros(_obj.timestamp, _msg.header.stamp);
+    mrpt_bridge::convert(_obj.timestamp, _msg.header.stamp);
     _msg.header.frame_id = _obj.sensorLabel;
 
     return true;
 }
 
-bool laser_scan::mrpt2ros(const mrpt::slam::CObservation2DRangeScan  &_obj, sensor_msgs::LaserScan &_msg, geometry_msgs::Pose &_pose) {
-    laser_scan::mrpt2ros(_obj, _msg);
+bool convert(const mrpt::slam::CObservation2DRangeScan  &_obj, sensor_msgs::LaserScan &_msg, geometry_msgs::Pose &_pose) {
+    convert(_obj, _msg);
     mrpt::poses::CPose3D pose;
     _obj.getSensorPose(pose);
-    poses::mrpt2ros(pose,_pose);
+    convert(pose,_pose);
 }
 } // end namespace
