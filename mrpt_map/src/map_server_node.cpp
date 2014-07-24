@@ -71,14 +71,27 @@ void MapServer::init() {
     config_file.setFileName(ini_file);
     metric_map_ = boost::shared_ptr<mrpt::slam::CMultiMetricMap>(new  mrpt::slam::CMultiMetricMap);
     mrpt_bridge::MapHdl::loadMap(*metric_map_, config_file, map_file, "metricMap", debug_);
+    const mrpt::slam::COccupancyGridMap2D &grid = *metric_map_->m_gridMaps[0];
+    if(debug_) printf("gridMap[0]:  %i x %i @ %4.3fm/p, %4.3f, %4.3f, %4.3f, %4.3f\n",
+                      grid.getSizeX(), grid.getSizeY(), grid.getResolution(),
+                      grid.getXMin(), grid.getYMin(),
+                      grid.getXMax(), grid.getYMax());
+
     mrpt_bridge::convert(*metric_map_->m_gridMaps[0], resp_.map);
+    if(debug_) printf("msg:         %i x %i @ %4.3fm/p, %4.3f, %4.3f, %4.3f, %4.3f\n",
+                      resp_.map.info.width, resp_.map.info.height, resp_.map.info.resolution,
+                      resp_.map.info.origin.position.x, resp_.map.info.origin.position.y,
+                      resp_.map.info.width*resp_.map.info.resolution+resp_.map.info.origin.position.x,
+                      resp_.map.info.height*resp_.map.info.resolution+resp_.map.info.origin.position.y);
 }
 
 bool MapServer::mapCallback(nav_msgs::GetMap::Request  &req, nav_msgs::GetMap::Response &res )
 {
+  ROS_INFO("mapCallback: service requested!\n");
   res = resp_;
   return true;
 }
+
 void MapServer::publishMap () {
     resp_.map.header.stamp = ros::Time::now();
     resp_.map.header.seq = loop_count_;

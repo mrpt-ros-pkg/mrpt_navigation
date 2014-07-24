@@ -45,9 +45,11 @@ private:
     int8_t lut_cellmrpt2ros[0xFF]; // lookup table for entry convertion
     int8_t *lut_cellmrpt2rosPtr;   // pointer to the center of the lookup table neede to work with neg. indexes
 #else
-    int16_t lut_cellmrpt2ros[0xFFFF]; // lookup table for entry convertion
-    int16_t *lut_cellmrpt2rosPtr; // pointer to the center of the lookup table neede to work with neg. indexes
+    int8_t lut_cellmrpt2ros[0xFFFF]; // lookup table for entry convertion
+    int8_t *lut_cellmrpt2rosPtr; // pointer to the center of the lookup table neede to work with neg. indexes
 #endif
+    int8_t lut_cellros2mrpt[0xFF]; // lookup table for entry convertion
+    int8_t *lut_cellros2mrptPtr;   // pointer to the center of the lookup table neede to work with neg. indexes
     MapHdl ( );
     MapHdl ( const MapHdl& );
     ~MapHdl ();
@@ -67,6 +69,9 @@ public:
         return lut_cellmrpt2rosPtr[i];
     }
 #endif
+    const int8_t cellRos2Mrpt(int i){
+        return lut_cellros2mrptPtr[i];
+    }
     /**
       * loads a mprt map
       * @return true on sucess.

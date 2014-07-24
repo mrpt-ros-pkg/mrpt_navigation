@@ -103,16 +103,18 @@ void PFLocalization::init() {
         param_->rawlogFile = iniFile.read_string(iniSectionName,"rawlog_file","", /*Fail if not found*/true );
     }
 
-    string      MAP_FILE;
-    if (param_->mapFile.empty())
-        MAP_FILE = iniFile.read_string(iniSectionName,"map_file","" );
-    else MAP_FILE = param_->mapFile;
+    if (param_->mapFile.empty()){
+        param_->mapFile = iniFile.read_string(iniSectionName,"map_file","" );
+    }
+
+    if (param_->gtFile.empty()){
+        param_->gtFile = iniFile.read_string(iniSectionName,"ground_truth_path_file","");
+    }
 
     // Non-mandatory entries:
     rawlog_offset_       = iniFile.read_int(iniSectionName,"rawlog_offset",0);
-    string      GT_FILE             = iniFile.read_string(iniSectionName,"ground_truth_path_file","");
     SCENE3D_FREQ_        = iniFile.read_int(iniSectionName,"3DSceneFrequency",10);
-    SCENE3D_FOLLOW_ = iniFile.read_bool(iniSectionName,"3DSceneFollowRobot",true);
+    SCENE3D_FOLLOW_      = iniFile.read_bool(iniSectionName,"3DSceneFollowRobot",true);
     testConvergenceAt_   = iniFile.read_int(iniSectionName,"experimentTestConvergenceAtStep",-1);
 
     SAVE_STATS_ONLY_ = iniFile.read_bool(iniSectionName,"SAVE_STATS_ONLY",false);
@@ -137,8 +139,8 @@ void PFLocalization::init() {
 
     cout<< "-------------------------------------------------------------\n"
         << "\t RAWLOG_FILE = \t "   << param_->rawlogFile << endl
-        << "\t MAP_FILE = \t "      << MAP_FILE << endl
-        << "\t GT_FILE = \t "       << GT_FILE << endl
+        << "\t MAP_FILE = \t "      << param_->mapFile << endl
+        << "\t GT_FILE = \t "       << param_->gtFile << endl
         << "\t OUT_DIR_PREFIX = \t "<< OUT_DIR_PREFIX_ << endl
         << "\t #particles = \t "    << particles_count << endl
         << "-------------------------------------------------------------\n";
@@ -150,14 +152,17 @@ void PFLocalization::init() {
 
     configureFilter(iniFile);
     // Metric map options:
-    mrpt_bridge::MapHdl::loadMap(metric_map_, iniFile, MAP_FILE, "metricMap", param_->debug);
+
+    if(!mrpt_bridge::MapHdl::loadMap(metric_map_, iniFile, param_->mapFile, "metricMap", param_->debug)){
+        waitForMap();
+    }
 
     // Load the Ground Truth:
     groundTruth_ = CMatrixDouble(0,0);
-    if ( fileExists( GT_FILE ) )
+    if ( fileExists( param_->gtFile ) )
     {
         printf("Loading ground truth file...");
-        groundTruth_.loadFromTextFile( GT_FILE );
+        groundTruth_.loadFromTextFile( param_->gtFile );
         printf("OK\n");
     }
     else
@@ -177,8 +182,8 @@ void PFLocalization::init() {
     nConvergenceOK_ = 0;
     covergenceErrors_.clear();
 
-    initializeFilter(iniFile, iniSectionName);
     initLog();
+    initializeFilter(iniFile, iniSectionName);
     init3DDebug();
 
     printf("--------------  param_->rawlogFile.empty()  \n");
@@ -472,7 +477,7 @@ void PFLocalization::initializeFilter(const mrpt::utils::CConfigFile &_configFil
 // Initialize the PDF:
 // -----------------------------
     tictac_.Tic();
-    if ( !_configFile.read_bool(_sectionName,"init_PDF_mode",false, /*Fail if not found*/true) )
+    if ( !_configFile.read_bool(_sectionName,"init_PDF_mode",false, /*Fail if not found*/true) ){
         pdf_.resetUniformFreeSpace(
             metric_map_.m_gridMaps[0].pointer(),
             0.7f,
@@ -484,7 +489,7 @@ void PFLocalization::initializeFilter(const mrpt::utils::CConfigFile &_configFil
             DEG2RAD(_configFile.read_float(_sectionName,"init_PDF_min_phi_deg",-180)),
             DEG2RAD(_configFile.read_float(_sectionName,"init_PDF_max_phi_deg",180))
         );
-    else
+    } else {
         pdf_.resetUniform(
             _configFile.read_float(_sectionName,"init_PDF_min_x",0,true),
             _configFile.read_float(_sectionName,"init_PDF_max_x",0,true),
@@ -494,6 +499,7 @@ void PFLocalization::initializeFilter(const mrpt::utils::CConfigFile &_configFil
             DEG2RAD(_configFile.read_float(_sectionName,"init_PDF_max_phi_deg",180)),
             INITIAL_PARTICLE_COUNT_
         );
+    }
     printf("PDF of %u particles initialized in %.03fms\n", INITIAL_PARTICLE_COUNT_, 1000*tictac_.Tac());
 }
 

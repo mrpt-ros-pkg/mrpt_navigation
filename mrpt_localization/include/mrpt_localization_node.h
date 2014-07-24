@@ -32,6 +32,7 @@
 #include "ros/ros.h"
 #include <tf/transform_listener.h>
 #include <nav_msgs/Odometry.h>
+#include <nav_msgs/GetMap.h>
 #include <sensor_msgs/LaserScan.h>
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
 #include <nav_msgs/OccupancyGrid.h>
@@ -61,8 +62,9 @@ public:
     void init ();
     void loop ();
     void callbackOdometry (const nav_msgs::Odometry&);
-    void callbackLaser (const sensor_msgs::LaserScan&);   
-    void callbackInitPose (const geometry_msgs::PoseWithCovarianceStamped&);   
+    void callbackLaser (const sensor_msgs::LaserScan&);
+    void callbackInitPose (const geometry_msgs::PoseWithCovarianceStamped&);
+    void updateMap (const nav_msgs::OccupancyGrid&);
 private: //functions
     Parameters *param();
     void update ();
@@ -72,8 +74,8 @@ private: //functions
     ros::Subscriber subLaser0_;
     ros::Subscriber subLaser1_;
     ros::Subscriber subLaser2_;
-    ros::Publisher pubMap_;
-    ros::Publisher pubMetadata_;
+    ros::Subscriber subMap_;
+    ros::ServiceClient clientMap_;
     ros::Publisher pubParticles_;
     tf::TransformListener listenerTF_;
     std::string base_link_;
@@ -81,8 +83,10 @@ private: //functions
 private: // variables
     ros::NodeHandle n_;
     unsigned long loop_count_;
-    void publishMap(const mrpt::slam::COccupancyGridMap2DPtr mrptMap);
     void publishParticles();
+    bool mapCallback(nav_msgs::GetMap::Request  &req, nav_msgs::GetMap::Response &res );
+    void publishMap ();
+    virtual bool waitForMap();
     nav_msgs::OccupancyGrid rosOccupancyGrid_;
 };
 

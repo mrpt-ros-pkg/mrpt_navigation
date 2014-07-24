@@ -43,6 +43,7 @@ public:
         std::string iniFile;
         std::string rawlogFile;
         std::string mapFile;
+        std::string gtFile;
         mrpt::slam::CActionRobotMovement2D::TMotionModelOptions motionModelOptions;
     };
     PFLocalization (Parameters *parm);
@@ -61,6 +62,7 @@ protected:
     bool process(mrpt::slam::CActionCollectionPtr _action, mrpt::slam::CSensoryFramePtr _observations, mrpt::slam::CObservationPtr _obs);
     void incommingLaserData(mrpt::slam::CObservation2DRangeScanPtr  laser);
     void incommingOdomData( mrpt::slam::CObservationOdometryPtr odometry);
+    virtual bool waitForMap(){return false;};
     mrpt::slam::CObservationOdometry odomLastPoseMsg_;
     mrpt::poses::CPose2D odomLastPoseLaser_;
 

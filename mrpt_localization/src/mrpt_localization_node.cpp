@@ -53,7 +53,7 @@ PFLocalizationNode::~PFLocalizationNode() {
 
 PFLocalizationNode::PFLocalizationNode(ros::NodeHandle &n) :
     PFLocalization(new PFLocalizationNode::Parameters()), n_(n), loop_count_(0) {
-
+    rosOccupancyGrid_.header.seq = 0;
 }
 
 PFLocalizationNode::Parameters *PFLocalizationNode::param() {
@@ -69,15 +69,12 @@ void PFLocalizationNode::init() {
         subLaser2_ = n_.subscribe("scan2", 1, &PFLocalizationNode::callbackLaser, this);
 
     }
-    // Latched publisher for data
-    pubMap_ = n_.advertise<nav_msgs::OccupancyGrid>("map", 1, true);
     pubParticles_ = n_.advertise<geometry_msgs::PoseArray>("particlecloud", 1, true);
 }
 
 void PFLocalizationNode::loop() {
     for (ros::Rate rate(param()->rate); ros::ok(); loop_count_++) {
         param()->update(loop_count_);
-        publishMap(metric_map_.m_gridMaps[0]);
         ros::spinOnce();
         rate.sleep();
     }
@@ -95,6 +92,17 @@ void PFLocalizationNode::callbackLaser (const sensor_msgs::LaserScan &_msg) {
         mrpt_bridge::convert(_msg, laser_poses_[_msg.header.frame_id],  *laser);
         incommingLaserData(laser);
     }
+}
+
+bool PFLocalizationNode::waitForMap(){
+    clientMap_ = n_.serviceClient<nav_msgs::GetMap>("static_map");
+    nav_msgs::GetMap srv;
+    while (!clientMap_.call(srv) && ros::ok()){
+        ROS_INFO("waiting for map service!");
+        sleep(1);
+    }
+    updateMap (srv.response.map);
+    clientMap_.shutdown();
 }
 
 void PFLocalizationNode::updateLaserPose (std::string _frame_id) {
@@ -142,19 +150,22 @@ void PFLocalizationNode::callbackOdometry (const nav_msgs::Odometry &_odom) {
     incommingOdomData(odometry);
 }
 
-void PFLocalizationNode::publishMap (const mrpt::slam::COccupancyGridMap2DPtr mrptMap) {
-    if(pubMap_.getNumSubscribers() < 1) return;
-    rosOccupancyGrid_.header.frame_id = "map";
-    rosOccupancyGrid_.header.seq = process_counter_;
-    rosOccupancyGrid_.header.stamp = ros::Time::now();
-    mrpt_bridge::convert(*mrptMap, rosOccupancyGrid_);
-    pubMap_.publish(rosOccupancyGrid_ );
+void PFLocalizationNode::updateMap (const nav_msgs::OccupancyGrid &_msg) {
+    ASSERT_( metric_map_.m_gridMaps.size()==1 );
+    mrpt_bridge::convert(_msg, *metric_map_.m_gridMaps[0]);
 }
 
+bool PFLocalizationNode::mapCallback(nav_msgs::GetMap::Request  &req, nav_msgs::GetMap::Response &res )
+{
+  return true;
+}
+
+void PFLocalizationNode::publishMap () {
+}
 
 void PFLocalizationNode::publishParticles () {
+  geometry_msgs::PoseArray poseArray;
   for(size_t i = 0; i < pdf_.particlesCount(); i++){
     mrpt::poses::CPose2D p = pdf_.getParticlePose(i);
   }
 }
-
