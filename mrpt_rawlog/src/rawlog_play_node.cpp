@@ -100,7 +100,8 @@ bool RawlogPlayNode::nextEntry() {
     action->getFirstMovementEstimation (out_pose_increment);
     robotPose -= out_pose_increment;
 
-    msg_odom_.header.frame_id = base_frame_;
+    msg_odom_.header.frame_id = "odom";
+    msg_odom_.child_frame_id = base_frame_;
     msg_odom_.header.stamp = msg_laser_.header.stamp;
     msg_odom_.header.seq = msg_laser_.header.seq;
     mrpt_bridge::convert(robotPose, msg_odom_.pose);

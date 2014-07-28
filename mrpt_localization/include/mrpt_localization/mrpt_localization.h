@@ -41,9 +41,7 @@ public:
         Parameters();
         bool debug;
         std::string iniFile;
-        std::string rawlogFile;
         std::string mapFile;
-        std::string gtFile;
         mrpt::slam::CActionRobotMovement2D::TMotionModelOptions motionModelOptions;
     };
     PFLocalization (Parameters *parm);
@@ -57,7 +55,6 @@ protected:
     void show3DDebugPreprocess(mrpt::slam::CSensoryFramePtr _observations);
     void show3DDebugPostprocess(mrpt::slam::CSensoryFramePtr _observations);
     void configureFilter(const mrpt::utils::CConfigFile &_configFile);
-    void initializeFilter(const mrpt::utils::CConfigFile &_configFile, const std::string &_sectionName);
     bool playRawlog();
     bool process(mrpt::slam::CActionCollectionPtr _action, mrpt::slam::CSensoryFramePtr _observations, mrpt::slam::CObservationPtr _obs);
     void incommingLaserData(mrpt::slam::CObservation2DRangeScanPtr  laser);
@@ -80,8 +77,6 @@ protected:
     mrpt::opengl::COpenGLScene scene_;
 
 
-    size_t      rawlog_offset_;
-    int     INITIAL_PARTICLE_COUNT_;
     int     SCENE3D_FREQ_;
     bool        SCENE3D_FOLLOW_;
     unsigned int    testConvergenceAt_;

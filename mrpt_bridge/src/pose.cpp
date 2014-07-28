@@ -70,6 +70,15 @@ tf::Transform &mrpt_bridge::convert(const mrpt::poses::CPose3D& _src, tf::Transf
     _des.setOrigin(origin);
     return _des;
 }
+mrpt::poses::CPose3D &mrpt_bridge::convert(const tf::Transform &_src, mrpt::poses::CPose3D &_des){
+    const tf::Vector3 &t = _src.getOrigin();
+    _des.x() = t[0], _des.y() = t[1], _des.z() = t[2];
+    const tf::Matrix3x3 &basis = _src.getBasis();
+    mrpt::math::CMatrixDouble33 R;
+    convert(basis, R);
+    _des.setRotationMatrix(R);
+    return _des;
+}
 
 geometry_msgs::Pose &mrpt_bridge::convert(const mrpt::poses::CPose3D& _src, geometry_msgs::Pose& _des)
 {
@@ -168,6 +177,20 @@ mrpt::poses::CPose3DPDFGaussian& mrpt_bridge::convert(const geometry_msgs::PoseW
   return _des;
 }
 
+mrpt::poses::CPosePDFGaussian& mrpt_bridge::convert(const geometry_msgs::PoseWithCovariance& _src, mrpt::poses::CPosePDFGaussian& _des)
+{
+  convert(_src.pose, _des.mean);
+  _des.cov(0, 0) = _src.covariance[0];
+  _des.cov(0, 1) = _src.covariance[1];
+  _des.cov(0, 2) = _src.covariance[5];
+  _des.cov(1, 0) = _src.covariance[0+6];
+  _des.cov(1, 1) = _src.covariance[1+6];
+  _des.cov(1, 2) = _src.covariance[5+6];
+  _des.cov(2, 0) = _src.covariance[0+30];
+  _des.cov(2, 1) = _src.covariance[1+30];
+  _des.cov(2, 2) = _src.covariance[5+30];
+  return _des;
+}
 mrpt::poses::CQuaternionDouble&  mrpt_bridge::convert(const geometry_msgs::Quaternion& _src, mrpt::poses::CQuaternionDouble& _des)
 {
   _des.x(_src.x);

@@ -57,8 +57,8 @@ void MapServer::init() {
     ROS_INFO("frequency: %f", frequency_);
 
     pub_map_ = n_.advertise<nav_msgs::OccupancyGrid>("map", 1, true);
-    service_map_ = n_.advertiseService("static_map", &MapServer::mapCallback, this);
     pub_metadata_= n_.advertise<nav_msgs::MapMetaData>("map_metadata", 1, true);
+    service_map_ = n_.advertiseService("static_map", &MapServer::mapCallback, this);
 
     if(!mrpt::utils::fileExists(ini_file)){
       ROS_ERROR("ini_file: %s does not exit", ini_file.c_str());

@@ -46,9 +46,25 @@ PFLocalizationCore::~PFLocalizationCore()
 }
 
 PFLocalizationCore::PFLocalizationCore()
+    : state_(NA)
 {
 }
 
 void PFLocalizationCore::init(){
 }
 
+
+void PFLocalizationCore::initializeFilter(mrpt::utils::CPosePDFGaussian &p){
+    mrpt::math::CMatrixDouble33 cov;
+    mrpt::math::CPose2D mean_point;
+    p.getCovarianceAndMean(cov, mean_point);
+    float min_x = mean_point.x()-cov(0,0);
+    float max_x = mean_point.x()+cov(0,0);
+    float min_y = mean_point.y()-cov(1,1);
+    float max_y = mean_point.y()+cov(1,1);
+    float min_phi = mean_point.phi()-cov(2,2);
+    float max_phi = mean_point.phi()+cov(2,2);
+    pdf_.resetUniformFreeSpace( metric_map_.m_gridMaps[0].pointer(), 0.7f,
+                                initialParticleCount_ , min_x,max_x, min_y, max_y, min_phi, max_phi);
+    state_ = RUN;
+}

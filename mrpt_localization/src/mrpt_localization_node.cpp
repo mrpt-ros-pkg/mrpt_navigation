@@ -53,7 +53,6 @@ PFLocalizationNode::~PFLocalizationNode() {
 
 PFLocalizationNode::PFLocalizationNode(ros::NodeHandle &n) :
     PFLocalization(new PFLocalizationNode::Parameters()), n_(n), loop_count_(0) {
-    rosOccupancyGrid_.header.seq = 0;
 }
 
 PFLocalizationNode::Parameters *PFLocalizationNode::param() {
@@ -62,33 +61,47 @@ PFLocalizationNode::Parameters *PFLocalizationNode::param() {
 
 void PFLocalizationNode::init() {
     PFLocalization::init();
-    if(param()->rawlogFile.empty()) {
-        subOdometry_ = n_.subscribe("odom", 1, &PFLocalizationNode::callbackOdometry, this);
-        subLaser0_ = n_.subscribe("scan", 1, &PFLocalizationNode::callbackLaser, this);
-        subLaser1_ = n_.subscribe("scan1", 1, &PFLocalizationNode::callbackLaser, this);
-        subLaser2_ = n_.subscribe("scan2", 1, &PFLocalizationNode::callbackLaser, this);
-
+    subOdometry_ = n_.subscribe("odom", 1, &PFLocalizationNode::callbackOdometry, this);
+    subLaser0_ = n_.subscribe("scan", 1, &PFLocalizationNode::callbackLaser, this);
+    subLaser1_ = n_.subscribe("scan1", 1, &PFLocalizationNode::callbackLaser, this);
+    subLaser2_ = n_.subscribe("scan2", 1, &PFLocalizationNode::callbackLaser, this);
+    
+    subLaser2_ = n_.subscribe("initialpose", 1, &PFLocalizationNode::callbackInitialpose, this);
+    
+    if(!param()->mapFile.empty()){
+        mrpt_bridge::convert(*metric_map_.m_gridMaps[0], resp_.map);
+        pub_map_ = n_.advertise<nav_msgs::OccupancyGrid>("map", 1, true);
+        pub_metadata_= n_.advertise<nav_msgs::MapMetaData>("map_metadata", 1, true);
+        service_map_ = n_.advertiseService("static_map", &PFLocalizationNode::mapCallback, this);
     }
-    pubParticles_ = n_.advertise<geometry_msgs::PoseArray>("particlecloud", 1, true);
+    pub_Particles_ = n_.advertise<geometry_msgs::PoseArray>("particlecloud", 1, true);
 }
 
 void PFLocalizationNode::loop() {
+    ROS_INFO("loop");
     for (ros::Rate rate(param()->rate); ros::ok(); loop_count_++) {
         param()->update(loop_count_);
+        if(loop_count_%param()->map_update_skip == 0)   publishMap();
+        if(loop_count_%param()->parameter_update_skip == 0)   publishParticles();
+        publishTF_Map2Odom();
+        //publishTF_Base2Map(); // does not work
         ros::spinOnce();
         rate.sleep();
     }
 }
 
+
+
 void PFLocalizationNode::callbackLaser (const sensor_msgs::LaserScan &_msg) {
+    //ROS_INFO("callbackLaser");
     mrpt::slam::CObservation2DRangeScanPtr laser = mrpt::slam::CObservation2DRangeScan::Create();
 
+    //printf("callbackLaser %s\n", _msg.header.frame_id.c_str());
     if(laser_poses_.find(_msg.header.frame_id) == laser_poses_.end()) {
         updateLaserPose (_msg.header.frame_id);
     } else {
         mrpt::poses::CPose3D pose = laser_poses_[_msg.header.frame_id];
-        ROS_INFO("LASER POSE %4.3f, %4.3f, %4.3f, %4.3f, %4.3f, %4.3f",
-                 pose.x(), pose.y(), pose.z(), pose.roll(), pose.pitch(), pose.yaw());
+        //ROS_INFO("LASER POSE %4.3f, %4.3f, %4.3f, %4.3f, %4.3f, %4.3f",  pose.x(), pose.y(), pose.z(), pose.roll(), pose.pitch(), pose.yaw());
         mrpt_bridge::convert(_msg, laser_poses_[_msg.header.frame_id],  *laser);
         incommingLaserData(laser);
     }
@@ -106,11 +119,11 @@ bool PFLocalizationNode::waitForMap(){
 }
 
 void PFLocalizationNode::updateLaserPose (std::string _frame_id) {
-    if(base_link_.empty()) return;
+    if(base_frame_id_.empty()) return;
     mrpt::poses::CPose3D pose;
     tf::StampedTransform transform;
     try {
-        listenerTF_.lookupTransform(base_link_, _frame_id, ros::Time(0), transform);
+        listenerTF_.lookupTransform(base_frame_id_, _frame_id, ros::Time(0), transform);
         tf::Vector3 translation = transform.getOrigin();
         tf::Quaternion quat = transform.getRotation();
         pose.x() = translation.x();
@@ -133,21 +146,26 @@ void PFLocalizationNode::updateLaserPose (std::string _frame_id) {
 }
 
 void PFLocalizationNode::callbackOdometry (const nav_msgs::Odometry &_odom) {
-
-    if(base_link_.empty()) {
-        base_link_ = _odom.child_frame_id;
-    }
-
+    //ROS_INFO("callbackOdometry");
     mrpt::poses::CPose2D odoPose;
     mrpt_bridge::convert(_odom.pose.pose, odoPose);
 
+    if(base_frame_id_.empty()){
+        base_frame_id_ = _odom.child_frame_id;
+    }
     mrpt::slam::CObservationOdometryPtr odometry = mrpt::slam::CObservationOdometry::Create();
-    odometry->sensorLabel = "ODOMETRY";
+    //odometry->sensorLabel = "ODOMETRY";
     odometry->hasEncodersInfo = false;
     odometry->hasVelocities = false;
     odometry->odometry = odoPose;
     mrpt_bridge::convert(_odom.header.stamp, odometry->timestamp);
     incommingOdomData(odometry);
+}
+void PFLocalizationNode::callbackInitialpose (const geometry_msgs::PoseWithCovarianceStamped& _msg){
+    const geometry_msgs::PoseWithCovariance &pose = _msg.pose;
+    mrpt_bridge::convert(pose, initialPose_);
+    printf("callbackInitialpose");
+    state_ = INIT;
 }
 
 void PFLocalizationNode::updateMap (const nav_msgs::OccupancyGrid &_msg) {
@@ -157,15 +175,93 @@ void PFLocalizationNode::updateMap (const nav_msgs::OccupancyGrid &_msg) {
 
 bool PFLocalizationNode::mapCallback(nav_msgs::GetMap::Request  &req, nav_msgs::GetMap::Response &res )
 {
-  return true;
+    ROS_INFO("mapCallback: service requested!\n");
+    res = resp_;
+    return true;
 }
 
 void PFLocalizationNode::publishMap () {
+    resp_.map.header.stamp = ros::Time::now();
+    resp_.map.header.frame_id =  param()->global_frame_id;
+    resp_.map.header.seq = loop_count_;
+    if(pub_map_.getNumSubscribers() > 0){
+        pub_map_.publish(resp_.map );
+    }
+    if(pub_metadata_.getNumSubscribers() > 0){
+        pub_metadata_.publish( resp_.map.info );
+    }
 }
 
 void PFLocalizationNode::publishParticles () {
-  geometry_msgs::PoseArray poseArray;
-  for(size_t i = 0; i < pdf_.particlesCount(); i++){
-    mrpt::poses::CPose2D p = pdf_.getParticlePose(i);
-  }
+    geometry_msgs::PoseArray poseArray;
+    std::string global_frame = param()->global_frame_id;
+    poseArray.header.frame_id = global_frame;
+    poseArray.header.stamp = ros::Time::now();
+    poseArray.header.seq = loop_count_;
+    poseArray.poses.resize(pdf_.particlesCount());
+    for(size_t i = 0; i < pdf_.particlesCount(); i++){
+        mrpt::poses::CPose2D p = pdf_.getParticlePose(i);
+        mrpt_bridge::convert(p, poseArray.poses[i]);
+    }
+    mrpt::poses::CPose2D p;
+    pub_Particles_.publish(poseArray);
+}
+
+void PFLocalizationNode::publishTF_Map2Odom () {
+    if(base_frame_id_.empty()) return;
+    // Most of this code was copy and pase form ros::amcl
+    // sorry it is realy ugly
+    mrpt::poses::CPose2D robotPose;
+    pdf_.getMean(robotPose);
+    std::string global_frame_id = param()->global_frame_id;
+    std::string odom_frame = param()->odom_frame_id;
+    tf::Stamped<tf::Pose> odom_to_map;
+    tf::Transform tmp_tf;
+    mrpt_bridge::convert(robotPose, tmp_tf);
+    ros::Time stamp;
+    try
+    {
+        mrpt_bridge::convert(timeLastUpdate_, stamp);
+        tf::Stamped<tf::Pose> tmp_tf_stamped (tmp_tf.inverse(),
+                                              stamp,
+                                              base_frame_id_);
+        listenerTF_.transformPose(odom_frame,
+                                  tmp_tf_stamped,
+                                  odom_to_map);
+    }
+    catch(tf::TransformException)
+    {
+        ROS_INFO("Failed to subtract base to %s transform", odom_frame.c_str());
+        return;
+    }
+
+    tf::Transform latest_tf_ = tf::Transform(tf::Quaternion(odom_to_map.getRotation()),
+                                             tf::Point(odom_to_map.getOrigin()));
+
+    // We want to send a transform that is good up until a
+    // tolerance time so that odom can be used
+    ros::Duration transform_tolerance_(0.5);
+    ros::Time transform_expiration = (stamp + transform_tolerance_);
+    tf::StampedTransform tmp_tf_stamped(latest_tf_.inverse(),
+                                        transform_expiration,
+                                        global_frame_id, odom_frame);
+    tf_broadcaster_.sendTransform(tmp_tf_stamped);
+    //ROS_INFO("%s, %s\n", global_frame_id.c_str(), odom_frame.c_str());
+}
+
+void PFLocalizationNode::publishTF_Base2Map () {
+    if(base_frame_id_.empty()) return;
+    /// Most of this code was copy and pase form ros::amcl
+    /// sorry it is realy ugly
+    mrpt::poses::CPose2D robotPose;
+    pdf_.getMean(robotPose);
+    std::string global_frame_id = param()->global_frame_id;
+    tf::Transform tmp_tf;
+    mrpt_bridge::convert(robotPose, tmp_tf);
+    ros::Time stamp;
+    ros::Duration transform_tolerance_(0.5);
+    mrpt_bridge::convert(timeLastUpdate_, stamp);
+    ros::Time transform_expiration = (stamp + transform_tolerance_);
+    tf::StampedTransform tmp_tf_stamped(tmp_tf.inverse(), transform_expiration, global_frame_id, base_frame_id_);
+    tf_broadcaster_.sendTransform(tmp_tf_stamped);
 }

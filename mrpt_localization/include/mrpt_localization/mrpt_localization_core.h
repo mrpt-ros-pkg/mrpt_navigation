@@ -37,20 +37,21 @@
 
 class PFLocalizationCore {
 public:
+    enum PFStates {NA, INIT, RUN} ;
     PFLocalizationCore ();
     ~PFLocalizationCore();
     void init();
 protected:
     mrpt::slam::CActionRobotMovement2D::TMotionModelOptions dummy_odom_params_;
     mrpt::slam::CMultiMetricMap metric_map_;
-    mrpt::utils::CPose2D expectedPose_;
-    mrpt::utils::CPose2D pdfEstimation_;
-    mrpt::utils::CPose2D odometryEstimation_;
-    mrpt::utils::CMatrixDouble covEstimation_;
-    mrpt::utils::CMatrixDouble groundTruth_;
     mrpt::slam::CMonteCarloLocalization2D  pdf_;
     mrpt::bayes::CParticleFilter pf_;
     mrpt::bayes::CParticleFilter::TParticleFilterStats   pf_stats_;
+    mrpt::utils::CPosePDFGaussian initialPose_;
+    mrpt::system::TTimeStamp timeLastUpdate_;
+    int initialParticleCount_;
+    void initializeFilter(mrpt::utils::CPosePDFGaussian &p);
+    PFStates state_;
 };
 
 #endif // MRPT_LOCALIZATION_CORE_H

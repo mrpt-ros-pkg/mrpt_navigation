@@ -31,6 +31,7 @@
 
 #include "ros/ros.h"
 #include <tf/transform_listener.h>
+#include <tf/transform_broadcaster.h>
 #include <nav_msgs/Odometry.h>
 #include <nav_msgs/GetMap.h>
 #include <sensor_msgs/LaserScan.h>
@@ -53,8 +54,12 @@ public:
         dynamic_reconfigure::Server<mrpt_localization::MotionConfig> reconfigureServer_;
         dynamic_reconfigure::Server<mrpt_localization::MotionConfig>::CallbackType reconfigureFnc_;
 		void update(const unsigned long &loop_count);
-	    double rate;
+        double rate;
         int parameter_update_skip;
+        int particlecloud_update_skip;
+        int map_update_skip;
+        std::string odom_frame_id;
+        std::string global_frame_id;
 	};
     
     PFLocalizationNode ( ros::NodeHandle &n );
@@ -63,8 +68,10 @@ public:
     void loop ();
     void callbackOdometry (const nav_msgs::Odometry&);
     void callbackLaser (const sensor_msgs::LaserScan&);
-    void callbackInitPose (const geometry_msgs::PoseWithCovarianceStamped&);
+    void callbackInitialpose (const geometry_msgs::PoseWithCovarianceStamped&);
     void updateMap (const nav_msgs::OccupancyGrid&);
+    void publishTF_Map2Odom ();
+    void publishTF_Base2Map ();
 private: //functions
     Parameters *param();
     void update ();
@@ -76,10 +83,14 @@ private: //functions
     ros::Subscriber subLaser2_;
     ros::Subscriber subMap_;
     ros::ServiceClient clientMap_;
-    ros::Publisher pubParticles_;
+    ros::Publisher pub_Particles_;
+    ros::Publisher pub_map_;
+    ros::Publisher pub_metadata_;
+    ros::ServiceServer service_map_;
     tf::TransformListener listenerTF_;
-    std::string base_link_;
+    tf::TransformBroadcaster tf_broadcaster_;
     std::map<std::string, mrpt::poses::CPose3D> laser_poses_;
+    std::string base_frame_id_;
 private: // variables
     ros::NodeHandle n_;
     unsigned long loop_count_;
@@ -87,7 +98,7 @@ private: // variables
     bool mapCallback(nav_msgs::GetMap::Request  &req, nav_msgs::GetMap::Response &res );
     void publishMap ();
     virtual bool waitForMap();
-    nav_msgs::OccupancyGrid rosOccupancyGrid_;
+    nav_msgs::GetMap::Response resp_;
 };
 
 #endif // MRPT_LOCALIZATION_NODE_H

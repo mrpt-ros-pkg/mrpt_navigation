@@ -45,6 +45,8 @@ namespace mrpt_bridge
 
     /** Convert: MRPT's CPose3D -> ROS's Transform */
     tf::Transform& convert( const mrpt::poses::CPose3D& _src, tf::Transform&  _des);
+    /** Convert: ROS's CPose3D -> MRPT's Transform */
+    mrpt::poses::CPose3D& convert( const tf::Transform& _src, mrpt::poses::CPose3D& _des);
     
     /** Convert: MRPT's CPose3D -> ROS's Pose */
     geometry_msgs::Pose&  convert( const mrpt::poses::CPose3D& _src, geometry_msgs::Pose& _des);

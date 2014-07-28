@@ -37,11 +37,13 @@ PFLocalizationNode::Parameters::Parameters()
     ROS_INFO("parameter_update_skip: %i", parameter_update_skip);
     node.getParam("ini_file", iniFile);
     ROS_INFO("ini_file: %s", iniFile.c_str());
-    node.getParam("rawlog_file", rawlogFile);
-    ROS_INFO("rawlog_file: %s", rawlogFile.c_str());
     node.getParam("map_file", mapFile);
     ROS_INFO("map_file: %s", mapFile.c_str());
-    
+    node.param<std::string>("global_frame_id", global_frame_id, "map");
+    ROS_INFO("global_frame_id: %s", global_frame_id.c_str());
+    node.param<std::string>("odom_frame_id", odom_frame_id, "odom");
+    ROS_INFO("odom_frame_id: %s", odom_frame_id.c_str());
+
     reconfigureFnc_ = boost::bind(&PFLocalizationNode::Parameters::callbackParameters, this ,  _1, _2);
     reconfigureServer_.setCallback(reconfigureFnc_);
 }
@@ -50,6 +52,16 @@ void PFLocalizationNode::Parameters::update(const unsigned long &loop_count) {
     if(loop_count % parameter_update_skip) return;
     node.getParam("debug", debug);
     if(loop_count == 0) ROS_INFO("debug:  %s", (debug ? "true" : "false"));
+    {
+        int v = particlecloud_update_skip;
+        node.param<int>("particlecloud_update_skip", particlecloud_update_skip, MRPT_LOCALIZATION_NODE_DEFAULT_PARTICLECLOUD_UPDATE_SKIP);
+        if(v != particlecloud_update_skip) ROS_INFO("particlecloud_update_skip: %i", particlecloud_update_skip);
+    }
+    {
+        int v = map_update_skip;
+        node.param<int>("map_update_skip", map_update_skip, MRPT_LOCALIZATION_NODE_DEFAULT_MAP_UPDATE_SKIP);
+        if(v != map_update_skip) ROS_INFO("map_update_skip: %i", map_update_skip);
+    }
 }
 
 void PFLocalizationNode::Parameters::callbackParameters (mrpt_localization::MotionConfig &config, uint32_t level ) {
