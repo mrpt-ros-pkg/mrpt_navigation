@@ -60,6 +60,7 @@ public:
         int map_update_skip;
         std::string odom_frame_id;
         std::string global_frame_id;
+        std::string base_frame_id;
 	};
     
     PFLocalizationNode ( ros::NodeHandle &n );
@@ -90,7 +91,6 @@ private: //functions
     tf::TransformListener listenerTF_;
     tf::TransformBroadcaster tf_broadcaster_;
     std::map<std::string, mrpt::poses::CPose3D> laser_poses_;
-    std::string base_frame_id_;
 private: // variables
     ros::NodeHandle n_;
     unsigned long loop_count_;

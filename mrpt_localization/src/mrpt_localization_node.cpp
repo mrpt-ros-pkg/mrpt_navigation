@@ -119,11 +119,10 @@ bool PFLocalizationNode::waitForMap(){
 }
 
 void PFLocalizationNode::updateLaserPose (std::string _frame_id) {
-    if(base_frame_id_.empty()) return;
     mrpt::poses::CPose3D pose;
     tf::StampedTransform transform;
     try {
-        listenerTF_.lookupTransform(base_frame_id_, _frame_id, ros::Time(0), transform);
+        listenerTF_.lookupTransform(param()->base_frame_id, _frame_id, ros::Time(0), transform);
         tf::Vector3 translation = transform.getOrigin();
         tf::Quaternion quat = transform.getRotation();
         pose.x() = translation.x();
@@ -150,9 +149,6 @@ void PFLocalizationNode::callbackOdometry (const nav_msgs::Odometry &_odom) {
     mrpt::poses::CPose2D odoPose;
     mrpt_bridge::convert(_odom.pose.pose, odoPose);
 
-    if(base_frame_id_.empty()){
-        base_frame_id_ = _odom.child_frame_id;
-    }
     mrpt::slam::CObservationOdometryPtr odometry = mrpt::slam::CObservationOdometry::Create();
     //odometry->sensorLabel = "ODOMETRY";
     odometry->hasEncodersInfo = false;
@@ -208,7 +204,6 @@ void PFLocalizationNode::publishParticles () {
 }
 
 void PFLocalizationNode::publishTF_Map2Odom () {
-    if(base_frame_id_.empty()) return;
     // Most of this code was copy and pase form ros::amcl
     // sorry it is realy ugly
     mrpt::poses::CPose2D robotPose;
@@ -224,7 +219,7 @@ void PFLocalizationNode::publishTF_Map2Odom () {
         mrpt_bridge::convert(timeLastUpdate_, stamp);
         tf::Stamped<tf::Pose> tmp_tf_stamped (tmp_tf.inverse(),
                                               stamp,
-                                              base_frame_id_);
+                                              param()->base_frame_id);
         listenerTF_.transformPose(odom_frame,
                                   tmp_tf_stamped,
                                   odom_to_map);
@@ -250,9 +245,7 @@ void PFLocalizationNode::publishTF_Map2Odom () {
 }
 
 void PFLocalizationNode::publishTF_Base2Map () {
-    if(base_frame_id_.empty()) return;
-    /// Most of this code was copy and pase form ros::amcl
-    /// sorry it is realy ugly
+    // This does not work
     mrpt::poses::CPose2D robotPose;
     pdf_.getMean(robotPose);
     std::string global_frame_id = param()->global_frame_id;
@@ -262,6 +255,6 @@ void PFLocalizationNode::publishTF_Base2Map () {
     ros::Duration transform_tolerance_(0.5);
     mrpt_bridge::convert(timeLastUpdate_, stamp);
     ros::Time transform_expiration = (stamp + transform_tolerance_);
-    tf::StampedTransform tmp_tf_stamped(tmp_tf.inverse(), transform_expiration, global_frame_id, base_frame_id_);
+    tf::StampedTransform tmp_tf_stamped(tmp_tf.inverse(), transform_expiration, global_frame_id, param()->base_frame_id);
     tf_broadcaster_.sendTransform(tmp_tf_stamped);
 }

@@ -43,6 +43,8 @@ PFLocalizationNode::Parameters::Parameters()
     ROS_INFO("global_frame_id: %s", global_frame_id.c_str());
     node.param<std::string>("odom_frame_id", odom_frame_id, "odom");
     ROS_INFO("odom_frame_id: %s", odom_frame_id.c_str());
+    node.param<std::string>("base_frame_id", base_frame_id, "base_link");
+    ROS_INFO("base_frame_id: %s", base_frame_id.c_str());
 
     reconfigureFnc_ = boost::bind(&PFLocalizationNode::Parameters::callbackParameters, this ,  _1, _2);
     reconfigureServer_.setCallback(reconfigureFnc_);
