@@ -65,10 +65,10 @@ void PFLocalizationNode::init() {
     subLaser0_ = n_.subscribe("scan", 1, &PFLocalizationNode::callbackLaser, this);
     subLaser1_ = n_.subscribe("scan1", 1, &PFLocalizationNode::callbackLaser, this);
     subLaser2_ = n_.subscribe("scan2", 1, &PFLocalizationNode::callbackLaser, this);
-    
+
     subLaser2_ = n_.subscribe("initialpose", 1, &PFLocalizationNode::callbackInitialpose, this);
-    
-    if(!param()->mapFile.empty()){
+
+    if(!param()->mapFile.empty()) {
         mrpt_bridge::convert(*metric_map_.m_gridMaps[0], resp_.map);
         pub_map_ = n_.advertise<nav_msgs::OccupancyGrid>("map", 1, true);
         pub_metadata_= n_.advertise<nav_msgs::MapMetaData>("map_metadata", 1, true);
@@ -83,8 +83,7 @@ void PFLocalizationNode::loop() {
         param()->update(loop_count_);
         if(loop_count_%param()->map_update_skip == 0)   publishMap();
         if(loop_count_%param()->parameter_update_skip == 0)   publishParticles();
-        publishTF_Map2Odom();
-        //publishTF_Base2Map(); // does not work
+        publishTF();
         ros::spinOnce();
         rate.sleep();
     }
@@ -107,10 +106,10 @@ void PFLocalizationNode::callbackLaser (const sensor_msgs::LaserScan &_msg) {
     }
 }
 
-bool PFLocalizationNode::waitForMap(){
+bool PFLocalizationNode::waitForMap() {
     clientMap_ = n_.serviceClient<nav_msgs::GetMap>("static_map");
     nav_msgs::GetMap srv;
-    while (!clientMap_.call(srv) && ros::ok()){
+    while (!clientMap_.call(srv) && ros::ok()) {
         ROS_INFO("waiting for map service!");
         sleep(1);
     }
@@ -157,7 +156,7 @@ void PFLocalizationNode::callbackOdometry (const nav_msgs::Odometry &_odom) {
     mrpt_bridge::convert(_odom.header.stamp, odometry->timestamp);
     incommingOdomData(odometry);
 }
-void PFLocalizationNode::callbackInitialpose (const geometry_msgs::PoseWithCovarianceStamped& _msg){
+void PFLocalizationNode::callbackInitialpose (const geometry_msgs::PoseWithCovarianceStamped& _msg) {
     const geometry_msgs::PoseWithCovariance &pose = _msg.pose;
     mrpt_bridge::convert(pose, initialPose_);
     printf("callbackInitialpose");
@@ -180,10 +179,10 @@ void PFLocalizationNode::publishMap () {
     resp_.map.header.stamp = ros::Time::now();
     resp_.map.header.frame_id =  param()->global_frame_id;
     resp_.map.header.seq = loop_count_;
-    if(pub_map_.getNumSubscribers() > 0){
+    if(pub_map_.getNumSubscribers() > 0) {
         pub_map_.publish(resp_.map );
     }
-    if(pub_metadata_.getNumSubscribers() > 0){
+    if(pub_metadata_.getNumSubscribers() > 0) {
         pub_metadata_.publish( resp_.map.info );
     }
 }
@@ -195,7 +194,7 @@ void PFLocalizationNode::publishParticles () {
     poseArray.header.stamp = ros::Time::now();
     poseArray.header.seq = loop_count_;
     poseArray.poses.resize(pdf_.particlesCount());
-    for(size_t i = 0; i < pdf_.particlesCount(); i++){
+    for(size_t i = 0; i < pdf_.particlesCount(); i++) {
         mrpt::poses::CPose2D p = pdf_.getParticlePose(i);
         mrpt_bridge::convert(p, poseArray.poses[i]);
     }
@@ -203,7 +202,7 @@ void PFLocalizationNode::publishParticles () {
     pub_Particles_.publish(poseArray);
 }
 
-void PFLocalizationNode::publishTF_Map2Odom () {
+void PFLocalizationNode::publishTF() {
     // Most of this code was copy and pase form ros::amcl
     // sorry it is realy ugly
     mrpt::poses::CPose2D robotPose;
@@ -212,11 +211,11 @@ void PFLocalizationNode::publishTF_Map2Odom () {
     std::string odom_frame = param()->odom_frame_id;
     tf::Stamped<tf::Pose> odom_to_map;
     tf::Transform tmp_tf;
-    mrpt_bridge::convert(robotPose, tmp_tf);
     ros::Time stamp;
+    mrpt_bridge::convert(timeLastUpdate_, stamp);
+    mrpt_bridge::convert(robotPose, tmp_tf);
     try
     {
-        mrpt_bridge::convert(timeLastUpdate_, stamp);
         tf::Stamped<tf::Pose> tmp_tf_stamped (tmp_tf.inverse(),
                                               stamp,
                                               param()->base_frame_id);
@@ -231,7 +230,7 @@ void PFLocalizationNode::publishTF_Map2Odom () {
     }
 
     tf::Transform latest_tf_ = tf::Transform(tf::Quaternion(odom_to_map.getRotation()),
-                                             tf::Point(odom_to_map.getOrigin()));
+                               tf::Point(odom_to_map.getOrigin()));
 
     // We want to send a transform that is good up until a
     // tolerance time so that odom can be used
@@ -242,19 +241,4 @@ void PFLocalizationNode::publishTF_Map2Odom () {
                                         global_frame_id, odom_frame);
     tf_broadcaster_.sendTransform(tmp_tf_stamped);
     //ROS_INFO("%s, %s\n", global_frame_id.c_str(), odom_frame.c_str());
-}
-
-void PFLocalizationNode::publishTF_Base2Map () {
-    // This does not work
-    mrpt::poses::CPose2D robotPose;
-    pdf_.getMean(robotPose);
-    std::string global_frame_id = param()->global_frame_id;
-    tf::Transform tmp_tf;
-    mrpt_bridge::convert(robotPose, tmp_tf);
-    ros::Time stamp;
-    ros::Duration transform_tolerance_(0.5);
-    mrpt_bridge::convert(timeLastUpdate_, stamp);
-    ros::Time transform_expiration = (stamp + transform_tolerance_);
-    tf::StampedTransform tmp_tf_stamped(tmp_tf.inverse(), transform_expiration, global_frame_id, param()->base_frame_id);
-    tf_broadcaster_.sendTransform(tmp_tf_stamped);
 }

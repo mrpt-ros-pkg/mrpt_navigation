@@ -71,8 +71,7 @@ public:
     void callbackLaser (const sensor_msgs::LaserScan&);
     void callbackInitialpose (const geometry_msgs::PoseWithCovarianceStamped&);
     void updateMap (const nav_msgs::OccupancyGrid&);
-    void publishTF_Map2Odom ();
-    void publishTF_Base2Map ();
+    void publishTF();
 private: //functions
     Parameters *param();
     void update ();
