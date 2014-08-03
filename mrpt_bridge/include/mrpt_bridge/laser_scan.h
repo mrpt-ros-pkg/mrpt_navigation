@@ -16,6 +16,7 @@ namespace laser_scan
 	  */
 	bool ros2mrpt(
 		const sensor_msgs::LaserScan &msg,
+        const mrpt::poses::CPose3D &pose,
 		mrpt::slam::CObservation2DRangeScan  &obj
 		);
 

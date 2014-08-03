@@ -89,7 +89,7 @@ MESSAGE( STATUS "MRPT_LIBRARY_DIRS: " ${MRPT_LIBS})
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
   INCLUDE_DIRS include
-#  LIBRARIES template
+  LIBRARIES mrpt_bridge
 #  CATKIN_DEPENDS other_catkin_pkg
   DEPENDS opencv pcl
 )
@@ -164,6 +164,7 @@ target_link_libraries(${PROJECT_NAME}
 ## Add gtest based cpp test target and link libraries
 catkin_add_gtest(${PROJECT_NAME}-test 
   src/test/test_main.cpp
+  src/test/test_time.cpp
   src/test/test_pose_conversions.cpp
   src/test/test_pointcloud2.cpp)
 if(TARGET ${PROJECT_NAME}-test)
