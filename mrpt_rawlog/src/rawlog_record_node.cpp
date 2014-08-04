@@ -61,7 +61,7 @@ RawlogRecordNode::ParametersNode *RawlogRecordNode::param() {
 
 void RawlogRecordNode::init() {
     updateRawLogName(mrpt::system::getCurrentLocalTime());
-    subOdometry_ = n_.subscribe("odom", 1, &RawlogRecordNode::callbackOdometry, this);
+    ROS_INFO("rawlog file: %s", param_->raw_log_name.c_str());
     subLaser0_ = n_.subscribe("scan", 1, &RawlogRecordNode::callbackLaser, this);
     subLaser1_ = n_.subscribe("scan1", 1, &RawlogRecordNode::callbackLaser, this);
     subLaser2_ = n_.subscribe("scan2", 1, &RawlogRecordNode::callbackLaser, this);
@@ -75,27 +75,62 @@ void RawlogRecordNode::loop() {
     }
 }
 
+
+bool RawlogRecordNode::waitForTransform(mrpt::poses::CPose3D &des, const std::string& target_frame, const std::string& source_frame, const ros::Time& time, const ros::Duration& timeout, const ros::Duration& polling_sleep_duration){
+    tf::StampedTransform transform;
+    try
+    {
+        listenerTF_.waitForTransform(target_frame, source_frame,  time, polling_sleep_duration);
+        listenerTF_.lookupTransform(target_frame, source_frame,  time, transform);
+    }
+    catch(tf::TransformException)
+    {
+        ROS_INFO("Failed to get transform target_frame (%s) to source_frame (%s)", target_frame.c_str(), source_frame.c_str());
+        return false;
+    }
+    mrpt_bridge::convert(transform, des);
+    return true;
+}
+
 void RawlogRecordNode::callbackLaser (const sensor_msgs::LaserScan &_msg) {
-    boost::interprocess::scoped_lock<boost::interprocess::interprocess_mutex> lock(mutexRawLog);
+    //ROS_INFO("callbackLaser");
     mrpt::slam::CObservation2DRangeScanPtr laser = mrpt::slam::CObservation2DRangeScan::Create();
 
     if(laser_poses_.find(_msg.header.frame_id) == laser_poses_.end()) {
         updateLaserPose (_msg.header.frame_id);
     } else {
-        mrpt::poses::CPose3D pose = laser_poses_[_msg.header.frame_id];  
-        ROS_INFO("LASER POSE %4.3f, %4.3f, %4.3f, %4.3f, %4.3f, %4.3f",
-                 pose.x(), pose.y(), pose.z(), pose.roll(), pose.pitch(), pose.yaw());
+        //mrpt::poses::CPose3D pose = laser_poses_[_msg.header.frame_id];
+        //ROS_INFO("LASER POSE %4.3f, %4.3f, %4.3f, %4.3f, %4.3f, %4.3f",  pose.x(), pose.y(), pose.z(), pose.roll(), pose.pitch(), pose.yaw());
         mrpt_bridge::convert(_msg, laser_poses_[_msg.header.frame_id],  *laser);
-        incommingLaserData(laser);
+
+
+        std::string base_frame_id = tf::resolve(param()->tf_prefix, param()->base_frame_id);
+        std::string odom_frame_id = tf::resolve(param()->tf_prefix, param()->odom_frame_id);
+        mrpt::poses::CPose3D poseOdom;
+        if(this->waitForTransform(poseOdom, odom_frame_id, base_frame_id, _msg.header.stamp, ros::Duration(1))){
+            mrpt::slam::CObservationOdometryPtr odometry = mrpt::slam::CObservationOdometry::Create();
+            odometry->sensorLabel = odom_frame_id;
+            odometry->hasEncodersInfo = false;
+            odometry->hasVelocities = false;
+            odometry->odometry.x() = poseOdom.x();
+            odometry->odometry.y() = poseOdom.y();
+            odometry->odometry.phi() = poseOdom.yaw();
+
+            observation(laser, odometry);
+        } else {
+            ROS_INFO("Failed to get odom for laser observation!");
+        }
     }
 }
 
 void RawlogRecordNode::updateLaserPose (std::string _frame_id) {
-    if(base_link_.empty()) return;
+    std::string base_frame_id = tf::resolve(param()->tf_prefix, param()->base_frame_id);
     mrpt::poses::CPose3D pose;
     tf::StampedTransform transform;
     try {
-        listenerTF_.lookupTransform(base_link_, _frame_id, ros::Time(0), transform);
+
+        listenerTF_.lookupTransform(base_frame_id, _frame_id, ros::Time(0), transform);
+        ROS_INFO("Requesting laser pose for %s!", _frame_id.c_str());
         tf::Vector3 translation = transform.getOrigin();
         tf::Quaternion quat = transform.getRotation();
         pose.x() = translation.x();
@@ -117,21 +152,3 @@ void RawlogRecordNode::updateLaserPose (std::string _frame_id) {
 
 }
 
-void RawlogRecordNode::callbackOdometry (const nav_msgs::Odometry &_odom) {
-    boost::interprocess::scoped_lock<boost::interprocess::interprocess_mutex> lock(mutexRawLog);
-
-    if(base_link_.empty()) {
-        base_link_ = _odom.child_frame_id;
-    }
-    
-    mrpt::poses::CPose2D odoPose;
-    mrpt_bridge::convert(_odom.pose.pose, odoPose);
-    
-    mrpt::slam::CObservationOdometryPtr odometry = mrpt::slam::CObservationOdometry::Create();
-    odometry->sensorLabel = "odom";
-    odometry->hasEncodersInfo = false;
-    odometry->hasVelocities = false;
-    odometry->odometry = odoPose;
-    mrpt_bridge::convert(_odom.header.stamp, odometry->timestamp);
-    incommingOdomData(odometry);
-}

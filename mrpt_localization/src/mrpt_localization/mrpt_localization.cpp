@@ -53,16 +53,16 @@ PFLocalization::PFLocalization(Parameters *param)
     : PFLocalizationCore(), param_(param) {
 }
 
-void PFLocalization::incommingLaserData(mrpt::slam::CObservation2DRangeScanPtr _laser) {
-    //printf("incommingLaserData\n");
+void PFLocalization::observation(mrpt::slam::CObservation2DRangeScanPtr _laser, mrpt::slam::CObservationOdometryPtr _odometry) {
+    //log_info("observation");
     mrpt::slam::CSensoryFramePtr sf = mrpt::slam::CSensoryFrame::Create();
     mrpt::slam::CObservationPtr obs = mrpt::slam::CObservationPtr(_laser);
     sf->insert(obs);
     mrpt::poses::CPose2D incOdoPose;
     if(odomLastPoseLaser_.empty()) {
-        odomLastPoseLaser_ = odomLastPoseMsg_.odometry;
+        odomLastPoseLaser_ = _odometry->odometry;
     }
-    incOdoPose = odomLastPoseMsg_.odometry - odomLastPoseLaser_;
+    incOdoPose = _odometry->odometry - odomLastPoseLaser_;
 
     mrpt::slam::CActionRobotMovement2D odom_move;
     odom_move.timestamp = _laser->timestamp;
@@ -73,10 +73,6 @@ void PFLocalization::incommingLaserData(mrpt::slam::CObservation2DRangeScanPtr _
     process(action, sf, obs);
     odomLastPoseLaser_ = odomLastPoseLaser_;
     process_counter_++;
-}
-
-void PFLocalization::incommingOdomData(mrpt::slam::CObservationOdometryPtr _odometry) {
-    odomLastPoseMsg_ = *_odometry;
 }
 
 void PFLocalization::init() {

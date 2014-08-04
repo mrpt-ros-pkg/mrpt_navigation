@@ -35,6 +35,14 @@ RawlogRecordNode::ParametersNode::ParametersNode()
     ROS_INFO("rate: %f", rate);
     node.param<int>("parameter_update_skip", parameter_update_skip, RAWLOG_RECORD_NODE_DEFAULT_PARAMETER_UPDATE_SKIP);
     ROS_INFO("parameter_update_skip: %i", parameter_update_skip);
+    node.param<std::string>("tf_prefix", tf_prefix, "");
+    ROS_INFO("tf_prefix: %s", tf_prefix.c_str());
+    node.param<std::string>("odom_frame_id", odom_frame_id, "odom");
+    ROS_INFO("odom_frame_id: %s", odom_frame_id.c_str());
+    node.param<std::string>("base_frame_id", base_frame_id, "base_link");
+    ROS_INFO("base_frame_id: %s", base_frame_id.c_str());
+    node.getParam("raw_log_folder", raw_log_folder);
+    ROS_INFO("raw_log_folder: %s", raw_log_folder.c_str());
     reconfigureFnc_ = boost::bind(&RawlogRecordNode::ParametersNode::callbackParameters, this ,  _1, _2);
     reconfigureServer_.setCallback(reconfigureFnc_);
 }

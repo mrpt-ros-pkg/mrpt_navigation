@@ -55,10 +55,10 @@ private:
     double frequency_;
     unsigned long loop_count_;
     bool debug_;
-    ros::Publisher pub_map_;
+    ros::Publisher pub_map_ros_;
     ros::Publisher pub_metadata_;
     ros::ServiceServer service_map_;
-    nav_msgs::GetMap::Response resp_;
+    nav_msgs::GetMap::Response resp_ros_;
     boost::shared_ptr<mrpt::slam::CMultiMetricMap> metric_map_;
     void publishMap ();
     bool mapCallback(nav_msgs::GetMap::Request  &req, nav_msgs::GetMap::Response &res );

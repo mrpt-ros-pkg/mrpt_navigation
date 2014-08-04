@@ -36,12 +36,15 @@
 
 
 #include <mrpt/slam.h>
+#include <mrpt_bridge/mrpt_log_macros.h>
 
 class RawlogRecord {
+    MRPT_VIRTUAL_LOG_MACROS;
 public:
 	struct Parameters{
 		Parameters();
 	    bool debug;
+        std::string raw_log_folder;
         std::string raw_log_name;
         std::string raw_log_name_asf;
         mrpt::slam::CActionRobotMovement2D::TMotionModelOptions motionModelOptions;
@@ -54,10 +57,8 @@ protected:
     mrpt::slam::CRawlog *pRawLogASF;
     mrpt::poses::CPose2D odomLastPose_;
     void updateRawLogName(const mrpt::system::TTimeStamp &t);
-    void incommingLaserData(mrpt::slam::CObservation2DRangeScanPtr  laser);
-    void incommingOdomData( mrpt::slam::CObservationOdometryPtr odometry);
+    void observation(mrpt::slam::CObservation2DRangeScanPtr laser, mrpt::slam::CObservationOdometryPtr _odometry);
     boost::interprocess::interprocess_mutex mutexRawLog;
-    
 };
 
 #endif // MRPT_RAWLOG_RECORD_H

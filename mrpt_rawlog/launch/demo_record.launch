@@ -1,0 +1,10 @@
+<launch>
+
+  <node pkg="mrpt_rawlog" type="rawlog_record_node" name="rawlog_record_node" output="screen">
+    <remap from="odom" to="/r1/odom"/> 
+    <remap from="scan" to="/r1/front_laser/scan"/> 
+    <param name="raw_log_folder" value="$(find mrpt_rawlog)/tutorial"/> 
+  </node>
+
+</launch>
+

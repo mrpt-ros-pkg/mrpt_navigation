@@ -61,7 +61,6 @@ PFLocalizationNode::Parameters *PFLocalizationNode::param() {
 
 void PFLocalizationNode::init() {
     PFLocalization::init();
-    subOdometry_ = n_.subscribe("odom", 1, &PFLocalizationNode::callbackOdometry, this);
     subLaser0_ = n_.subscribe("scan", 1, &PFLocalizationNode::callbackLaser, this);
     subLaser1_ = n_.subscribe("scan1", 1, &PFLocalizationNode::callbackLaser, this);
     subLaser2_ = n_.subscribe("scan2", 1, &PFLocalizationNode::callbackLaser, this);
@@ -89,6 +88,21 @@ void PFLocalizationNode::loop() {
     }
 }
 
+bool PFLocalizationNode::waitForTransform(mrpt::poses::CPose3D &des, const std::string& target_frame, const std::string& source_frame, const ros::Time& time, const ros::Duration& timeout, const ros::Duration& polling_sleep_duration){
+    tf::StampedTransform transform;
+    try
+    {
+        listenerTF_.waitForTransform(target_frame, source_frame,  time, polling_sleep_duration);
+        listenerTF_.lookupTransform(target_frame, source_frame,  time, transform);
+    }
+    catch(tf::TransformException)
+    {
+        ROS_INFO("Failed to get transform target_frame (%s) to source_frame (%s)", target_frame.c_str(), source_frame.c_str());
+        return false;
+    }
+    mrpt_bridge::convert(transform, des);
+    return true;
+}
 
 
 void PFLocalizationNode::callbackLaser (const sensor_msgs::LaserScan &_msg) {
@@ -99,10 +113,25 @@ void PFLocalizationNode::callbackLaser (const sensor_msgs::LaserScan &_msg) {
     if(laser_poses_.find(_msg.header.frame_id) == laser_poses_.end()) {
         updateLaserPose (_msg.header.frame_id);
     } else {
-        mrpt::poses::CPose3D pose = laser_poses_[_msg.header.frame_id];
+        //mrpt::poses::CPose3D pose = laser_poses_[_msg.header.frame_id];
         //ROS_INFO("LASER POSE %4.3f, %4.3f, %4.3f, %4.3f, %4.3f, %4.3f",  pose.x(), pose.y(), pose.z(), pose.roll(), pose.pitch(), pose.yaw());
         mrpt_bridge::convert(_msg, laser_poses_[_msg.header.frame_id],  *laser);
-        incommingLaserData(laser);
+
+
+        std::string base_frame_id = tf::resolve(param()->tf_prefix, param()->base_frame_id);
+        std::string odom_frame_id = tf::resolve(param()->tf_prefix, param()->odom_frame_id);
+        mrpt::poses::CPose3D poseOdom;
+        if(this->waitForTransform(poseOdom, odom_frame_id, base_frame_id, _msg.header.stamp, ros::Duration(1))){
+            mrpt::slam::CObservationOdometryPtr odometry = mrpt::slam::CObservationOdometry::Create();
+            odometry->sensorLabel = odom_frame_id;
+            odometry->hasEncodersInfo = false;
+            odometry->hasVelocities = false;
+            odometry->odometry.x() = poseOdom.x();
+            odometry->odometry.y() = poseOdom.y();
+            odometry->odometry.phi() = poseOdom.yaw();
+
+            observation(laser, odometry);
+        }
     }
 }
 
@@ -143,23 +172,10 @@ void PFLocalizationNode::updateLaserPose (std::string _frame_id) {
 
 }
 
-void PFLocalizationNode::callbackOdometry (const nav_msgs::Odometry &_odom) {
-    //ROS_INFO("callbackOdometry");
-    mrpt::poses::CPose2D odoPose;
-    mrpt_bridge::convert(_odom.pose.pose, odoPose);
-
-    mrpt::slam::CObservationOdometryPtr odometry = mrpt::slam::CObservationOdometry::Create();
-    //odometry->sensorLabel = "ODOMETRY";
-    odometry->hasEncodersInfo = false;
-    odometry->hasVelocities = false;
-    odometry->odometry = odoPose;
-    mrpt_bridge::convert(_odom.header.stamp, odometry->timestamp);
-    incommingOdomData(odometry);
-}
 void PFLocalizationNode::callbackInitialpose (const geometry_msgs::PoseWithCovarianceStamped& _msg) {
     const geometry_msgs::PoseWithCovariance &pose = _msg.pose;
     mrpt_bridge::convert(pose, initialPose_);
-    printf("callbackInitialpose");
+    log_info("callbackInitialpose");
     state_ = INIT;
 }
 
@@ -207,8 +223,8 @@ void PFLocalizationNode::publishTF() {
     // sorry it is realy ugly
     mrpt::poses::CPose2D robotPose;
     pdf_.getMean(robotPose);
-    std::string global_frame_id = param()->global_frame_id;
-    std::string odom_frame = param()->odom_frame_id;
+    std::string global_frame_id = tf::resolve(param()->tf_prefix, param()->global_frame_id);
+    std::string odom_frame_id = tf::resolve(param()->tf_prefix, param()->odom_frame_id);
     tf::Stamped<tf::Pose> odom_to_map;
     tf::Transform tmp_tf;
     ros::Time stamp;
@@ -219,14 +235,14 @@ void PFLocalizationNode::publishTF() {
         tf::Stamped<tf::Pose> tmp_tf_stamped (tmp_tf.inverse(),
                                               stamp,
                                               param()->base_frame_id);
-        ROS_INFO("subtract global_frame (%s) form odom_frame (%s)", global_frame_id.c_str(), odom_frame.c_str());
-        listenerTF_.transformPose(odom_frame,
+        //ROS_INFO("subtract global_frame (%s) form odom_frame (%s)", global_frame_id.c_str(), odom_frame_id.c_str());
+        listenerTF_.transformPose(odom_frame_id,
                                   tmp_tf_stamped,
                                   odom_to_map);
     }
     catch(tf::TransformException)
     {
-        ROS_INFO("Failed to subtract global_frame (%s) form odom_frame (%s)", global_frame_id.c_str(), odom_frame.c_str());
+        ROS_INFO("Failed to subtract global_frame (%s) form odom_frame (%s)", global_frame_id.c_str(), odom_frame_id.c_str());
         return;
     }
 
@@ -239,7 +255,7 @@ void PFLocalizationNode::publishTF() {
     ros::Time transform_expiration = (stamp + transform_tolerance_);
     tf::StampedTransform tmp_tf_stamped(latest_tf_.inverse(),
                                         transform_expiration,
-                                        global_frame_id, odom_frame);
+                                        global_frame_id, odom_frame_id);
     tf_broadcaster_.sendTransform(tmp_tf_stamped);
     //ROS_INFO("%s, %s\n", global_frame_id.c_str(), odom_frame.c_str());
 }

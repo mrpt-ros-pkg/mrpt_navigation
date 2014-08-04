@@ -51,12 +51,12 @@ void MapServer::init() {
     ROS_INFO("ini_file: %s", ini_file.c_str());
     n_param_.param<std::string>("map_file", map_file, "map.simplemap");
     ROS_INFO("map_file: %s", map_file.c_str());
-    n_param_.param<std::string>("frame_id", resp_.map.header.frame_id, "map");
-    ROS_INFO("frame_id: %s", resp_.map.header.frame_id.c_str());
+    n_param_.param<std::string>("frame_id", resp_ros_.map.header.frame_id, "map");
+    ROS_INFO("frame_id: %s", resp_ros_.map.header.frame_id.c_str());
     n_param_.param<double>("frequency", frequency_, 0.1);
     ROS_INFO("frequency: %f", frequency_);
 
-    pub_map_ = n_.advertise<nav_msgs::OccupancyGrid>("map", 1, true);
+    pub_map_ros_ = n_.advertise<nav_msgs::OccupancyGrid>("map", 1, true);
     pub_metadata_= n_.advertise<nav_msgs::MapMetaData>("map_metadata", 1, true);
     service_map_ = n_.advertiseService("static_map", &MapServer::mapCallback, this);
 
@@ -77,29 +77,29 @@ void MapServer::init() {
                       grid.getXMin(), grid.getYMin(),
                       grid.getXMax(), grid.getYMax());
 
-    mrpt_bridge::convert(*metric_map_->m_gridMaps[0], resp_.map);
+    mrpt_bridge::convert(*metric_map_->m_gridMaps[0], resp_ros_.map);
     if(debug_) printf("msg:         %i x %i @ %4.3fm/p, %4.3f, %4.3f, %4.3f, %4.3f\n",
-                      resp_.map.info.width, resp_.map.info.height, resp_.map.info.resolution,
-                      resp_.map.info.origin.position.x, resp_.map.info.origin.position.y,
-                      resp_.map.info.width*resp_.map.info.resolution+resp_.map.info.origin.position.x,
-                      resp_.map.info.height*resp_.map.info.resolution+resp_.map.info.origin.position.y);
+                      resp_ros_.map.info.width, resp_ros_.map.info.height, resp_ros_.map.info.resolution,
+                      resp_ros_.map.info.origin.position.x, resp_ros_.map.info.origin.position.y,
+                      resp_ros_.map.info.width*resp_ros_.map.info.resolution+resp_ros_.map.info.origin.position.x,
+                      resp_ros_.map.info.height*resp_ros_.map.info.resolution+resp_ros_.map.info.origin.position.y);
 }
 
 bool MapServer::mapCallback(nav_msgs::GetMap::Request  &req, nav_msgs::GetMap::Response &res )
 {
   ROS_INFO("mapCallback: service requested!\n");
-  res = resp_;
+  res = resp_ros_;
   return true;
 }
 
 void MapServer::publishMap () {
-    resp_.map.header.stamp = ros::Time::now();
-    resp_.map.header.seq = loop_count_;
-    if(pub_map_.getNumSubscribers() > 0){
-        pub_map_.publish(resp_.map );
+    resp_ros_.map.header.stamp = ros::Time::now();
+    resp_ros_.map.header.seq = loop_count_;
+    if(pub_map_ros_.getNumSubscribers() > 0){
+        pub_map_ros_.publish(resp_ros_.map );
     }
     if(pub_metadata_.getNumSubscribers() > 0){
-        pub_metadata_.publish( resp_.map.info );
+        pub_metadata_.publish( resp_ros_.map.info );
     }
 }
 

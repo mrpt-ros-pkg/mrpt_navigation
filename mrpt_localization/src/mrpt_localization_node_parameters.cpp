@@ -39,6 +39,8 @@ PFLocalizationNode::Parameters::Parameters()
     ROS_INFO("ini_file: %s", iniFile.c_str());
     node.getParam("map_file", mapFile);
     ROS_INFO("map_file: %s", mapFile.c_str());
+    node.param<std::string>("tf_prefix", tf_prefix, "");
+    ROS_INFO("tf_prefix: %s", tf_prefix.c_str());
     node.param<std::string>("global_frame_id", global_frame_id, "map");
     ROS_INFO("global_frame_id: %s", global_frame_id.c_str());
     node.param<std::string>("odom_frame_id", odom_frame_id, "odom");

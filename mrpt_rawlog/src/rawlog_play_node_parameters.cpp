@@ -37,11 +37,11 @@ RawlogPlayNode::ParametersNode::ParametersNode()
     ROS_INFO("parameter_update_skip: %i", parameter_update_skip);
     node.getParam("rawlog_file", rawlog_file);
     ROS_INFO("rawlog_file: %s", rawlog_file.c_str());
-    node.param<std::string>("odom_frame", odom_frame, RAWLOG_PLAY_NODE_DEFAULT_ODOM_FRAME);
+    node.param<std::string>("odom_frame", odom_frame, "odom");
     ROS_INFO("odom_frame: %s", odom_frame.c_str());
-    node.param<std::string>("base_frame", base_frame, RAWLOG_PLAY_NODE_DEFAULT_BASE_FRAME);
+    node.param<std::string>("base_frame", base_frame, "base_link");
     ROS_INFO("base_frame: %s", base_frame.c_str());
-    node.param<std::string>("tf_prefix", tf_prefix, RAWLOG_PLAY_NODE_DEFAULT_TF_PREFIX);
+    node.param<std::string>("tf_prefix", tf_prefix, "");
     ROS_INFO("tf_prefix: %s", tf_prefix.c_str());
     reconfigureFnc_ = boost::bind(&RawlogPlayNode::ParametersNode::callbackParameters, this ,  _1, _2);
     reconfigureServer_.setCallback(reconfigureFnc_);

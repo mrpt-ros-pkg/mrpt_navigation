@@ -57,10 +57,8 @@ protected:
     void configureFilter(const mrpt::utils::CConfigFile &_configFile);
     bool playRawlog();
     bool process(mrpt::slam::CActionCollectionPtr _action, mrpt::slam::CSensoryFramePtr _observations, mrpt::slam::CObservationPtr _obs);
-    void incommingLaserData(mrpt::slam::CObservation2DRangeScanPtr  laser);
-    void incommingOdomData( mrpt::slam::CObservationOdometryPtr odometry);
+    void observation(mrpt::slam::CObservation2DRangeScanPtr laser, mrpt::slam::CObservationOdometryPtr _odometry);
     virtual bool waitForMap(){return false;};
-    mrpt::slam::CObservationOdometry odomLastPoseMsg_;
     mrpt::poses::CPose2D odomLastPoseLaser_;
 
     size_t process_counter_;

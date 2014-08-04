@@ -1,6 +1,6 @@
 <package>
     <name>mrpt_common</name>
-    <version>1.00.0</version>
+    <version>1.0.0</version>
     <description>        
 Tools related to the Mobile Robot Programming Toolkit (MRPT). 
 Refer to http://wiki.ros.org/mrpt_common for further documentation.

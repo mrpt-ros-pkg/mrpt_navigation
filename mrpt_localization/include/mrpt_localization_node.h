@@ -44,6 +44,7 @@
 
 /// ROS Node
 class PFLocalizationNode : public PFLocalization {
+  MRPT_ROS_LOG_MACROS;
 public:
 	struct Parameters : public PFLocalization::Parameters{
         static const int MOTION_MODEL_GAUSSIAN = 0;
@@ -58,6 +59,7 @@ public:
         int parameter_update_skip;
         int particlecloud_update_skip;
         int map_update_skip;
+        std::string tf_prefix;
         std::string odom_frame_id;
         std::string global_frame_id;
         std::string base_frame_id;
@@ -67,7 +69,6 @@ public:
     ~PFLocalizationNode();
     void init ();
     void loop ();
-    void callbackOdometry (const nav_msgs::Odometry&);
     void callbackLaser (const sensor_msgs::LaserScan&);
     void callbackInitialpose (const geometry_msgs::PoseWithCovarianceStamped&);
     void updateMap (const nav_msgs::OccupancyGrid&);
@@ -76,7 +77,6 @@ private: //functions
     Parameters *param();
     void update ();
     void updateLaserPose (std::string frame_id);
-    ros::Subscriber subOdometry_;
     ros::Subscriber subInitPose_;
     ros::Subscriber subLaser0_;
     ros::Subscriber subLaser1_;
@@ -90,10 +90,11 @@ private: //functions
     tf::TransformListener listenerTF_;
     tf::TransformBroadcaster tf_broadcaster_;
     std::map<std::string, mrpt::poses::CPose3D> laser_poses_;
-private: // variables
     ros::NodeHandle n_;
     unsigned long loop_count_;
     void publishParticles();
+
+    bool waitForTransform(mrpt::poses::CPose3D &des, const std::string& target_frame, const std::string& source_frame, const ros::Time& time, const ros::Duration& timeout, const ros::Duration& polling_sleep_duration = ros::Duration(0.01));
     bool mapCallback(nav_msgs::GetMap::Request  &req, nav_msgs::GetMap::Response &res );
     void publishMap ();
     virtual bool waitForMap();

@@ -25,7 +25,8 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS   *
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.                    *                       *
  ***********************************************************************************/
-
+#include <stdio.h>
+#include <stdarg.h>
 
 #include <mrpt_rawlog_record/rawlog_record.h>
 #include <mrpt_rawlog_record/rawlog_record_defaults.h>
@@ -35,8 +36,20 @@
 
 RawlogRecord::~RawlogRecord()
 {
-    if(pRawLog->size() > 0)  pRawLog->saveToRawLogFile(param_->raw_log_name);
-    if(pRawLogASF->size() > 0)  pRawLogASF->saveToRawLogFile(param_->raw_log_name_asf);
+    log_info("write data");
+    MRPT_TODO("RawlogRecord writes the rawlog only on exit (Ctrl-C)");
+    log_info("pRawLog    entries %i", pRawLog->size());
+    log_info("pRawLogASF entries %i", pRawLogASF->size());
+    if(pRawLog->size() > 0)  {
+      std::string filename = param_->raw_log_folder + "/" + param_->raw_log_name;
+      log_info("write %s", filename.c_str());
+      pRawLog->saveToRawLogFile(filename);
+    }
+    if(pRawLogASF->size() > 0)   {
+      std::string filename = param_->raw_log_folder + "/" + param_->raw_log_name_asf;
+      log_info("write %s", filename.c_str());
+      pRawLogASF->saveToRawLogFile(filename);
+    }
     delete pRawLog;
     delete pRawLogASF;
 }
@@ -72,29 +85,29 @@ void RawlogRecord::updateRawLogName(const mrpt::system::TTimeStamp &t) {
 }
 
 
-void RawlogRecord::incommingLaserData(mrpt::slam::CObservation2DRangeScanPtr laser) {
-    mrpt::slam::CSensoryFramePtr sf = mrpt::slam::CSensoryFrame::Create();
-    mrpt::slam::CObservationPtr obs = mrpt::slam::CObservationPtr(laser);
-    sf->insert(obs);
-    pRawLog->addObservationMemoryReference(laser);
-    pRawLogASF->addObservationsMemoryReference(sf);
-}
+void RawlogRecord::observation(mrpt::slam::CObservation2DRangeScanPtr laser, mrpt::slam::CObservationOdometryPtr odometry) {
 
-void RawlogRecord::incommingOdomData(mrpt::slam::CObservationOdometryPtr odometry) {
+    pRawLog->addObservationMemoryReference(odometry);
+    pRawLog->addObservationMemoryReference(laser);
+
+    if(odomLastPose_.empty()) {
+        odomLastPose_ = odometry->odometry;
+    }
+
+    mrpt::poses::CPose2D incOdoPose = odometry->odometry - odomLastPose_;
+
 
     mrpt::slam::CActionRobotMovement2D odom_move;
     odom_move.timestamp = odometry->timestamp;
-    mrpt::poses::CPose2D incOdoPose;
-    if(odomLastPose_.empty()) {
-        incOdoPose = mrpt::poses::CPose2D(0, 0, 0);
-    } else {
-        incOdoPose = odometry->odometry - odomLastPose_;
-    }
     odom_move.computeFromOdometry(incOdoPose, param_->motionModelOptions);
     mrpt::slam::CActionCollectionPtr action = mrpt::slam::CActionCollection::Create();
     action->insert(odom_move);
-    odomLastPose_ = odometry->odometry;
-    
-    pRawLog->addObservationMemoryReference(odometry);
     pRawLogASF->addActionsMemoryReference(action);
+
+    mrpt::slam::CSensoryFramePtr sf = mrpt::slam::CSensoryFrame::Create();
+    mrpt::slam::CObservationPtr obs = mrpt::slam::CObservationPtr(laser);
+    sf->insert(obs);
+    pRawLogASF->addObservationsMemoryReference(sf);
+
+    odomLastPose_ = odometry->odometry;
 }

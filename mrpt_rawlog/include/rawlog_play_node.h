@@ -70,7 +70,6 @@ private: // variables
     sensor_msgs::LaserScan msg_laser_;
     nav_msgs::Odometry msg_odom_;
     ros::Publisher pub_laser_;
-    ros::Publisher pub_odom_;
     std::string odom_frame_;
     std::string base_frame_;
     tf::TransformBroadcaster tf_broadcaster_;

@@ -29,7 +29,7 @@
 #ifndef MRPT_RAWLOG_RECORD_NODE_H
 #define MRPT_RAWLOG_RECORD_NODE_H
 
-#include "ros/ros.h"
+#include <ros/ros.h>
 #include <tf/transform_listener.h>
 #include <nav_msgs/Odometry.h>
 #include <sensor_msgs/LaserScan.h>
@@ -39,6 +39,7 @@
 
 /// ROS Node
 class RawlogRecordNode : public RawlogRecord {
+    MRPT_ROS_LOG_MACROS;
 public:
 	struct ParametersNode : public Parameters{
         static const int MOTION_MODEL_GAUSSIAN = 0;
@@ -51,28 +52,29 @@ public:
 		void update(const unsigned long &loop_count);
 	    double rate;
         int parameter_update_skip;
+        std::string tf_prefix;
+        std::string odom_frame_id;
+        std::string base_frame_id;
 	};
     
     RawlogRecordNode ( ros::NodeHandle &n );
     ~RawlogRecordNode();
     void init ();
     void loop ();
-    void callbackOdometry (const nav_msgs::Odometry&);
     void callbackLaser (const sensor_msgs::LaserScan&);    
 private: //functions
     ParametersNode *param();
     void update ();
     void updateLaserPose (std::string frame_id);
-    ros::Subscriber subOdometry_;
     ros::Subscriber subLaser0_;
     ros::Subscriber subLaser1_;
     ros::Subscriber subLaser2_;
     tf::TransformListener listenerTF_;
-    std::string base_link_;
     std::map<std::string, mrpt::poses::CPose3D> laser_poses_;
-private: // variables
     ros::NodeHandle n_;
     unsigned long loop_count_;
+    bool waitForTransform(mrpt::poses::CPose3D &des, const std::string& target_frame, const std::string& source_frame, const ros::Time& time, const ros::Duration& timeout, const ros::Duration& polling_sleep_duration = ros::Duration(0.01));
+
 
 };
 

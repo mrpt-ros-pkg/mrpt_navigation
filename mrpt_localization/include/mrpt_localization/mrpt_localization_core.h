@@ -30,12 +30,14 @@
 #include <stdint.h>
 #include <mrpt/base.h>
 #include <mrpt/slam.h>
+#include <mrpt_bridge/mrpt_log_macros.h>
 
 #ifndef MRPT_LOCALIZATION_CORE_H
 #define MRPT_LOCALIZATION_CORE_H
 
 
 class PFLocalizationCore {
+  MRPT_VIRTUAL_LOG_MACROS;
 public:
     enum PFStates {NA, INIT, RUN} ;
     PFLocalizationCore ();

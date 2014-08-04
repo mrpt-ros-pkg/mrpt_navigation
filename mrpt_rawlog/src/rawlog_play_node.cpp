@@ -65,7 +65,6 @@ void RawlogPlayNode::init() {
     }
     rawlog_stream_.open(param_->rawlog_file);
     pub_laser_ = n_.advertise<sensor_msgs::LaserScan>("scan", 10);
-    pub_odom_ = n_.advertise<nav_msgs::Odometry>("odom", 10);
     odom_frame_ = tf::resolve(param()->tf_prefix, param()->odom_frame);
     base_frame_ = tf::resolve(param()->tf_prefix, param()->base_frame);
     robotPose = mrpt::poses::CPose3DPDFGaussian();
@@ -105,7 +104,6 @@ bool RawlogPlayNode::nextEntry() {
     msg_odom_.header.stamp = msg_laser_.header.stamp;
     msg_odom_.header.seq = msg_laser_.header.seq;
     mrpt_bridge::convert(robotPose, msg_odom_.pose);
-    pub_odom_.publish(msg_odom_);
     mrpt_bridge::convert(robotPose, transform);
     tf_broadcaster_.sendTransform(tf::StampedTransform(transform, msg_odom_.header.stamp, base_frame_, odom_frame_));
     return false;
