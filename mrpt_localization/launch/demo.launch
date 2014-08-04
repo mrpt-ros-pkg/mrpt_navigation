@@ -1,0 +1,21 @@
+<launch>
+
+  <include file="$(find mrpt_localization)/launch/demo_rviz.launch" />
+
+  <include file="$(find mrpt_rawlog)/launch/demo_rosbag.launch" />
+
+  <node pkg="mrpt_localization" type="mrpt_localization_node" name="mrpt_localization_node" output="screen">
+    <param name="ini_file" value="$(find mrpt_localization)/tutorial/pf-localization.ini"/> 
+    <param name="map_file" value="$(find mrpt_localization)/tutorial/map.simplemap"/> 
+    <param name="odom_frame_id" value="r1/odom"/> 
+    <param name="global_frame_id" value="/map"/> 
+    <param name="base_frame_id" value="r1/base_link"/> 
+    <param name="map_update_skip" value="20"/> 
+    <param name="particlecloud_update_skip" value="5"/> 
+    <param name="tf_prefix" value=""/> 
+    <remap from="scan" to="r1/front_laser/scan"/> 
+    <remap from="particlecloud" to="r1/particlecloud"/>   		
+  </node>
+
+</launch>
+

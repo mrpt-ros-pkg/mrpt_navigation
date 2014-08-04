@@ -1,7 +1,7 @@
 #ifndef POSE_COV_OPS_H_
 #define POSE_COV_OPS_H_
 
-#include <mrpt_bridge/pose_conversions.h>
+#include <mrpt_bridge/pose.h>
 #include <geometry_msgs/Pose.h>
 #include <geometry_msgs/PoseWithCovariance.h>
 

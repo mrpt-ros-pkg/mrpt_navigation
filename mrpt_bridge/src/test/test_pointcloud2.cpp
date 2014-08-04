@@ -5,11 +5,13 @@
  *      Author: Pablo Iñigo Blasco
  */
 
-#include <gtest/gtest.h>
+#include <mrpt/slam/CSimplePointsMap.h>
+#include <mrpt/slam/CColouredPointsMap.h>
 #include <mrpt_bridge/point_cloud2.h>
 #include <pcl/ros/conversions.h>
 #include <pcl/point_cloud.h>
 #include <pcl_conversions/pcl_conversions.h>
+#include <gtest/gtest.h>
 
 TEST(PointCloud2, basicTest)
 {
@@ -38,7 +40,7 @@ TEST(PointCloud2, basicTest)
 
   mrpt::slam::CSimplePointsMap mrpt_pc;
   //printf("step 3\n");
-  mrpt_bridge::PointCloud2::ros2mrpt(point_cloud2_msg, mrpt_pc);
+  mrpt_bridge::copy(point_cloud2_msg, mrpt_pc);
 
   i_f = 0;
   for (int i = 0; i < num_points; i++)

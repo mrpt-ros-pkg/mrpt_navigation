@@ -1,5 +1,5 @@
-#ifndef MRPT_POINT_CLOUD_H
-#define MRPT_POINT_CLOUD_H
+#ifndef MRPT_BRIDGE_POINT_CLOUD_H
+#define MRPT_BRIDGE_POINT_CLOUD_H
 
 #include <sensor_msgs/PointCloud.h>
 #include <mrpt/slam/CSimplePointsMap.h>
@@ -36,4 +36,4 @@ namespace point_cloud
 }; // end of PointCloud
 } //namespace mrpt_bridge
 
-#endif
+#endif //MRPT_BRIDGE_POINT_CLOUD_H

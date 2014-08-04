@@ -1,0 +1,14 @@
+<launch>
+
+  <node pkg="mrpt_map" type="map_server_node" name="map_server_node" output="screen">
+
+    <param name="debug" value="false"/> 
+    <param name="frame_id" value="map"/> 
+    <param name="frequency" value="1"/> 
+    <param name="ini_file" value="$(find mrpt_map)/tutorial/map.ini"/> 
+    <param name="map_file" value="$(find mrpt_map)/tutorial/map.simplemap"/> 
+
+  </node>
+
+</launch>
+

@@ -104,10 +104,11 @@ include_directories(include)
 
 ## Declare a cpp library
 add_library(${PROJECT_NAME} 
-  src/pose_conversions.cpp 
+  src/pose.cpp 
   src/point_cloud.cpp 
   src/point_cloud2.cpp 
   src/laser_scan.cpp
+  src/map.cpp
 )
 
 ## Declare a cpp executable
@@ -165,8 +166,9 @@ target_link_libraries(${PROJECT_NAME}
 catkin_add_gtest(${PROJECT_NAME}-test 
   src/test/test_main.cpp
   src/test/test_time.cpp
-  src/test/test_pose_conversions.cpp
-  src/test/test_pointcloud2.cpp)
+  src/test/test_pose.cpp
+  src/test/test_pointcloud2.cpp
+  src/test/test_map.cpp)
 if(TARGET ${PROJECT_NAME}-test)
    target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME} ${catkin_LIBRARIES} ${MRPT_LIBS} ${PCL_COMMON_LIBRARIES} ${PCL_IO_LIBRARIES})
 endif()

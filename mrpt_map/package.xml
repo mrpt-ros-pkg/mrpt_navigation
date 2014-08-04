@@ -1,0 +1,32 @@
+<?xml version="1.0"?>
+<package>
+  <name>mrpt_map</name>
+  <version>0.0.0</version>
+  <description>The mrpt_map is able to publish a mrpt map as ros occupancy grid like the map_server</description>
+
+  <maintainer email="markus.bader@tuwien.ac.at">Markus Bader</maintainer>
+
+
+  <license>BSD</license>
+  
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <build_depend>roscpp</build_depend>
+  <build_depend>rospy</build_depend>
+  <build_depend>tf</build_depend>
+  <build_depend>std_msgs</build_depend>
+  <build_depend>sensor_msgs</build_depend>
+  <build_depend>nav_msgs</build_depend>
+  <build_depend>mrpt_bridge</build_depend>
+  <build_depend>dynamic_reconfigure</build_depend> 
+  
+  
+  <run_depend>roscpp</run_depend>
+  <run_depend>rospy</run_depend>
+  <run_depend>tf</run_depend>
+  <run_depend>std_msgs</run_depend>
+  <run_depend>sensor_msgs</run_depend>
+  <run_depend>nav_msgs</run_depend>
+  <run_depend>mrpt_bridge</run_depend>
+  <run_depend>dynamic_reconfigure</run_depend> 
+</package>

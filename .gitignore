@@ -1,4 +1,6 @@
+*.autosave
 .kdev*
 *.kdev*
 *~
 *.rawlog
+LOG_*
