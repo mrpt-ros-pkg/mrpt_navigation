@@ -51,9 +51,13 @@ protected:
     mrpt::bayes::CParticleFilter::TParticleFilterStats   pf_stats_;
     mrpt::utils::CPosePDFGaussian initialPose_;
     mrpt::system::TTimeStamp timeLastUpdate_;
+    mrpt::utils::CTicTac tictac_;
+    size_t process_counter_;
+    PFStates state_;
+
     int initialParticleCount_;
     void initializeFilter(mrpt::utils::CPosePDFGaussian &p);
-    PFStates state_;
+    void updateFilter(mrpt::slam::CActionCollectionPtr _action, mrpt::slam::CSensoryFramePtr _sf);
 };
 
 #endif // MRPT_LOCALIZATION_CORE_H

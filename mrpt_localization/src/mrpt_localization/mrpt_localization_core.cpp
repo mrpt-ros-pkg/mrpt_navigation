@@ -57,6 +57,7 @@ void PFLocalizationCore::init(){
 void PFLocalizationCore::initializeFilter(mrpt::utils::CPosePDFGaussian &p){
     mrpt::math::CMatrixDouble33 cov;
     mrpt::math::CPose2D mean_point;
+    log_info("InitializeFilter: %4.3fm, %4.3fm, %4.3frad ", mean_point.x(), mean_point.y(), mean_point.phi());
     p.getCovarianceAndMean(cov, mean_point);
     float min_x = mean_point.x()-cov(0,0);
     float max_x = mean_point.x()+cov(0,0);
@@ -68,3 +69,12 @@ void PFLocalizationCore::initializeFilter(mrpt::utils::CPosePDFGaussian &p){
                                 initialParticleCount_ , min_x,max_x, min_y, max_y, min_phi, max_phi);
     state_ = RUN;
 }
+
+void PFLocalizationCore::updateFilter(CActionCollectionPtr _action, CSensoryFramePtr _sf) {
+    if(state_ == INIT) initializeFilter(initialPose_);
+    tictac_.Tic();
+    pf_.executeOn( pdf_, _action.pointer(), _sf.pointer(), &pf_stats_ );
+    timeLastUpdate_ = _action->get(0)->timestamp;
+    process_counter_++;
+}
+

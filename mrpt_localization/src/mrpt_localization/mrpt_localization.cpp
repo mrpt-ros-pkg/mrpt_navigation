@@ -53,28 +53,6 @@ PFLocalization::PFLocalization(Parameters *param)
     : PFLocalizationCore(), param_(param) {
 }
 
-void PFLocalization::observation(mrpt::slam::CObservation2DRangeScanPtr _laser, mrpt::slam::CObservationOdometryPtr _odometry) {
-    //log_info("observation");
-    mrpt::slam::CSensoryFramePtr sf = mrpt::slam::CSensoryFrame::Create();
-    mrpt::slam::CObservationPtr obs = mrpt::slam::CObservationPtr(_laser);
-    sf->insert(obs);
-    mrpt::poses::CPose2D incOdoPose;
-    if(odomLastPoseLaser_.empty()) {
-        odomLastPoseLaser_ = _odometry->odometry;
-    }
-    incOdoPose = _odometry->odometry - odomLastPoseLaser_;
-
-    mrpt::slam::CActionRobotMovement2D odom_move;
-    odom_move.timestamp = _laser->timestamp;
-    odom_move.computeFromOdometry(incOdoPose, param_->motionModelOptions);
-    mrpt::slam::CActionCollectionPtr action = mrpt::slam::CActionCollection::Create();
-    action->insert(odom_move);
-    timeLastUpdate_ = _laser->timestamp;
-    process(action, sf, obs);
-    odomLastPoseLaser_ = odomLastPoseLaser_;
-    process_counter_++;
-}
-
 void PFLocalization::init() {
     printf("iniFile ready %s\n", param_->iniFile.c_str());
     ASSERT_FILE_EXISTS_(param_->iniFile);
@@ -96,7 +74,7 @@ void PFLocalization::init() {
     OUT_DIR_PREFIX_      = iniFile.read_string(iniSectionName,"logOutput_dir","", /*Fail if not found*/true );
 
 
-    if (param_->mapFile.empty()){
+    if (param_->mapFile.empty()) {
         param_->mapFile = iniFile.read_string(iniSectionName,"map_file","" );
     }
 
@@ -122,7 +100,7 @@ void PFLocalization::init() {
     dummy_odom_params_.gausianModel.minStdPHI = DEG2RAD(iniFile.read_double("DummyOdometryParams","minStdPHI", 2.0));
 
 
-    if ( !iniFile.read_bool(iniSectionName,"init_PDF_mode",false, /*Fail if not found*/true) ){
+    if ( !iniFile.read_bool(iniSectionName,"init_PDF_mode",false, /*Fail if not found*/true) ) {
         float min_x = iniFile.read_float(iniSectionName,"init_PDF_min_x",0,true);
         float max_x = iniFile.read_float(iniSectionName,"init_PDF_max_x",0,true);
         float min_y = iniFile.read_float(iniSectionName,"init_PDF_min_y",0,true);
@@ -145,7 +123,7 @@ void PFLocalization::init() {
     configureFilter(iniFile);
     // Metric map options:
 
-    if(!mrpt_bridge::MapHdl::loadMap(metric_map_, iniFile, param_->mapFile, "metricMap", param_->debug)){
+    if(!mrpt_bridge::MapHdl::loadMap(metric_map_, iniFile, param_->mapFile, "metricMap", param_->debug)) {
         waitForMap();
     }
 
@@ -165,63 +143,31 @@ void PFLocalization::init() {
 
 }
 
-
-bool PFLocalization::process(CActionCollectionPtr _action, CSensoryFramePtr _observations, CObservationPtr _obs) {
-
-    if(state_ == INIT){
-        initializeFilter(initialPose_);
-    }
-
-
-    // Determine if we are reading a Act-SF or an Obs-only rawlog:
-    if (_obs)
-    {
-        // It's an observation-only rawlog: build an auxiliary pair of action-SF, since
-        //  montecarlo-localization only accepts those pairs as input:
-
-        // SF: Just one observation:
-        // ------------------------------------------------------
-        _observations = CSensoryFrame::Create();
-        _observations->insert(_obs);
-
-        // ActionCollection: Just one action with a dummy odometry
-        // ------------------------------------------------------
-        _action       = CActionCollection::Create();
-
-        CActionRobotMovement2D dummy_odom;
-
-        // TODO: Another good idea would be to take CObservationOdometry objects and use that information, if available.
-        dummy_odom.computeFromOdometry(CPose2D(0,0,0),dummy_odom_params_);
-        _action->insert(dummy_odom);
-    }
-    else
-    {
-        // Already in Act-SF format, nothing else to do!
-    }
-
-    if (process_counter_ >= 0)
-    {
-        // Do not execute the PF at "step=0", to let the initial PDF to be
-        //   reflected in the logs.
-        if (process_counter_ > 0)
-        {
-            show3DDebugPreprocess(_observations);
-            // ----------------------------------------
-            // RUN ONE STEP OF THE PARTICLE FILTER:
-            // ----------------------------------------
-            tictac_.Tic();
-
-            pf_.executeOn(
-                        pdf_,
-                        _action.pointer(),           // Action
-                        _observations.pointer(), // Obs.
-                        &pf_stats_       // Output statistics
-                        );
-
+void PFLocalization::observation(mrpt::slam::CObservation2DRangeScanPtr _laser, mrpt::slam::CObservationOdometryPtr _odometry) {
+    mrpt::slam::CSensoryFramePtr sf = mrpt::slam::CSensoryFrame::Create();
+    mrpt::slam::CObservationPtr obs = mrpt::slam::CObservationPtr(_laser);
+    sf->insert(obs);
+    //show3DDebugPreprocess(sf);
+    
+    mrpt::slam::CActionCollectionPtr action = mrpt::slam::CActionCollection::Create();
+    mrpt::slam::CActionRobotMovement2D odom_move;
+    odom_move.timestamp = _laser->timestamp;
+    if(_odometry) {
+        if(odomLastPoseLaser_.empty()) {
+            odomLastPoseLaser_ = _odometry->odometry;
         }
+        mrpt::poses::CPose2D incOdoPose = _odometry->odometry - odomLastPoseLaser_;
+        odomLastPoseLaser_ = _odometry->odometry;
+        odom_move.computeFromOdometry(incOdoPose, param_->motionModelOptions);
+        action->insert(odom_move);
+    } else {
+        log_info("No odometry -> using dummy");
+        odom_move.computeFromOdometry(CPose2D(0,0,0),dummy_odom_params_);
+        action->insert(odom_move);
     }
-    return false;
+    updateFilter(action, sf);
 }
+
 
 void PFLocalization::logResults(CSensoryFramePtr _observations) {
 
@@ -305,9 +251,9 @@ void PFLocalization::initLog() {
 
     metric_map_.m_gridMaps[0]->saveAsBitmapFile(format("%s/gridmap.png",sOUT_DIR_.c_str()));
     CFileOutputStream(format("%s/gridmap_limits.txt",sOUT_DIR_.c_str())).printf(
-                "%f %f %f %f",
-                metric_map_.m_gridMaps[0]->getXMin(),metric_map_.m_gridMaps[0]->getXMax(),
-                metric_map_.m_gridMaps[0]->getYMin(),metric_map_.m_gridMaps[0]->getYMax() );
+        "%f %f %f %f",
+        metric_map_.m_gridMaps[0]->getXMin(),metric_map_.m_gridMaps[0]->getXMax(),
+        metric_map_.m_gridMaps[0]->getYMin(),metric_map_.m_gridMaps[0]->getYMax() );
 
     // Save the landmarks for plot in matlab:
     if (metric_map_.m_landmarksMap)
@@ -378,19 +324,19 @@ void PFLocalization::show3DDebugPreprocess(CSensoryFramePtr _observations) {
 
         win3D_->setCameraPointingToPoint(meanPose.x(),meanPose.y(),0);
         win3D_->addTextMessage(
-                    10,10, mrpt::format("timestamp: %s", mrpt::system::dateTimeLocalToString(cur_obs_timestamp).c_str() ),
-                    mrpt::utils::TColorf(.8f,.8f,.8f),
-                    "mono", 15, mrpt::opengl::NICE, 6001 );
+            10,10, mrpt::format("timestamp: %s", mrpt::system::dateTimeLocalToString(cur_obs_timestamp).c_str() ),
+            mrpt::utils::TColorf(.8f,.8f,.8f),
+            "mono", 15, mrpt::opengl::NICE, 6001 );
 
         win3D_->addTextMessage(
-                    10,33, mrpt::format("#particles= %7u", static_cast<unsigned int>(pdf_.size()) ),
-                    mrpt::utils::TColorf(.8f,.8f,.8f),
-                    "mono", 15, mrpt::opengl::NICE, 6002 );
+            10,33, mrpt::format("#particles= %7u", static_cast<unsigned int>(pdf_.size()) ),
+            mrpt::utils::TColorf(.8f,.8f,.8f),
+            "mono", 15, mrpt::opengl::NICE, 6002 );
 
         win3D_->addTextMessage(
-                    10,55, mrpt::format("mean pose (x y phi_deg)= %s", meanPose.asString().c_str() ),
-                    mrpt::utils::TColorf(.8f,.8f,.8f),
-                    "mono", 15, mrpt::opengl::NICE, 6003 );
+            10,55, mrpt::format("mean pose (x y phi_deg)= %s", meanPose.asString().c_str() ),
+            mrpt::utils::TColorf(.8f,.8f,.8f),
+            "mono", 15, mrpt::opengl::NICE, 6003 );
 
         // The particles:
         {
@@ -485,7 +431,7 @@ void PFLocalization::show3DDebugPostprocess(CSensoryFramePtr _observations) {
         // ------------------------------
         MRPT_TODO("Someday I should clean up this mess, since two different 3D scenes are built -> refactor code")
 
-                // The particles:
+        // The particles:
         {
             CRenderizablePtr parts = scene_.getByName("particles");
             if (parts) scene_.removeObject(parts);

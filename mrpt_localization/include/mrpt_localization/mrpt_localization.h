@@ -56,12 +56,10 @@ protected:
     void show3DDebugPostprocess(mrpt::slam::CSensoryFramePtr _observations);
     void configureFilter(const mrpt::utils::CConfigFile &_configFile);
     bool playRawlog();
-    bool process(mrpt::slam::CActionCollectionPtr _action, mrpt::slam::CSensoryFramePtr _observations, mrpt::slam::CObservationPtr _obs);
     void observation(mrpt::slam::CObservation2DRangeScanPtr laser, mrpt::slam::CObservationOdometryPtr _odometry);
     virtual bool waitForMap(){return false;};
     mrpt::poses::CPose2D odomLastPoseLaser_;
 
-    size_t process_counter_;
     int nConvergenceTests_;
     int nConvergenceOK_;
     mrpt::vector_double covergenceErrors_;
@@ -70,7 +68,6 @@ protected:
     mrpt::utils::CFileOutputStream f_pf_stats_;
     mrpt::utils::CFileOutputStream f_odo_est_;
 
-    mrpt::utils::CTicTac tictac_;
     mrpt::gui::CDisplayWindow3DPtr win3D_;
     mrpt::opengl::COpenGLScene scene_;
 
