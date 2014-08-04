@@ -82,7 +82,7 @@ void PFLocalizationNode::loop() {
     for (ros::Rate rate(param()->rate); ros::ok(); loop_count_++) {
         param()->update(loop_count_);
         if(loop_count_%param()->map_update_skip == 0)   publishMap();
-        if(loop_count_%param()->parameter_update_skip == 0)   publishParticles();
+        if(loop_count_%param()->particlecloud_update_skip == 0)   publishParticles();
         publishTF();
         ros::spinOnce();
         rate.sleep();
@@ -219,13 +219,14 @@ void PFLocalizationNode::publishTF() {
         tf::Stamped<tf::Pose> tmp_tf_stamped (tmp_tf.inverse(),
                                               stamp,
                                               param()->base_frame_id);
+        ROS_INFO("subtract global_frame (%s) form odom_frame (%s)", global_frame_id.c_str(), odom_frame.c_str());
         listenerTF_.transformPose(odom_frame,
                                   tmp_tf_stamped,
                                   odom_to_map);
     }
     catch(tf::TransformException)
     {
-        ROS_INFO("Failed to subtract base to %s transform", odom_frame.c_str());
+        ROS_INFO("Failed to subtract global_frame (%s) form odom_frame (%s)", global_frame_id.c_str(), odom_frame.c_str());
         return;
     }
 
