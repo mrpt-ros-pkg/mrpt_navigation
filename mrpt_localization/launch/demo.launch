@@ -11,8 +11,10 @@
     <param name="global_frame_id" value="/map"/> 
     <param name="base_frame_id" value="r1/base_link"/> 
     <param name="map_update_skip" value="20"/> 
-    <param name="particlecloud_update_skip" value="5"/> 
+    <param name="particlecloud_update_skip" value="1"/> 
     <param name="tf_prefix" value=""/> 
+    <param name="debug" value="true"/>
+    <param name="gui_mrpt" value="true"/> 
     <remap from="scan" to="r1/front_laser/scan"/> 
     <remap from="particlecloud" to="r1/particlecloud"/>   		
   </node>

@@ -52,7 +52,7 @@ PFLocalizationNode::~PFLocalizationNode() {
 }
 
 PFLocalizationNode::PFLocalizationNode(ros::NodeHandle &n) :
-    PFLocalization(new PFLocalizationNode::Parameters()), n_(n), loop_count_(0) {
+    PFLocalization(new PFLocalizationNode::Parameters(&odom_params_)), n_(n), loop_count_(0) {
 }
 
 PFLocalizationNode::Parameters *PFLocalizationNode::param() {
@@ -131,7 +131,11 @@ void PFLocalizationNode::callbackLaser (const sensor_msgs::LaserScan &_msg) {
             odometry->odometry.y() = poseOdom.y();
             odometry->odometry.phi() = poseOdom.yaw();
         }
-        observation(laser, odometry);
+        mrpt::slam::CSensoryFramePtr sf = mrpt::slam::CSensoryFrame::Create();
+        mrpt::slam::CObservationPtr obs = mrpt::slam::CObservationPtr(laser);
+        sf->insert(obs);
+        observation(sf, odometry); 
+        if(param()->gui_mrpt) show3DDebug(sf);
     }
 }
 

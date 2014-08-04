@@ -38,35 +38,22 @@
 class PFLocalization : public PFLocalizationCore {
 public:
     struct Parameters {
-        Parameters();
+        Parameters(mrpt::slam::CActionRobotMovement2D::TMotionModelOptions *p);
         bool debug;
+        bool gui_mrpt;
         std::string iniFile;
         std::string mapFile;
-        mrpt::slam::CActionRobotMovement2D::TMotionModelOptions motionModelOptions;
+        mrpt::slam::CActionRobotMovement2D::TMotionModelOptions *motionModelOptions;
     };
     PFLocalization (Parameters *parm);
     ~PFLocalization();
 protected:
     Parameters *param_;
     void init();
-    void initLog();
-    void logResults(mrpt::slam::CSensoryFramePtr _observations);
     void init3DDebug();
-    void show3DDebugPreprocess(mrpt::slam::CSensoryFramePtr _observations);
-    void show3DDebugPostprocess(mrpt::slam::CSensoryFramePtr _observations);
+    void show3DDebug(mrpt::slam::CSensoryFramePtr _observations);
     void configureFilter(const mrpt::utils::CConfigFile &_configFile);
-    bool playRawlog();
-    void observation(mrpt::slam::CObservation2DRangeScanPtr laser, mrpt::slam::CObservationOdometryPtr _odometry);
     virtual bool waitForMap(){return false;};
-    mrpt::poses::CPose2D odomLastPoseLaser_;
-
-    int nConvergenceTests_;
-    int nConvergenceOK_;
-    mrpt::vector_double covergenceErrors_;
-
-    mrpt::utils::CFileOutputStream f_cov_est_;
-    mrpt::utils::CFileOutputStream f_pf_stats_;
-    mrpt::utils::CFileOutputStream f_odo_est_;
 
     mrpt::gui::CDisplayWindow3DPtr win3D_;
     mrpt::opengl::COpenGLScene scene_;
@@ -74,15 +61,8 @@ protected:
 
     int     SCENE3D_FREQ_;
     bool        SCENE3D_FOLLOW_;
-    unsigned int    testConvergenceAt_;
-    bool        SAVE_STATS_ONLY_;
     bool        SHOW_PROGRESS_3D_REAL_TIME_;
     int         SHOW_PROGRESS_3D_REAL_TIME_DELAY_MS_;
-    double      STATS_CONF_INTERVAL_;
-    std::string      OUT_DIR_PREFIX_;
-    std::string      sOUT_DIR_;
-    std::string      sOUT_DIR_PARTS_;
-    std::string      sOUT_DIR_3D_;
 };
 
 #endif // MRPT_LOCALIZATION_H
