@@ -49,7 +49,7 @@ public:
 	struct Parameters : public PFLocalization::Parameters{
         static const int MOTION_MODEL_GAUSSIAN = 0;
         static const int MOTION_MODEL_THRUN = 1;
-		Parameters();
+		Parameters(mrpt::slam::CActionRobotMovement2D::TMotionModelOptions *p);
         ros::NodeHandle node;
         void callbackParameters (mrpt_localization::MotionConfig &config, uint32_t level );
         dynamic_reconfigure::Server<mrpt_localization::MotionConfig> reconfigureServer_;

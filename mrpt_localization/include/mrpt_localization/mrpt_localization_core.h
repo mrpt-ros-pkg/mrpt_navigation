@@ -44,16 +44,23 @@ public:
     ~PFLocalizationCore();
     void init();
 protected:
-    mrpt::slam::CActionRobotMovement2D::TMotionModelOptions dummy_odom_params_;
+    mrpt::slam::CActionRobotMovement2D::TMotionModelOptions odom_params_dummy_;
+    mrpt::slam::CActionRobotMovement2D::TMotionModelOptions odom_params_;
     mrpt::slam::CMultiMetricMap metric_map_;
     mrpt::slam::CMonteCarloLocalization2D  pdf_;
     mrpt::bayes::CParticleFilter pf_;
     mrpt::bayes::CParticleFilter::TParticleFilterStats   pf_stats_;
     mrpt::utils::CPosePDFGaussian initialPose_;
     mrpt::system::TTimeStamp timeLastUpdate_;
+    mrpt::utils::CTicTac tictac_;
+    size_t update_counter_;
+    PFStates state_;
+    mrpt::poses::CPose2D odomLastObservation_;
+
     int initialParticleCount_;
     void initializeFilter(mrpt::utils::CPosePDFGaussian &p);
-    PFStates state_;
+    void observation(mrpt::slam::CSensoryFramePtr _sf, mrpt::slam::CObservationOdometryPtr _odometry);
+    void updateFilter(mrpt::slam::CActionCollectionPtr _action, mrpt::slam::CSensoryFramePtr _sf);
 };
 
 #endif // MRPT_LOCALIZATION_CORE_H

@@ -30,8 +30,10 @@
 #include <mrpt_localization/mrpt_localization.h>
 #include <mrpt_localization/mrpt_localization_defaults.h>
 
-PFLocalization::Parameters::Parameters()
+PFLocalization::Parameters::Parameters(mrpt::slam::CActionRobotMovement2D::TMotionModelOptions *p)
     : debug(MRPT_LOCALIZATION_DEFAULT_DEBUG)
+    , gui_mrpt(MRPT_LOCALIZATION_DEFAULT_GUI_MRPT)
     , iniFile(MRPT_LOCALIZATION_DEFAULT_INI_FILE)
-    , mapFile(MRPT_LOCALIZATION_DEFAULT_MAP_FILE){
+    , mapFile(MRPT_LOCALIZATION_DEFAULT_MAP_FILE)
+    , motionModelOptions(p){
 }

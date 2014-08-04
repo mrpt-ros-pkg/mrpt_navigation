@@ -29,10 +29,12 @@
 #include "mrpt_localization_node.h"
 #include "mrpt_localization_node_defaults.h"
 
-PFLocalizationNode::Parameters::Parameters()
-    : PFLocalization::Parameters(), node("~") {
+PFLocalizationNode::Parameters::Parameters(mrpt::slam::CActionRobotMovement2D::TMotionModelOptions *p)
+    : PFLocalization::Parameters(p), node("~") {
     node.param<double>("rate", rate, MRPT_LOCALIZATION_NODE_DEFAULT_RATE);
     ROS_INFO("rate: %f", rate);
+    node.getParam("gui_mrpt", gui_mrpt);
+    ROS_INFO("gui_mrpt:  %s", (gui_mrpt ? "true" : "false"));
     node.param<int>("parameter_update_skip", parameter_update_skip, MRPT_LOCALIZATION_NODE_DEFAULT_PARAMETER_UPDATE_SKIP);
     ROS_INFO("parameter_update_skip: %i", parameter_update_skip);
     node.getParam("ini_file", iniFile);
@@ -70,18 +72,19 @@ void PFLocalizationNode::Parameters::update(const unsigned long &loop_count) {
 
 void PFLocalizationNode::Parameters::callbackParameters (mrpt_localization::MotionConfig &config, uint32_t level ) {
     if(config.motion_noise_type == MOTION_MODEL_GAUSSIAN) {
-        motionModelOptions.modelSelection = mrpt::slam::CActionRobotMovement2D::mmGaussian;
-        motionModelOptions.gausianModel.a1 = config.gaussian_alpha_1;
-        motionModelOptions.gausianModel.a2 = config.gaussian_alpha_2;
-        motionModelOptions.gausianModel.a3 = config.gaussian_alpha_3;
-        motionModelOptions.gausianModel.a4 = config.gaussian_alpha_4;
-        motionModelOptions.gausianModel.minStdXY  = config.gaussian_alpha_xy;
-        motionModelOptions.gausianModel.minStdPHI = config.gaussian_alpha_phi;
-        ROS_INFO("gausianModel.a1: %f", motionModelOptions.gausianModel.a1);
-        ROS_INFO("gausianModel.a2: %f", motionModelOptions.gausianModel.a2);
-        ROS_INFO("gausianModel.a3: %f", motionModelOptions.gausianModel.a3);
-        ROS_INFO("gausianModel.a4: %f", motionModelOptions.gausianModel.a4);
-        ROS_INFO("gausianModel.minStdXY: %f", motionModelOptions.gausianModel.minStdXY);
-        ROS_INFO("gausianModel.minStdPHI: %f", motionModelOptions.gausianModel.minStdPHI);
+        motionModelOptions->modelSelection = mrpt::slam::CActionRobotMovement2D::mmGaussian;
+        motionModelOptions->gausianModel.a1 = config.gaussian_alpha_1;
+        motionModelOptions->gausianModel.a2 = config.gaussian_alpha_2;
+        motionModelOptions->gausianModel.a3 = config.gaussian_alpha_3;
+        motionModelOptions->gausianModel.a4 = config.gaussian_alpha_4;
+        motionModelOptions->gausianModel.minStdXY  = config.gaussian_alpha_xy;
+        motionModelOptions->gausianModel.minStdPHI = config.gaussian_alpha_phi;
+        ROS_INFO("gausianModel.type: gaussian");
+        ROS_INFO("gausianModel.a1: %f", motionModelOptions->gausianModel.a1);
+        ROS_INFO("gausianModel.a2: %f", motionModelOptions->gausianModel.a2);
+        ROS_INFO("gausianModel.a3: %f", motionModelOptions->gausianModel.a3);
+        ROS_INFO("gausianModel.a4: %f", motionModelOptions->gausianModel.a4);
+        ROS_INFO("gausianModel.minStdXY: %f", motionModelOptions->gausianModel.minStdXY);
+        ROS_INFO("gausianModel.minStdPHI: %f", motionModelOptions->gausianModel.minStdPHI);
     }
 }

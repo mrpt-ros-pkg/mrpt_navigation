@@ -52,7 +52,7 @@ PFLocalizationNode::~PFLocalizationNode() {
 }
 
 PFLocalizationNode::PFLocalizationNode(ros::NodeHandle &n) :
-    PFLocalization(new PFLocalizationNode::Parameters()), n_(n), loop_count_(0) {
+    PFLocalization(new PFLocalizationNode::Parameters(&odom_params_)), n_(n), loop_count_(0) {
 }
 
 PFLocalizationNode::Parameters *PFLocalizationNode::param() {
@@ -120,18 +120,22 @@ void PFLocalizationNode::callbackLaser (const sensor_msgs::LaserScan &_msg) {
 
         std::string base_frame_id = tf::resolve(param()->tf_prefix, param()->base_frame_id);
         std::string odom_frame_id = tf::resolve(param()->tf_prefix, param()->odom_frame_id);
+        mrpt::slam::CObservationOdometryPtr odometry;
         mrpt::poses::CPose3D poseOdom;
         if(this->waitForTransform(poseOdom, odom_frame_id, base_frame_id, _msg.header.stamp, ros::Duration(1))){
-            mrpt::slam::CObservationOdometryPtr odometry = mrpt::slam::CObservationOdometry::Create();
+            odometry = mrpt::slam::CObservationOdometry::Create();
             odometry->sensorLabel = odom_frame_id;
             odometry->hasEncodersInfo = false;
             odometry->hasVelocities = false;
             odometry->odometry.x() = poseOdom.x();
             odometry->odometry.y() = poseOdom.y();
             odometry->odometry.phi() = poseOdom.yaw();
-
-            observation(laser, odometry);
         }
+        mrpt::slam::CSensoryFramePtr sf = mrpt::slam::CSensoryFrame::Create();
+        mrpt::slam::CObservationPtr obs = mrpt::slam::CObservationPtr(laser);
+        sf->insert(obs);
+        observation(sf, odometry); 
+        if(param()->gui_mrpt) show3DDebug(sf);
     }
 }
 
@@ -223,6 +227,7 @@ void PFLocalizationNode::publishTF() {
     // sorry it is realy ugly
     mrpt::poses::CPose2D robotPose;
     pdf_.getMean(robotPose);
+    std::string base_frame_id = tf::resolve(param()->tf_prefix, param()->base_frame_id);
     std::string global_frame_id = tf::resolve(param()->tf_prefix, param()->global_frame_id);
     std::string odom_frame_id = tf::resolve(param()->tf_prefix, param()->odom_frame_id);
     tf::Stamped<tf::Pose> odom_to_map;
@@ -232,13 +237,9 @@ void PFLocalizationNode::publishTF() {
     mrpt_bridge::convert(robotPose, tmp_tf);
     try
     {
-        tf::Stamped<tf::Pose> tmp_tf_stamped (tmp_tf.inverse(),
-                                              stamp,
-                                              param()->base_frame_id);
+        tf::Stamped<tf::Pose> tmp_tf_stamped (tmp_tf.inverse(), stamp,  base_frame_id);
         //ROS_INFO("subtract global_frame (%s) form odom_frame (%s)", global_frame_id.c_str(), odom_frame_id.c_str());
-        listenerTF_.transformPose(odom_frame_id,
-                                  tmp_tf_stamped,
-                                  odom_to_map);
+        listenerTF_.transformPose(odom_frame_id, tmp_tf_stamped, odom_to_map);
     }
     catch(tf::TransformException)
     {

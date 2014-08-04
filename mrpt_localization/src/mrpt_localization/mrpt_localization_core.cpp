@@ -57,6 +57,7 @@ void PFLocalizationCore::init(){
 void PFLocalizationCore::initializeFilter(mrpt::utils::CPosePDFGaussian &p){
     mrpt::math::CMatrixDouble33 cov;
     mrpt::math::CPose2D mean_point;
+    log_info("InitializeFilter: %4.3fm, %4.3fm, %4.3frad ", mean_point.x(), mean_point.y(), mean_point.phi());
     p.getCovarianceAndMean(cov, mean_point);
     float min_x = mean_point.x()-cov(0,0);
     float max_x = mean_point.x()+cov(0,0);
@@ -67,4 +68,33 @@ void PFLocalizationCore::initializeFilter(mrpt::utils::CPosePDFGaussian &p){
     pdf_.resetUniformFreeSpace( metric_map_.m_gridMaps[0].pointer(), 0.7f,
                                 initialParticleCount_ , min_x,max_x, min_y, max_y, min_phi, max_phi);
     state_ = RUN;
+}
+
+void PFLocalizationCore::updateFilter(CActionCollectionPtr _action, CSensoryFramePtr _sf) {
+    if(state_ == INIT) initializeFilter(initialPose_);
+    tictac_.Tic();
+    pf_.executeOn( pdf_, _action.pointer(), _sf.pointer(), &pf_stats_ );
+    timeLastUpdate_ = _sf->getObservationByIndex(0)->timestamp;
+    update_counter_++;
+}
+
+void PFLocalizationCore::observation(mrpt::slam::CSensoryFramePtr _sf, mrpt::slam::CObservationOdometryPtr _odometry) {
+    
+    mrpt::slam::CActionCollectionPtr action = mrpt::slam::CActionCollection::Create();
+    mrpt::slam::CActionRobotMovement2D odom_move;
+    odom_move.timestamp = _sf->getObservationByIndex(0)->timestamp;
+    if(_odometry) {
+        if(odomLastObservation_.empty()) {
+            odomLastObservation_ = _odometry->odometry;
+        }
+        mrpt::poses::CPose2D incOdoPose = _odometry->odometry - odomLastObservation_;
+        odomLastObservation_ = _odometry->odometry;
+        odom_move.computeFromOdometry(incOdoPose, odom_params_);
+        action->insert(odom_move);
+    } else {
+        log_info("No odometry at update %4i -> using dummy", update_counter_);
+        odom_move.computeFromOdometry(CPose2D(0,0,0), odom_params_dummy_);
+        action->insert(odom_move);
+    }
+    updateFilter(action, _sf);
 }
