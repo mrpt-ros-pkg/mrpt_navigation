@@ -1,10 +1,10 @@
 <?xml version="1.0"?>
 <package>
   <name>rawlog_play</name>
-  <version>0.0.0</version>
+  <version>1.0.0</version>
   <description>rawlog_play</description>
 
-  <maintainer email="jose.luis@todo.todo">Jose Luis</maintainer>
+  <maintainer email="jlblanco@ual.es">Jose-Luis Blanco-Claraco</maintainer>
   <maintainer email="markus.bader@tuwien.ac.at">Markus Bader</maintainer>
 
   <license>BSD</license>

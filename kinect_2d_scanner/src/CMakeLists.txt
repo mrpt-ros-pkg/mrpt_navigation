@@ -1,0 +1,2 @@
+rosbuild_add_executable(kinect_2d_scanner kinect_2d_scanner_node.cpp)
+
