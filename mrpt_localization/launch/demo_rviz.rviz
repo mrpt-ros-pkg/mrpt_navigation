@@ -10,7 +10,6 @@ Panels:
         - /Marker1
         - /Marker1/Namespaces1
         - /LaserScan1
-        - /PoseArray1/Status1
         - /LaserScan2
       Splitter Ratio: 0.590385
     Tree Height: 562
@@ -263,7 +262,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 12.1766
+      Distance: 19.1601
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.06
         Stereo Focal Distance: 1
@@ -298,5 +297,5 @@ Window Geometry:
   Views:
     collapsed: false
   Width: 1653
-  X: 86
-  Y: 70
+  X: 1798
+  Y: 0

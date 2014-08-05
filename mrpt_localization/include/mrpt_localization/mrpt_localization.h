@@ -59,7 +59,7 @@ protected:
     mrpt::opengl::COpenGLScene scene_;
 
 
-    int     SCENE3D_FREQ_;
+    int         SCENE3D_FREQ_;
     bool        SCENE3D_FOLLOW_;
     bool        SHOW_PROGRESS_3D_REAL_TIME_;
     int         SHOW_PROGRESS_3D_REAL_TIME_DELAY_MS_;
