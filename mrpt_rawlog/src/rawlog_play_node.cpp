@@ -31,9 +31,12 @@
 #include <mrpt_bridge/pose.h>
 #include <mrpt_bridge/laser_scan.h>
 #include <mrpt_bridge/time.h>
-#include <mrpt/base.h>
-#include <mrpt/slam.h>
-#include <mrpt/gui.h>
+
+#include <mrpt/system/filesystem.h>
+#include <mrpt/slam/CSensoryFrame.h>
+#include <mrpt/slam/CSensoryFrame.h>
+#include <mrpt/slam/CRawlog.h>
+#include <mrpt/slam/CObservation2DRangeScan.h>
 
 
 int main(int argc, char **argv) {
@@ -60,7 +63,7 @@ RawlogPlayNode::ParametersNode *RawlogPlayNode::param() {
 
 void RawlogPlayNode::init() {
 
-    if(!mrpt::utils::fileExists(param_->rawlog_file)) {
+    if(!mrpt::system::fileExists(param_->rawlog_file)) {
         ROS_ERROR("raw_file: %s does not exit", param_->rawlog_file.c_str());
     }
     rawlog_stream_.open(param_->rawlog_file);

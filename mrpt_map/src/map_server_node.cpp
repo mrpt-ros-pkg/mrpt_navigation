@@ -27,9 +27,14 @@
  ***********************************************************************************/
 
 #include <map_server_node.h>
-#include <mrpt/base.h>
-#include <mrpt/slam.h>
+
 #include <mrpt_bridge/map.h>
+
+#include <mrpt/system/filesystem.h> // ASSERT_FILE_EXISTS_()
+#include <mrpt/slam/CMultiMetricMap.h>
+#include <mrpt/slam/COccupancyGridMap2D.h>
+#include <mrpt/utils/CConfigFile.h>
+
 
 MapServer::MapServer(ros::NodeHandle &n)
     : n_(n)
@@ -60,10 +65,10 @@ void MapServer::init() {
     pub_metadata_= n_.advertise<nav_msgs::MapMetaData>("map_metadata", 1, true);
     service_map_ = n_.advertiseService("static_map", &MapServer::mapCallback, this);
 
-    if(!mrpt::utils::fileExists(ini_file)){
+    if(!mrpt::system::fileExists(ini_file)){
       ROS_ERROR("ini_file: %s does not exit", ini_file.c_str());
     }
-    if(!mrpt::utils::fileExists(map_file)){
+    if(!mrpt::system::fileExists(map_file)){
       ROS_ERROR("map_file: %s does not exit", map_file.c_str());
     }
     ASSERT_FILE_EXISTS_(ini_file);

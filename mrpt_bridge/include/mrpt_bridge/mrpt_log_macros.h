@@ -1,6 +1,8 @@
 #ifndef MRPT_BRIDGE_LOG_MACROS_H
 #define MRPT_BRIDGE_LOG_MACROS_H
 
+#include <cstdarg>
+
 #define MRPT_VIRTUAL_LOG_MACROS \
     protected: virtual void log_debug(const char* format, ...) { \
         va_list argptr;\
@@ -34,7 +36,7 @@
         fprintf(stderr, "\n");\
         va_end(argptr);\
     }\
- 
+
 #define MRPT_ROS_LOG_MACROS \
     protected: virtual void log_debug(const char* format, ...) {\
         char buffer[0x1FF];\

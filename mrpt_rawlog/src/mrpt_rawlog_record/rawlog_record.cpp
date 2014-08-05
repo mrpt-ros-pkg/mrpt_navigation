@@ -31,9 +31,6 @@
 #include <mrpt_rawlog_record/rawlog_record.h>
 #include <mrpt_rawlog_record/rawlog_record_defaults.h>
 
-#include <mrpt/base.h>
-#include <mrpt/slam.h>
-
 RawlogRecord::~RawlogRecord()
 {
     log_info("write data");

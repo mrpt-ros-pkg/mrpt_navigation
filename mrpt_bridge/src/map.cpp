@@ -2,15 +2,24 @@
 #include "mrpt_bridge/map.h"
 #include "mrpt_bridge/pose.h"
 #include <nav_msgs/OccupancyGrid.h>
-#include <mrpt/slam/COccupancyGridMap2D.h>
 #include <ros/console.h>
-#include <mrpt/base.h>
-#include <mrpt/slam.h>
 
+// Only include MRPT classes that are really used to avoid slow down compilation
+#include <mrpt/slam/COccupancyGridMap2D.h>
+#include <mrpt/random.h>
+#include <mrpt/slam/CMultiMetricMap.h>
+#include <mrpt/slam/CSimpleMap.h>
+#include <mrpt/utils/CConfigFile.h>
+#include <mrpt/utils/CFileGZInputStream.h>
+#include <mrpt/system/filesystem.h> // for fileExists()
+#include <mrpt/system/string_utils.h> // for lowerCase()
+
+#ifndef INT8_MAX // avoid duplicated #define's
 #define INT8_MAX    0x7f
 #define INT8_MIN    (-INT8_MAX - 1)
 #define INT16_MAX   0x7fff
 #define INT16_MIN   (-INT16_MAX - 1)
+#endif // INT8_MAX
 
 namespace mrpt_bridge
 {
@@ -72,7 +81,7 @@ bool convert ( const nav_msgs::OccupancyGrid  &src, mrpt::slam::COccupancyGridMa
     des.setSize(xmin, xmax, ymin, ymax, src.info.resolution);
     MRPT_END
     //printf("--------convert:  %i x %i, %4.3f, %4.3f, %4.3f, %4.3f, r:%4.3f\n",des.getSizeX(), des.getSizeY(), des.getXMin(), des.getXMax(), des.getYMin(), des.getYMax(), des.getResolution());
-       
+
     /// I hope the data is allways aligned
     for ( int h = 0; h < src.info.height; h++ ) {
         mrpt::slam::COccupancyGridMap2D::cellType *pDes = des.getRow (h);
@@ -138,10 +147,10 @@ const bool MapHdl::loadMap(mrpt::slam::CMultiMetricMap &_metric_map, const mrpt:
         if(_debug) printf("No mrpt map file!\n");
         return false;
     } else {
-        ASSERT_( mrpt::utils::fileExists(_map_file) );
+        ASSERT_( mrpt::system::fileExists(_map_file) );
 
         // Detect file extension:
-        std::string mapExt = mrpt::utils::lowerCase( mrpt::utils::extractFileExtension( _map_file, true ) ); // Ignore possible .gz extensions
+        std::string mapExt = mrpt::system::lowerCase( mrpt::system::extractFileExtension( _map_file, true ) ); // Ignore possible .gz extensions
 
         if ( !mapExt.compare( "simplemap" ) )
         {

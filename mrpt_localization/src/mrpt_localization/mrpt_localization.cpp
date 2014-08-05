@@ -30,9 +30,12 @@
 #include <mrpt_localization/mrpt_localization.h>
 #include <mrpt_localization/mrpt_localization_defaults.h>
 
-#include <mrpt/base.h>
-#include <mrpt/slam.h>
+
 #include <mrpt_bridge/map.h>
+
+#include <mrpt/system/filesystem.h>
+#include <mrpt/opengl/CEllipsoid.h>
+#include <mrpt/opengl/CPointCloud.h>
 
 using namespace mrpt;
 using namespace mrpt::slam;
@@ -41,7 +44,6 @@ using namespace mrpt::gui;
 using namespace mrpt::math;
 using namespace mrpt::system;
 using namespace mrpt::utils;
-using namespace mrpt::random;
 using namespace std;
 
 
@@ -155,7 +157,7 @@ void PFLocalization::configureFilter(const mrpt::utils::CConfigFile &_configFile
 }
 
 void PFLocalization::init3DDebug() {
-    log_info("init3DDebug");   
+    log_info("init3DDebug");
     if (!SHOW_PROGRESS_3D_REAL_TIME_) return;
     if(!win3D_) {
         win3D_ = CDisplayWindow3D::Create("pf-localization - The MRPT project", 1000, 600);

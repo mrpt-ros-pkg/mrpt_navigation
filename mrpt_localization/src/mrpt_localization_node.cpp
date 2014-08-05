@@ -34,9 +34,8 @@
 #include <mrpt_bridge/laser_scan.h>
 #include <mrpt_bridge/time.h>
 #include <mrpt_bridge/map.h>
-#include <mrpt/base.h>
-#include <mrpt/slam.h>
-#include <mrpt/gui.h>
+
+
 
 int main(int argc, char **argv) {
 
@@ -134,7 +133,7 @@ void PFLocalizationNode::callbackLaser (const sensor_msgs::LaserScan &_msg) {
         mrpt::slam::CSensoryFramePtr sf = mrpt::slam::CSensoryFrame::Create();
         mrpt::slam::CObservationPtr obs = mrpt::slam::CObservationPtr(laser);
         sf->insert(obs);
-        observation(sf, odometry); 
+        observation(sf, odometry);
         if(param()->gui_mrpt) show3DDebug(sf);
     }
 }
@@ -162,7 +161,7 @@ void PFLocalizationNode::updateLaserPose (std::string _frame_id) {
         pose.z() = translation.z();
         double roll, pitch, yaw;
         tf::Matrix3x3 Rsrc(quat);
-        mrpt::poses::CMatrixDouble33 Rdes;
+        mrpt::math::CMatrixDouble33 Rdes;
         for(int c = 0; c < 3; c++)
             for(int r = 0; r < 3; r++)
                 Rdes(r,c) = Rsrc.getRow(r)[c];

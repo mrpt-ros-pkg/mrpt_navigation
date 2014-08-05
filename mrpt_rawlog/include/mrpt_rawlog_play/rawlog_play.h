@@ -26,16 +26,17 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.                    *                       *
  ***********************************************************************************/
 
+#ifndef MRPT_RAWLOG_RECORD_H
+#define MRPT_RAWLOG_RECORD_H
+
 #include <iostream>
 #include <stdint.h>
 #include <boost/interprocess/sync/interprocess_mutex.hpp>
 
-#ifndef MRPT_RAWLOG_RECORD_H
-#define MRPT_RAWLOG_RECORD_H
+#include <mrpt/utils/CFileGZInputStream.h>
+#include <mrpt/poses/CPose3DPDFGaussian.h>
+#include <mrpt/slam/CActionRobotMovement2D.h>
 
-
-#include <mrpt/base.h>
-#include <mrpt/slam.h>
 
 class RawlogPlay {
 public:
@@ -48,12 +49,12 @@ public:
     RawlogPlay (Parameters *parm);
     ~RawlogPlay();
 protected:
-    Parameters *param_; 
+    Parameters *param_;
     mrpt::utils::CFileGZInputStream rawlog_stream_;
     mrpt::poses::CPose3DPDFGaussian robotPose;
     size_t entry_;
 
-    
+
 };
 
 #endif // MRPT_RAWLOG_RECORD_H

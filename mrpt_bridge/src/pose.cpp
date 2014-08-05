@@ -212,7 +212,7 @@ geometry_msgs::Quaternion& mrpt_bridge::convert(const mrpt::poses::CQuaternionDo
 mrpt::poses::CPose3D& mrpt_bridge::convert(const geometry_msgs::Pose& _src, mrpt::poses::CPose3D& _des)
 {
   const mrpt::math::CQuaternionDouble q(_src.orientation.w, _src.orientation.x, _src.orientation.y, _src.orientation.z);
-    _des= mrpt::math::CPose3D(q,_src.position.x,_src.position.y,_src.position.z);
+    _des= mrpt::poses::CPose3D(q,_src.position.x,_src.position.y,_src.position.z);
     return _des;
 }
 

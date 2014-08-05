@@ -26,13 +26,14 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.                    *                       *
  ***********************************************************************************/
 
+#ifndef MRPT_LOCALIZATION_H
+#define MRPT_LOCALIZATION_H
+
 #include <iostream>
 #include <stdint.h>
 #include <mrpt_localization/mrpt_localization_core.h>
-#include <mrpt/gui.h>
-
-#ifndef MRPT_LOCALIZATION_H
-#define MRPT_LOCALIZATION_H
+#include <mrpt/utils/CConfigFile.h>
+#include <mrpt/gui/CDisplayWindow3D.h>
 
 
 class PFLocalization : public PFLocalizationCore {

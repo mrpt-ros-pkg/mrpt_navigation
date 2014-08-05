@@ -30,9 +30,6 @@
 #include <mrpt_rawlog_play/rawlog_play.h>
 #include <mrpt_rawlog_play/rawlog_play_defaults.h>
 
-#include <mrpt/base.h>
-#include <mrpt/slam.h>
-
 RawlogPlay::~RawlogPlay()
 {
 }

@@ -26,15 +26,28 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.                    *                       *
  ***********************************************************************************/
 
-#include <iostream>
-#include <stdint.h>
-#include <mrpt/base.h>
-#include <mrpt/slam.h>
-#include <mrpt_bridge/mrpt_log_macros.h>
-
 #ifndef MRPT_LOCALIZATION_CORE_H
 #define MRPT_LOCALIZATION_CORE_H
 
+#include <iostream>
+#include <stdint.h>
+
+#include <mrpt/bayes/CParticleFilter.h>
+#include <mrpt/slam/CActionRobotMovement2D.h>
+#include <mrpt/slam/CMultiMetricMap.h>
+#include <mrpt/poses/CPose2D.h>
+#include <mrpt/poses/CPosePDFGaussian.h>
+#include <mrpt/utils/CTicTac.h>
+
+#include <mrpt_bridge/mrpt_log_macros.h>
+
+#include <mrpt/slam/CMultiMetricMap.h>
+#include <mrpt/slam/CActionCollection.h>
+#include <mrpt/slam/CMonteCarloLocalization2D.h>
+#include <mrpt/slam/CObservationOdometry.h>
+#include <mrpt/slam/CSensoryFrame.h>
+#include <mrpt/utils/CTicTac.h>
+#include <mrpt/poses/CPose2D.h>
 
 class PFLocalizationCore {
   MRPT_VIRTUAL_LOG_MACROS;
@@ -50,7 +63,7 @@ protected:
     mrpt::slam::CMonteCarloLocalization2D  pdf_;
     mrpt::bayes::CParticleFilter pf_;
     mrpt::bayes::CParticleFilter::TParticleFilterStats   pf_stats_;
-    mrpt::utils::CPosePDFGaussian initialPose_;
+    mrpt::poses::CPosePDFGaussian initialPose_;
     mrpt::system::TTimeStamp timeLastUpdate_;
     mrpt::utils::CTicTac tictac_;
     size_t update_counter_;

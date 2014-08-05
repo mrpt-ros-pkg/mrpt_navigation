@@ -35,7 +35,11 @@
 
 
 
-#include <mrpt/slam.h>
+#include <mrpt/slam/CRawlog.h>
+#include <mrpt/slam/CActionRobotMovement2D.h>
+#include <mrpt/slam/CObservationOdometry.h>
+#include <mrpt/slam/CObservation2DRangeScan.h>
+#include <mrpt/poses/CPose2D.h>
 #include <mrpt_bridge/mrpt_log_macros.h>
 
 class RawlogRecord {
@@ -52,7 +56,7 @@ public:
     RawlogRecord (Parameters *parm);
     ~RawlogRecord();
 protected:
-    Parameters *param_; 
+    Parameters *param_;
     mrpt::slam::CRawlog *pRawLog;
     mrpt::slam::CRawlog *pRawLogASF;
     mrpt::poses::CPose2D odomLastPose_;

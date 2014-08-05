@@ -29,8 +29,6 @@
 
 #include <mrpt_localization/mrpt_localization_core.h>
 
-#include <mrpt/base.h>
-#include <mrpt/slam.h>
 
 using namespace mrpt;
 using namespace mrpt::slam;
@@ -38,7 +36,6 @@ using namespace mrpt::opengl;
 using namespace mrpt::math;
 using namespace mrpt::system;
 using namespace mrpt::utils;
-using namespace mrpt::random;
 using namespace std;
 
 PFLocalizationCore::~PFLocalizationCore()
@@ -56,7 +53,7 @@ void PFLocalizationCore::init(){
 
 void PFLocalizationCore::initializeFilter(mrpt::utils::CPosePDFGaussian &p){
     mrpt::math::CMatrixDouble33 cov;
-    mrpt::math::CPose2D mean_point;
+    mrpt::poses::CPose2D mean_point;
     log_info("InitializeFilter: %4.3fm, %4.3fm, %4.3frad ", mean_point.x(), mean_point.y(), mean_point.phi());
     p.getCovarianceAndMean(cov, mean_point);
     float min_x = mean_point.x()-cov(0,0);
@@ -79,7 +76,7 @@ void PFLocalizationCore::updateFilter(CActionCollectionPtr _action, CSensoryFram
 }
 
 void PFLocalizationCore::observation(mrpt::slam::CSensoryFramePtr _sf, mrpt::slam::CObservationOdometryPtr _odometry) {
-    
+
     mrpt::slam::CActionCollectionPtr action = mrpt::slam::CActionCollection::Create();
     mrpt::slam::CActionRobotMovement2D odom_move;
     odom_move.timestamp = _sf->getObservationByIndex(0)->timestamp;
