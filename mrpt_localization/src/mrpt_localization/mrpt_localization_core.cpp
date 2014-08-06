@@ -47,15 +47,22 @@ PFLocalizationCore::PFLocalizationCore()
 {
 }
 
-void PFLocalizationCore::init(){
+void PFLocalizationCore::init() {
+    mrpt::math::CMatrixDouble33 cov;
+    cov(0,0) = 1, cov(1,1) = 1, cov(2,2) = 2*M_PI;
+    initialPose_ = mrpt::utils::CPosePDFGaussian(mrpt::poses::CPose2D(0,0,0), cov);
+    initialParticleCount_ = 1000;
+    motion_model_default_options_.modelSelection = CActionRobotMovement2D::mmGaussian;
+    motion_model_default_options_.gausianModel.minStdXY  = 0.10;
+    motion_model_default_options_.gausianModel.minStdPHI = 2.0;
 }
 
 
-void PFLocalizationCore::initializeFilter(mrpt::utils::CPosePDFGaussian &p){
+void PFLocalizationCore::initializeFilter() {
     mrpt::math::CMatrixDouble33 cov;
     mrpt::poses::CPose2D mean_point;
     log_info("InitializeFilter: %4.3fm, %4.3fm, %4.3frad ", mean_point.x(), mean_point.y(), mean_point.phi());
-    p.getCovarianceAndMean(cov, mean_point);
+    initialPose_.getCovarianceAndMean(cov, mean_point);
     float min_x = mean_point.x()-cov(0,0);
     float max_x = mean_point.x()+cov(0,0);
     float min_y = mean_point.y()-cov(1,1);
@@ -68,7 +75,7 @@ void PFLocalizationCore::initializeFilter(mrpt::utils::CPosePDFGaussian &p){
 }
 
 void PFLocalizationCore::updateFilter(CActionCollectionPtr _action, CSensoryFramePtr _sf) {
-    if(state_ == INIT) initializeFilter(initialPose_);
+    if(state_ == INIT) initializeFilter();
     tictac_.Tic();
     pf_.executeOn( pdf_, _action.pointer(), _sf.pointer(), &pf_stats_ );
     timeLastUpdate_ = _sf->getObservationByIndex(0)->timestamp;
@@ -86,12 +93,17 @@ void PFLocalizationCore::observation(mrpt::slam::CSensoryFramePtr _sf, mrpt::sla
         }
         mrpt::poses::CPose2D incOdoPose = _odometry->odometry - odomLastObservation_;
         odomLastObservation_ = _odometry->odometry;
-        odom_move.computeFromOdometry(incOdoPose, odom_params_);
+        odom_move.computeFromOdometry(incOdoPose, motion_model_options_);
         action->insert(odom_move);
+        updateFilter(action, _sf);
     } else {
+      if(use_motion_model_default_options_){
         log_info("No odometry at update %4i -> using dummy", update_counter_);
-        odom_move.computeFromOdometry(CPose2D(0,0,0), odom_params_dummy_);
+        odom_move.computeFromOdometry(CPose2D(0,0,0), motion_model_default_options_);
         action->insert(odom_move);
+        updateFilter(action, _sf);
+      } else {
+        log_info("No odometry at update %4i -> skipping observation", update_counter_);
+      }
     }
-    updateFilter(action, _sf);
 }
