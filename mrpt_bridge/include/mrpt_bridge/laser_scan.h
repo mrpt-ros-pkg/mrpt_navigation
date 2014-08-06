@@ -22,10 +22,8 @@ namespace sensor_msgs{
 
 namespace mrpt
 {
-namespace slam
-{
-class CObservation2DRangeScan;
-}
+	namespace poses { class CPose3D; }
+	namespace slam  { class CObservation2DRangeScan; }
 }
 
 namespace mrpt_bridge {
@@ -41,7 +39,7 @@ namespace mrpt_bridge {
       * \sa ros2mrpt
       */
     bool convert(const mrpt::slam::CObservation2DRangeScan &_obj, sensor_msgs::LaserScan &_msg);
-    
+
     /**
       * \return true on sucessful conversion, false on any error.
       * \sa ros2mrpt

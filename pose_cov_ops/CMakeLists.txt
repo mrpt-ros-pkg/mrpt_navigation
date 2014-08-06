@@ -4,14 +4,12 @@ project(pose_cov_ops)
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
-find_package(catkin REQUIRED roscpp geometry_msgs mrpt_bridge)
+find_package(catkin REQUIRED COMPONENTS roscpp geometry_msgs mrpt_bridge)
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
-find_package( OpenCV REQUIRED )
-link_libraries(${OpenCV_LIBS})
 
-find_package(MRPT REQUIRED base gui obs slam)
+find_package(MRPT REQUIRED base)
 #include_directories(${MRPT_INCLUDE_DIRS})
 MESSAGE( STATUS "MRPT_INCLUDE_DIRS: " ${MRPT_INCLUDE_DIRS})
 #link_directories(${MRPT_LIBRARY_DIRS})
@@ -85,9 +83,9 @@ MESSAGE( STATUS "MRPT_LIBRARY_DIRS: " ${MRPT_LIBS})
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
 INCLUDE_DIRS include
-#  LIBRARIES pose_cov_ops
+  LIBRARIES pose_cov_ops
   CATKIN_DEPENDS mrpt_bridge
-#  DEPENDS system_lib
+  DEPENDS mrpt
 )
 
 ###########
@@ -131,18 +129,17 @@ target_link_libraries(${PROJECT_NAME}
 # )
 
 ## Mark executables and/or libraries for installation
-# install(TARGETS pose_cov_ops pose_cov_ops_node
-#   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-#   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-#   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-# )
+ install(TARGETS pose_cov_ops 
+   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
 
 ## Mark cpp header files for installation
-# install(DIRECTORY include/${PROJECT_NAME}/
-#   DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
-#   FILES_MATCHING PATTERN "*.h"
-#   PATTERN ".svn" EXCLUDE
-# )
+install(DIRECTORY include/${PROJECT_NAME}/
+   DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
+   FILES_MATCHING PATTERN "*.h"
+ )
 
 ## Mark other files for installation (e.g. launch and bag files, etc.)
 # install(FILES

@@ -26,10 +26,11 @@ generate_dynamic_reconfigure_options(
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES kinect_2d_scanner
-#   CATKIN_DEPENDS mrpt_bridge
+  CATKIN_DEPENDS mrpt_bridge
   DEPENDS mrpt
 )
 
+include_directories(${catkin_INCLUDE_DIRS})
 
 ###########
 ## Build ##
@@ -38,7 +39,7 @@ catkin_package(
 ## Declare a cpp executable
 add_executable(${PROJECT_NAME}_node 
     src/${PROJECT_NAME}_node.cpp 
-    src/${PROJECT_NAME}_node_parameters.cpp
+#    src/${PROJECT_NAME}_node_parameters.cpp
 )
 
 ## Add cmake target dependencies of the executable/library
@@ -71,12 +72,12 @@ target_link_libraries(${PROJECT_NAME}_node
 #   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 # )
 
-## Mark executables and/or libraries for installation
-# install(TARGETS kinect_2d_scanner kinect_2d_scanner_node
-#   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-#   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-#   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-# )
+# Mark executables and/or libraries for installation
+install(TARGETS ${PROJECT_NAME}_node 
+  ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
 
 ## Mark cpp header files for installation
 # install(DIRECTORY include/${PROJECT_NAME}/
