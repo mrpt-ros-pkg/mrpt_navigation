@@ -11,6 +11,8 @@
   <buildtool_depend>catkin</buildtool_depend>
   <run_depend>gazebo_ros</run_depend>
   <run_depend>gazebo_plugins</run_depend>
+  <run_depend>teleop_twist_keyboard</run_depend>
+  <run_depend>tf</run_depend>
 
 
 </package>
