@@ -2,18 +2,16 @@
 
   <arg name="robot_name" default="r1" />
   <arg name="scan" default="front_laser/scan" />
+  <arg name="ini_file" default="$(find mrpt_localization)/tutorial/pf-localization.ini" />
   <arg name="map_file" default="$(find mrpt_localization)/tutorial/map.simplemap" />
   
   <group ns="$(arg robot_name)">
     <node pkg="mrpt_localization" type="mrpt_localization_node" name="mrpt_localization_node" output="screen">
       <remap from="scan" to="$(arg scan)"/>
-      <param name="global_frame_id" value="map"/>   
       <param name="tf_prefix" value="$(arg robot_name)"/>   
-      <param name="ini_file" value="$(find mrpt_localization)/tutorial/pf-localization.ini"/> 
-      <param name="map_file" value="$(arg map_file)"/> 
+      <param name="ini_file" value="$(arg ini_file)"/> 
+      <param name="map_file" value="$(arg map_file)"/>    
     </node>
-    <node pkg="tf" type="static_transform_publisher" name="$(arg robot_name)_map_tf" 
-       args="0.00 0.0 0.0 0.0 0.0 0.0 /map $(arg robot_name)/map 200" />
   </group>
 
 </launch>
