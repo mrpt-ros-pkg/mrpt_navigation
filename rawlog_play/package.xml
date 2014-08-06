@@ -8,6 +8,7 @@
   <maintainer email="markus.bader@tuwien.ac.at">Markus Bader</maintainer>
 
   <license>BSD</license>
+  <url>http://wiki.ros.org/rawlog_play</url>
 
   <buildtool_depend>catkin</buildtool_depend>
 
@@ -16,11 +17,13 @@
   <build_depend>std_msgs</build_depend>
   <build_depend>geometry_msgs</build_depend> 
   <build_depend>mrpt_bridge</build_depend> 
+  <build_depend>pose_cov_ops</build_depend> 
 
   <run_depend>message_runtime</run_depend>
   <run_depend>roscpp</run_depend>
   <run_depend>std_msgs</run_depend>
   <run_depend>geometry_msgs</run_depend>
   <run_depend>mrpt_bridge</run_depend>
+  <run_depend>pose_cov_ops</run_depend>
   
 </package>
