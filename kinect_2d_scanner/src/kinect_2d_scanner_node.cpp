@@ -254,11 +254,7 @@ int main(int argc, char **argv)
 			// MRPT -> ROS:
 			sensor_msgs::LaserScan scan_msg;
 
-			std_msgs::Header scan_msg_header;
-			scan_msg_header.stamp = ros::Time().fromSec( mrpt::system::timestampToDouble( scan2d.timestamp ) );
-			scan_msg_header.frame_id = config.frame_id;
-
-			if (mrpt_bridge::laser_scan::mrpt2ros(scan2d, scan_msg_header, scan_msg))
+			if (mrpt_bridge::convert(scan2d,scan_msg))
 			{
 				// Publish:
 				laser_pub.publish(scan_msg);
