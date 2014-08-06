@@ -2,8 +2,8 @@
 
   <arg name="robot_name" default="r1" />
   <arg name="scan" default="front_laser/scan" />
-  <arg name="ini_file" default="$(find mrpt_localization)/tutorial/pf-localization.ini" />
-  <arg name="map_file" default="$(find mrpt_localization)/tutorial/map.simplemap" />
+  <arg name="ini_file" default="$(find mrpt_tutorials)/cfg/pf-localization.ini" />
+  <arg name="map_file" default="$(find mrpt_tutorials)/maps/gh25.simplemap" />
   
   <group ns="$(arg robot_name)">
     <node pkg="mrpt_localization" type="mrpt_localization_node" name="mrpt_localization_node" output="screen">

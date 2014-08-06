@@ -29,6 +29,7 @@
 
 #include <mrpt_localization/mrpt_localization.h>
 #include <mrpt_localization/mrpt_localization_defaults.h>
+#include <mrpt/base.h>
 
 
 #include <mrpt_bridge/map.h>

@@ -1,3 +1,4 @@
+<?xml version="1.0"?>
 <launch>
 
   <!-- these are the arguments you can pass this launch file, for example paused:=true -->
@@ -7,7 +8,7 @@
   <arg name="headless" default="false"/>
   <arg name="debug" default="false"/>
   <arg name="verbose" default="false"/>
-  <arg name="world_name" default="$(find mrpt_tutorials)/worlds/empty.world"/> 
+  <arg name="world_name" default="$(find mrpt_tutorials)/gazebo/empty.world"/> 
 
   <!-- set use_sim_time flag -->
   <group if="$(arg use_sim_time)">
@@ -32,5 +33,13 @@
   <group if="$(arg gui)">
     <node name="gazebo_gui" pkg="gazebo_ros" type="gzclient" respawn="false" output="screen"/>
   </group>
+
+  <!-- Robot with diff drive -->
+  <include file="$(find gazebo_plugins)/test/multi_robot_scenario/launch/pioneer3dx.gazebo.launch">
+     <arg name="robot_name" value="r1" />
+     <arg name="robot_position" value="-x 0.0 -y -0.5 -z 0.01 -R 0 -P 0 -Y 0" />
+   </include>
+     
+  <node name="room_hbf" pkg="gazebo_ros" type="spawn_model" args="-file $(find mrpt_tutorials)/gazebo/room_gh25/model.sdf -sdf -x -20.0 -y -9 -model room" />
 
 </launch>

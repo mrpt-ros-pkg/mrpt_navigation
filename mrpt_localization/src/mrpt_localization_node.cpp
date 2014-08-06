@@ -197,7 +197,7 @@ bool PFLocalizationNode::mapCallback(nav_msgs::GetMap::Request  &req, nav_msgs::
 
 void PFLocalizationNode::publishMap () {
     resp_.map.header.stamp = ros::Time::now();
-    resp_.map.header.frame_id =  param()->global_frame_id;
+    resp_.map.header.frame_id =  tf::resolve(param()->tf_prefix, param()->global_frame_id);
     resp_.map.header.seq = loop_count_;
     if(pub_map_.getNumSubscribers() > 0) {
         pub_map_.publish(resp_.map );
