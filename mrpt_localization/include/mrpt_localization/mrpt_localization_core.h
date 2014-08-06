@@ -55,24 +55,41 @@ public:
     enum PFStates {NA, INIT, RUN} ;
     PFLocalizationCore ();
     ~PFLocalizationCore();
-    void init();
-protected:
-    mrpt::slam::CActionRobotMovement2D::TMotionModelOptions odom_params_dummy_;
-    mrpt::slam::CActionRobotMovement2D::TMotionModelOptions odom_params_;
-    mrpt::slam::CMultiMetricMap metric_map_;
-    mrpt::slam::CMonteCarloLocalization2D  pdf_;
-    mrpt::bayes::CParticleFilter pf_;
-    mrpt::bayes::CParticleFilter::TParticleFilterStats   pf_stats_;
-    mrpt::poses::CPosePDFGaussian initialPose_;
-    mrpt::system::TTimeStamp timeLastUpdate_;
-    mrpt::utils::CTicTac tictac_;
-    size_t update_counter_;
-    PFStates state_;
-    mrpt::poses::CPose2D odomLastObservation_;
-
-    int initialParticleCount_;
-    void initializeFilter(mrpt::utils::CPosePDFGaussian &p);
+    /**
+     * initilizes the parameter with common values to acive a working filter out of the box
+     **/
+    void init(); 
+    /**
+     * preprocesses an obseration and calles the update PFLocalizationCore::updateFilter
+     * If the odom data is null the function will assume a dummy odometry distribution around the last pose
+     * @param _sf sonsor observation
+     * @param _odometry the odom data can also be NULL
+     **/
     void observation(mrpt::slam::CSensoryFramePtr _sf, mrpt::slam::CObservationOdometryPtr _odometry);
+protected:
+    
+    bool use_motion_model_default_options_; /// used default odom_params
+    mrpt::slam::CActionRobotMovement2D::TMotionModelOptions motion_model_default_options_; /// used if there are is not odom
+    mrpt::slam::CActionRobotMovement2D::TMotionModelOptions motion_model_options_;         /// used with odom value motion noise
+    mrpt::slam::CMultiMetricMap metric_map_;     /// map
+    mrpt::bayes::CParticleFilter pf_;            /// common interface for particle filters
+    mrpt::bayes::CParticleFilter::TParticleFilterStats   pf_stats_; /// filter statists
+    mrpt::slam::CMonteCarloLocalization2D  pdf_; /// fhe filter
+    mrpt::poses::CPosePDFGaussian initialPose_;  /// initilial posed used in initializeFilter()
+    int initialParticleCount_;                   /// number of particles for initilization
+    mrpt::system::TTimeStamp timeLastUpdate_;    /// time of the last update
+    mrpt::utils::CTicTac tictac_;                /// timer to measure performance
+    size_t update_counter_;                      /// internal counter to count the number of filter updates
+    PFStates state_;                             /// filter states to perform things like init on the corret time
+    mrpt::poses::CPose2D odomLastObservation_;   /// pose at the last oversvation
+    
+private:
+    /**
+     * Initilizes the filter at pose PFLocalizationCore::initialPose_ with PFLocalizationCore::initialParticleCount_
+     * it is called by the PFLocalizationCore::updateFilter if the state_ == INIT
+     **/
+    void initializeFilter();
+    
     void updateFilter(mrpt::slam::CActionCollectionPtr _action, mrpt::slam::CSensoryFramePtr _sf);
 };
 

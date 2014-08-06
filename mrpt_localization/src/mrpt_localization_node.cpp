@@ -51,7 +51,7 @@ PFLocalizationNode::~PFLocalizationNode() {
 }
 
 PFLocalizationNode::PFLocalizationNode(ros::NodeHandle &n) :
-    PFLocalization(new PFLocalizationNode::Parameters(&odom_params_)), n_(n), loop_count_(0) {
+    PFLocalization(new PFLocalizationNode::Parameters(this)), n_(n), loop_count_(0) {
 }
 
 PFLocalizationNode::Parameters *PFLocalizationNode::param() {
@@ -153,7 +153,8 @@ void PFLocalizationNode::updateLaserPose (std::string _frame_id) {
     mrpt::poses::CPose3D pose;
     tf::StampedTransform transform;
     try {
-        listenerTF_.lookupTransform(param()->base_frame_id, _frame_id, ros::Time(0), transform);
+        std::string base_frame_id = tf::resolve(param()->tf_prefix, param()->base_frame_id);
+        listenerTF_.lookupTransform(base_frame_id, _frame_id, ros::Time(0), transform);
         tf::Vector3 translation = transform.getOrigin();
         tf::Quaternion quat = transform.getRotation();
         pose.x() = translation.x();
