@@ -8,6 +8,7 @@
   <maintainer email="markus.bader@tuwien.ac.at">Markus Bader</maintainer>
 
   <license>BSD</license>
+  <url>http://wiki.ros.org/mrpt_msgs</url>
 
   <buildtool_depend>catkin</buildtool_depend>
 
