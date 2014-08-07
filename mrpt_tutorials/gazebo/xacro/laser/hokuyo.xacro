@@ -46,7 +46,7 @@
             </scan>
             <range>
               <min>0.08</min>
-              <max>50</max>
+              <max>5</max>
               <resolution>0.01</resolution>
             </range>
           </ray>
