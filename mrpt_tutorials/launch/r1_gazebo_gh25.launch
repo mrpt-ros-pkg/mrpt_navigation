@@ -1,6 +1,8 @@
 <?xml version="1.0"?>
 <launch>
 
+  <env name="GAZEBO_MODEL_PATH" value="$(find mrpt_tutorials)/gazebo/"/>
+  
   <!-- these are the arguments you can pass this launch file, for example paused:=true -->
   <arg name="paused" default="false"/>
   <arg name="use_sim_time" default="true"/>
@@ -27,7 +29,8 @@
 
   <!-- start gazebo server-->
   <node name="gazebo" pkg="gazebo_ros" type="$(arg script_type)" respawn="false" output="screen"
-	args="$(arg command_arg1) $(arg command_arg2) $(arg command_arg3) $(arg world_name)" />
+	args="$(arg command_arg1) $(arg command_arg2) $(arg command_arg3) $(arg world_name)" >
+  </node>
 	
   <!-- start gazebo client -->
   <group if="$(arg gui)">
@@ -35,11 +38,20 @@
   </group>
 
   <!-- Robot with diff drive -->
-  <include file="$(find gazebo_plugins)/test/multi_robot_scenario/launch/pioneer3dx.gazebo.launch">
-     <arg name="robot_name" value="r1" />
-     <arg name="robot_position" value="-x 0.0 -y -0.5 -z 0.01 -R 0 -P 0 -Y 0" />
-   </include>
+  <arg name="robot_name" value="r1" />
+  <arg name="robot_position" value="-x 0.0 -y -0.5 -z 0.01 -R 0 -P 0 -Y 0" />    
+  <group ns="$(arg robot_name)">
+    <!-- Load the URDF into the ROS Parameter Server -->
+    <param name="robot_description" command="$(find xacro)/xacro.py '$(find mrpt_tutorials)/gazebo/xacro/p3dx/pioneer3dx.xacro'" />
+    <!-- Run a python script to the send a service call to gazebo_ros to spawn a URDF robot -->
+    <node name="urdf_spawner" pkg="gazebo_ros" type="spawn_model" respawn="false" output="screen" args="-urdf -model $(arg robot_name) -param robot_description $(arg robot_position) "/>
+    <node pkg="robot_state_publisher" type="state_publisher" name="robot_state_publisher">
+      <param name="publish_frequency" type="double" value="30.0"/>
+      <param name="tf_prefix" type="string" value="$(arg robot_name)"/>
+    </node>
+  </group>
      
+  <!-- Load room -->
   <node name="room_hbf" pkg="gazebo_ros" type="spawn_model" args="-file $(find mrpt_tutorials)/gazebo/room_gh25/model.sdf -sdf -x -20.0 -y -9 -model room" />
 
 </launch>
