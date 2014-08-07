@@ -25,6 +25,8 @@
   <build_depend>geometry_msgs</build_depend>
   <build_depend>sensor_msgs</build_depend>
   <build_depend>mrpt_msgs</build_depend>
+  <build_depend>libpcl-all-dev</build_depend> <!-- Only during BUILD: for unit tests -->
+
   <!-- Use buildtool_depend for build tool packages: -->
   <buildtool_depend>catkin</buildtool_depend>
   <!-- Use test_depend for packages you need only for testing: -->
@@ -39,6 +41,9 @@
   <run_depend>geometry_msgs</run_depend>
   <run_depend>sensor_msgs</run_depend>
   <run_depend>mrpt_msgs</run_depend>
+
+  <build_depend>mrpt</build_depend> <!-- Depend on mrpt system pkgs -->
+  <run_depend>mrpt</run_depend> <!-- Depend on mrpt system pkgs -->
   
 
   <!-- The export tag contains other, unspecified, tags -->

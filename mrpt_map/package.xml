@@ -20,6 +20,7 @@
   <build_depend>nav_msgs</build_depend>
   <build_depend>mrpt_bridge</build_depend>
   <build_depend>dynamic_reconfigure</build_depend> 
+  <build_depend>mrpt</build_depend> <!-- Depend on mrpt system pkgs -->
   
   
   <run_depend>roscpp</run_depend>
@@ -30,4 +31,5 @@
   <run_depend>nav_msgs</run_depend>
   <run_depend>mrpt_bridge</run_depend>
   <run_depend>dynamic_reconfigure</run_depend> 
+  <run_depend>mrpt</run_depend> <!-- Depend on mrpt system pkgs -->
 </package>
