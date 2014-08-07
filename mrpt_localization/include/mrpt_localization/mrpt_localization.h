@@ -39,12 +39,14 @@
 class PFLocalization : public PFLocalizationCore {
 public:
     struct Parameters {
-        Parameters(mrpt::slam::CActionRobotMovement2D::TMotionModelOptions *p);
+        Parameters(PFLocalization *p);
         bool debug;
         bool gui_mrpt;
         std::string iniFile;
         std::string mapFile;
-        mrpt::slam::CActionRobotMovement2D::TMotionModelOptions *motionModelOptions;
+        bool *use_motion_model_default_options;
+        mrpt::slam::CActionRobotMovement2D::TMotionModelOptions *motion_model_options;
+        mrpt::slam::CActionRobotMovement2D::TMotionModelOptions *motion_model_default_options;
     };
     PFLocalization (Parameters *parm);
     ~PFLocalization();

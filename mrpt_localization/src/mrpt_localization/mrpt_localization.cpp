@@ -91,12 +91,11 @@ void PFLocalization::init() {
     SHOW_PROGRESS_3D_REAL_TIME = false;
 #endif
 
-    // Default odometry uncertainty parameters in "dummy_odom_params" depending on how fast the robot moves, etc...
+    // Default odometry uncertainty parameters in "odom_params_default_" depending on how fast the robot moves, etc...
     //  Only used for observations-only rawlogs:
-
-    odom_params_dummy_.modelSelection = CActionRobotMovement2D::mmGaussian;
-    odom_params_dummy_.gausianModel.minStdXY  = iniFile.read_double("DummyOdometryParams","minStdXY",0.04);
-    odom_params_dummy_.gausianModel.minStdPHI = DEG2RAD(iniFile.read_double("DummyOdometryParams","minStdPHI", 2.0));
+    motion_model_default_options_.modelSelection = CActionRobotMovement2D::mmGaussian;
+    motion_model_default_options_.gausianModel.minStdXY  = iniFile.read_double("DummyOdometryParams","minStdXY",0.04);
+    motion_model_default_options_.gausianModel.minStdPHI = DEG2RAD(iniFile.read_double("DefaultOdometryParams","minStdPHI", 2.0));
 
 
     if ( !iniFile.read_bool(iniSectionName,"init_PDF_mode",false, /*Fail if not found*/true) ) {
@@ -116,6 +115,9 @@ void PFLocalization::init() {
         p.phi() = min_phi + cov(2,2) / 2.0;
         printf("----------- phi: %4.3f: %4.3f <-> %4.3f, %4.3f\n", p.phi(), min_phi, max_phi, cov(2,2));
         initialPose_ = mrpt::utils::CPosePDFGaussian(p, cov);
+        state_ = INIT; 
+    } else {
+      log_error("no initial pose");
     }
 
 
@@ -129,7 +131,6 @@ void PFLocalization::init() {
     initialParticleCount_ = *particles_count.begin();
 
     if(param_->gui_mrpt) init3DDebug();
-    initializeFilter(initialPose_);
 
 }
 
