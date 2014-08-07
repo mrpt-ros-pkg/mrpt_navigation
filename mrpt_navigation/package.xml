@@ -19,7 +19,7 @@ Refer to http://wiki.ros.org/mrpt_navigation for further documentation.
     <run_depend>mrpt_localization</run_depend>
     <run_depend>mrpt_map</run_depend>
     <run_depend>mrpt_rawlog</run_depend>
-    <run_depend>mrpt_tutorials</run_depend>
+    <run_depend>mrpt_tutorials</run_depend>cd.
     <run_depend>kinect_2d_scanner</run_depend>
     <export>
         <metapackage/>

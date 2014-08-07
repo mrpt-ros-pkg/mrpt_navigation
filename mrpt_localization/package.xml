@@ -2,8 +2,12 @@
 <package>
   <name>mrpt_localization</name>
   <version>1.0.0</version>
-  <description>The mrpt_localization package</description>
+  <description>This package provides an interface for the mprt (Mobile robotics C++ libraries) 
+  and enables the included node to solve a 2D self-localization problem given an existing map.
+  The node is able to use mrpt map formats as well as published ros maps. 
+  The interface is similar to the amcl (http://wiki.ros.org/amcl) pkg.</description>
 
+  <url type="website">http://www.mrpt.org/</url>
   <maintainer email="markus.bader@tuwien.ac.at">Markus Bader</maintainer>
   <author>Markus Bader</author>
   <license>BSD</license>  

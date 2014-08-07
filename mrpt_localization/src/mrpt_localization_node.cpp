@@ -60,11 +60,12 @@ PFLocalizationNode::Parameters *PFLocalizationNode::param() {
 
 void PFLocalizationNode::init() {
     PFLocalization::init();
-    subLaser0_ = n_.subscribe("scan", 1, &PFLocalizationNode::callbackLaser, this);
+    subInitPose_ = n_.subscribe("initialpose", 1, &PFLocalizationNode::callbackInitialpose, this);
+    
+    subLaser0_ = n_.subscribe("scan",  1, &PFLocalizationNode::callbackLaser, this);
     subLaser1_ = n_.subscribe("scan1", 1, &PFLocalizationNode::callbackLaser, this);
     subLaser2_ = n_.subscribe("scan2", 1, &PFLocalizationNode::callbackLaser, this);
 
-    subLaser2_ = n_.subscribe("initialpose", 1, &PFLocalizationNode::callbackInitialpose, this);
 
     if(!param()->mapFile.empty()) {
         mrpt_bridge::convert(*metric_map_.m_gridMaps[0], resp_.map);
@@ -177,9 +178,9 @@ void PFLocalizationNode::updateLaserPose (std::string _frame_id) {
 }
 
 void PFLocalizationNode::callbackInitialpose (const geometry_msgs::PoseWithCovarianceStamped& _msg) {
+    log_info("callbackInitialpose");
     const geometry_msgs::PoseWithCovariance &pose = _msg.pose;
     mrpt_bridge::convert(pose, initialPose_);
-    log_info("callbackInitialpose");
     state_ = INIT;
 }
 
@@ -209,8 +210,7 @@ void PFLocalizationNode::publishMap () {
 
 void PFLocalizationNode::publishParticles () {
     geometry_msgs::PoseArray poseArray;
-    std::string global_frame = param()->global_frame_id;
-    poseArray.header.frame_id = global_frame;
+    poseArray.header.frame_id = tf::resolve(param()->tf_prefix, param()->global_frame_id);
     poseArray.header.stamp = ros::Time::now();
     poseArray.header.seq = loop_count_;
     poseArray.poses.resize(pdf_.particlesCount());
