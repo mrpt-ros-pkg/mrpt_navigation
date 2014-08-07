@@ -7,6 +7,8 @@ Refer to http://wiki.ros.org/mrpt_navigation for further documentation.
     </description>
   <maintainer email="jlblanco@ual.es">Jose-Luis Blanco-Claraco</maintainer>
   <maintainer email="markus.bader@tuwien.ac.at">Markus Bader</maintainer>
+  <author>Jose-Luis Blanco-Claraco</author>
+  <author>Markus Bader</author>
     <license>BSD</license>  
     <url>http://wiki.ros.org/mrpt_navigation</url>
 
