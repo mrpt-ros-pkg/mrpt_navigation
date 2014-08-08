@@ -88,7 +88,7 @@ void PFLocalization::init() {
     SHOW_PROGRESS_3D_REAL_TIME_DELAY_MS_ = iniFile.read_int(iniSectionName,"SHOW_PROGRESS_3D_REAL_TIME_DELAY_MS",1);
 
 #if !MRPT_HAS_WXWIDGETS
-    SHOW_PROGRESS_3D_REAL_TIME = false;
+    SHOW_PROGRESS_3D_REAL_TIME_ = false;
 #endif
 
     // Default odometry uncertainty parameters in "odom_params_default_" depending on how fast the robot moves, etc...
