@@ -13,12 +13,18 @@ $ rostopic echo /scan
 -->
 
 <launch>
-  <node name="reconfigure_gui" pkg="dynamic_reconfigure" type="reconfigure_gui" respawn="false" output="screen"/>
+  <node name="reconfigure_gui" pkg="rqt_reconfigure" type="rqt_reconfigure" output="screen"/>
 
-  <node name="kinect_fake_2d_scanner" pkg="kinect_2d_scanner" type="kinect_2d_scanner" respawn="false" output="screen">
+  <node 
+	name="kinect_fake_2d_scanner" 
+	pkg="kinect_2d_scanner"
+	type="kinect_2d_scanner_node" 
+	output="screen">
     <!-- <param name="port" type="string" value="/dev/ttyACM0"/>  -->
   </node>
   
-  <node name="rviz" pkg="rviz" type="rviz" respawn="false" output="screen" args="-d $(find kinect_2d_scanner)/kinect_2d_scanner_test.vcg"/> 
-  
+  <node name="rviz" pkg="rviz" type="rviz" respawn="false" output="screen" 
+  /> 
+<!-- args="-d $(find kinect_2d_scanner)/launch/kinect_2d_scanner_test.vcg"   -->
+
 </launch>
