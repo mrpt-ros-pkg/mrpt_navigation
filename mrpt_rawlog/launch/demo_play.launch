@@ -3,7 +3,7 @@
   <node pkg="mrpt_rawlog" type="rawlog_play_node" name="rawlog_play_node" output="screen">
 
     <param name="debug" value="true"/> 
-    <param name="rawlog_file" value="$(find mrpt_rawlog)/tutorial/01/2014-07-15--14-09-33--ros_log_asf.rawlog"/>
+    <param name="rawlog_file" value="$(find mrpt_rawlog)/tutorial/2006-01-21-malaga_campus_loop.rawlog"/>
 
   </node>
 
