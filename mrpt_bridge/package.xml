@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <package>
   <name>mrpt_bridge</name>
-  <version>1.0.0</version>
+  <version>0.1.0</version>
   <description>The mrpt_bridge package</description>
 
   <!-- One maintainer tag required, multiple allowed, one person per tag --> 

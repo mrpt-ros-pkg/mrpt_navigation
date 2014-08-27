@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <package>
   <name>kinect_2d_scanner</name>
-  <version>1.0.0</version>
+  <version>0.1.0</version>
   <description>Kinect grabber as 2D laser scans</description>
 
   <maintainer email="jlblanco@ual.es">Jose-Luis Blanco-Claraco</maintainer>
