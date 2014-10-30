@@ -77,6 +77,9 @@ bool RawlogRecordNode::waitForTransform(mrpt::poses::CPose3D &des, const std::st
     tf::StampedTransform transform;
     try
     {
+	if(param_->debug)
+		ROS_INFO("debug: waitForTransform(): target_frame='%s' source_frame='%s'", target_frame.c_str(), source_frame.c_str() );
+
         listenerTF_.waitForTransform(target_frame, source_frame,  time, polling_sleep_duration);
         listenerTF_.lookupTransform(target_frame, source_frame,  time, transform);
     }
@@ -125,6 +128,8 @@ void RawlogRecordNode::updateLaserPose (std::string _frame_id) {
     mrpt::poses::CPose3D pose;
     tf::StampedTransform transform;
     try {
+	if(param_->debug)
+		ROS_INFO("debug: updateLaserPose(): base_frame_id='%s' _frame_id='%s'", base_frame_id.c_str(), _frame_id.c_str() );
 
         listenerTF_.lookupTransform(base_frame_id, _frame_id, ros::Time(0), transform);
         ROS_INFO("Requesting laser pose for %s!", _frame_id.c_str());
