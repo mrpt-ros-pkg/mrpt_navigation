@@ -2,10 +2,7 @@
 Changelog for package mrpt_rawlog
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-0.1.2 (2014-12-17)
-------------------
-
-0.1.1 (2014-12-17)
+0.1.0 (2014-12-17)
 ------------------
 * More debug output
 * consistent version numbers
