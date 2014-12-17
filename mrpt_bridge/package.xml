@@ -25,6 +25,7 @@
   <build_depend>geometry_msgs</build_depend>
   <build_depend>sensor_msgs</build_depend>
   <build_depend>mrpt_msgs</build_depend>
+  <build_depend>pcl_conversions</build_depend> <!-- Only during BUILD: for unit tests -->
   <build_depend>libpcl-all-dev</build_depend> <!-- Only during BUILD: for unit tests -->
 
   <!-- Use buildtool_depend for build tool packages: -->
