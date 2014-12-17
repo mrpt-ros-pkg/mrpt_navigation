@@ -2,8 +2,8 @@
 Changelog for package mrpt_rawlog
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+0.1.1 (2014-12-17)
+------------------
 * More debug output
 * consistent version numbers
 * Fix demo_play with a sample .rawlog (was missing)

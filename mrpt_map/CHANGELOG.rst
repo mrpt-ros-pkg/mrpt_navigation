@@ -2,8 +2,8 @@
 Changelog for package mrpt_map
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+0.1.1 (2014-12-17)
+------------------
 * consistent version numbers
 * Fixes broken dependencies
 * Update all wiki URLs
