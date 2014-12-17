@@ -2,6 +2,9 @@
 Changelog for package mrpt_rawlog
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+
 0.1.1 (2014-12-17)
 ------------------
 * More debug output
