@@ -2,6 +2,11 @@
 Changelog for package mrpt_rawlog
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Fix many missing install files
+* Contributors: Jose Luis Blanco
+
 0.1.2 (2014-12-18)
 ------------------
 
