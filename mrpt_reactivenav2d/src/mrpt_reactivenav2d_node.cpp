@@ -3,7 +3,7 @@
 
 int main(int argc, char **argv)
 {
-	ros::init(argc, argv, "reactivenav2d");
+	ros::init(argc, argv, "mrpt_reactivenav2d");
 	ros::NodeHandle n;
 
 	ros::spin();
