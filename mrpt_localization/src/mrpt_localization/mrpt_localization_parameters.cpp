@@ -35,6 +35,7 @@ PFLocalization::Parameters::Parameters(PFLocalization *p)
     , gui_mrpt(MRPT_LOCALIZATION_DEFAULT_GUI_MRPT)
     , iniFile(MRPT_LOCALIZATION_DEFAULT_INI_FILE)
     , mapFile(MRPT_LOCALIZATION_DEFAULT_MAP_FILE)
+	, sensorSources(MRPT_LOCALIZATION_DEFAULT_SENSOR_SOURCES)
     , use_motion_model_default_options(&p->use_motion_model_default_options_)
     , motion_model_options(&p->motion_model_options_)
     , motion_model_default_options(&p->motion_model_default_options_){

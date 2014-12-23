@@ -15,8 +15,8 @@
     <param name="tf_prefix" value=""/> 
     <param name="debug" value="true"/>
     <param name="gui_mrpt" value="true"/> 
-    <remap from="scan" to="r1/front_laser/scan"/> 
-    <remap from="particlecloud" to="r1/particlecloud"/>   		
+    <param name="sensor_sources" value="r1/front_laser/scan"/>
+    <remap from="particlecloud" to="r1/particlecloud"/>
   </node>
 
 </launch>

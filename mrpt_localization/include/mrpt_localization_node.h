@@ -78,9 +78,7 @@ private: //functions
     void update ();
     void updateLaserPose (std::string frame_id);
     ros::Subscriber subInitPose_;
-    ros::Subscriber subLaser0_;
-    ros::Subscriber subLaser1_;
-    ros::Subscriber subLaser2_;
+	std::vector<ros::Subscriber> subLasers_;
     ros::Subscriber subMap_;
     ros::ServiceClient clientMap_;
     ros::Publisher pub_Particles_;

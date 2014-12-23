@@ -11,9 +11,9 @@ find_package(catkin REQUIRED COMPONENTS roscpp tf std_msgs nav_msgs sensor_msgs 
 # MRPT
 find_package(MRPT REQUIRED base gui obs)
 #include_directories(${MRPT_INCLUDE_DIRS})
-MESSAGE( STATUS "MRPT_INCLUDE_DIRS: " ${MRPT_INCLUDE_DIRS})
+#MESSAGE( STATUS "MRPT_INCLUDE_DIRS: " ${MRPT_INCLUDE_DIRS})
 #link_directories(${MRPT_LIBRARY_DIRS})
-MESSAGE( STATUS "MRPT_LIBRARY_DIRS: " ${MRPT_LIBS})
+#MESSAGE( STATUS "MRPT_LIBRARY_DIRS: " ${MRPT_LIBS})
 
 
 ## Uncomment this if the package has a setup.py. This macro ensures

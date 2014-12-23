@@ -9,6 +9,15 @@
  *
  */
 
+/**
+\mainpage
+
+\htmlinclude manifest.html
+
+\b mrpt_bridge is a set of functions to convert between common ROS messages and MRPT C++ classes.
+
+**/
+
 #include <mrpt/poses/CPose2D.h>
 #include <mrpt/poses/CPose3D.h>
 #include <mrpt/poses/CPosePDFGaussian.h>

@@ -61,11 +61,14 @@ PFLocalizationNode::Parameters *PFLocalizationNode::param() {
 void PFLocalizationNode::init() {
     PFLocalization::init();
     subInitPose_ = n_.subscribe("initialpose", 1, &PFLocalizationNode::callbackInitialpose, this);
-    
-    subLaser0_ = n_.subscribe("scan",  1, &PFLocalizationNode::callbackLaser, this);
-    subLaser1_ = n_.subscribe("scan1", 1, &PFLocalizationNode::callbackLaser, this);
-    subLaser2_ = n_.subscribe("scan2", 1, &PFLocalizationNode::callbackLaser, this);
 
+	// Subscribe to one or more laser sources:
+	std::vector<std::string> lstSources;
+	mrpt::utils::tokenize(param()->sensorSources," ,\t\n",lstSources);
+	ROS_ASSERT_MSG(!lstSources.empty(), "*Fatal*: At least one sensor source must be provided in ~sensor_sources (e.g. \"scan\")");
+	subLasers_.resize(lstSources.size());
+	for (size_t i=0;i<lstSources.size();i++)
+		subLasers_[i]  = n_.subscribe(lstSources[i],  1, &PFLocalizationNode::callbackLaser, this);
 
     if(!param()->mapFile.empty()) {
         mrpt_bridge::convert(*metric_map_.m_gridMaps[0], resp_.map);
@@ -223,7 +226,7 @@ void PFLocalizationNode::publishParticles () {
 }
 
 void PFLocalizationNode::publishTF() {
-    // Most of this code was copy and pase form ros::amcl
+	// Most of this code was copy and pase from ros::amcl
     // sorry it is realy ugly
     mrpt::poses::CPose2D robotPose;
     pdf_.getMean(robotPose);
@@ -238,12 +241,12 @@ void PFLocalizationNode::publishTF() {
     try
     {
         tf::Stamped<tf::Pose> tmp_tf_stamped (tmp_tf.inverse(), stamp,  base_frame_id);
-        //ROS_INFO("subtract global_frame (%s) form odom_frame (%s)", global_frame_id.c_str(), odom_frame_id.c_str());
+		//ROS_INFO("subtract global_frame (%s) from odom_frame (%s)", global_frame_id.c_str(), odom_frame_id.c_str());
         listenerTF_.transformPose(odom_frame_id, tmp_tf_stamped, odom_to_map);
     }
     catch(tf::TransformException)
     {
-        ROS_INFO("Failed to subtract global_frame (%s) form odom_frame (%s)", global_frame_id.c_str(), odom_frame_id.c_str());
+		ROS_INFO("Failed to subtract global_frame (%s) from odom_frame (%s)", global_frame_id.c_str(), odom_frame_id.c_str());
         return;
     }
 
