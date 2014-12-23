@@ -34,6 +34,9 @@ class CConfigFile;
 namespace mrpt_bridge
 {
 
+/** @name Maps, Occupancy Grid Maps: ROS <-> MRPT
+ *  @{ */
+
 /** Methods to convert between ROS msgs and MRPT objects for map datatypes.
  * @brief the map class is implemented as singeleton use map::instance ()->ros2mrpt ...
   */
@@ -115,8 +118,8 @@ bool convert (
     const mrpt::slam::COccupancyGridMap2D &src,
     nav_msgs::OccupancyGrid &msg);
 
+/** @} */
 
-
-}; //namespace mrpt_bridge
+} //namespace mrpt_bridge
 
 #endif //MRPT_BRIDGE_MAP_H

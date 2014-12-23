@@ -7,6 +7,9 @@
 
 namespace mrpt_bridge {
 
+/** @name Point clouds: ROS <-> MRPT
+ *  @{ */
+
 /** Methods to convert between ROS msgs and MRPT objects for point-cloud datatypes.
   */
 namespace point_cloud
@@ -33,7 +36,10 @@ namespace point_cloud
 		const std_msgs::Header &msg_header,
 		sensor_msgs::PointCloud &msg
 		);
-}; // end of PointCloud
+} // end of PointCloud
+
+/** @} */
+
 } //namespace mrpt_bridge
 
 #endif //MRPT_BRIDGE_POINT_CLOUD_H

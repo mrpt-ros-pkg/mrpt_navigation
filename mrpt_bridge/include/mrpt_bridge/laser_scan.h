@@ -28,23 +28,28 @@ namespace mrpt
 
 namespace mrpt_bridge {
 
-	/**
+	/** @name LaserScan: ROS <-> MRPT
+	 *  @{ */
+
+	/** ROS->MRPT: Takes a sensor_msgs::LaserScan and the relative pose of the laser wrt base_link and builds a CObservation2DRangeScan
 	  * \return true on sucessful conversion, false on any error.
 	  * \sa mrpt2ros
 	  */
     bool convert(const sensor_msgs::LaserScan &_msg, const mrpt::poses::CPose3D &_pose, mrpt::slam::CObservation2DRangeScan &_obj);
 
-    /**
+	/** MRPT->ROS: Takes a CObservation2DRangeScan and outputs range data in sensor_msgs::LaserScan
       * \return true on sucessful conversion, false on any error.
       * \sa ros2mrpt
       */
     bool convert(const mrpt::slam::CObservation2DRangeScan &_obj, sensor_msgs::LaserScan &_msg);
 
-    /**
-      * \return true on sucessful conversion, false on any error.
+	/** MRPT->ROS: Takes a CObservation2DRangeScan and outputs range data in sensor_msgs::LaserScan + the relative pose of the laser wrt base_link
+	  * \return true on sucessful conversion, false on any error.
       * \sa ros2mrpt
       */
     bool convert(const mrpt::slam::CObservation2DRangeScan &_obj, sensor_msgs::LaserScan &_msg, geometry_msgs::Pose &_pose);
+
+	/** @} */
 
 } //namespace mrpt_bridge
 

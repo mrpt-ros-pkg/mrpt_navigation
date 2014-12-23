@@ -60,9 +60,10 @@ bool convert(const mrpt::slam::CObservation2DRangeScan  &_obj, sensor_msgs::Lase
 }
 
 bool convert(const mrpt::slam::CObservation2DRangeScan  &_obj, sensor_msgs::LaserScan &_msg, geometry_msgs::Pose &_pose) {
-    convert(_obj, _msg);
-    mrpt::poses::CPose3D pose;
-    _obj.getSensorPose(pose);
-    convert(pose,_pose);
+	convert(_obj, _msg);
+	mrpt::poses::CPose3D pose;
+	_obj.getSensorPose(pose);
+	convert(pose,_pose);
+	return true;
 }
 } // end namespace

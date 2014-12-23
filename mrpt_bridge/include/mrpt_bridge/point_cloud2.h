@@ -27,6 +27,9 @@ class CColouredPointsMap;
 namespace mrpt_bridge
 {
 
+/** @name sensor_msgs::PointCloud2: ROS <-> MRPT
+ *  @{ */
+
 /** Convert sensor_msgs/PointCloud2 -> mrpt::slam::CSimplePointsMap
  *  CSimplePointsMap only contains (x,y,z) data, so sensor_msgs::PointCloud2::channels are ignored.
  * \return true on sucessful conversion, false on any error.
@@ -43,6 +46,8 @@ bool copy(const sensor_msgs::PointCloud2 &msg, mrpt::slam::CSimplePointsMap &obj
  */
 bool copy(const mrpt::slam::CSimplePointsMap &obj, const std_msgs::Header &msg_header,
               sensor_msgs::PointCloud2 &msg);
+
+/** @} */
 
 }//namespace mrpt_bridge
 
