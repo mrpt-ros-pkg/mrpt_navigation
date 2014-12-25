@@ -43,6 +43,7 @@
 #include <mrpt/system/string_utils.h>
 #include <mrpt/utils/CTimeLogger.h>
 #include <mrpt/slam/CSimplePointsMap.h>
+#include <mrpt/slam/COccupancyGridMap2D.h>
 #include <mrpt/gui/CDisplayWindow3D.h>
 #include <mrpt/opengl/CGridPlaneXY.h>
 #include <mrpt/opengl/CPointCloud.h>
@@ -87,8 +88,9 @@ private:
 	TListObservations  m_hist_obs;  //!< The history of past observations during the interest time window.
 	boost::mutex m_hist_obs_mtx;
 
-	/** The local map */
-	mrpt::slam::CSimplePointsMap  m_localmap_pts;
+	/** The local maps */
+	mrpt::slam::CSimplePointsMap    m_localmap_pts;
+	//mrpt::slam::COccupancyGridMap2D m_localmap_grid;
 
 	mrpt::gui::CDisplayWindow3DPtr  m_gui_win;
 
@@ -243,15 +245,17 @@ private:
 
 			} // end for
 
-
 		}
 
 		// Publish them:
-		sensor_msgs::PointCloudPtr msg_pts = sensor_msgs::PointCloudPtr( new sensor_msgs::PointCloud);
-		msg_pts->header.frame_id = m_frameid_robot;
-		msg_pts->header.stamp = ros::Time( obs.rbegin()->first );
-		mrpt_bridge::point_cloud::mrpt2ros(m_localmap_pts,msg_pts->header, *msg_pts);
-		m_pub_local_map_pointcloud.publish(msg_pts);
+		if (m_pub_local_map_pointcloud.getNumSubscribers()>0)
+		{
+			sensor_msgs::PointCloudPtr msg_pts = sensor_msgs::PointCloudPtr( new sensor_msgs::PointCloud);
+			msg_pts->header.frame_id = m_frameid_robot;
+			msg_pts->header.stamp = ros::Time( obs.rbegin()->first );
+			mrpt_bridge::point_cloud::mrpt2ros(m_localmap_pts,msg_pts->header, *msg_pts);
+			m_pub_local_map_pointcloud.publish(msg_pts);
+		}
 
 		// Show gui:
 		if (m_show_gui)
