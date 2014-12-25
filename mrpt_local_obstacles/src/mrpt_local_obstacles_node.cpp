@@ -53,9 +53,6 @@
 class LocalObstaclesNode
 {
 private:
-	//nav_msgs::Odometry *groundTruthMsgs;
-	//rosgraph_msgs::Clock clockMsg;
-
 	struct TAuxInitializer {
 		TAuxInitializer(int argc, char **argv)
 		{
