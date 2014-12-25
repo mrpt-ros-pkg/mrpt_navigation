@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+<launch>
+	<!-- Node: Local obstacles builder -->
+	<node pkg="mrpt_local_obstacles" type="mrpt_local_obstacles_node" name="mrpt_local_obstacles_node" output="screen">
+		<param name="source_topics_2dscan" value="laser1,laser2"/> 
+	</node>
+
+	<!-- Launch a MvSim simulator instance with one robot -->
+	<include file="$(find mvsim)/mvsim_tutorial/mvsim_demo_1robot.launch" />
+
+</launch>
+

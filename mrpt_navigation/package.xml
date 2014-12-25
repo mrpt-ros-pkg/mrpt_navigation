@@ -21,6 +21,7 @@ Refer to http://wiki.ros.org/mrpt_navigation for further documentation.
     <run_depend>mrpt_rawlog</run_depend>
     <run_depend>mrpt_tutorials</run_depend>
     <run_depend>mrpt_reactivenav2d</run_depend>
+    <run_depend>mrpt_local_obstacles</run_depend>
     <export>
         <metapackage/>
     </export>

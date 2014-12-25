@@ -89,7 +89,7 @@ catkin_package(
   INCLUDE_DIRS include
 #  LIBRARIES mrpt_localization
 #  CATKIN_DEPENDS other_catkin_pkg
-  DEPENDS mrpt
+#  DEPENDS mrpt
 )
 
 ###########
