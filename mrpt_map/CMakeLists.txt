@@ -85,7 +85,7 @@ catkin_package(
   INCLUDE_DIRS include
 #  LIBRARIES mrpt_map
 #  CATKIN_DEPENDS other_catkin_pkg
-  DEPENDS mrpt
+#  DEPENDS mrpt
 )
 
 ###########

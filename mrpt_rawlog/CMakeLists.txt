@@ -90,7 +90,7 @@ catkin_package(
   INCLUDE_DIRS include
 #  LIBRARIES template
 #  CATKIN_DEPENDS other_catkin_pkg
-   DEPENDS mrpt
+#   DEPENDS mrpt
 )
 
 ###########

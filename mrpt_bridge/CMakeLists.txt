@@ -92,7 +92,7 @@ catkin_package(
   INCLUDE_DIRS include
   LIBRARIES mrpt_bridge
 #  CATKIN_DEPENDS other_catkin_pkg
-  DEPENDS pcl mrpt  # opencv
+#  DEPENDS pcl mrpt  # opencv
 )
 
 ###########
