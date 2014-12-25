@@ -31,15 +31,18 @@
 #include <sensor_msgs/LaserScan.h>
 #include <sensor_msgs/PointCloud.h>
 #include <nav_msgs/Odometry.h>
-//#include <geometry_msgs/Twist.h>
-//#include <rosgraph_msgs/Clock.h>
 
 #include <tf/transform_listener.h>
+
+#include <mrpt_bridge/pose.h>
+#include <mrpt_bridge/laser_scan.h>
+#include <mrpt_bridge/point_cloud.h>
 
 #include <map>
 #include <mrpt/slam/CSensoryFrame.h>
 #include <mrpt/system/string_utils.h>
-//#include <mrpt/system/threads.h>
+#include <mrpt/utils/CTimeLogger.h>
+#include <mrpt/slam/CSimplePointsMap.h>
 
 
 // The ROS node
@@ -55,6 +58,9 @@ private:
 			ros::init(argc, argv, "mrpt_local_obstacles_node");
 		}
 	};
+
+	mrpt::utils::CTimeLogger m_profiler;
+
 	TAuxInitializer m_auxinit; //!< Just to make sure ROS is init first
 	ros::NodeHandle m_nh; //!< The node handle
 	ros::NodeHandle m_localn; //!< "~"
@@ -63,15 +69,31 @@ private:
 	std::string     m_frameid_robot;     //!< typ: "base_link"
 	std::string     m_topic_local_map_pointcloud;  //!< Default: "local_map_pointcloud"
 	std::string     m_source_topics_2dscan;     //!< Default: "scan,laser1"
-	double          m_time_window;  //!< In secs (default: 0.2)
+	double          m_time_window;  //!< In secs (default: 0.2). This can't be smaller than m_publish_period
+	double          m_publish_period;  //!< In secs (default: 0.05). This can't be larger than m_time_window
 
+	ros::Timer      m_timer_publish;
+
+	// Sensor data:
+	struct TInfoPerTimeStep
+	{
+		mrpt::slam::CObservationPtr observation;
+		mrpt::poses::CPose3D        robot_pose;
+	};
+	typedef std::multimap<double,TInfoPerTimeStep> TListObservations;
+	TListObservations  m_hist_obs;  //!< The history of past observations during the interest time window.
+	boost::mutex m_hist_obs_mtx;
+
+	/** The local map */
+	mrpt::slam::CSimplePointsMap  m_localmap_pts;
+
+
+	/** @name ROS pubs/subs
+	 *  @{ */
 	ros::Publisher  m_pub_local_map_pointcloud;
-
 	std::vector<ros::Subscriber>  m_subs_2dlaser; //!< Subscriber to 2D laser scans
-
 	tf::TransformListener    m_tf_listener; //!< Use to retrieve TF data
-
-	std::multimap<double,mrpt::slam::CSensoryFrame>  m_hist_obs;  //!< The history of past observations during the interest time window.
+	/**  @} */
 
 
 	/**
@@ -95,11 +117,143 @@ private:
 	  */
 	void onNewSensor_Laser2D(const sensor_msgs::LaserScanConstPtr & scan)
 	{
-		ROS_INFO("[onNewSensor_Laser2D] New scan received.");
+		mrpt::utils::CTimeLoggerEntry tle(m_profiler,"onNewSensor_Laser2D");
 
+		// Get the relative position of the sensor wrt the robot:
+		tf::StampedTransform sensorOnRobot;
+		try {
+			mrpt::utils::CTimeLoggerEntry tle2(m_profiler,"onNewSensor_Laser2D.lookupTransform_sensor");
+			m_tf_listener.lookupTransform(m_frameid_robot,scan->header.frame_id, ros::Time(0), sensorOnRobot);
+		}
+		catch (tf::TransformException &ex) {
+			ROS_ERROR("%s",ex.what());
+			return;
+		}
+
+		// Convert data to MRPT format:
+		mrpt::poses::CPose3D sensorOnRobot_mrpt;
+		mrpt_bridge::convert(sensorOnRobot,sensorOnRobot_mrpt);
+		// In MRPT, CObservation2DRangeScan holds both: sensor data + relative pose:
+		mrpt::slam::CObservation2DRangeScanPtr obsScan = mrpt::slam::CObservation2DRangeScan::Create();
+		mrpt_bridge::convert(*scan,sensorOnRobot_mrpt, *obsScan);
+
+		ROS_DEBUG("[onNewSensor_Laser2D] %u rays, sensor pose on robot %s", static_cast<unsigned int>(obsScan->scan.size()), sensorOnRobot_mrpt.asString().c_str() );
+
+		// Get sensor timestamp:
+		const double timestamp = scan->header.stamp.toSec();
+
+		// Get robot pose at that time in the reference frame, typ: /odom -> /base_link
+		mrpt::poses::CPose3D robotPose;
+		try {
+			mrpt::utils::CTimeLoggerEntry tle3(m_profiler,"onNewSensor_Laser2D.lookupTransform_robot");
+			tf::StampedTransform tx;
+
+			try {
+				m_tf_listener.lookupTransform(m_frameid_reference,m_frameid_robot, scan->header.stamp, tx);
+			}
+			catch (tf::ExtrapolationException &) {
+				// if we need a "too much " recent robot pose,be happy with the latest one:
+				m_tf_listener.lookupTransform(m_frameid_reference,m_frameid_robot, ros::Time(0), tx);
+			}
+			mrpt_bridge::convert(tx,robotPose);
+			ROS_DEBUG("[onNewSensor_Laser2D] robot pose %s", robotPose.asString().c_str() );
+		}
+		catch (tf::TransformException &ex) {
+			ROS_ERROR("%s",ex.what());
+			return;
+		}
+
+		// Insert into the observation history:
+		TInfoPerTimeStep ipt;
+		ipt.observation = obsScan;
+		ipt.robot_pose  = robotPose;
+
+		m_hist_obs_mtx.lock();
+		m_hist_obs.insert( m_hist_obs.end(), TListObservations::value_type(timestamp,ipt) );
+		m_hist_obs_mtx.unlock();
 
 	} // end onNewSensor_Laser2D
 
+
+	/** Callback: On recalc local map & publish it */
+	void onDoPublish(const ros::TimerEvent& )
+	{
+		mrpt::utils::CTimeLoggerEntry tle(m_profiler,"onDoPublish");
+
+		// Purge old observations & latch a local copy:
+		TListObservations obs;
+		{
+			mrpt::utils::CTimeLoggerEntry tle(m_profiler,"onDoPublish.removingOld");
+			m_hist_obs_mtx.lock();
+
+			// Purge old obs:
+			if (!m_hist_obs.empty())
+			{
+				const double last_time = m_hist_obs.rbegin()->first;
+				TListObservations::iterator it_first_valid = m_hist_obs.lower_bound( last_time-m_time_window );
+				const size_t nToRemove = std::distance( m_hist_obs.begin(), it_first_valid );
+				ROS_DEBUG("[onDoPublish] Removing %u old entries, last_time=%lf",static_cast<unsigned int>(nToRemove), last_time);
+				m_hist_obs.erase(m_hist_obs.begin(), it_first_valid);
+			}
+			// Local copy in this thread:
+			obs = m_hist_obs;
+			m_hist_obs_mtx.unlock();
+		}
+
+		ROS_DEBUG("Building local map with %u observations.",static_cast<unsigned int>(obs.size()));
+		if (obs.empty())
+			return;
+
+		// Build local map(s):
+		// -----------------------------------------------
+		m_localmap_pts.clear();
+		{
+			mrpt::utils::CTimeLoggerEntry tle2(m_profiler,"onDoPublish.buildLocalMap");
+
+			// Get the latest robot pose in the reference frame (typ: /odom -> /base_link)
+			// so we can build the local map RELATIVE to it:
+			mrpt::poses::CPose3D curRobotPose;
+			try {
+				tf::StampedTransform tx;
+				m_tf_listener.lookupTransform(m_frameid_reference,m_frameid_robot, ros::Time(0), tx);
+				mrpt_bridge::convert(tx,curRobotPose);
+				ROS_DEBUG("[onDoPublish] Building local map relative to latest robot pose: %s", curRobotPose.asString().c_str() );
+			}
+			catch (tf::TransformException &ex) {
+				ROS_ERROR("%s",ex.what());
+				return;
+			}
+
+			// For each observation: compute relative robot pose & insert obs into map:
+			for (TListObservations::const_iterator it=obs.begin();it!=obs.end();++it)
+			{
+				const TInfoPerTimeStep & ipt = it->second;
+
+				// Relative pose in the past:
+				mrpt::poses::CPose3D relPose(mrpt::poses::UNINITIALIZED_POSE);
+				relPose.inverseComposeFrom( ipt.robot_pose, curRobotPose );
+
+				// Insert obs:
+				m_localmap_pts.insertObservationPtr(ipt.observation,&relPose);
+
+			} // end for
+
+
+		}
+
+		// Publish them:
+		sensor_msgs::PointCloudPtr msg_pts = sensor_msgs::PointCloudPtr( new sensor_msgs::PointCloud);
+		msg_pts->header.frame_id = m_frameid_robot;
+		msg_pts->header.stamp = ros::Time( obs.rbegin()->first );
+		mrpt_bridge::point_cloud::mrpt2ros(m_localmap_pts,msg_pts->header, *msg_pts);
+		m_pub_local_map_pointcloud.publish(msg_pts);
+
+		// Show gui:
+
+		//m_localmap_pts
+
+
+	} // onDoPublish
 
 
 public:
@@ -113,7 +267,8 @@ public:
 		m_frameid_robot("base_link"),
 		m_topic_local_map_pointcloud("local_map_pointcloud"),
 		m_source_topics_2dscan("scan,laser1"),
-		m_time_window (0.2)
+		m_time_window (0.2),
+		m_publish_period(0.05)
 	{
 		// Load params:
 		m_localn.param("show_gui", m_show_gui, m_show_gui);
@@ -122,6 +277,10 @@ public:
 		m_localn.param("topic_local_map_pointcloud", m_topic_local_map_pointcloud, m_topic_local_map_pointcloud);
 		m_localn.param("source_topics_2dscan",m_source_topics_2dscan,m_source_topics_2dscan);
 		m_localn.param("time_window",m_time_window,m_time_window);
+		m_localn.param("publish_period",m_publish_period,m_publish_period);
+
+		ROS_ASSERT(m_time_window>m_publish_period);
+		ROS_ASSERT(m_publish_period>0);
 
 		// Init ROS publishers:
 		m_pub_local_map_pointcloud = m_nh.advertise<sensor_msgs::PointCloud>(m_topic_local_map_pointcloud,10);
@@ -134,8 +293,13 @@ public:
 		ROS_INFO("Total number of sensor subscriptions: %u\n",static_cast<unsigned int>(nSubsTotal));
 		ROS_ASSERT_MSG(nSubsTotal>0,"*Error* It is mandatory to set at least one source topic for sensory information!");
 
-		// Init timers:
+		// Local map params:
+		m_localmap_pts.insertionOptions.minDistBetweenLaserPoints = 0;
+		m_localmap_pts.insertionOptions.also_interpolate = false;
 
+
+		// Init timers:
+		m_timer_publish = m_nh.createTimer( ros::Duration(m_publish_period), &LocalObstaclesNode::onDoPublish, this );
 
 	} // end ctor
 
