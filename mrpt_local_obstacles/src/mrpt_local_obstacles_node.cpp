@@ -43,6 +43,9 @@
 #include <mrpt/system/string_utils.h>
 #include <mrpt/utils/CTimeLogger.h>
 #include <mrpt/slam/CSimplePointsMap.h>
+#include <mrpt/gui/CDisplayWindow3D.h>
+#include <mrpt/opengl/CGridPlaneXY.h>
+#include <mrpt/opengl/CPointCloud.h>
 
 
 // The ROS node
@@ -86,6 +89,8 @@ private:
 
 	/** The local map */
 	mrpt::slam::CSimplePointsMap  m_localmap_pts;
+
+	mrpt::gui::CDisplayWindow3DPtr  m_gui_win;
 
 
 	/** @name ROS pubs/subs
@@ -207,12 +212,12 @@ private:
 		// Build local map(s):
 		// -----------------------------------------------
 		m_localmap_pts.clear();
+		mrpt::poses::CPose3D curRobotPose;
 		{
 			mrpt::utils::CTimeLoggerEntry tle2(m_profiler,"onDoPublish.buildLocalMap");
 
 			// Get the latest robot pose in the reference frame (typ: /odom -> /base_link)
 			// so we can build the local map RELATIVE to it:
-			mrpt::poses::CPose3D curRobotPose;
 			try {
 				tf::StampedTransform tx;
 				m_tf_listener.lookupTransform(m_frameid_reference,m_frameid_robot, ros::Time(0), tx);
@@ -249,8 +254,53 @@ private:
 		m_pub_local_map_pointcloud.publish(msg_pts);
 
 		// Show gui:
+		if (m_show_gui)
+		{
+			if (!m_gui_win)
+			{
+				m_gui_win = mrpt::gui::CDisplayWindow3D::Create("LocalObstaclesNode",800,600);
+				mrpt::opengl::COpenGLScenePtr &scene = m_gui_win->get3DSceneAndLock();
+				scene->insert( mrpt::opengl::CGridPlaneXY::Create() );
+				scene->insert( mrpt::opengl::stock_objects::CornerXYZSimple(1.0,4.0) );
 
-		//m_localmap_pts
+				mrpt::opengl::CSetOfObjectsPtr gl_obs = mrpt::opengl::CSetOfObjects::Create();
+				gl_obs->setName("obstacles");
+				scene->insert( gl_obs );
+
+				mrpt::opengl::CPointCloudPtr gl_pts = mrpt::opengl::CPointCloud::Create();
+				gl_pts->setName("points");
+				gl_pts->setPointSize(2.0);
+				gl_pts->setColor_u8( mrpt::utils::TColor(0x0000ff) );
+				scene->insert( gl_pts );
+
+				m_gui_win->unlockAccess3DScene();
+			}
+
+			mrpt::opengl::COpenGLScenePtr &scene = m_gui_win->get3DSceneAndLock();
+			mrpt::opengl::CSetOfObjectsPtr gl_obs = mrpt::opengl::CSetOfObjectsPtr( scene->getByName("obstacles") );
+			ROS_ASSERT(gl_obs.present());
+			gl_obs->clear();
+
+			mrpt::opengl::CPointCloudPtr gl_pts = mrpt::opengl::CPointCloudPtr( scene->getByName("points") );
+
+			for (TListObservations::const_iterator it=obs.begin();it!=obs.end();++it)
+			{
+				const TInfoPerTimeStep & ipt = it->second;
+				// Relative pose in the past:
+				mrpt::poses::CPose3D relPose(mrpt::poses::UNINITIALIZED_POSE);
+				relPose.inverseComposeFrom( ipt.robot_pose, curRobotPose );
+
+				mrpt::opengl::CSetOfObjectsPtr gl_axis = mrpt::opengl::stock_objects::CornerXYZSimple(0.9,2.0);
+				gl_axis->setPose(relPose);
+				gl_obs->insert(gl_axis);
+			} // end for
+
+			gl_pts->loadFromPointsMap(&m_localmap_pts);
+
+
+			m_gui_win->unlockAccess3DScene();
+			m_gui_win->repaint();
+		}
 
 
 	} // onDoPublish
