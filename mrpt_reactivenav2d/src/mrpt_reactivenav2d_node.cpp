@@ -90,6 +90,8 @@ private:
 	std::string m_frameid_reference;
 	std::string m_frameid_robot;
 
+	bool m_save_nav_log;
+
 	ros::Timer m_timer_run_nav;
 
 	mrpt::slam::CSimplePointsMap  m_last_obstacles;
@@ -208,6 +210,7 @@ public:
 		m_sub_topic_local_obstacles("local_map_pointcloud"),
 		m_frameid_reference("/map"),
 		m_frameid_robot("base_link"),
+		m_save_nav_log(false),
 		m_reactive_if(*this),
 		m_reactive_nav_engine(m_reactive_if)
 	{
@@ -218,10 +221,13 @@ public:
 		m_localn.param("nav_period",m_nav_period,m_nav_period);
 		m_localn.param("frameid_reference",m_frameid_reference,m_frameid_reference);
 		m_localn.param("frameid_robot",m_frameid_robot,m_frameid_robot);
+		m_localn.param("save_nav_log",m_save_nav_log,m_save_nav_log);
 
 		ROS_ASSERT(m_nav_period>0);
 		ROS_ASSERT_MSG(!cfg_file_reactive.empty(),"Mandatory param 'cfg_file_reactive' is missing!");
 		ROS_ASSERT_MSG(mrpt::system::fileExists(cfg_file_reactive), "Config file not found: '%s'",cfg_file_reactive.c_str());
+
+		m_reactive_nav_engine.enableLogFile(m_save_nav_log);
 
 		// Load reactive config:
 		// ----------------------------------------------------

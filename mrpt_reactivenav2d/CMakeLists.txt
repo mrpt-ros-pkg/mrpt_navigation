@@ -151,6 +151,7 @@ install(TARGETS mrpt_reactivenav2d_node
 
 ## Mark other files for installation (e.g. launch and bag files, etc.)
 install(DIRECTORY
+  launch
   tutorial
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
 )
