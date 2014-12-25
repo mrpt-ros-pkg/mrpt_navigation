@@ -64,7 +64,7 @@ void PFLocalizationNode::init() {
 
 	// Subscribe to one or more laser sources:
 	std::vector<std::string> lstSources;
-	mrpt::utils::tokenize(param()->sensorSources," ,\t\n",lstSources);
+	mrpt::system::tokenize(param()->sensorSources," ,\t\n",lstSources);
 	ROS_ASSERT_MSG(!lstSources.empty(), "*Fatal*: At least one sensor source must be provided in ~sensor_sources (e.g. \"scan\")");
 	subLasers_.resize(lstSources.size());
 	for (size_t i=0;i<lstSources.size();i++)

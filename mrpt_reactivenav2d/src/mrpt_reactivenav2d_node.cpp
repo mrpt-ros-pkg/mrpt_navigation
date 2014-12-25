@@ -48,6 +48,7 @@
 
 #include <mrpt/utils/CTimeLogger.h>
 #include <mrpt/utils/CConfigFileMemory.h>
+#include <mrpt/utils/CConfigFile.h>
 #include <mrpt/system/filesystem.h>
 #include <mrpt/synch/CCriticalSection.h>
 #include <mrpt/slam/CSimplePointsMap.h>
@@ -94,7 +95,7 @@ private:
 	mrpt::slam::CSimplePointsMap  m_last_obstacles;
 	mrpt::synch::CCriticalSection m_last_obstacles_cs;
 
-	struct MyReactiveInterface : public mrpt::reactivenav::CReactiveInterfaceImplementation
+	struct MyReactiveInterface : public CReactiveInterfaceImplementation
 	{
 		ReactiveNav2DNode & m_parent;
 

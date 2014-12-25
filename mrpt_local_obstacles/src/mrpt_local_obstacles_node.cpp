@@ -42,12 +42,13 @@
 #include <mrpt/slam/CSensoryFrame.h>
 #include <mrpt/system/string_utils.h>
 #include <mrpt/utils/CTimeLogger.h>
+#include <mrpt/utils/CConfigFile.h>
 #include <mrpt/slam/CSimplePointsMap.h>
 #include <mrpt/slam/COccupancyGridMap2D.h>
 #include <mrpt/gui/CDisplayWindow3D.h>
 #include <mrpt/opengl/CGridPlaneXY.h>
 #include <mrpt/opengl/CPointCloud.h>
-
+#include <mrpt/opengl/stock_objects.h>
 
 // The ROS node
 class LocalObstaclesNode
@@ -110,7 +111,7 @@ private:
 	size_t subscribeToMultipleTopics(const std::string &lstTopics, std::vector<ros::Subscriber> &subs, CALLBACK_METHOD_TYPE cb)
 	{
 		std::vector<std::string> lstSources;
-		mrpt::utils::tokenize(lstTopics," ,\t\n",lstSources);
+		mrpt::system::tokenize(lstTopics," ,\t\n",lstSources);
 		subs.resize(lstSources.size());
 		for (size_t i=0;i<lstSources.size();i++)
 			subs[i]  = m_nh.subscribe(lstSources[i],  1, cb, this);
