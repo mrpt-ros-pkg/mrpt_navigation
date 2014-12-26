@@ -31,7 +31,6 @@
 #include "mrpt_bridge/pose.h"
 
 mrpt::math::CMatrixDouble33 &mrpt_bridge::convert( const tf::Matrix3x3& _src, mrpt::math::CMatrixDouble33& _des){
-    MRPT_TODO("MRPT this can be done faster with memcopy, but one has to check the obj structure!");
     for(int r = 0; r < 3; r++)
         for(int c = 0; c < 3; c++)
             _des(r,c) = _src[r][c];
@@ -39,7 +38,6 @@ mrpt::math::CMatrixDouble33 &mrpt_bridge::convert( const tf::Matrix3x3& _src, mr
 }
 
 tf::Matrix3x3 &mrpt_bridge::convert( const mrpt::math::CMatrixDouble33& _src, tf::Matrix3x3& _des){
-    MRPT_TODO("MRPT this can be done faster with memcopy, but one has to check the obj structure!");
     for(int r = 0; r < 3; r++)
         for(int c = 0; c < 3; c++)
              _des[r][c] = _src(r,c);
@@ -60,9 +58,10 @@ geometry_msgs::PoseWithCovariance& mrpt_bridge::convert(const mrpt::poses::CPose
   // # In order, the parameters are:
   // # (x, y, z, rotation about X axis, rotation about Y axis, rotation about Z axis)
   // float64[36] covariance
-  MRPT_TODO("MRPT uses non-fixed axis for 6x6 covariance: should use a transform Jacobian here!")
+  // Old comment: "MRPT uses non-fixed axis for 6x6 covariance: should use a transform Jacobian here!"
+  //           JL ==> Nope! non-fixed z-y-x equals fixed x-y-z rotations.
 
-  const unsigned int indxs_map[6] = {0, 1, 2, 5, 4, 3};
+  const unsigned int indxs_map[6] = {0, 1, 2, 5, 4, 3};  // X,Y,Z,YAW,PITCH,ROLL
 
   for (int i = 0; i < 6; i++)
     for (int j = 0; j < 6; j++)
@@ -137,7 +136,6 @@ mrpt::poses::CPose2D& mrpt_bridge::convert(const geometry_msgs::Pose& _src, mrpt
   _des.x(_src.position.x);
   _des.y(_src.position.y);
 
-  MRPT_TODO("Optimize this?");
   mrpt::math::CQuaternionDouble quat;
   convert(_src.orientation, quat);
 
@@ -153,7 +151,8 @@ geometry_msgs::PoseWithCovariance& mrpt_bridge::convert(const mrpt::poses::CPose
   convert(_src.mean, _des.pose);
 
   // Read REP103: http://ros.org/reps/rep-0103.html#covariance-representation
-  MRPT_TODO("MRPT uses non-fixed axis for 6x6 covariance: should use a transform Jacobian here!")
+  // Old comment: "MRPT uses non-fixed axis for 6x6 covariance: should use a transform Jacobian here!"
+  //           JL ==> Nope! non-fixed z-y-x equals fixed x-y-z rotations.
 
   for (int i = 0; i < 6; i++)
     for (int j = 0; j < 6; j++)
@@ -224,5 +223,4 @@ mrpt::poses::CPose3D& mrpt_bridge::convert(const geometry_msgs::Pose& _src, mrpt
     _des= mrpt::poses::CPose3D(q,_src.position.x,_src.position.y,_src.position.z);
     return _des;
 }
-
 
