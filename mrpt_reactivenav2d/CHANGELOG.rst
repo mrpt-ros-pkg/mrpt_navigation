@@ -1,0 +1,17 @@
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Changelog for package mrpt_reactivenav2d
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Forthcoming
+-----------
+* First working version of the reactive navigator
+* Contributors: Jose Luis Blanco
+
+0.1.3 (2014-12-18 23:21)
+------------------------
+
+0.1.2 (2014-12-18 11:49)
+------------------------
+
+0.1.1 (2014-12-17)
+------------------
