@@ -17,13 +17,17 @@
 
 	<!-- Node: Pure Reactive Navigator -->
 	<node pkg="mrpt_reactivenav2d" type="mrpt_reactivenav2d_node" name="mrpt_reactivenav2d_node" output="screen">
+		<!-- *Important*: This external config file holds the most important navigation settings -->
 		<param name="cfg_file_reactive" value="$(find mrpt_reactivenav2d)/tutorial/reactive2d_config.ini"/> 
+
+		<!-- This is to allow the reactive responsive to RVIZ GUI commands -->
+		<remap from="reactive_nav_goal" to="/move_base_simple/goal" />
 
 		<!-- Enable logs to ~/.ros/reactivenav.logs , use navlog-viewer to open them -->
 <!--		<param name="save_nav_log" value="true"/> -->
 
-		<!-- This is to allow the reactive responsive to RVIZ GUI commands -->
-		<remap from="reactive_nav_goal" to="/move_base_simple/goal" />
+		<!-- Robot shape: Load from geometry_msgs::Polygon topic -->
+		<param name="topic_robot_shape" value="/chassis_polygon" />
 	</node>
 
 </launch>

@@ -31,6 +31,7 @@
 #include <sensor_msgs/LaserScan.h>
 #include <sensor_msgs/PointCloud.h>
 #include <geometry_msgs/PoseStamped.h>
+#include <geometry_msgs/Polygon.h>
 #include <nav_msgs/Odometry.h>
 #include <tf/transform_listener.h>
 
@@ -77,6 +78,7 @@ private:
 	 *  @{ */
 	ros::Subscriber m_sub_nav_goal;
 	ros::Subscriber m_sub_local_obs;
+	ros::Subscriber m_sub_robot_shape;
 	ros::Publisher  m_pub_cmd_vel;
 	tf::TransformListener m_tf_listener; //!< Use to retrieve TF data
 	/** @} */
@@ -86,6 +88,7 @@ private:
 
 	std::string m_pub_topic_reactive_nav_goal;
 	std::string m_sub_topic_local_obstacles;
+	std::string m_sub_topic_robot_shape;
 
 	std::string m_frameid_reference;
 	std::string m_frameid_robot;
@@ -196,7 +199,8 @@ private:
 
 	MyReactiveInterface  m_reactive_if;
 
-	CReactiveNavigationSystem  m_reactive_nav_engine;
+	CReactiveNavigationSystem     m_reactive_nav_engine;
+	mrpt::synch::CCriticalSection m_reactive_nav_engine_cs;
 
 public:
 	/**  Constructor: Inits ROS system */
@@ -208,6 +212,7 @@ public:
 		m_nav_period(0.100),
 		m_pub_topic_reactive_nav_goal("reactive_nav_goal"),
 		m_sub_topic_local_obstacles("local_map_pointcloud"),
+		m_sub_topic_robot_shape(""),
 		m_frameid_reference("/map"),
 		m_frameid_robot("base_link"),
 		m_save_nav_log(false),
@@ -221,6 +226,7 @@ public:
 		m_localn.param("nav_period",m_nav_period,m_nav_period);
 		m_localn.param("frameid_reference",m_frameid_reference,m_frameid_reference);
 		m_localn.param("frameid_robot",m_frameid_robot,m_frameid_robot);
+		m_localn.param("topic_robot_shape",m_sub_topic_robot_shape,m_sub_topic_robot_shape);
 		m_localn.param("save_nav_log",m_save_nav_log,m_save_nav_log);
 
 		ROS_ASSERT(m_nav_period>0);
@@ -246,15 +252,27 @@ public:
 			throw;
 		}
 
-		// load robot shape:
-		// ----------------------------------------------------
+		// load robot shape: (1) default, (2) via params, (3) via topic
+		// ----------------------------------------------------------------
 		//m_reactive_nav_engine.changeRobotShape();
 
+		// Init this subscriber first so we know asap the desired robot shape, if provided via a topic:
+		if (!m_sub_topic_robot_shape.empty())
+		{
+			m_sub_robot_shape  = m_nh.subscribe<geometry_msgs::Polygon>( m_sub_topic_robot_shape,1, &ReactiveNav2DNode::onRosSetRobotShape, this );
+			ROS_INFO("Params say robot shape will arrive via topic '%s'... waiting 3 seconds for it.",m_sub_topic_robot_shape.c_str());
+			ros::Duration(3.0).sleep();
+			for (size_t i=0;i<100;i++) ros::spinOnce();
+			ROS_INFO("Wait done.");
+		}
 
 		// Init:
 		// ----------------------------------------------------
 		ROS_INFO("[ReactiveNav2DNode] Initializing reactive navigation engine...");
-		m_reactive_nav_engine.initialize();
+		{
+			mrpt::synch::CCriticalSectionLocker csl(&m_reactive_nav_engine_cs);
+			m_reactive_nav_engine.initialize();
+		}
 		ROS_INFO("[ReactiveNav2DNode] Reactive navigation engine init done!");
 
 		// Init ROS publishers:
@@ -264,8 +282,8 @@ public:
 		// Init ROS subs:
 		// -----------------------
 		// "/reactive_nav_goal", "/move_base_simple/goal" ( geometry_msgs/PoseStamped )
-		m_sub_nav_goal = m_nh.subscribe<geometry_msgs::PoseStamped>(m_pub_topic_reactive_nav_goal,1, &ReactiveNav2DNode::onRosGoalReceived, this );
-		m_sub_local_obs = m_nh.subscribe<sensor_msgs::PointCloud>(m_sub_topic_local_obstacles,1, &ReactiveNav2DNode::onRosLocalObstacles, this );
+		m_sub_nav_goal     = m_nh.subscribe<geometry_msgs::PoseStamped>(m_pub_topic_reactive_nav_goal,1, &ReactiveNav2DNode::onRosGoalReceived, this );
+		m_sub_local_obs    = m_nh.subscribe<sensor_msgs::PointCloud>(m_sub_topic_local_obstacles,1, &ReactiveNav2DNode::onRosLocalObstacles, this );
 
 		// Init timers:
 		// ----------------------------------------------------
@@ -293,7 +311,10 @@ public:
 		// Optional: restrict the PTGs to use
 		//navParams.restrict_PTG_indices.push_back(1);
 
-		m_reactive_nav_engine.navigate( &navParams );
+		{
+			mrpt::synch::CCriticalSectionLocker csl(&m_reactive_nav_engine_cs);
+			m_reactive_nav_engine.navigate( &navParams );
+		}
 	}
 
 	/** Callback: On run navigation */
@@ -335,6 +356,25 @@ public:
 		mrpt_bridge::point_cloud::ros2mrpt(*obs,m_last_obstacles);
 		//ROS_DEBUG("Local obstacles received: %u points", static_cast<unsigned int>(m_last_obstacles.size()) );
 	}
+
+	void onRosSetRobotShape(const geometry_msgs::PolygonConstPtr & newShape )
+	{
+		ROS_INFO_STREAM("[onRosSetRobotShape] Robot shape received via topic: " <<  *newShape );
+
+		mrpt::math::CPolygon poly;
+		poly.resize(newShape->points.size());
+		for (size_t i=0;i<newShape->points.size();i++)
+		{
+			poly[i].x = newShape->points[i].x;
+			poly[i].y = newShape->points[i].y;
+		}
+
+		{
+			mrpt::synch::CCriticalSectionLocker csl(&m_reactive_nav_engine_cs);
+			m_reactive_nav_engine.changeRobotShape(poly);
+		}
+	}
+
 
 
 }; // end class

@@ -8,7 +8,7 @@ Panels:
         - /Status1
         - /TF1/Frames1
         - /TF1/Tree1
-        - /Pose1
+        - /MarkerArray1
       Splitter Ratio: 0.59396
     Tree Height: 673
   - Class: rviz/Selection
@@ -80,7 +80,7 @@ Visualization Manager:
           Value: true
       Marker Scale: 2.5
       Name: TF
-      Show Arrows: true
+      Show Arrows: false
       Show Axes: true
       Show Names: true
       Tree:
@@ -175,6 +175,16 @@ Visualization Manager:
       Shape: Arrow
       Topic: /move_base_simple/goal
       Value: true
+    - Class: rviz/MarkerArray
+      Enabled: true
+      Marker Topic: /chassis_markers
+      Name: MarkerArray
+      Namespaces:
+        mvsim.chassis_shape: true
+        mvsim.chassis_shape.wheel0: true
+        mvsim.chassis_shape.wheel1: true
+      Queue Size: 100
+      Value: true
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
@@ -199,7 +209,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 12.2311
+      Distance: 32.4735
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.06
         Stereo Focal Distance: 1
@@ -211,10 +221,10 @@ Visualization Manager:
         Z: 0.594918
       Name: Current View
       Near Clip Distance: 0.01
-      Pitch: 0.754797
+      Pitch: 0.914797
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 1.11039
+      Yaw: 1.26539
     Saved: ~
 Window Geometry:
   Displays:
