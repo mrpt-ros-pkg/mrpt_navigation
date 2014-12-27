@@ -211,18 +211,22 @@ void PFLocalizationNode::publishMap () {
     }
 }
 
-void PFLocalizationNode::publishParticles () {
-    geometry_msgs::PoseArray poseArray;
-    poseArray.header.frame_id = tf::resolve(param()->tf_prefix, param()->global_frame_id);
-    poseArray.header.stamp = ros::Time::now();
-    poseArray.header.seq = loop_count_;
-    poseArray.poses.resize(pdf_.particlesCount());
-    for(size_t i = 0; i < pdf_.particlesCount(); i++) {
-        mrpt::poses::CPose2D p = pdf_.getParticlePose(i);
-        mrpt_bridge::convert(p, poseArray.poses[i]);
-    }
-    mrpt::poses::CPose2D p;
-    pub_Particles_.publish(poseArray);
+void PFLocalizationNode::publishParticles ()
+{
+	if (pub_Particles_.getNumSubscribers()>0)
+	{
+		geometry_msgs::PoseArray poseArray;
+		poseArray.header.frame_id = tf::resolve(param()->tf_prefix, param()->global_frame_id);
+		poseArray.header.stamp = ros::Time::now();
+		poseArray.header.seq = loop_count_;
+		poseArray.poses.resize(pdf_.particlesCount());
+		for(size_t i = 0; i < pdf_.particlesCount(); i++) {
+			mrpt::poses::CPose2D p = pdf_.getParticlePose(i);
+			mrpt_bridge::convert(p, poseArray.poses[i]);
+		}
+		mrpt::poses::CPose2D p;
+		pub_Particles_.publish(poseArray);
+	}
 }
 
 void PFLocalizationNode::publishTF() {

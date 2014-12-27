@@ -65,7 +65,7 @@ Visualization Manager:
       Frames:
         All Enabled: false
         base_footprint:
-          Value: true
+          Value: false
         base_link:
           Value: true
         laser1:
@@ -209,16 +209,16 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 32.4735
+      Distance: 16.8905
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.06
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 7.18413
-        Y: 0.789106
-        Z: 0.594918
+        X: 1.23957
+        Y: 1.67864
+        Z: 1.31771
       Name: Current View
       Near Clip Distance: 0.01
       Pitch: 0.914797
