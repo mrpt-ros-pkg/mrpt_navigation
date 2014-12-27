@@ -2,8 +2,8 @@
 Changelog for package mrpt_localization
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+0.1.4 (2014-12-27)
+------------------
 * dont publish if numSubscribers()==0
 * fixes for mrpt 1.3.0
 * Removed 'mrpt' dep from catkin_package().

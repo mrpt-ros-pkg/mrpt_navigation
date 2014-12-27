@@ -2,8 +2,8 @@
 Changelog for package mrpt_bridge
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+0.1.4 (2014-12-27)
+------------------
 * Solved some old 'TODO' comments
 * Removed 'mrpt' dep from catkin_package().
   I *think* this is giving problems to dependant pkgs and is not needed...

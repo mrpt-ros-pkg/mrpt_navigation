@@ -2,8 +2,8 @@
 Changelog for package mrpt_local_obstacles
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+0.1.4 (2014-12-27)
+------------------
 * First working version of the package
 * Contributors: Jose Luis Blanco
 
