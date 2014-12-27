@@ -2,6 +2,13 @@
 Changelog for package mrpt_map
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Removed 'mrpt' dep from catkin_package().
+  I *think* this is giving problems to dependant pkgs and is not needed...
+* localization: New param to configure sensor sources in a flexible way
+* Contributors: Jose Luis Blanco
+
 0.1.3 (2014-12-18)
 ------------------
 * Fix many missing install files

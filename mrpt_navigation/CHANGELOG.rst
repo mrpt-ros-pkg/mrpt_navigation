@@ -2,6 +2,13 @@
 Changelog for package mrpt_navigation
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Start new pkg mrpt_local_obstacles.
+  Fixes in package.xml's
+* pose_cov_ops removed from mrpt_navigation metapkg
+* Contributors: Jose Luis Blanco
+
 0.1.3 (2014-12-18)
 ------------------
 

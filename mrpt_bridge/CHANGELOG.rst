@@ -2,6 +2,17 @@
 Changelog for package mrpt_bridge
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Solved some old 'TODO' comments
+* Removed 'mrpt' dep from catkin_package().
+  I *think* this is giving problems to dependant pkgs and is not needed...
+* Start new pkg mrpt_local_obstacles.
+  Fixes in package.xml's
+* Better doxygen docs
+* localization: New param to configure sensor sources in a flexible way
+* Contributors: Jose Luis Blanco
+
 0.1.3 (2014-12-18)
 ------------------
 
