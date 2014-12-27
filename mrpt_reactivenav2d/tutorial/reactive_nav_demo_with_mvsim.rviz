@@ -65,7 +65,7 @@ Visualization Manager:
       Frames:
         All Enabled: false
         base_footprint:
-          Value: false
+          Value: true
         base_link:
           Value: true
         laser1:
@@ -183,6 +183,8 @@ Visualization Manager:
         mvsim.chassis_shape: true
         mvsim.chassis_shape.wheel0: true
         mvsim.chassis_shape.wheel1: true
+        mvsim.chassis_shape.wheel2: true
+        mvsim.chassis_shape.wheel3: true
       Queue Size: 100
       Value: true
   Enabled: true
@@ -209,22 +211,22 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 16.8905
+      Distance: 18.3267
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.06
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 1.23957
-        Y: 1.67864
-        Z: 1.31771
+        X: -6.54195
+        Y: 1.22219
+        Z: 1.31104
       Name: Current View
       Near Clip Distance: 0.01
-      Pitch: 0.914797
-      Target Frame: <Fixed Frame>
+      Pitch: 0.994797
+      Target Frame: base_link
       Value: Orbit (rviz)
-      Yaw: 1.26539
+      Yaw: 1.55539
     Saved: ~
 Window Geometry:
   Displays:

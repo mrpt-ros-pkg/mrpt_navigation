@@ -83,6 +83,7 @@ private:
 	tf::TransformListener m_tf_listener; //!< Use to retrieve TF data
 	/** @} */
 
+	bool    m_1st_time_init; //!< Reactive initialization done?
 	double  m_target_allowed_distance;
 	double  m_nav_period;
 
@@ -208,6 +209,7 @@ public:
 		m_auxinit   (argc,argv),
 		m_nh        (),
 		m_localn    ("~"),
+		m_1st_time_init(false),
 		m_target_allowed_distance (0.40f),
 		m_nav_period(0.100),
 		m_pub_topic_reactive_nav_goal("reactive_nav_goal"),
@@ -266,15 +268,6 @@ public:
 			ROS_INFO("Wait done.");
 		}
 
-		// Init:
-		// ----------------------------------------------------
-		ROS_INFO("[ReactiveNav2DNode] Initializing reactive navigation engine...");
-		{
-			mrpt::synch::CCriticalSectionLocker csl(&m_reactive_nav_engine_cs);
-			m_reactive_nav_engine.initialize();
-		}
-		ROS_INFO("[ReactiveNav2DNode] Reactive navigation engine init done!");
-
 		// Init ROS publishers:
 		// -----------------------
 		m_pub_cmd_vel = m_nh.advertise<geometry_msgs::Twist>("cmd_vel",1);
@@ -320,6 +313,19 @@ public:
 	/** Callback: On run navigation */
 	void onDoNavigation(const ros::TimerEvent& )
 	{
+		// 1st time init:
+		// ----------------------------------------------------
+		if (!m_1st_time_init)
+		{
+			m_1st_time_init = true;
+			ROS_INFO("[ReactiveNav2DNode] Initializing reactive navigation engine...");
+			{
+				mrpt::synch::CCriticalSectionLocker csl(&m_reactive_nav_engine_cs);
+				m_reactive_nav_engine.initialize();
+			}
+			ROS_INFO("[ReactiveNav2DNode] Reactive navigation engine init done!");
+		}
+
 		mrpt::utils::CTimeLoggerEntry tle(m_profiler,"onDoNavigation");
 
 		m_reactive_nav_engine.navigationStep();
