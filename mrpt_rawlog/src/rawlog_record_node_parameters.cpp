@@ -29,6 +29,8 @@
 #include "rawlog_record_node.h"
 #include "rawlog_record_node_defaults.h"
 
+#include <mrpt/version.h>
+
 RawlogRecordNode::ParametersNode::ParametersNode()
     : Parameters(), node("~") {
     node.param<double>("rate", rate, RAWLOG_RECORD_NODE_DEFAULT_RATE);
@@ -54,8 +56,15 @@ void RawlogRecordNode::ParametersNode::update(const unsigned long &loop_count) {
 }
 
 void RawlogRecordNode::ParametersNode::callbackParameters (mrpt_rawlog::MotionConfig &config, uint32_t level ) {
+#if MRPT_VERSION>=0x130
+	using namespace mrpt::maps;
+	using namespace mrpt::obs;
+#else
+	using namespace mrpt::slam;
+#endif
+
     if(config.motion_noise_type == MOTION_MODEL_GAUSSIAN) {
-        motionModelOptions.modelSelection = mrpt::slam::CActionRobotMovement2D::mmGaussian;
+		motionModelOptions.modelSelection = CActionRobotMovement2D::mmGaussian;
         motionModelOptions.gausianModel.a1 = config.gaussian_alpha_1;
         motionModelOptions.gausianModel.a2 = config.gaussian_alpha_2;
         motionModelOptions.gausianModel.a3 = config.gaussian_alpha_3;

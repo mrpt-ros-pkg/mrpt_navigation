@@ -34,14 +34,15 @@
 #include "nav_msgs/GetMap.h"
 #include "boost/smart_ptr.hpp"
 
-namespace mrpt {
-  namespace utils {
-    class CConfigFile;
-  }
-  namespace slam {
-    class CMultiMetricMap;
-  }
-}
+#include <mrpt/utils/CConfigFile.h>
+#include <mrpt/version.h>
+#if MRPT_VERSION>=0x130
+#	include <mrpt/maps/CMultiMetricMap.h>
+	using mrpt::maps::CMultiMetricMap;
+#else
+#	include <mrpt/slam/CMultiMetricMap.h>
+	using mrpt::slam::CMultiMetricMap;
+#endif
 
 class MapServer {
 public:
@@ -59,7 +60,7 @@ private:
     ros::Publisher pub_metadata_;
     ros::ServiceServer service_map_;
     nav_msgs::GetMap::Response resp_ros_;
-    boost::shared_ptr<mrpt::slam::CMultiMetricMap> metric_map_;
+	boost::shared_ptr<CMultiMetricMap> metric_map_;
     void publishMap ();
     bool mapCallback(nav_msgs::GetMap::Request  &req, nav_msgs::GetMap::Response &res );
 };

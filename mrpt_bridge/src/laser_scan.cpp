@@ -1,14 +1,22 @@
 
 #include <geometry_msgs/Pose.h>
 #include <sensor_msgs/LaserScan.h>
-#include <mrpt/slam/CObservation2DRangeScan.h>
 #include "mrpt_bridge/time.h"
 #include "mrpt_bridge/pose.h"
 #include "mrpt_bridge/laser_scan.h"
 
+#include <mrpt/version.h>
+#if MRPT_VERSION>=0x130
+#	include <mrpt/obs/CObservation2DRangeScan.h>
+	using namespace mrpt::obs;
+#else
+#	include <mrpt/slam/CObservation2DRangeScan.h>
+	using namespace mrpt::slam;
+#endif
+
 namespace mrpt_bridge {
 
-bool convert(const sensor_msgs::LaserScan &_msg, const mrpt::poses::CPose3D &_pose, mrpt::slam::CObservation2DRangeScan  &_obj
+bool convert(const sensor_msgs::LaserScan &_msg, const mrpt::poses::CPose3D &_pose, CObservation2DRangeScan  &_obj
                          )
 {
     mrpt_bridge::convert(_msg.header.stamp, _obj.timestamp);
@@ -31,7 +39,7 @@ bool convert(const sensor_msgs::LaserScan &_msg, const mrpt::poses::CPose3D &_po
     return true;
 }
 
-bool convert(const mrpt::slam::CObservation2DRangeScan  &_obj, sensor_msgs::LaserScan &_msg) {
+bool convert(const CObservation2DRangeScan  &_obj, sensor_msgs::LaserScan &_msg) {
     const size_t nRays = _obj.scan.size();
     if (!nRays) return false;
 
@@ -59,7 +67,7 @@ bool convert(const mrpt::slam::CObservation2DRangeScan  &_obj, sensor_msgs::Lase
     return true;
 }
 
-bool convert(const mrpt::slam::CObservation2DRangeScan  &_obj, sensor_msgs::LaserScan &_msg, geometry_msgs::Pose &_pose) {
+bool convert(const CObservation2DRangeScan  &_obj, sensor_msgs::LaserScan &_msg, geometry_msgs::Pose &_pose) {
 	convert(_obj, _msg);
 	mrpt::poses::CPose3D pose;
 	_obj.getSensorPose(pose);

@@ -38,6 +38,14 @@
 #include <mrpt/slam/CRawlog.h>
 #include <mrpt/slam/CObservation2DRangeScan.h>
 
+#include <mrpt/version.h>
+#if MRPT_VERSION>=0x130
+	using namespace mrpt::maps;
+	using namespace mrpt::obs;
+#else
+	using namespace mrpt::slam;
+#endif
+
 
 int main(int argc, char **argv) {
 
@@ -74,11 +82,11 @@ void RawlogPlayNode::init() {
 }
 
 bool RawlogPlayNode::nextEntry() {
-    mrpt::slam::CActionCollectionPtr action;
-    mrpt::slam::CSensoryFramePtr     observations;
-    mrpt::slam::CObservationPtr      obs;
+	CActionCollectionPtr action;
+	CSensoryFramePtr     observations;
+	CObservationPtr      obs;
 
-    if(!mrpt::slam::CRawlog::getActionObservationPairOrObservation( rawlog_stream_, action, observations, obs, entry_)) {
+	if(!CRawlog::getActionObservationPairOrObservation( rawlog_stream_, action, observations, obs, entry_)) {
         ROS_INFO("end of stream!");
         return true;
     }
@@ -88,7 +96,7 @@ bool RawlogPlayNode::nextEntry() {
 
     // loop over laser overservations
     for(size_t i = 0;i < observations->size() ;i++){
-        mrpt::slam::CObservation2DRangeScanPtr laser = observations->getObservationByClass<mrpt::slam::CObservation2DRangeScan>(i);
+		CObservation2DRangeScanPtr laser = observations->getObservationByClass<CObservation2DRangeScan>(i);
         if(laser.pointer() == NULL) break;
         mrpt_bridge::convert(*laser, msg_laser_, msg_pose_laser);
         laser->getSensorPose(pose_laser);
@@ -96,7 +104,7 @@ bool RawlogPlayNode::nextEntry() {
         std::string childframe = tf::resolve(param()->tf_prefix, msg_laser_.header.frame_id);
         tf_broadcaster_.sendTransform(tf::StampedTransform(transform, msg_laser_.header.stamp, base_frame_, childframe));
         pub_laser_.publish(msg_laser_);
-        laser = observations->getObservationByClass<mrpt::slam::CObservation2DRangeScan>();
+		laser = observations->getObservationByClass<CObservation2DRangeScan>();
     }
     mrpt::poses::CPose3DPDFGaussian out_pose_increment;
     action->getFirstMovementEstimation (out_pose_increment);

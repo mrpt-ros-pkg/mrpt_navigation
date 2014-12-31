@@ -18,18 +18,17 @@ namespace nav_msgs{
     typedef OccupancyGrid_<std::allocator<void> > OccupancyGrid;
 }
 
-
-namespace mrpt
-{
-namespace slam
-{
-class COccupancyGridMap2D;
-class CMultiMetricMap;
-}
-namespace utils {
-class CConfigFile;
-}
-}
+#include <mrpt/version.h>
+#if MRPT_VERSION>=0x130
+	namespace mrpt { namespace maps { class COccupancyGridMap2D; class CMultiMetricMap; } }
+	using mrpt::maps::COccupancyGridMap2D;
+	using mrpt::maps::CMultiMetricMap;
+#else
+	namespace mrpt {namespace slam { class COccupancyGridMap2D; class CMultiMetricMap; } }
+	using mrpt::slam::COccupancyGridMap2D;
+	using mrpt::slam::CMultiMetricMap;
+#endif
+namespace mrpt { namespace utils { class CConfigFile; } }
 
 namespace mrpt_bridge
 {
@@ -84,7 +83,7 @@ public:
       * @param _section_name default: metricMap
       * @param _debug default: false
       */
-    static const bool loadMap(mrpt::slam::CMultiMetricMap &_metric_map, const mrpt::utils::CConfigFile &_config_file, const std::string &_map_file="map.simplemap", const std::string &_section_name="metricMap", bool _debug = false);
+	static const bool loadMap(CMultiMetricMap &_metric_map, const mrpt::utils::CConfigFile &_config_file, const std::string &_map_file="map.simplemap", const std::string &_section_name="metricMap", bool _debug = false);
 
 };
 
@@ -94,7 +93,7 @@ public:
   * @param src
   * @param des
   */
-bool convert ( const nav_msgs::OccupancyGrid  &src, mrpt::slam::COccupancyGridMap2D  &des );
+bool convert ( const nav_msgs::OccupancyGrid  &src, COccupancyGridMap2D  &des );
 
 /**
   * converts mrpt object to ros msg and updates the msg header
@@ -104,7 +103,7 @@ bool convert ( const nav_msgs::OccupancyGrid  &src, mrpt::slam::COccupancyGridMa
   * @param header
   */
 bool convert (
-    const mrpt::slam::COccupancyGridMap2D &src,
+	const COccupancyGridMap2D &src,
     nav_msgs::OccupancyGrid &msg,
     const std_msgs::Header &header);
 /**
@@ -115,7 +114,7 @@ bool convert (
   * @param header
   */
 bool convert (
-    const mrpt::slam::COccupancyGridMap2D &src,
+	const COccupancyGridMap2D &src,
     nav_msgs::OccupancyGrid &msg);
 
 /** @} */

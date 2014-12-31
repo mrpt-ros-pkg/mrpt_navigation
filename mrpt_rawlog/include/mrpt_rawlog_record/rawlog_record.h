@@ -34,11 +34,27 @@
 #define MRPT_RAWLOG_RECORD_H
 
 
+#include <mrpt/version.h>
+#if MRPT_VERSION>=0x130
+#	include <mrpt/obs/CRawlog.h>
+#	include <mrpt/obs/CActionRobotMovement2D.h>
+#	include <mrpt/obs/CObservationOdometry.h>
+#	include <mrpt/obs/CObservation2DRangeScan.h>
+	using mrpt::obs::CRawlog;
+	using mrpt::obs::CObservation2DRangeScanPtr;
+	using mrpt::obs::CObservationOdometryPtr;
+	using mrpt::obs::CActionRobotMovement2D;
+#else
+#	include <mrpt/slam/CRawlog.h>
+#	include <mrpt/slam/CActionRobotMovement2D.h>
+#	include <mrpt/slam/CObservationOdometry.h>
+#	include <mrpt/slam/CObservation2DRangeScan.h>
+	using mrpt::slam::CRawlog;
+	using mrpt::slam::CObservation2DRangeScanPtr;
+	using mrpt::slam::CObservationOdometryPtr;
+	using mrpt::slam::CActionRobotMovement2D;
+#endif
 
-#include <mrpt/slam/CRawlog.h>
-#include <mrpt/slam/CActionRobotMovement2D.h>
-#include <mrpt/slam/CObservationOdometry.h>
-#include <mrpt/slam/CObservation2DRangeScan.h>
 #include <mrpt/poses/CPose2D.h>
 #include <mrpt_bridge/mrpt_log_macros.h>
 
@@ -51,17 +67,17 @@ public:
         std::string raw_log_folder;
         std::string raw_log_name;
         std::string raw_log_name_asf;
-        mrpt::slam::CActionRobotMovement2D::TMotionModelOptions motionModelOptions;
+		CActionRobotMovement2D::TMotionModelOptions motionModelOptions;
 	};
     RawlogRecord (Parameters *parm);
     ~RawlogRecord();
 protected:
     Parameters *param_;
-    mrpt::slam::CRawlog *pRawLog;
-    mrpt::slam::CRawlog *pRawLogASF;
+	CRawlog *pRawLog;
+	CRawlog *pRawLogASF;
     mrpt::poses::CPose2D odomLastPose_;
     void updateRawLogName(const mrpt::system::TTimeStamp &t);
-    void observation(mrpt::slam::CObservation2DRangeScanPtr laser, mrpt::slam::CObservationOdometryPtr _odometry);
+	void observation(CObservation2DRangeScanPtr laser, CObservationOdometryPtr _odometry);
     boost::interprocess::interprocess_mutex mutexRawLog;
 };
 

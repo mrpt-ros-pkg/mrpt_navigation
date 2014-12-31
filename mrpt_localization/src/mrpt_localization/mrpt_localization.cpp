@@ -45,7 +45,15 @@ using namespace mrpt::gui;
 using namespace mrpt::math;
 using namespace mrpt::system;
 using namespace mrpt::utils;
+using namespace mrpt::bayes;
+using namespace mrpt::poses;
 using namespace std;
+
+#include <mrpt/version.h>
+#if MRPT_VERSION>=0x130
+using namespace mrpt::maps;
+using namespace mrpt::obs;
+#endif
 
 
 PFLocalization::~PFLocalization()
@@ -114,7 +122,7 @@ void PFLocalization::init() {
         p.y() = min_y + cov(1,1) / 2.0;
         p.phi() = min_phi + cov(2,2) / 2.0;
         printf("----------- phi: %4.3f: %4.3f <-> %4.3f, %4.3f\n", p.phi(), min_phi, max_phi, cov(2,2));
-        initialPose_ = mrpt::utils::CPosePDFGaussian(p, cov);
+		initialPose_ = mrpt::poses::CPosePDFGaussian(p, cov);
         state_ = INIT; 
     } else {
       log_error("no initial pose");
@@ -168,7 +176,7 @@ void PFLocalization::init3DDebug() {
         //win3D_->waitForKey();
 
         // Create the 3D scene and get the map only once, later we'll modify only the particles, etc..
-        mrpt::slam::COccupancyGridMap2D::TEntropyInfo gridInfo;
+		COccupancyGridMap2D::TEntropyInfo gridInfo;
         // The gridmap:
         if (metric_map_.m_gridMaps.size())
         {

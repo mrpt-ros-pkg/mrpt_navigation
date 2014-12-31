@@ -1,9 +1,20 @@
 #include <sensor_msgs/PointField.h>
 #include <sensor_msgs/PointCloud2.h>
-#include <mrpt/slam/CSimplePointsMap.h>
-#include <mrpt/slam/CColouredPointsMap.h>
-#include "mrpt_bridge/point_cloud2.h"
 #include <ros/console.h>
+
+#include "mrpt_bridge/point_cloud2.h"
+
+#include <mrpt/version.h>
+#if MRPT_VERSION>=0x130
+#	include <mrpt/maps/CSimplePointsMap.h>
+#	include <mrpt/maps/CColouredPointsMap.h>
+	using namespace mrpt::maps;
+#else
+#	include <mrpt/slam/CSimplePointsMap.h>
+#	include <mrpt/slam/CColouredPointsMap.h>
+	using namespace mrpt::slam;
+#endif
+
 
 namespace mrpt_bridge
 {
@@ -46,7 +57,7 @@ inline void get_float_from_field(const sensor_msgs::PointField* field, const uns
  *
  * \return true on sucessful conversion, false on any error.
  */
-bool copy(const sensor_msgs::PointCloud2 &msg, mrpt::slam::CSimplePointsMap &obj)
+bool copy(const sensor_msgs::PointCloud2 &msg, CSimplePointsMap &obj)
 {
   // Copy point data
   unsigned int num_points = msg.width * msg.height;
@@ -91,7 +102,7 @@ bool copy(const sensor_msgs::PointCloud2 &msg, mrpt::slam::CSimplePointsMap &obj
  *  Since CSimplePointsMap only contains (x,y,z) data, sensor_msgs::PointCloud2::channels will be empty.
  * \return true on sucessful conversion, false on any error.
  */
-bool copy(const mrpt::slam::CSimplePointsMap &obj, const std_msgs::Header &msg_header,
+bool copy(const CSimplePointsMap &obj, const std_msgs::Header &msg_header,
                            sensor_msgs::PointCloud2 &msg)
 {
   MRPT_TODO("Implement pointcloud2 mrpt2ros");

@@ -5,14 +5,31 @@
 #include <ros/console.h>
 
 // Only include MRPT classes that are really used to avoid slow down compilation
-#include <mrpt/slam/COccupancyGridMap2D.h>
 #include <mrpt/random.h>
-#include <mrpt/slam/CMultiMetricMap.h>
-#include <mrpt/slam/CSimpleMap.h>
 #include <mrpt/utils/CConfigFile.h>
 #include <mrpt/utils/CFileGZInputStream.h>
 #include <mrpt/system/filesystem.h> // for fileExists()
 #include <mrpt/system/string_utils.h> // for lowerCase()
+
+#include <mrpt/version.h>
+#if MRPT_VERSION>=0x130
+#	include <mrpt/maps/COccupancyGridMap2D.h>
+#	include <mrpt/maps/CMultiMetricMap.h>
+#	include <mrpt/maps/CSimpleMap.h>
+	using mrpt::maps::COccupancyGridMap2D;
+	using mrpt::maps::CMultiMetricMap;
+	using mrpt::maps::CSimpleMap;
+	using mrpt::maps::CLogOddsGridMapLUT;
+#else
+#	include <mrpt/slam/COccupancyGridMap2D.h>
+#	include <mrpt/slam/CMultiMetricMap.h>
+#	include <mrpt/slam/CSimpleMap.h>
+	using mrpt::slam::COccupancyGridMap2D;
+	using mrpt::slam::CMultiMetricMap;
+	using mrpt::slam::CSimpleMap;
+	using mrpt::slam::CLogOddsGridMapLUT;
+#endif
+
 
 #ifndef INT8_MAX // avoid duplicated #define's
 #define INT8_MAX    0x7f
@@ -28,7 +45,7 @@ MapHdl* MapHdl::instance_ = NULL;
 MapHdl::MapHdl ()
 {
     /// ceation of the lookup table and pointers
-    mrpt::slam::CLogOddsGridMapLUT<mrpt::slam::COccupancyGridMap2D::cellType> table;
+	CLogOddsGridMapLUT<COccupancyGridMap2D::cellType> table;
 #ifdef  OCCUPANCY_GRIDMAP_CELL_SIZE_8BITS
     lut_cellmrpt2rosPtr = lut_cellmrpt2ros + INT8_MAX + 1; // center the pointer
     lut_cellros2mrptPtr = lut_cellros2mrpt + INT8_MAX + 1; // center the pointer
@@ -63,7 +80,7 @@ MapHdl* MapHdl::instance ()
     return instance_;
 }
 
-bool convert ( const nav_msgs::OccupancyGrid  &src, mrpt::slam::COccupancyGridMap2D  &des )
+bool convert ( const nav_msgs::OccupancyGrid  &src, COccupancyGridMap2D  &des )
 {
     if((src.info.origin.orientation.x != 0) ||
             (src.info.origin.orientation.y != 0) ||
@@ -84,7 +101,7 @@ bool convert ( const nav_msgs::OccupancyGrid  &src, mrpt::slam::COccupancyGridMa
 
     /// I hope the data is allways aligned
     for ( int h = 0; h < src.info.height; h++ ) {
-        mrpt::slam::COccupancyGridMap2D::cellType *pDes = des.getRow (h);
+		COccupancyGridMap2D::cellType *pDes = des.getRow (h);
         const int8_t *pSrc = &src.data[h * src.info.width];
         for ( int w = 0; w < src.info.width; w++ ) {
             *pDes++ = MapHdl::instance()->cellRos2Mrpt(*pSrc++);
@@ -92,14 +109,14 @@ bool convert ( const nav_msgs::OccupancyGrid  &src, mrpt::slam::COccupancyGridMa
     }
     return true;
 }
-bool convert ( const mrpt::slam::COccupancyGridMap2D &src, nav_msgs::OccupancyGrid &des,    const std_msgs::Header &header
+bool convert ( const COccupancyGridMap2D &src, nav_msgs::OccupancyGrid &des,    const std_msgs::Header &header
 )
 {
     des.header = header;
     return convert(src, des);
 }
 
-bool convert (    const mrpt::slam::COccupancyGridMap2D &src, nav_msgs::OccupancyGrid &des)
+bool convert (    const COccupancyGridMap2D &src, nav_msgs::OccupancyGrid &des)
 {
     //printf("--------mrpt2ros:  %f, %f, %f, %f, r:%f\n",src.getXMin(), src.getXMax(), src.getYMin(), src.getYMax(), src.getResolution());
     des.info.width = src.getSizeX();
@@ -118,7 +135,7 @@ bool convert (    const mrpt::slam::COccupancyGridMap2D &src, nav_msgs::Occupanc
     /// I hope the data is allways aligned
     des.data.resize ( des.info.width*des.info.height );
     for ( int h = 0; h < des.info.height; h++ ) {
-        const mrpt::slam::COccupancyGridMap2D::cellType *pSrc = src.getRow (h);
+		const COccupancyGridMap2D::cellType *pSrc = src.getRow (h);
         int8_t *pDes = &des.data[h * des.info.width];
         for ( int w = 0; w < des.info.width; w++ ) {
             *pDes++ = MapHdl::instance()->cellMrpt2Ros(*pSrc++);
@@ -127,13 +144,18 @@ bool convert (    const mrpt::slam::COccupancyGridMap2D &src, nav_msgs::Occupanc
     return true;
 }
 
-const bool MapHdl::loadMap(mrpt::slam::CMultiMetricMap &_metric_map, const mrpt::utils::CConfigFile &_config_file, const std::string &_map_file, const std::string &_section_name, bool _debug) {
+const bool MapHdl::loadMap(CMultiMetricMap &_metric_map, const mrpt::utils::CConfigFile &_config_file, const std::string &_map_file, const std::string &_section_name, bool _debug) {
+#if MRPT_VERSION>=0x130
+	using namespace mrpt::maps;
+#else
+	using namespace mrpt::slam;
+#endif
 
-    mrpt::slam::TSetOfMetricMapInitializers mapInitializers;
+	TSetOfMetricMapInitializers mapInitializers;
     mapInitializers.loadFromConfigFile( _config_file, _section_name);
     if(_debug) mapInitializers.dumpToConsole();
 
-    mrpt::slam::CSimpleMap  simpleMap;
+	CSimpleMap  simpleMap;
 
     // Load the set of metric maps to consider in the experiments:
     _metric_map.setListOfMaps( &mapInitializers );

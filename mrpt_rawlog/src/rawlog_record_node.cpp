@@ -33,6 +33,13 @@
 #include <mrpt_bridge/laser_scan.h>
 #include <mrpt_bridge/time.h>
 
+#include <mrpt/version.h>
+#if MRPT_VERSION>=0x130
+	using namespace mrpt::maps;
+	using namespace mrpt::obs;
+#else
+	using namespace mrpt::slam;
+#endif
 
 int main(int argc, char **argv) {
 
@@ -94,7 +101,7 @@ bool RawlogRecordNode::waitForTransform(mrpt::poses::CPose3D &des, const std::st
 
 void RawlogRecordNode::callbackLaser (const sensor_msgs::LaserScan &_msg) {
     //ROS_INFO("callbackLaser");
-    mrpt::slam::CObservation2DRangeScanPtr laser = mrpt::slam::CObservation2DRangeScan::Create();
+	CObservation2DRangeScanPtr laser = CObservation2DRangeScan::Create();
 
     if(laser_poses_.find(_msg.header.frame_id) == laser_poses_.end()) {
         updateLaserPose (_msg.header.frame_id);
@@ -108,7 +115,7 @@ void RawlogRecordNode::callbackLaser (const sensor_msgs::LaserScan &_msg) {
         std::string odom_frame_id = tf::resolve(param()->tf_prefix, param()->odom_frame_id);
         mrpt::poses::CPose3D poseOdom;
         if(this->waitForTransform(poseOdom, odom_frame_id, base_frame_id, _msg.header.stamp, ros::Duration(1))){
-            mrpt::slam::CObservationOdometryPtr odometry = mrpt::slam::CObservationOdometry::Create();
+			CObservationOdometryPtr odometry = CObservationOdometry::Create();
             odometry->sensorLabel = odom_frame_id;
             odometry->hasEncodersInfo = false;
             odometry->hasVelocities = false;

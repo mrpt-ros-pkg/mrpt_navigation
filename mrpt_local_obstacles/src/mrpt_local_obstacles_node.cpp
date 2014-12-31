@@ -39,12 +39,24 @@
 #include <mrpt_bridge/point_cloud.h>
 
 #include <map>
-#include <mrpt/slam/CSensoryFrame.h>
+
+#include <mrpt/version.h>
+#if MRPT_VERSION>=0x130
+#	include <mrpt/obs/CSensoryFrame.h>
+#	include <mrpt/maps/CSimplePointsMap.h>
+#	include <mrpt/maps/COccupancyGridMap2D.h>
+	using namespace mrpt::maps;
+	using namespace mrpt::obs;
+#else
+#	include <mrpt/slam/CSensoryFrame.h>
+#	include <mrpt/slam/CSimplePointsMap.h>
+#	include <mrpt/slam/COccupancyGridMap2D.h>
+	using namespace mrpt::slam;
+#endif
+
 #include <mrpt/system/string_utils.h>
 #include <mrpt/utils/CTimeLogger.h>
 #include <mrpt/utils/CConfigFile.h>
-#include <mrpt/slam/CSimplePointsMap.h>
-#include <mrpt/slam/COccupancyGridMap2D.h>
 #include <mrpt/gui/CDisplayWindow3D.h>
 #include <mrpt/opengl/CGridPlaneXY.h>
 #include <mrpt/opengl/CPointCloud.h>
@@ -79,7 +91,7 @@ private:
 	// Sensor data:
 	struct TInfoPerTimeStep
 	{
-		mrpt::slam::CObservationPtr observation;
+		CObservationPtr observation;
 		mrpt::poses::CPose3D        robot_pose;
 	};
 	typedef std::multimap<double,TInfoPerTimeStep> TListObservations;
@@ -87,8 +99,8 @@ private:
 	boost::mutex m_hist_obs_mtx;
 
 	/** The local maps */
-	mrpt::slam::CSimplePointsMap    m_localmap_pts;
-	//mrpt::slam::COccupancyGridMap2D m_localmap_grid;
+	CSimplePointsMap    m_localmap_pts;
+	//COccupancyGridMap2D m_localmap_grid;
 
 	mrpt::gui::CDisplayWindow3DPtr  m_gui_win;
 
@@ -139,7 +151,7 @@ private:
 		mrpt::poses::CPose3D sensorOnRobot_mrpt;
 		mrpt_bridge::convert(sensorOnRobot,sensorOnRobot_mrpt);
 		// In MRPT, CObservation2DRangeScan holds both: sensor data + relative pose:
-		mrpt::slam::CObservation2DRangeScanPtr obsScan = mrpt::slam::CObservation2DRangeScan::Create();
+		CObservation2DRangeScanPtr obsScan = CObservation2DRangeScan::Create();
 		mrpt_bridge::convert(*scan,sensorOnRobot_mrpt, *obsScan);
 
 		ROS_DEBUG("[onNewSensor_Laser2D] %u rays, sensor pose on robot %s", static_cast<unsigned int>(obsScan->scan.size()), sensorOnRobot_mrpt.asString().c_str() );

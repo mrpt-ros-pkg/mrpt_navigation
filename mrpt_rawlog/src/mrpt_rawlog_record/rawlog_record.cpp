@@ -53,8 +53,8 @@ RawlogRecord::~RawlogRecord()
 
 RawlogRecord::RawlogRecord(Parameters *param)
     :param_(param) {
-    pRawLog = new mrpt::slam::CRawlog;
-    pRawLogASF = new mrpt::slam::CRawlog;
+	pRawLog = new CRawlog;
+	pRawLogASF = new CRawlog;
 }
 void RawlogRecord::updateRawLogName(const mrpt::system::TTimeStamp &t) {
     uint64_t        tmp = (t - ((uint64_t)116444736*1000000000));
@@ -81,8 +81,12 @@ void RawlogRecord::updateRawLogName(const mrpt::system::TTimeStamp &t) {
                                    param_->raw_log_name_asf.c_str());
 }
 
-
-void RawlogRecord::observation(mrpt::slam::CObservation2DRangeScanPtr laser, mrpt::slam::CObservationOdometryPtr odometry) {
+void RawlogRecord::observation(CObservation2DRangeScanPtr laser, CObservationOdometryPtr odometry) {
+#if MRPT_VERSION>=0x130
+	using namespace mrpt::obs;
+#else
+	using namespace mrpt::slam;
+#endif
 
     pRawLog->addObservationMemoryReference(odometry);
     pRawLog->addObservationMemoryReference(laser);
@@ -94,15 +98,15 @@ void RawlogRecord::observation(mrpt::slam::CObservation2DRangeScanPtr laser, mrp
     mrpt::poses::CPose2D incOdoPose = odometry->odometry - odomLastPose_;
 
 
-    mrpt::slam::CActionRobotMovement2D odom_move;
+	CActionRobotMovement2D odom_move;
     odom_move.timestamp = odometry->timestamp;
     odom_move.computeFromOdometry(incOdoPose, param_->motionModelOptions);
-    mrpt::slam::CActionCollectionPtr action = mrpt::slam::CActionCollection::Create();
+	CActionCollectionPtr action = CActionCollection::Create();
     action->insert(odom_move);
     pRawLogASF->addActionsMemoryReference(action);
 
-    mrpt::slam::CSensoryFramePtr sf = mrpt::slam::CSensoryFrame::Create();
-    mrpt::slam::CObservationPtr obs = mrpt::slam::CObservationPtr(laser);
+	CSensoryFramePtr sf = CSensoryFrame::Create();
+	CObservationPtr obs = CObservationPtr(laser);
     sf->insert(obs);
     pRawLogASF->addObservationsMemoryReference(sf);
 

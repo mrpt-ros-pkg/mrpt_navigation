@@ -50,7 +50,7 @@ PFLocalizationCore::PFLocalizationCore()
 void PFLocalizationCore::init() {
     mrpt::math::CMatrixDouble33 cov;
     cov(0,0) = 1, cov(1,1) = 1, cov(2,2) = 2*M_PI;
-    initialPose_ = mrpt::utils::CPosePDFGaussian(mrpt::poses::CPose2D(0,0,0), cov);
+	initialPose_ = mrpt::poses::CPosePDFGaussian(mrpt::poses::CPose2D(0,0,0), cov);
     initialParticleCount_ = 1000;
     motion_model_default_options_.modelSelection = CActionRobotMovement2D::mmGaussian;
     motion_model_default_options_.gausianModel.minStdXY  = 0.10;
@@ -99,7 +99,7 @@ void PFLocalizationCore::observation(mrpt::slam::CSensoryFramePtr _sf, mrpt::sla
     } else {
       if(use_motion_model_default_options_){
         log_info("No odometry at update %4i -> using dummy", update_counter_);
-        odom_move.computeFromOdometry(CPose2D(0,0,0), motion_model_default_options_);
+		odom_move.computeFromOdometry(mrpt::poses::CPose2D(0,0,0), motion_model_default_options_);
         action->insert(odom_move);
         updateFilter(action, _sf);
       } else {

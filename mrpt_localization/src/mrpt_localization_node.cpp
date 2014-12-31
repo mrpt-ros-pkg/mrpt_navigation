@@ -35,7 +35,7 @@
 #include <mrpt_bridge/time.h>
 #include <mrpt_bridge/map.h>
 
-
+#include <mrpt/version.h>
 
 int main(int argc, char **argv) {
 
@@ -109,8 +109,15 @@ bool PFLocalizationNode::waitForTransform(mrpt::poses::CPose3D &des, const std::
 
 
 void PFLocalizationNode::callbackLaser (const sensor_msgs::LaserScan &_msg) {
+#if MRPT_VERSION>=0x130
+	using namespace mrpt::maps;
+	using namespace mrpt::obs;
+#else
+	using namespace mrpt::slam;
+#endif
+
     //ROS_INFO("callbackLaser");
-    mrpt::slam::CObservation2DRangeScanPtr laser = mrpt::slam::CObservation2DRangeScan::Create();
+	CObservation2DRangeScanPtr laser = CObservation2DRangeScan::Create();
 
     //printf("callbackLaser %s\n", _msg.header.frame_id.c_str());
     if(laser_poses_.find(_msg.header.frame_id) == laser_poses_.end()) {
@@ -123,10 +130,10 @@ void PFLocalizationNode::callbackLaser (const sensor_msgs::LaserScan &_msg) {
 
         std::string base_frame_id = tf::resolve(param()->tf_prefix, param()->base_frame_id);
         std::string odom_frame_id = tf::resolve(param()->tf_prefix, param()->odom_frame_id);
-        mrpt::slam::CObservationOdometryPtr odometry;
+		CObservationOdometryPtr odometry;
         mrpt::poses::CPose3D poseOdom;
         if(this->waitForTransform(poseOdom, odom_frame_id, base_frame_id, _msg.header.stamp, ros::Duration(1))){
-            odometry = mrpt::slam::CObservationOdometry::Create();
+			odometry = CObservationOdometry::Create();
             odometry->sensorLabel = odom_frame_id;
             odometry->hasEncodersInfo = false;
             odometry->hasVelocities = false;
@@ -134,8 +141,8 @@ void PFLocalizationNode::callbackLaser (const sensor_msgs::LaserScan &_msg) {
             odometry->odometry.y() = poseOdom.y();
             odometry->odometry.phi() = poseOdom.yaw();
         }
-        mrpt::slam::CSensoryFramePtr sf = mrpt::slam::CSensoryFrame::Create();
-        mrpt::slam::CObservationPtr obs = mrpt::slam::CObservationPtr(laser);
+		CSensoryFramePtr sf = CSensoryFrame::Create();
+		CObservationPtr obs = CObservationPtr(laser);
         sf->insert(obs);
         observation(sf, odometry);
         if(param()->gui_mrpt) show3DDebug(sf);
