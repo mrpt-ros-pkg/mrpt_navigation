@@ -35,7 +35,15 @@
 
 #include <mrpt/utils/CFileGZInputStream.h>
 #include <mrpt/poses/CPose3DPDFGaussian.h>
-#include <mrpt/slam/CActionRobotMovement2D.h>
+
+#include <mrpt/version.h>
+#if MRPT_VERSION>=0x130
+#	include <mrpt/obs/CActionRobotMovement2D.h>
+	using namespace mrpt::obs;
+#else
+#	include <mrpt/slam/CActionRobotMovement2D.h>
+	using namespace mrpt::slam;
+#endif
 
 
 class RawlogPlay {
@@ -44,7 +52,7 @@ public:
 		Parameters();
 	    bool debug;
         std::string rawlog_file;
-        mrpt::slam::CActionRobotMovement2D::TMotionModelOptions motionModelOptions;
+		CActionRobotMovement2D::TMotionModelOptions motionModelOptions;
 	};
     RawlogPlay (Parameters *parm);
     ~RawlogPlay();

@@ -56,7 +56,7 @@ void RawlogPlayNode::ParametersNode::update(const unsigned long &loop_count) {
 
 void RawlogPlayNode::ParametersNode::callbackParameters (mrpt_rawlog::MotionConfig &config, uint32_t level ) {
     if(config.motion_noise_type == MOTION_MODEL_GAUSSIAN) {
-        motionModelOptions.modelSelection = mrpt::slam::CActionRobotMovement2D::mmGaussian;
+		motionModelOptions.modelSelection = CActionRobotMovement2D::mmGaussian;
         motionModelOptions.gausianModel.a1 = config.gaussian_alpha_1;
         motionModelOptions.gausianModel.a2 = config.gaussian_alpha_2;
         motionModelOptions.gausianModel.a3 = config.gaussian_alpha_3;

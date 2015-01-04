@@ -10,7 +10,7 @@ namespace mrpt_bridge {
   */
 bool point_cloud::ros2mrpt(
 		const sensor_msgs::PointCloud &msg,
-		mrpt::slam::CSimplePointsMap  &obj )
+		CSimplePointsMap  &obj )
 {
 	const size_t N = msg.points.size();
 
@@ -23,14 +23,14 @@ bool point_cloud::ros2mrpt(
 }
 
 
-/** Convert mrpt::slam::CSimplePointsMap -> sensor_msgs/PointCloud
+/** Convert mrpt::maps::CSimplePointsMap -> sensor_msgs/PointCloud
   *  The user must supply the "msg_header" field to be copied into the output message object, since that part does not appear in MRPT classes.
   *
   *  Since CSimplePointsMap only contains (x,y,z) data, sensor_msgs::PointCloud::channels will be empty.
   * \return true on sucessful conversion, false on any error.
   */
 bool point_cloud::mrpt2ros(
-	const mrpt::slam::CSimplePointsMap  &obj,
+	const CSimplePointsMap  &obj,
 	const std_msgs::Header &msg_header,
 	sensor_msgs::PointCloud &msg )
 {

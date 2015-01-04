@@ -33,16 +33,17 @@
 #include <mrpt_bridge/time.h>
 
 #include <mrpt/system/filesystem.h>
-#include <mrpt/slam/CSensoryFrame.h>
-#include <mrpt/slam/CSensoryFrame.h>
-#include <mrpt/slam/CRawlog.h>
-#include <mrpt/slam/CObservation2DRangeScan.h>
 
 #include <mrpt/version.h>
 #if MRPT_VERSION>=0x130
-	using namespace mrpt::maps;
+#	include <mrpt/obs/CSensoryFrame.h>
+#	include <mrpt/obs/CRawlog.h>
+#	include <mrpt/obs/CObservation2DRangeScan.h>
 	using namespace mrpt::obs;
 #else
+#	include <mrpt/slam/CSensoryFrame.h>
+#	include <mrpt/slam/CRawlog.h>
+#	include <mrpt/slam/CObservation2DRangeScan.h>
 	using namespace mrpt::slam;
 #endif
 

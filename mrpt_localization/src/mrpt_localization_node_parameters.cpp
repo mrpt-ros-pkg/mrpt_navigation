@@ -74,7 +74,7 @@ void PFLocalizationNode::Parameters::update(const unsigned long &loop_count) {
 
 void PFLocalizationNode::Parameters::callbackParameters (mrpt_localization::MotionConfig &config, uint32_t level ) {
     if(config.motion_noise_type == MOTION_MODEL_GAUSSIAN) {
-        motion_model_options->modelSelection = mrpt::slam::CActionRobotMovement2D::mmGaussian;
+		motion_model_options->modelSelection = CActionRobotMovement2D::mmGaussian;
         motion_model_options->gausianModel.a1 = config.gaussian_alpha_1;
         motion_model_options->gausianModel.a2 = config.gaussian_alpha_2;
         motion_model_options->gausianModel.a3 = config.gaussian_alpha_3;

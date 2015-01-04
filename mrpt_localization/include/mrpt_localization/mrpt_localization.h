@@ -46,8 +46,8 @@ public:
         std::string mapFile;
 		std::string sensorSources; //!< A list of topics (e.g. laser scanners) to subscribe to for sensory data. Split with "," (e.g. "laser1,laser2")
         bool *use_motion_model_default_options;
-        mrpt::slam::CActionRobotMovement2D::TMotionModelOptions *motion_model_options;
-        mrpt::slam::CActionRobotMovement2D::TMotionModelOptions *motion_model_default_options;
+		CActionRobotMovement2D::TMotionModelOptions *motion_model_options;
+		CActionRobotMovement2D::TMotionModelOptions *motion_model_default_options;
     };
     PFLocalization (Parameters *parm);
     ~PFLocalization();
@@ -55,7 +55,7 @@ protected:
     Parameters *param_;
     void init();
     void init3DDebug();
-    void show3DDebug(mrpt::slam::CSensoryFramePtr _observations);
+	void show3DDebug(CSensoryFramePtr _observations);
     void configureFilter(const mrpt::utils::CConfigFile &_configFile);
     virtual bool waitForMap(){return false;};
 

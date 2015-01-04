@@ -82,10 +82,10 @@ void PFLocalizationCore::updateFilter(CActionCollectionPtr _action, CSensoryFram
     update_counter_++;
 }
 
-void PFLocalizationCore::observation(mrpt::slam::CSensoryFramePtr _sf, mrpt::slam::CObservationOdometryPtr _odometry) {
+void PFLocalizationCore::observation(CSensoryFramePtr _sf, CObservationOdometryPtr _odometry) {
 
-    mrpt::slam::CActionCollectionPtr action = mrpt::slam::CActionCollection::Create();
-    mrpt::slam::CActionRobotMovement2D odom_move;
+	CActionCollectionPtr action = CActionCollection::Create();
+	CActionRobotMovement2D odom_move;
     odom_move.timestamp = _sf->getObservationByIndex(0)->timestamp;
     if(_odometry) {
         if(odomLastObservation_.empty()) {

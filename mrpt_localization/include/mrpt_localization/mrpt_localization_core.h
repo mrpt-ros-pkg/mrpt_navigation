@@ -33,24 +33,36 @@
 #include <stdint.h>
 
 #include <mrpt/bayes/CParticleFilter.h>
-#include <mrpt/slam/CActionRobotMovement2D.h>
-#include <mrpt/slam/CMultiMetricMap.h>
 #include <mrpt/poses/CPose2D.h>
 #include <mrpt/poses/CPosePDFGaussian.h>
 #include <mrpt/utils/CTicTac.h>
-
-#include <mrpt_bridge/mrpt_log_macros.h>
-
-#include <mrpt/slam/CMultiMetricMap.h>
-#include <mrpt/slam/CActionCollection.h>
-#include <mrpt/slam/CMonteCarloLocalization2D.h>
-#include <mrpt/slam/CObservationOdometry.h>
-#include <mrpt/slam/CSensoryFrame.h>
 #include <mrpt/utils/CTicTac.h>
 #include <mrpt/poses/CPose2D.h>
+#include <mrpt/slam/CMonteCarloLocalization2D.h>
+#include <mrpt_bridge/mrpt_log_macros.h>
+
+#include <mrpt/version.h>
+#if MRPT_VERSION>=0x130
+#	include <mrpt/obs/CActionRobotMovement2D.h>
+#	include <mrpt/obs/CActionCollection.h>
+#	include <mrpt/obs/CObservationOdometry.h>
+#	include <mrpt/obs/CSensoryFrame.h>
+#	include <mrpt/maps/CMultiMetricMap.h>
+	using namespace mrpt::maps;
+	using namespace mrpt::obs;
+#else
+#	include <mrpt/slam/CActionRobotMovement2D.h>
+#	include <mrpt/slam/CActionCollection.h>
+#	include <mrpt/slam/CObservationOdometry.h>
+#	include <mrpt/slam/CSensoryFrame.h>
+#	include <mrpt/slam/CMultiMetricMap.h>
+	using namespace mrpt::slam;
+#endif
+
+
 
 class PFLocalizationCore {
-  MRPT_VIRTUAL_LOG_MACROS;
+  MRPT_VIRTUAL_LOG_MACROS
 public:
     enum PFStates {NA, INIT, RUN} ;
     PFLocalizationCore ();
@@ -65,13 +77,13 @@ public:
      * @param _sf sonsor observation
      * @param _odometry the odom data can also be NULL
      **/
-    void observation(mrpt::slam::CSensoryFramePtr _sf, mrpt::slam::CObservationOdometryPtr _odometry);
+	void observation(CSensoryFramePtr _sf, CObservationOdometryPtr _odometry);
 protected:
     
     bool use_motion_model_default_options_; /// used default odom_params
-    mrpt::slam::CActionRobotMovement2D::TMotionModelOptions motion_model_default_options_; /// used if there are is not odom
-    mrpt::slam::CActionRobotMovement2D::TMotionModelOptions motion_model_options_;         /// used with odom value motion noise
-    mrpt::slam::CMultiMetricMap metric_map_;     /// map
+	CActionRobotMovement2D::TMotionModelOptions motion_model_default_options_; /// used if there are is not odom
+	CActionRobotMovement2D::TMotionModelOptions motion_model_options_;         /// used with odom value motion noise
+	CMultiMetricMap metric_map_;     /// map
     mrpt::bayes::CParticleFilter pf_;            /// common interface for particle filters
     mrpt::bayes::CParticleFilter::TParticleFilterStats   pf_stats_; /// filter statists
     mrpt::slam::CMonteCarloLocalization2D  pdf_; /// fhe filter
@@ -90,7 +102,7 @@ private:
      **/
     void initializeFilter();
     
-    void updateFilter(mrpt::slam::CActionCollectionPtr _action, mrpt::slam::CSensoryFramePtr _sf);
+	void updateFilter(CActionCollectionPtr _action, CSensoryFramePtr _sf);
 };
 
 #endif // MRPT_LOCALIZATION_CORE_H
