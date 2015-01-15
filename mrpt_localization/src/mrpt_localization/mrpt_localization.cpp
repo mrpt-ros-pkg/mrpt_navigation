@@ -29,7 +29,11 @@
 
 #include <mrpt_localization/mrpt_localization.h>
 #include <mrpt_localization/mrpt_localization_defaults.h>
-//#include <mrpt/base.h>
+
+// JLB: I really can't explain this, but if this header is not included here (though unneeded!)
+// the behavior of the particle filter does not converge as expected (WTF!!!) (Verified with MRPT 1.0.2 & 1.3.0)
+#define MRPT_NO_WARN_BIG_HDR
+#include <mrpt/base.h>
 
 
 #include <mrpt_bridge/map.h>
