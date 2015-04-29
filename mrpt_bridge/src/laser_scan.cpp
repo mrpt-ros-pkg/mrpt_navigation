@@ -16,27 +16,37 @@
 
 namespace mrpt_bridge {
 
-bool convert(const sensor_msgs::LaserScan &_msg, const mrpt::poses::CPose3D &_pose, CObservation2DRangeScan  &_obj
-                         )
+bool convert(const sensor_msgs::LaserScan &_msg, const mrpt::poses::CPose3D &_pose, CObservation2DRangeScan  &_obj)
 {
-    mrpt_bridge::convert(_msg.header.stamp, _obj.timestamp);
-    _obj.rightToLeft = true;
-    _obj.sensorLabel = _msg.header.frame_id;
-    _obj.aperture = _msg.angle_max - _msg.angle_min;
-    _obj.maxRange = _msg.range_max;
-    _obj.sensorPose =  _pose;
-    _obj.validRange.resize(_msg.ranges.size());
-    _obj.scan.resize(_msg.ranges.size());
-    for(std::size_t i = 0; i < _msg.ranges.size(); i++) {
-        _obj.scan[i] = _msg.ranges[i];
-        if((_obj.scan[i] < (_msg.range_max*0.95)) && (_obj.scan[i] > _msg.range_min)) {
-            _obj.validRange[i] = 1;
-        } else {
-            _obj.validRange[i] = 0;
-        }
-    }
+	mrpt_bridge::convert(_msg.header.stamp, _obj.timestamp);
+	_obj.rightToLeft = true;
+	_obj.sensorLabel = _msg.header.frame_id;
+	_obj.aperture = _msg.angle_max - _msg.angle_min;
+	_obj.maxRange = _msg.range_max;
+	_obj.sensorPose =  _pose;
 
-    return true;
+	ASSERT_(_msg.ranges.size()>1);
+
+	const size_t N = _msg.ranges.size();
+	const double ang_step = _obj.aperture/(N-1);
+	const double fov05 = 0.5*_obj.aperture;
+	const double inv_ang_step = (N-1)/_obj.aperture;
+
+	_obj.scan.resize(N);
+	_obj.validRange.resize(N);
+	for(std::size_t i_mrpt = 0; i_mrpt < N; i_mrpt++)
+	{
+
+		// ROS indices go from _msg.angle_min to _msg.angle_max, while
+		// in MRPT they go from -FOV/2 to +FOV/2.
+		int i_ros = inv_ang_step*( -fov05-_msg.angle_min+ang_step*i_mrpt);
+		if (i_ros<0) i_ros+=N; else if (i_ros>=(int)N) i_ros-=N;  // wrap around 2PI...
+
+		_obj.scan[i_mrpt] = _msg.ranges[i_ros];
+		_obj.validRange[i_mrpt] = ((_obj.scan[i_mrpt] < (_msg.range_max*0.95)) && (_obj.scan[i_mrpt] > _msg.range_min)) ? 1:0;
+	}
+
+	return true;
 }
 
 bool convert(const CObservation2DRangeScan  &_obj, sensor_msgs::LaserScan &_msg) {

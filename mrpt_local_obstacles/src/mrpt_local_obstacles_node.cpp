@@ -127,6 +127,7 @@ private:
 		subs.resize(lstSources.size());
 		for (size_t i=0;i<lstSources.size();i++)
 			subs[i]  = m_nh.subscribe(lstSources[i],  1, cb, this);
+		return lstSources.size();
 	}
 
 
