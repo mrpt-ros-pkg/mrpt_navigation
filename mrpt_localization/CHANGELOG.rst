@@ -2,6 +2,13 @@
 Changelog for package mrpt_localization
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* fix to strange pf-localization bug
+* Cleaner build against mrpt 1.3.0
+* Fix build against mrpt 1.3.0
+* Contributors: Jose Luis Blanco
+
 0.1.4 (2014-12-27)
 ------------------
 * dont publish if numSubscribers()==0

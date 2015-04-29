@@ -2,6 +2,11 @@
 Changelog for package mrpt_map
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Fix build against mrpt 1.3.0
+* Contributors: Jose Luis Blanco
+
 0.1.4 (2014-12-27)
 ------------------
 * Removed 'mrpt' dep from catkin_package().

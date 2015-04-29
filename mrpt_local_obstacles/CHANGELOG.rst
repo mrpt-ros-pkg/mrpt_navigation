@@ -2,6 +2,12 @@
 Changelog for package mrpt_local_obstacles
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* mrpt_local_obstacles: Fix wrong report of number of scan sources
+* Fix build against mrpt 1.3.0
+* Contributors: Jose Luis Blanco
+
 0.1.4 (2014-12-27)
 ------------------
 * First working version of the package

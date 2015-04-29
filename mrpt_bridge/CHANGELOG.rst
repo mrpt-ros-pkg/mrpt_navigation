@@ -2,6 +2,13 @@
 Changelog for package mrpt_bridge
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* mrpt_bridge: BUGFIX in convert() for 360deg scans
+* Cleaner build against mrpt 1.3.0
+* Fix build against mrpt 1.3.0
+* Contributors: Jose Luis Blanco
+
 0.1.4 (2014-12-27)
 ------------------
 * Solved some old 'TODO' comments
