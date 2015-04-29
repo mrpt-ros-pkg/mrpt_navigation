@@ -2,8 +2,8 @@
 Changelog for package mrpt_bridge
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+0.1.5 (2015-04-29)
+------------------
 * mrpt_bridge: BUGFIX in convert() for 360deg scans
 * Cleaner build against mrpt 1.3.0
 * Fix build against mrpt 1.3.0
