@@ -102,6 +102,10 @@ bool RawlogPlayNode::nextEntry() {
         mrpt_bridge::convert(*laser, msg_laser_, msg_pose_laser);
         laser->getSensorPose(pose_laser);
         mrpt_bridge::convert(pose_laser, transform);
+
+        if (msg_laser_.header.frame_id.empty())
+          msg_laser_.header.frame_id = "laser_link";
+
         std::string childframe = tf::resolve(param()->tf_prefix, msg_laser_.header.frame_id);
         tf_broadcaster_.sendTransform(tf::StampedTransform(transform, msg_laser_.header.stamp, base_frame_, childframe));
         pub_laser_.publish(msg_laser_);
