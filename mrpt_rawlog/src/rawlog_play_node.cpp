@@ -102,8 +102,15 @@ bool RawlogPlayNode::nextEntry() {
         mrpt_bridge::convert(*laser, msg_laser_, msg_pose_laser);
         laser->getSensorPose(pose_laser);
         mrpt_bridge::convert(pose_laser, transform);
+
+        if (msg_laser_.header.frame_id.empty())
+          msg_laser_.header.frame_id = "laser_link";
+
         std::string childframe = tf::resolve(param()->tf_prefix, msg_laser_.header.frame_id);
-        tf_broadcaster_.sendTransform(tf::StampedTransform(transform, msg_laser_.header.stamp, base_frame_, childframe));
+
+        msg_laser_.header.stamp = ros::Time::now();
+
+        tf_broadcaster_.sendTransform(tf::StampedTransform(transform, msg_laser_.header.stamp + ros::Duration(0.05), base_frame_, childframe));
         pub_laser_.publish(msg_laser_);
 		laser = observations->getObservationByClass<CObservation2DRangeScan>();
     }
@@ -117,7 +124,10 @@ bool RawlogPlayNode::nextEntry() {
     msg_odom_.header.seq = msg_laser_.header.seq;
     mrpt_bridge::convert(robotPose, msg_odom_.pose);
     mrpt_bridge::convert(robotPose, transform);
-    tf_broadcaster_.sendTransform(tf::StampedTransform(transform, msg_odom_.header.stamp, base_frame_, odom_frame_));
+
+    msg_odom_.header.stamp = ros::Time::now();
+
+    tf_broadcaster_.sendTransform(tf::StampedTransform(transform.inverse(), msg_odom_.header.stamp + ros::Duration(0.05), odom_frame_, base_frame_));
     return false;
 
 }
