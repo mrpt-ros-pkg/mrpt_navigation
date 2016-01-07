@@ -45,12 +45,14 @@
 #	include <mrpt/obs/CSensoryFrame.h>
 #	include <mrpt/maps/CSimplePointsMap.h>
 #	include <mrpt/maps/COccupancyGridMap2D.h>
+#	include <mrpt/obs/CObservation2DRangeScan.h>
 	using namespace mrpt::maps;
 	using namespace mrpt::obs;
 #else
 #	include <mrpt/slam/CSensoryFrame.h>
 #	include <mrpt/slam/CSimplePointsMap.h>
 #	include <mrpt/slam/COccupancyGridMap2D.h>
+#	include <mrpt/slam/CObservation2DRangeScan.h>
 	using namespace mrpt::slam;
 #endif
 

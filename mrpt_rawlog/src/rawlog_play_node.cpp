@@ -50,7 +50,7 @@
 
 int main(int argc, char **argv) {
 
-    ros::init(argc, argv, "DataLogger");
+	ros::init(argc, argv, "rawlog_play");
     ros::NodeHandle n;
     RawlogPlayNode my_node(n);
     my_node.init();
