@@ -181,18 +181,18 @@ const bool MapHdl::loadMap(CMultiMetricMap &_metric_map, const mrpt::utils::CCon
             mrpt::utils::CFileGZInputStream(_map_file) >> simpleMap;
             printf("Ok\n");
 
-            ASSERT_( simpleMap.size()>0 );
+            ASSERTMSG_( simpleMap.size()>0, "Simplemap was aparently loaded OK, but it is empty!" );
 
             // Build metric map:
             if(_debug) printf("Building metric map(s) from '.simplemap'...");
-            _metric_map.loadFromProbabilisticPosesAndObservations(simpleMap);
+            _metric_map.loadFromSimpleMap(simpleMap);
             if(_debug) printf("Ok\n");
         }
         else if ( !mapExt.compare( "gridmap" ) )
         {
             // It's a ".gridmap":
             if(_debug) printf("Loading gridmap from '.gridmap'...");
-            ASSERT_( _metric_map.m_gridMaps.size()==1 );
+            ASSERTMSG_( _metric_map.m_gridMaps.size()==1, "Error: Trying to load a gridmap into a multi-metric map requires 1 gridmap member." );
             mrpt::utils::CFileGZInputStream(_map_file) >> (*_metric_map.m_gridMaps[0]);
             if(_debug) printf("Ok\n");
         }
