@@ -192,11 +192,11 @@ void PFLocalization::init3DDebug() {
 	}
         printf("The gridmap has %.04fm2 observed area, %u observed cells\n", gridInfo.effectiveMappedArea, (unsigned) gridInfo.effectiveMappedCells );
 	printf("Initial PDF: %f particles/m2\n", initialParticleCount_/gridInfo.effectiveMappedArea);
-        {
-            CSetOfObjectsPtr plane = CSetOfObjects::Create();
-            metric_map_.getAs3DObject( plane );
-            scene_.insert( plane );
-        }
+        
+        CSetOfObjectsPtr plane = CSetOfObjects::Create();
+        metric_map_.getAs3DObject( plane );
+        scene_.insert( plane );
+        
 
         if (SHOW_PROGRESS_3D_REAL_TIME_)
         {
