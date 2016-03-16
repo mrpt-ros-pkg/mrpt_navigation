@@ -5,7 +5,7 @@
   <include file="$(find mrpt_rawlog)/launch/demo_play_ro.launch" />
 
   <node pkg="mrpt_localization" type="mrpt_localization_node" name="mrpt_localization_node" output="screen" > <!-- launch-prefix="gdb -ex run -_-_args"-->
-	<param name="ini_file" value="(find mrpt_rawlog)/tutorial/ro-localization-demo.ini"/>
+    <param name="ini_file" value="$(find mrpt_rawlog)/tutorial/ro-localization-demo.ini"/>
     <param name="odom_frame_id" value="odom"/> 
     <param name="global_frame_id" value="/map"/> 
     <param name="base_frame_id" value="base_link"/> 
@@ -14,7 +14,7 @@
     <param name="tf_prefix" value=""/> 
     <param name="debug" value="true"/>
     <param name="gui_mrpt" value="true"/> 
-	<param name="sensor_sources" value="/beacon"/> <!-- for multiple sensors, place comma eg "r1/front_laser/scan,/beacon" -->
+    <param name="sensor_sources" value="/beacon"/> <!-- for multiple sensors, place comma eg "r1/front_laser/scan,/beacon" -->
     <remap from="particlecloud" to="r1/particlecloud"/>
   </node>
 
