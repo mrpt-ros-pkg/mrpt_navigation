@@ -24,6 +24,7 @@
   <build_depend>sensor_msgs</build_depend>
   <build_depend>mrpt_msgs</build_depend>
   <build_depend>nav_msgs</build_depend>
+  <build_depend>message_generation</build_depend>
   <build_depend>pcl_conversions</build_depend> <!-- Only during BUILD: for unit tests -->
   <build_depend>libpcl-all-dev</build_depend> <!-- Only during BUILD: for unit tests -->
 
@@ -42,6 +43,7 @@
   <run_depend>sensor_msgs</run_depend>
   <run_depend>mrpt_msgs</run_depend>
   <run_depend>nav_msgs</run_depend>
+  <run_depend>message_runtime</run_depend>
 
   <build_depend>mrpt</build_depend> <!-- Depend on mrpt system pkgs -->
   <run_depend>mrpt</run_depend> <!-- Depend on mrpt system pkgs -->

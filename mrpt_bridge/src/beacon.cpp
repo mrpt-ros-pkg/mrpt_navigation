@@ -2,7 +2,7 @@
 #include <geometry_msgs/Pose.h>
 #include "mrpt_bridge/time.h"
 #include "mrpt_bridge/pose.h"
-#include "mrpt_msgs/ObservationRangeBeacon.h"
+#include <mrpt_msgs/ObservationRangeBeacon.h>
 #include "tf/transform_datatypes.h"
 #include "tf/LinearMath/Matrix3x3.h"
 #include "mrpt_bridge/beacon.h"

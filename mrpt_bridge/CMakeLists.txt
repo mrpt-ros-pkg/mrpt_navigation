@@ -5,7 +5,8 @@ project(mrpt_bridge)
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS 
-	roscpp std_msgs tf geometry_msgs sensor_msgs mrpt_msgs nav_msgs)
+	roscpp std_msgs tf 
+	message_generation geometry_msgs sensor_msgs mrpt_msgs nav_msgs)
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -91,7 +92,7 @@ find_package(MRPT REQUIRED base obs maps slam)
 catkin_package(
   INCLUDE_DIRS include
   LIBRARIES mrpt_bridge
-#  CATKIN_DEPENDS other_catkin_pkg
+  CATKIN_DEPENDS message_runtime geometry_msgs sensor_msgs mrpt_msgs nav_msgs
 #  DEPENDS pcl mrpt  # opencv
 )
 
