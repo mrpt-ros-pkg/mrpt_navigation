@@ -34,6 +34,9 @@
 #include <mrpt_bridge/laser_scan.h>
 #include <mrpt_bridge/time.h>
 #include <mrpt_bridge/map.h>
+#include <mrpt_bridge/beacon.h>
+#include <mrpt/obs/CObservationBeaconRanges.h>
+#include <std_msgs/Header.h>
 
 #include <mrpt/version.h>
 
@@ -65,13 +68,21 @@ void PFLocalizationNode::init() {
 	// Subscribe to one or more laser sources:
 	std::vector<std::string> lstSources;
 	mrpt::system::tokenize(param()->sensorSources," ,\t\n",lstSources);
-	ROS_ASSERT_MSG(!lstSources.empty(), "*Fatal*: At least one sensor source must be provided in ~sensor_sources (e.g. \"scan\")");
-	subLasers_.resize(lstSources.size());
-	for (size_t i=0;i<lstSources.size();i++)
-		subLasers_[i]  = n_.subscribe(lstSources[i],  1, &PFLocalizationNode::callbackLaser, this);
-
+	ROS_ASSERT_MSG(!lstSources.empty(), "*Fatal*: At least one sensor source must be provided in ~sensor_sources (e.g. \"scan\" or \"beacon\")");
+	subSensors_.resize(lstSources.size());
+	for (size_t i=0;i<lstSources.size();i++) {
+		if(lstSources[i].find("scan") != std::string::npos) {
+			subSensors_[i]  = n_.subscribe(lstSources[i],  1, &PFLocalizationNode::callbackLaser, this);
+		}
+		else {
+        		subSensors_[i]  = n_.subscribe(lstSources[i],  1, &PFLocalizationNode::callbackBeacon, this);
+		}
+	}
+	
     if(!param()->mapFile.empty()) {
-        mrpt_bridge::convert(*metric_map_.m_gridMaps[0], resp_.map);
+       	if(metric_map_.m_gridMaps.size()) {
+        	mrpt_bridge::convert(*metric_map_.m_gridMaps[0], resp_.map);
+	}
         pub_map_ = n_.advertise<nav_msgs::OccupancyGrid>("map", 1, true);
         pub_metadata_= n_.advertise<nav_msgs::MapMetaData>("map_metadata", 1, true);
         service_map_ = n_.advertiseService("static_map", &PFLocalizationNode::mapCallback, this);
@@ -83,7 +94,7 @@ void PFLocalizationNode::loop() {
     ROS_INFO("loop");
     for (ros::Rate rate(param()->rate); ros::ok(); loop_count_++) {
         param()->update(loop_count_);
-        if(loop_count_%param()->map_update_skip == 0)   publishMap();
+        if((loop_count_%param()->map_update_skip == 0) && (metric_map_.m_gridMaps.size()))   publishMap();
         if(loop_count_%param()->particlecloud_update_skip == 0)   publishParticles();
         publishTF();
         ros::spinOnce();
@@ -121,46 +132,86 @@ void PFLocalizationNode::callbackLaser (const sensor_msgs::LaserScan &_msg) {
 
     //printf("callbackLaser %s\n", _msg.header.frame_id.c_str());
     if(laser_poses_.find(_msg.header.frame_id) == laser_poses_.end()) {
-        updateLaserPose (_msg.header.frame_id);
+        updateSensorPose (_msg.header.frame_id);
     } else {
         //mrpt::poses::CPose3D pose = laser_poses_[_msg.header.frame_id];
         //ROS_INFO("LASER POSE %4.3f, %4.3f, %4.3f, %4.3f, %4.3f, %4.3f",  pose.x(), pose.y(), pose.z(), pose.roll(), pose.pitch(), pose.yaw());
         mrpt_bridge::convert(_msg, laser_poses_[_msg.header.frame_id],  *laser);
 
+	CSensoryFramePtr sf = CSensoryFrame::Create();
+	CObservationOdometryPtr odometry;
+	odometryForCallback(odometry, _msg.header);
 
-        std::string base_frame_id = tf::resolve(param()->tf_prefix, param()->base_frame_id);
-        std::string odom_frame_id = tf::resolve(param()->tf_prefix, param()->odom_frame_id);
-		CObservationOdometryPtr odometry;
-        mrpt::poses::CPose3D poseOdom;
-        if(this->waitForTransform(poseOdom, odom_frame_id, base_frame_id, _msg.header.stamp, ros::Duration(1))){
-			odometry = CObservationOdometry::Create();
-            odometry->sensorLabel = odom_frame_id;
-            odometry->hasEncodersInfo = false;
-            odometry->hasVelocities = false;
-            odometry->odometry.x() = poseOdom.x();
-            odometry->odometry.y() = poseOdom.y();
-            odometry->odometry.phi() = poseOdom.yaw();
-        }
-		CSensoryFramePtr sf = CSensoryFrame::Create();
-		CObservationPtr obs = CObservationPtr(laser);
+	CObservationPtr obs = CObservationPtr(laser);
         sf->insert(obs);
         observation(sf, odometry);
         if(param()->gui_mrpt) show3DDebug(sf);
     }
 }
 
+void PFLocalizationNode::callbackBeacon (const mrpt_msgs::ObservationRangeBeacon &_msg) {
+#if MRPT_VERSION>=0x130
+	using namespace mrpt::maps;
+	using namespace mrpt::obs;
+#else
+	using namespace mrpt::slam;
+#endif
+
+    //ROS_INFO("callbackBeacon");
+	CObservationBeaconRangesPtr beacon = CObservationBeaconRanges::Create();
+    //printf("callbackBeacon %s\n", _msg.header.frame_id.c_str());
+    if(beacon_poses_.find(_msg.header.frame_id) == beacon_poses_.end()) {
+		updateSensorPose (_msg.header.frame_id);
+    } else {
+        //mrpt::poses::CPose3D pose = beacon_poses_[_msg.header.frame_id];
+        //ROS_INFO("BEACON POSE %4.3f, %4.3f, %4.3f, %4.3f, %4.3f, %4.3f",  pose.x(), pose.y(), pose.z(), pose.roll(), pose.pitch(), pose.yaw());
+        mrpt_bridge::convert(_msg, beacon_poses_[_msg.header.frame_id],  *beacon);
+
+	CSensoryFramePtr sf = CSensoryFrame::Create();
+	CObservationOdometryPtr odometry;
+	odometryForCallback(odometry, _msg.header);
+	
+	CObservationPtr obs = CObservationPtr(beacon);
+        sf->insert(obs);
+        observation(sf, odometry);
+        if(param()->gui_mrpt) show3DDebug(sf);
+    }
+}
+
+void PFLocalizationNode::odometryForCallback (mrpt::obs::CObservationOdometryPtr  &_odometry, const std_msgs::Header &_msg_header) {
+    std::string base_frame_id = tf::resolve(param()->tf_prefix, param()->base_frame_id);
+    std::string odom_frame_id = tf::resolve(param()->tf_prefix, param()->odom_frame_id);
+    mrpt::poses::CPose3D poseOdom;
+    if(this->waitForTransform(poseOdom, odom_frame_id, base_frame_id, _msg_header.stamp, ros::Duration(1))){
+		_odometry = CObservationOdometry::Create();
+        _odometry->sensorLabel = odom_frame_id;
+        _odometry->hasEncodersInfo = false;
+        _odometry->hasVelocities = false;
+        _odometry->odometry.x() = poseOdom.x();
+        _odometry->odometry.y() = poseOdom.y();
+        _odometry->odometry.phi() = poseOdom.yaw();
+    }
+}
+
 bool PFLocalizationNode::waitForMap() {
+    int wait_counter = 0;
+    int wait_limit = 1;
     clientMap_ = n_.serviceClient<nav_msgs::GetMap>("static_map");
     nav_msgs::GetMap srv;
-    while (!clientMap_.call(srv) && ros::ok()) {
+    while (!clientMap_.call(srv) && ros::ok() && wait_counter < wait_limit) {
         ROS_INFO("waiting for map service!");
         sleep(1);
+        wait_counter++;
     }
-    updateMap (srv.response.map);
+    if (wait_counter != wait_limit) { 
+	ROS_INFO_STREAM("Map service complete.");   
+	updateMap (srv.response.map);
+    }
+    else ROS_INFO_STREAM("No map received.");
     clientMap_.shutdown();
 }
 
-void PFLocalizationNode::updateLaserPose (std::string _frame_id) {
+void PFLocalizationNode::updateSensorPose (std::string _frame_id) {
     mrpt::poses::CPose3D pose;
     tf::StampedTransform transform;
     try {
@@ -179,6 +230,7 @@ void PFLocalizationNode::updateLaserPose (std::string _frame_id) {
                 Rdes(r,c) = Rsrc.getRow(r)[c];
         pose.setRotationMatrix(Rdes);
         laser_poses_[_frame_id] = pose;
+        beacon_poses_[_frame_id] = pose;
     }
     catch (tf::TransformException ex) {
         ROS_ERROR("%s",ex.what());

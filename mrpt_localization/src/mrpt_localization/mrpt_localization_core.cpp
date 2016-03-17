@@ -69,8 +69,13 @@ void PFLocalizationCore::initializeFilter() {
     float max_y = mean_point.y()+cov(1,1);
     float min_phi = mean_point.phi()-cov(2,2);
     float max_phi = mean_point.phi()+cov(2,2);
-    pdf_.resetUniformFreeSpace( metric_map_.m_gridMaps[0].pointer(), 0.7f,
+    if (metric_map_.m_gridMaps.size()) {
+    	pdf_.resetUniformFreeSpace( metric_map_.m_gridMaps[0].pointer(), 0.7f,
                                 initialParticleCount_ , min_x,max_x, min_y, max_y, min_phi, max_phi);
+    }
+    else if (metric_map_.m_landmarksMap) {
+    	pdf_.resetUniform(  min_x,max_x, min_y, max_y, min_phi, max_phi, initialParticleCount_);		
+    }
     state_ = RUN;
 }
 

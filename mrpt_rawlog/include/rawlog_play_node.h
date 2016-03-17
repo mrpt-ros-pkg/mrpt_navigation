@@ -37,6 +37,7 @@
 #include <dynamic_reconfigure/server.h>
 #include "mrpt_rawlog/MotionConfig.h"
 #include "mrpt_rawlog_play/rawlog_play.h"
+#include <mrpt_msgs/ObservationRangeBeacon.h>
 
 /// ROS Node
 class RawlogPlayNode : public RawlogPlay {
@@ -68,8 +69,10 @@ private: // variables
     ros::NodeHandle n_;
     unsigned long loop_count_;
     sensor_msgs::LaserScan msg_laser_;
+    mrpt_msgs::ObservationRangeBeacon msg_beacon_;
     nav_msgs::Odometry msg_odom_;
     ros::Publisher pub_laser_;
+    ros::Publisher pub_beacon_;
     std::string odom_frame_;
     std::string base_frame_;
     tf::TransformBroadcaster tf_broadcaster_;

@@ -111,19 +111,19 @@ void PFLocalization::init() {
 
 
     if ( !iniFile.read_bool(iniSectionName,"init_PDF_mode",false, /*Fail if not found*/true) ) {
-        float min_x = iniFile.read_float(iniSectionName,"init_PDF_min_x",0,true);
-        float max_x = iniFile.read_float(iniSectionName,"init_PDF_max_x",0,true);
-        float min_y = iniFile.read_float(iniSectionName,"init_PDF_min_y",0,true);
-        float max_y = iniFile.read_float(iniSectionName,"init_PDF_max_y",0,true);
+	init_PDF_min_x = iniFile.read_float(iniSectionName,"init_PDF_min_x",0,true);
+	init_PDF_max_x = iniFile.read_float(iniSectionName,"init_PDF_max_x",0,true);
+	init_PDF_min_y = iniFile.read_float(iniSectionName,"init_PDF_min_y",0,true);
+	init_PDF_max_y = iniFile.read_float(iniSectionName,"init_PDF_max_y",0,true);
         float min_phi = DEG2RAD(iniFile.read_float(iniSectionName,"init_PDF_min_phi_deg",-180));
         float max_phi = DEG2RAD(iniFile.read_float(iniSectionName,"init_PDF_max_phi_deg",180));
         mrpt::poses::CPose2D p;
         mrpt::math::CMatrixDouble33 cov;
-        cov(0,0) = fabs(max_x - min_x);
-        cov(1,1) = fabs(max_x - min_x);
+        cov(0,0) = fabs(init_PDF_max_x - init_PDF_min_x);
+        cov(1,1) = fabs(init_PDF_max_x - init_PDF_min_x);
         cov(2,2) = min_phi<max_phi ? max_phi-min_phi : (max_phi+2*M_PI)-min_phi;
-        p.x() = min_x + cov(0,0) / 2.0;
-        p.y() = min_y + cov(1,1) / 2.0;
+        p.x() = init_PDF_min_x + cov(0,0) / 2.0;
+        p.y() = init_PDF_min_y + cov(1,1) / 2.0;
         p.phi() = min_phi + cov(2,2) / 2.0;
         printf("----------- phi: %4.3f: %4.3f <-> %4.3f, %4.3f\n", p.phi(), min_phi, max_phi, cov(2,2));
 		initialPose_ = mrpt::poses::CPosePDFGaussian(p, cov);
@@ -185,28 +185,30 @@ void PFLocalization::init3DDebug() {
         if (metric_map_.m_gridMaps.size())
         {
             metric_map_.m_gridMaps[0]->computeEntropy( gridInfo );
-            printf("The gridmap has %.04fm2 observed area, %u observed cells\n", gridInfo.effectiveMappedArea, (unsigned) gridInfo.effectiveMappedCells );
+        }    
+	else
+	{
+	    gridInfo.effectiveMappedArea = (init_PDF_max_x-init_PDF_min_x)*(init_PDF_max_y-init_PDF_min_y);
+	}
+        printf("The gridmap has %.04fm2 observed area, %u observed cells\n", gridInfo.effectiveMappedArea, (unsigned) gridInfo.effectiveMappedCells );
+	printf("Initial PDF: %f particles/m2\n", initialParticleCount_/gridInfo.effectiveMappedArea);
+        
+        CSetOfObjectsPtr plane = CSetOfObjects::Create();
+        metric_map_.getAs3DObject( plane );
+        scene_.insert( plane );
+        
 
-            {
-                CSetOfObjectsPtr plane = CSetOfObjects::Create();
-                metric_map_.m_gridMaps[0]->getAs3DObject( plane );
-                scene_.insert( plane );
-            }
+        if (SHOW_PROGRESS_3D_REAL_TIME_)
+        {
+            COpenGLScenePtr ptrScene = win3D_->get3DSceneAndLock();
 
-            if (SHOW_PROGRESS_3D_REAL_TIME_)
-            {
-                COpenGLScenePtr ptrScene = win3D_->get3DSceneAndLock();
+            ptrScene->insert( plane );
 
-                CSetOfObjectsPtr plane = CSetOfObjects::Create();
-                metric_map_.m_gridMaps[0]->getAs3DObject( plane );
-                ptrScene->insert( plane );
+            ptrScene->enableFollowCamera(true);
 
-                ptrScene->enableFollowCamera(true);
-
-                win3D_->unlockAccess3DScene();
-            }
+            win3D_->unlockAccess3DScene();
         }
-        printf("Initial PDF: %f particles/m2\n", initialParticleCount_/gridInfo.effectiveMappedArea);
+        
     } // Show 3D?
     if(param_->debug) printf(" --------------------------- init3DDebug done \n");
     if(param_->debug) fflush(stdout);

@@ -41,6 +41,8 @@
 #include "mrpt_localization/MotionConfig.h"
 #include "mrpt_localization/mrpt_localization.h"
 #include "nav_msgs/MapMetaData.h"
+#include "mrpt_msgs/ObservationRangeBeacon.h"
+#include <std_msgs/Header.h>
 
 /// ROS Node
 class PFLocalizationNode : public PFLocalization {
@@ -70,15 +72,17 @@ public:
     void init ();
     void loop ();
     void callbackLaser (const sensor_msgs::LaserScan&);
+    void callbackBeacon (const mrpt_msgs::ObservationRangeBeacon&);
+    void odometryForCallback(mrpt::obs::CObservationOdometryPtr&, const std_msgs::Header&);
     void callbackInitialpose (const geometry_msgs::PoseWithCovarianceStamped&);
     void updateMap (const nav_msgs::OccupancyGrid&);
     void publishTF();
 private: //functions
     Parameters *param();
     void update ();
-    void updateLaserPose (std::string frame_id);
+    void updateSensorPose (std::string frame_id);
     ros::Subscriber subInitPose_;
-	std::vector<ros::Subscriber> subLasers_;
+	std::vector<ros::Subscriber> subSensors_;
     ros::Subscriber subMap_;
     ros::ServiceClient clientMap_;
     ros::Publisher pub_Particles_;
@@ -88,6 +92,7 @@ private: //functions
     tf::TransformListener listenerTF_;
     tf::TransformBroadcaster tf_broadcaster_;
     std::map<std::string, mrpt::poses::CPose3D> laser_poses_;
+    std::map<std::string, mrpt::poses::CPose3D> beacon_poses_;
     ros::NodeHandle n_;
     unsigned long loop_count_;
     void publishParticles();
