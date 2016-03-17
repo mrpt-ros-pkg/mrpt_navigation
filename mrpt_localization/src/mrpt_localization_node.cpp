@@ -35,10 +35,18 @@
 #include <mrpt_bridge/time.h>
 #include <mrpt_bridge/map.h>
 #include <mrpt_bridge/beacon.h>
-#include <mrpt/obs/CObservationBeaconRanges.h>
 #include <std_msgs/Header.h>
 
 #include <mrpt/version.h>
+
+#if MRPT_VERSION>=0x130
+#	include <mrpt/obs/CObservationBeaconRanges.h>
+	using namespace mrpt::obs;
+#else
+#	include <mrpt/slam/CObservationBeaconRanges.h>
+	using namespace mrpt::slam;
+#endif
+
 
 int main(int argc, char **argv) {
 
