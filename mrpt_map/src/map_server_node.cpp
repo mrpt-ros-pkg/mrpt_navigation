@@ -31,9 +31,22 @@
 #include <mrpt_bridge/map.h>
 
 #include <mrpt/system/filesystem.h> // ASSERT_FILE_EXISTS_()
-#include <mrpt/slam/CMultiMetricMap.h>
-#include <mrpt/slam/COccupancyGridMap2D.h>
 #include <mrpt/utils/CConfigFile.h>
+
+#include <mrpt/version.h>
+#if MRPT_VERSION>=0x130
+#	include <mrpt/maps/COccupancyGridMap2D.h>
+#	include <mrpt/maps/CMultiMetricMap.h>
+	using mrpt::maps::COccupancyGridMap2D;
+	using mrpt::maps::CMultiMetricMap;
+#else
+#	include <mrpt/slam/COccupancyGridMap2D.h>
+#	include <mrpt/slam/CMultiMetricMap.h>
+	using mrpt::slam::COccupancyGridMap2D;
+	using mrpt::slam::CMultiMetricMap;
+#endif
+
+
 
 
 MapServer::MapServer(ros::NodeHandle &n)
@@ -74,9 +87,9 @@ void MapServer::init() {
     ASSERT_FILE_EXISTS_(ini_file);
     mrpt::utils::CConfigFile config_file;
     config_file.setFileName(ini_file);
-    metric_map_ = boost::shared_ptr<mrpt::slam::CMultiMetricMap>(new  mrpt::slam::CMultiMetricMap);
+	metric_map_ = boost::shared_ptr<CMultiMetricMap>(new  CMultiMetricMap);
     mrpt_bridge::MapHdl::loadMap(*metric_map_, config_file, map_file, "metricMap", debug_);
-    const mrpt::slam::COccupancyGridMap2D &grid = *metric_map_->m_gridMaps[0];
+	const COccupancyGridMap2D &grid = *metric_map_->m_gridMaps[0];
     if(debug_) printf("gridMap[0]:  %i x %i @ %4.3fm/p, %4.3f, %4.3f, %4.3f, %4.3f\n",
                       grid.getSizeX(), grid.getSizeY(), grid.getResolution(),
                       grid.getXMin(), grid.getYMin(),

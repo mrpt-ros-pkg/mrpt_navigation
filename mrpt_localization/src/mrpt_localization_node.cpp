@@ -38,7 +38,6 @@
 #include <std_msgs/Header.h>
 
 #include <mrpt/version.h>
-
 #if MRPT_VERSION>=0x130
 #	include <mrpt/obs/CObservationBeaconRanges.h>
 	using namespace mrpt::obs;
@@ -186,7 +185,7 @@ void PFLocalizationNode::callbackBeacon (const mrpt_msgs::ObservationRangeBeacon
     }
 }
 
-void PFLocalizationNode::odometryForCallback (mrpt::obs::CObservationOdometryPtr  &_odometry, const std_msgs::Header &_msg_header) {
+void PFLocalizationNode::odometryForCallback (CObservationOdometryPtr  &_odometry, const std_msgs::Header &_msg_header) {
     std::string base_frame_id = tf::resolve(param()->tf_prefix, param()->base_frame_id);
     std::string odom_frame_id = tf::resolve(param()->tf_prefix, param()->odom_frame_id);
     mrpt::poses::CPose3D poseOdom;

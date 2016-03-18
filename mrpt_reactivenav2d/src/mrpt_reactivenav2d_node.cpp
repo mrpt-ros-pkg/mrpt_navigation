@@ -40,11 +40,15 @@
 #if MRPT_VERSION>=0x130
 	// Use modern headers ------------
 #	include <mrpt/nav/reactive/CReactiveNavigationSystem.h>
+#	include <mrpt/maps/CSimplePointsMap.h>
 	using namespace mrpt::nav;
+	using mrpt::maps::CSimplePointsMap;
 #else
 	// Use backwards compat. headers ------------
 #	include <mrpt/reactivenav/CReactiveNavigationSystem.h>
+#	include <mrpt/slam/CSimplePointsMap.h>
 	using namespace mrpt::reactivenav;
+	using mrpt::slam::CSimplePointsMap;
 #endif
 
 #include <mrpt/utils/CTimeLogger.h>
@@ -52,7 +56,6 @@
 #include <mrpt/utils/CConfigFile.h>
 #include <mrpt/system/filesystem.h>
 #include <mrpt/synch/CCriticalSection.h>
-#include <mrpt/slam/CSimplePointsMap.h>
 
 #include <mrpt_bridge/pose.h>
 #include <mrpt_bridge/point_cloud.h>
@@ -98,7 +101,7 @@ private:
 
 	ros::Timer m_timer_run_nav;
 
-	mrpt::slam::CSimplePointsMap  m_last_obstacles;
+	CSimplePointsMap  m_last_obstacles;
 	mrpt::synch::CCriticalSection m_last_obstacles_cs;
 
 	struct MyReactiveInterface : public CReactiveInterfaceImplementation
@@ -171,7 +174,7 @@ private:
 
 		/** Return the current set of obstacle points.
 		  * \return false on any error. */
-		virtual bool senseObstacles( mrpt::slam::CSimplePointsMap  &obstacles )
+		virtual bool senseObstacles( CSimplePointsMap  &obstacles )
 		{
 			mrpt::synch::CCriticalSectionLocker csl(&m_parent.m_last_obstacles_cs);
 			obstacles = m_parent.m_last_obstacles;
