@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/mrpt-ros-pkg/mrpt_navigation?branch=master)](https://travis-ci.org/mrpt-ros-pkg/mrpt_navigation)
+
 mrpt_navigation
 ===============
 
