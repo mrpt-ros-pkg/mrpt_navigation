@@ -2,8 +2,8 @@
 Changelog for package mrpt_reactivenav2d
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+0.1.6 (2016-03-20)
+------------------
 * more build fixes
 * reactivenav: more complete template config file
 * Contributors: Jose Luis Blanco
