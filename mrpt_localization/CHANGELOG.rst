@@ -2,6 +2,12 @@
 Changelog for package mrpt_localization
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* New support for range-only (RO) localization
+* fix build against mrpt <1.3.0
+* Contributors: Jose Luis Blanco, Jose Luis Blanco-Claraco, Raphael Zack
+
 0.1.5 (2015-04-29)
 ------------------
 * fix to strange pf-localization bug

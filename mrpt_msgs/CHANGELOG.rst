@@ -2,6 +2,11 @@
 Changelog for package mrpt_msgs
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* New range-only msgs
+* Contributors: Raphael Zack
+
 0.1.5 (2015-04-29)
 ------------------
 

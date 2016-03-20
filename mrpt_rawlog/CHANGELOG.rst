@@ -2,6 +2,17 @@
 Changelog for package mrpt_rawlog
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* added a launch file that plays a range-only rawlog
+* Added in beacon publisher capabilities
+* fix build with latest mrpt version
+* update stamp with ros time now
+  - since no clock recorded, tf/msgs published in the past, complains from everywhere
+  - todo : extrapolate time between first/last msg stamp and pub clock
+* default laser frame if msg_laser\_ has none
+* Contributors: Jeremie Deray, Jose Luis Blanco, Raphael Zack
+
 0.1.5 (2015-04-29)
 ------------------
 * Cleaner build against mrpt 1.3.0

@@ -2,6 +2,12 @@
 Changelog for package mrpt_bridge
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* New ObservationRangeBeacon message.
+* More descriptive error msgs
+* Contributors: Jose Luis Blanco, Jose Luis Blanco Claraco, Jose Luis Blanco-Claraco, Logrus, Raphael Zack
+
 0.1.5 (2015-04-29)
 ------------------
 * mrpt_bridge: BUGFIX in convert() for 360deg scans

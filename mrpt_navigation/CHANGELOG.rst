@@ -2,6 +2,11 @@
 Changelog for package mrpt_navigation
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* New support for range-only (RO) localization
+* fix build against mrpt <1.3.0
+
 0.1.5 (2015-04-29)
 ------------------
 

@@ -2,6 +2,11 @@
 Changelog for package mrpt_map
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* build fixes
+* Contributors: Jose Luis Blanco
+
 0.1.5 (2015-04-29)
 ------------------
 * Fix build against mrpt 1.3.0
