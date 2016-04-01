@@ -94,7 +94,7 @@ public:
     void callbackInitialpose (const geometry_msgs::PoseWithCovarianceStamped&);
     void updateMap (const nav_msgs::OccupancyGrid&);
     void publishTF();
-    void publishPose() ;
+    void publishPose(const sensor_msgs::LaserScan&) ;
 
 private: //functions
     Parameters *param();

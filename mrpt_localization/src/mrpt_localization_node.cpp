@@ -342,7 +342,7 @@ void PFLocalizationNode::publishTF() {
  * publishPose()
  * @beief publish the current pose of the robot
  **/ 
-void PFLocalizationNode::publishPose() {
+void PFLocalizationNode::publishPose(const sensor_msgs::LaserScan &_msg) {
   mrpt::math::CMatrixDouble33 cov ;  // cov for x, y, phi (meter, meter, radian)
   mrpt::poses::CPose2D mean ;
   
@@ -353,7 +353,7 @@ void PFLocalizationNode::publishPose() {
   std::string global_frame_id = tf::resolve(param()->tf_prefix, param()->global_frame_id);
   
   p.header.frame_id = global_frame_id ;
-  p.header.stamp = LaserScan->header.stamp ;
+  p.header.stamp = _msg.header.stamp ;
   
   // copy in the pose
   p.pose.pose.position.x = mean.x() ;
