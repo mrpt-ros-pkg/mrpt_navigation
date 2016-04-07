@@ -44,6 +44,11 @@
 #include "mrpt_msgs/ObservationRangeBeacon.h"
 #include <std_msgs/Header.h>
 
+#include <mrpt/math.h>
+#include <mrpt_bridge/pose.h>
+
+#include <cstring>  // size_t
+
 #include <mrpt/version.h>
 #if MRPT_VERSION>=0x130
 #	include <mrpt/obs/CObservationOdometry.h>
@@ -89,6 +94,8 @@ public:
     void callbackInitialpose (const geometry_msgs::PoseWithCovarianceStamped&);
     void updateMap (const nav_msgs::OccupancyGrid&);
     void publishTF();
+    void publishPose(const sensor_msgs::LaserScan&) ;
+
 private: //functions
     Parameters *param();
     void update ();
@@ -100,6 +107,7 @@ private: //functions
     ros::Publisher pub_Particles_;
     ros::Publisher pub_map_;
     ros::Publisher pub_metadata_;
+    ros::Publisher pub_pose_ ;
     ros::ServiceServer service_map_;
     tf::TransformListener listenerTF_;
     tf::TransformBroadcaster tf_broadcaster_;
@@ -114,6 +122,7 @@ private: //functions
     void publishMap ();
     virtual bool waitForMap();
     nav_msgs::GetMap::Response resp_;
+    
 };
 
 #endif // MRPT_LOCALIZATION_NODE_H

@@ -35,6 +35,7 @@
 #include <mrpt_bridge/time.h>
 #include <mrpt_bridge/map.h>
 #include <mrpt_bridge/beacon.h>
+
 #include <std_msgs/Header.h>
 
 #include <mrpt/version.h>
@@ -95,6 +96,8 @@ void PFLocalizationNode::init() {
         service_map_ = n_.advertiseService("static_map", &PFLocalizationNode::mapCallback, this);
     }
     pub_Particles_ = n_.advertise<geometry_msgs::PoseArray>("particlecloud", 1, true);
+    
+    pub_pose_ = n_.advertise<geometry_msgs::PoseWithCovarianceStamped>("mrpt_pose", 2, true) ;
 }
 
 void PFLocalizationNode::loop() {
@@ -308,6 +311,7 @@ void PFLocalizationNode::publishTF() {
     ros::Time stamp;
     mrpt_bridge::convert(timeLastUpdate_, stamp);
     mrpt_bridge::convert(robotPose, tmp_tf);
+    
     try
     {
         tf::Stamped<tf::Pose> tmp_tf_stamped (tmp_tf.inverse(), stamp,  base_frame_id);
@@ -332,4 +336,66 @@ void PFLocalizationNode::publishTF() {
                                         global_frame_id, odom_frame_id);
     tf_broadcaster_.sendTransform(tmp_tf_stamped);
     //ROS_INFO("%s, %s\n", global_frame_id.c_str(), odom_frame.c_str());
+}
+
+/**
+ * publishPose()
+ * @beief publish the current pose of the robot
+ * @param msg  Laser Scan Message
+ **/ 
+void PFLocalizationNode::publishPose(const sensor_msgs::LaserScan &_msg) {
+  mrpt::math::CMatrixDouble33 cov ;  // cov for x, y, phi (meter, meter, radian)
+  mrpt::poses::CPose2D mean ;
+  
+  pdf_.getCovarianceAndMean(cov, mean) ;
+  
+  geometry_msgs::PoseWithCovarianceStamped p ;
+  // Fill in the header
+  std::string global_frame_id = tf::resolve(param()->tf_prefix, param()->global_frame_id);
+  
+  p.header.frame_id = global_frame_id ;
+  p.header.stamp = _msg.header.stamp ;
+  
+  // copy in the pose
+  p.pose.pose.position.x = mean.x() ;
+  p.pose.pose.position.y = mean.y() ;
+//  p.pose.pose.orientation = mean.phi() ;
+  
+  const double yaw = mean.phi() ;
+  
+  if (std::abs(yaw) < 1e-10) {
+    p.pose.pose.position.x = 0 ;
+    p.pose.pose.position.y = 0 ;
+    p.pose.pose.orientation.w = 1. ;
+  }
+  else {
+    const double s = ::sin(yaw * .5) ;
+    const double c = ::cos(yaw * .5) ;
+    p.pose.pose.position.x = 0. ;
+    p.pose.pose.position.y = 0. ;
+    p.pose.pose.orientation.w = c ;
+  }
+  
+  // Copy in the covariance, converting from 3-D to 6-D
+  for (int i = 0 ; i < 2 ; i++) {
+    for (int j = 0 ; j < 2 ; j++) {
+      double cov_val ;
+      int ros_i = i ;
+      int ros_j = j ;
+      if (i > 2 || j > 2) {
+	cov_val = 0 ;
+      }
+      else {
+	ros_i = i == 2 ? 5 : i ;
+	ros_j = j == 2 ? 5 : j ;
+	cov_val = cov(i, j) ;
+      }
+      
+      p.pose.covariance[ros_i * 6 + ros_j] = cov_val;
+    }
+  }
+   
+  
+  pub_pose_.publish(p) ;
+  
 }
