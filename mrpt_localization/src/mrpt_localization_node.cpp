@@ -341,6 +341,7 @@ void PFLocalizationNode::publishTF() {
 /**
  * publishPose()
  * @beief publish the current pose of the robot
+ * @param msg  Laser Scan Message
  **/ 
 void PFLocalizationNode::publishPose(const sensor_msgs::LaserScan &_msg) {
   mrpt::math::CMatrixDouble33 cov ;  // cov for x, y, phi (meter, meter, radian)
