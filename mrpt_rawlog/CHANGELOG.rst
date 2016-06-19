@@ -2,6 +2,9 @@
 Changelog for package mrpt_rawlog
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+
 0.1.6 (2016-03-20)
 ------------------
 * added a launch file that plays a range-only rawlog

@@ -2,6 +2,9 @@
 Changelog for package mrpt_bridge
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+
 0.1.6 (2016-03-20)
 ------------------
 * New ObservationRangeBeacon message.

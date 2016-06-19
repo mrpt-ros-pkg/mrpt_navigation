@@ -2,6 +2,12 @@
 Changelog for package mrpt_localization
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Fix laser scan stamp problem. TODO: something is still broken since nothing pops up for mrpt_pose
+* fix almost everything to add a pose publisher
+* Contributors: Megacephalo
+
 0.1.6 (2016-03-20)
 ------------------
 * New support for range-only (RO) localization
