@@ -121,12 +121,12 @@ target_link_libraries(rawlog_play
 )
 
 ## Declare a cpp executable
-add_executable(rawlog_record_node 
+add_executable(rawlog_record_node
     src/rawlog_record_node.cpp
     src/rawlog_record_node_parameters.cpp
 )
 
-add_executable(rawlog_play_node 
+add_executable(rawlog_play_node
     src/rawlog_play_node.cpp
     src/rawlog_play_node_parameters.cpp
 )
@@ -135,10 +135,10 @@ add_executable(rawlog_play_node
 ## as an example, message headers may need to be generated before nodes
 # add_dependencies(template_node template_generate_messages_cpp)
 add_dependencies(rawlog_record_node
-  rawlog_record_gencfg) 
+  mrpt_rawlog_gencfg)
 
 add_dependencies(rawlog_play_node
-  rawlog_record_gencfg) 
+  mrpt_rawlog_gencfg)
 
 ## Specify libraries to link a library or executable target against
 target_link_libraries(rawlog_record_node
@@ -152,7 +152,7 @@ target_link_libraries(rawlog_play_node
    rawlog_play
 )
 
-  
+
 #############
 ## Install ##
 #############
