@@ -2,6 +2,12 @@
 Changelog for package mrpt_reactivenav2d
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Reactive nav default config file: coarser collision grid for faster initialization
+* fix build and sample config file for reactivenav with mrpt>=1.5.0
+* Contributors: Jose-Luis Blanco-Claraco
+
 0.1.7 (2016-06-20)
 ------------------
 

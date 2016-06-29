@@ -2,6 +2,9 @@
 Changelog for package mrpt_localization
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+
 0.1.7 (2016-06-20)
 ------------------
 * Fix laser scan stamp problem. TODO: something is still broken since nothing pops up for mrpt_pose

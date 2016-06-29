@@ -2,6 +2,11 @@
 Changelog for package mrpt_rawlog
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Fix CMake dependencies (it failed to build in some platforms randomly)
+* Contributors: Jose-Luis Blanco-Claraco
+
 0.1.7 (2016-06-20)
 ------------------
 
