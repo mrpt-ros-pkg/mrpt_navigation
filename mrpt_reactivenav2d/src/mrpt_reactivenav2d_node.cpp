@@ -104,7 +104,12 @@ private:
 	CSimplePointsMap  m_last_obstacles;
 	mrpt::synch::CCriticalSection m_last_obstacles_cs;
 
-	struct MyReactiveInterface : public CReactiveInterfaceImplementation
+	struct MyReactiveInterface :
+#if MRPT_VERSION>=0x150
+			public mrpt::nav::CRobot2NavInterface_DiffDriven
+#else
+			public CReactiveInterfaceImplementation
+#endif
 	{
 		ReactiveNav2DNode & m_parent;
 
@@ -116,8 +121,14 @@ private:
 		 *	 \param curW Current angular speed, in radians per second.
 		 * \return false on any error.
 		 */
-		virtual bool getCurrentPoseAndSpeeds( mrpt::poses::CPose2D &curPose, float &curV, float &curW)
+#if MRPT_VERSION>=0x150
+		bool getCurrentPoseAndSpeeds(mrpt::math::TPose2D &curPose, mrpt::math::TTwist2D &curVel)
 		{
+			double curV,curW;
+#else
+		bool getCurrentPoseAndSpeeds( mrpt::poses::CPose2D &curPose, float &curV, float &curW)
+		{
+#endif
 			mrpt::utils::CTimeLoggerEntry tle(m_parent.m_profiler,"getCurrentPoseAndSpeeds");
 			tf::StampedTransform txRobotPose;
 			try {
@@ -132,13 +143,20 @@ private:
 			mrpt::poses::CPose3D curRobotPose;
 			mrpt_bridge::convert(txRobotPose,curRobotPose);
 
+#if MRPT_VERSION>=0x150
+			curPose = mrpt::math::TPose2D( mrpt::poses::CPose2D(curRobotPose) );  // Explicit 3d->2d to confirm we know we're losing information
+#else
 			curPose = mrpt::poses::CPose2D(curRobotPose);  // Explicit 3d->2d to confirm we know we're losing information
+#endif
 
 			curV = curW = 0;
 			MRPT_TODO("Retrieve current speeds from odometry");
-
 			ROS_DEBUG("[getCurrentPoseAndSpeeds] Latest pose: %s",curPose.asString().c_str());
-
+#if MRPT_VERSION>=0x150
+			curVel.vx = curV * cos(curPose.phi);
+			curVel.vy = curV * sin(curPose.phi);
+			curVel.omega = curW;
+#endif
 			return true;
 		}
 
@@ -147,8 +165,15 @@ private:
 		 *	 \param w Angular speed, in radians per second.
 		 * \return false on any error.
 		 */
+#if MRPT_VERSION>=0x150
+		bool changeSpeeds(const std::vector<double> &vel_cmd)
+		{
+			ASSERT_(vel_cmd.size()==2);
+			const double v = vel_cmd[0], w = vel_cmd[1];
+#else
 		virtual bool changeSpeeds( float v, float w )
 		{
+#endif
 			ROS_DEBUG("changeSpeeds: v=%7.4f m/s  w=%8.3f deg/s", v, w*180.0f/M_PI);
 			geometry_msgs::Twist cmd;
 			cmd.linear.x = v;
@@ -156,6 +181,14 @@ private:
 			m_parent.m_pub_cmd_vel.publish(cmd);
 			return true;
 		}
+
+#if MRPT_VERSION>=0x150
+		bool stop()
+		{
+			std::vector<double> cmds(2,0.0);
+			return changeSpeeds(cmds);
+		}
+#endif
 
 		/** Start the watchdog timer of the robot platform, if any.
 		 * \param T_ms Period, in ms.
@@ -395,4 +428,3 @@ int main(int argc, char **argv)
 	ros::spin();
 	return 0;
 }
-
