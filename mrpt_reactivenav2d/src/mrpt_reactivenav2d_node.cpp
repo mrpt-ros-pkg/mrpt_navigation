@@ -277,12 +277,14 @@ public:
 		// ----------------------------------------------------
 		try
 		{
+			mrpt::utils::CConfigFile cfgFil(cfg_file_reactive);
+#if MRPT_VERSION>=0x150
+			m_reactive_nav_engine.loadConfigFile(cfgFil);
+#else
 			mrpt::utils::CConfigFileMemory dummyRobotCfg;
 			dummyRobotCfg.write("ROBOT_NAME","Name","ReactiveParams");
-
-			mrpt::utils::CConfigFile cfgFil(cfg_file_reactive);
-			m_reactive_nav_engine.loadConfigFile(cfgFil,dummyRobotCfg);
-
+			m_reactive_nav_engine.loadConfigFile(cfgFil,dummRobotCfg);
+#endif
 		}
 		catch (std::exception &e)
 		{
