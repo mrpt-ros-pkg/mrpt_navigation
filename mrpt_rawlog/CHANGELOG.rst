@@ -2,8 +2,8 @@
 Changelog for package mrpt_rawlog
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+0.1.9 (2016-08-05)
+------------------
 * fix install of .so targets
 * Contributors: Jose-Luis Blanco-Claraco
 
