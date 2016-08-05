@@ -283,7 +283,7 @@ public:
 #else
 			mrpt::utils::CConfigFileMemory dummyRobotCfg;
 			dummyRobotCfg.write("ROBOT_NAME","Name","ReactiveParams");
-			m_reactive_nav_engine.loadConfigFile(cfgFil,dummRobotCfg);
+			m_reactive_nav_engine.loadConfigFile(cfgFil,dummyRobotCfg);
 #endif
 		}
 		catch (std::exception &e)
