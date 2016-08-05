@@ -168,7 +168,7 @@ target_link_libraries(rawlog_play_node
 # )
 
 # Mark executables and/or libraries for installation
-install(TARGETS rawlog_record_node rawlog_play_node
+install(TARGETS rawlog_record_node rawlog_play_node rawlog_record rawlog_play
   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
