@@ -112,6 +112,7 @@ add_library(${PROJECT_NAME}
   src/laser_scan.cpp
   src/map.cpp
   src/beacon.cpp
+  src/landmark.cpp
 )
 
 ## Declare a cpp executable

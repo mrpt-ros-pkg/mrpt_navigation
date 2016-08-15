@@ -1,4 +1,4 @@
-int32 INVALID_LANDMARK_ID = -1
+#int32 INVALID_LANDMARK_ID = -1
 
 
 float64  range    # Distance, in meters.
