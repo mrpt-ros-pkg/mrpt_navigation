@@ -77,6 +77,10 @@ TEST(PoseConversions, reference_frame_change_with_rotations)
   ros_msg_original_pose.pose.position.x = 1;
   ros_msg_original_pose.pose.position.y = 0;
   ros_msg_original_pose.pose.position.z = 0;
+  ros_msg_original_pose.pose.orientation.x = 0;
+  ros_msg_original_pose.pose.orientation.y = 0;
+  ros_msg_original_pose.pose.orientation.z = 0;
+  ros_msg_original_pose.pose.orientation.w = 1;
 
   //to mrpt
   mrpt::poses::CPose3DPDFGaussian mrpt_original_pose;
@@ -98,6 +102,7 @@ TEST(PoseConversions, reference_frame_change_with_rotations)
   tf::Quaternion rotation_tf;
   rotation_tf.setRPY(0, 0, yaw);
   tf::Pose rotation_pose_tf;
+  rotation_pose_tf.setIdentity();
   rotation_pose_tf.setRotation(rotation_tf);
   tf::Pose tf_result = rotation_pose_tf * tf_original_pose;
   EXPECT_NEAR(tf_result.getOrigin()[1], 1.0, 0.01);
