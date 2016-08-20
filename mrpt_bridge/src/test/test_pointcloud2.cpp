@@ -14,7 +14,7 @@
 #	include <mrpt/slam/CSimplePointsMap.h>
 #endif
 
-#include <pcl/ros/conversions.h>
+#include <pcl/conversions.h>
 #include <pcl/point_cloud.h>
 #include <pcl_conversions/pcl_conversions.h>
 #include <gtest/gtest.h>
