@@ -48,6 +48,7 @@
 #	include <mrpt/slam/CRawlog.h>
 #	include <mrpt/slam/CObservation2DRangeScan.h>
 #	include <mrpt/slam/CObservationBeaconRanges.h>
+#	include <mrpt/slam/CObservationBearingRange.h>
 	using namespace mrpt::slam;
 #endif
 
