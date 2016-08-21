@@ -2,6 +2,13 @@
 Changelog for package mrpt_rawlog
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* fix missing #include
+* Add wheeled robot example and 2d ekf.
+* Add landmark to bridge.
+* Contributors: Jose Luis Blanco, Logrus
+
 0.1.10 (2016-08-05)
 -------------------
 

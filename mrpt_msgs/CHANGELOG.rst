@@ -2,6 +2,11 @@
 Changelog for package mrpt_msgs
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Add landmark to bridge.
+* Contributors: Logrus
+
 0.1.10 (2016-08-05)
 -------------------
 
