@@ -10,4 +10,5 @@
 #include "point_cloud2.h"
 #include "beacon.h"
 #include "landmark.h"
+#include "utils.h"
 #endif
