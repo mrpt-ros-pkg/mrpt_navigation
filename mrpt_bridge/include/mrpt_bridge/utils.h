@@ -48,7 +48,7 @@ namespace mrpt_bridge {
 		
 		// Remove trailing \n if present
 		std::string tmsg = msg;
-		if (tmsg.compare(tmsg.length()-1, tmsg.length(), "\n")==0){
+		if (!tmsg.empty() && tmsg.compare(tmsg.length()-1, tmsg.length(), "\n")==0){
 			tmsg.erase(tmsg.end()-1);
 		}
 		
