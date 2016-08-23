@@ -45,14 +45,21 @@ namespace mrpt_bridge {
    *  instead of the package from which macro is actually called.
    */
 	inline void mrptToROSLoggerCallback(const std::string &msg, const mrpt::utils::VerbosityLevel level, const std::string &loggerName, const mrpt::system::TTimeStamp timestamp, void *userParam){
+		
+		// Remove trailing \n if present
+		std::string tmsg = msg;
+		if (tmsg.compare(tmsg.length()-1, tmsg.length(), "\n")==0){
+			tmsg.erase(tmsg.end()-1);
+		}
+		
 		if (level == mrpt::utils::LVL_DEBUG){
-	    ROS_DEBUG("%s", msg.c_str());
+	    ROS_DEBUG("%s", tmsg.c_str());
 	  } else if (level == mrpt::utils::LVL_INFO) {
-	    ROS_INFO("%s", msg.c_str());
+	    ROS_INFO("%s", tmsg.c_str());
 	  } else if (level == mrpt::utils::LVL_WARN) {
-	    ROS_WARN("%s", msg.c_str());
+	    ROS_WARN("%s", tmsg.c_str());
 	  } else if (level == mrpt::utils::LVL_ERROR) {
-	    ROS_ERROR("%s", msg.c_str());
+	    ROS_ERROR("%s", tmsg.c_str());
 	  }
 	}
 
