@@ -75,6 +75,7 @@ public:
         dynamic_reconfigure::Server<mrpt_localization::MotionConfig>::CallbackType reconfigureFnc_;
 		void update(const unsigned long &loop_count);
         double rate;
+        double transform_tolerance;
         int parameter_update_skip;
         int particlecloud_update_skip;
         int map_update_skip;
@@ -82,6 +83,8 @@ public:
         std::string odom_frame_id;
         std::string global_frame_id;
         std::string base_frame_id;
+        bool pose_broadcast;
+        bool tf_broadcast;
 	};
     
     PFLocalizationNode ( ros::NodeHandle &n );
@@ -94,7 +97,7 @@ public:
     void callbackInitialpose (const geometry_msgs::PoseWithCovarianceStamped&);
     void updateMap (const nav_msgs::OccupancyGrid&);
     void publishTF();
-    void publishPose(const sensor_msgs::LaserScan&) ;
+    void publishPose();
 
 private: //functions
     Parameters *param();
@@ -116,6 +119,7 @@ private: //functions
     ros::NodeHandle n_;
     unsigned long loop_count_;
     void publishParticles();
+    void setLogLevel();
 
     bool waitForTransform(mrpt::poses::CPose3D &des, const std::string& target_frame, const std::string& source_frame, const ros::Time& time, const ros::Duration& timeout, const ros::Duration& polling_sleep_duration = ros::Duration(0.01));
     bool mapCallback(nav_msgs::GetMap::Request  &req, nav_msgs::GetMap::Response &res );

@@ -106,7 +106,8 @@ void PFLocalizationNode::loop() {
         param()->update(loop_count_);
         if((loop_count_%param()->map_update_skip == 0) && (metric_map_.m_gridMaps.size()))   publishMap();
         if(loop_count_%param()->particlecloud_update_skip == 0)   publishParticles();
-        publishTF();
+        if(param()->tf_broadcast)   publishTF();
+        if(param()->pose_broadcast)   publishPose();
         ros::spinOnce();
         rate.sleep();
     }
@@ -315,22 +316,21 @@ void PFLocalizationNode::publishTF() {
     try
     {
         tf::Stamped<tf::Pose> tmp_tf_stamped (tmp_tf.inverse(), stamp,  base_frame_id);
-		//ROS_INFO("subtract global_frame (%s) from odom_frame (%s)", global_frame_id.c_str(), odom_frame_id.c_str());
+	//ROS_INFO("subtract global_frame (%s) from odom_frame (%s)", global_frame_id.c_str(), odom_frame_id.c_str());
         listenerTF_.transformPose(odom_frame_id, tmp_tf_stamped, odom_to_map);
     }
     catch(tf::TransformException)
     {
-		ROS_INFO("Failed to subtract global_frame (%s) from odom_frame (%s)", global_frame_id.c_str(), odom_frame_id.c_str());
+  	ROS_INFO("Failed to subtract global_frame (%s) from odom_frame (%s)", global_frame_id.c_str(), odom_frame_id.c_str());
         return;
     }
 
     tf::Transform latest_tf_ = tf::Transform(tf::Quaternion(odom_to_map.getRotation()),
-                               tf::Point(odom_to_map.getOrigin()));
+                                             tf::Point(odom_to_map.getOrigin()));
 
     // We want to send a transform that is good up until a
     // tolerance time so that odom can be used
-    ros::Duration transform_tolerance_(0.5);
-    ros::Time transform_expiration = (stamp + transform_tolerance_);
+    ros::Time transform_expiration = (stamp + ros::Duration(param()->transform_tolerance));
     tf::StampedTransform tmp_tf_stamped(latest_tf_.inverse(),
                                         transform_expiration,
                                         global_frame_id, odom_frame_id);
@@ -343,59 +343,43 @@ void PFLocalizationNode::publishTF() {
  * @beief publish the current pose of the robot
  * @param msg  Laser Scan Message
  **/ 
-void PFLocalizationNode::publishPose(const sensor_msgs::LaserScan &_msg) {
+void PFLocalizationNode::publishPose() {
   mrpt::math::CMatrixDouble33 cov ;  // cov for x, y, phi (meter, meter, radian)
   mrpt::poses::CPose2D mean ;
   
   pdf_.getCovarianceAndMean(cov, mean) ;
   
   geometry_msgs::PoseWithCovarianceStamped p ;
+
   // Fill in the header
-  std::string global_frame_id = tf::resolve(param()->tf_prefix, param()->global_frame_id);
-  
-  p.header.frame_id = global_frame_id ;
-  p.header.stamp = _msg.header.stamp ;
-  
-  // copy in the pose
-  p.pose.pose.position.x = mean.x() ;
-  p.pose.pose.position.y = mean.y() ;
-//  p.pose.pose.orientation = mean.phi() ;
-  
-  const double yaw = mean.phi() ;
-  
-  if (std::abs(yaw) < 1e-10) {
-    p.pose.pose.position.x = 0 ;
-    p.pose.pose.position.y = 0 ;
-    p.pose.pose.orientation.w = 1. ;
-  }
-  else {
-    const double s = ::sin(yaw * .5) ;
-    const double c = ::cos(yaw * .5) ;
-    p.pose.pose.position.x = 0. ;
-    p.pose.pose.position.y = 0. ;
-    p.pose.pose.orientation.w = c ;
-  }
-  
+  mrpt_bridge::convert(timeLastUpdate_, p.header.stamp) ;
+  p.header.frame_id = tf::resolve(param()->tf_prefix, param()->global_frame_id) ;
+
+  // Copy in the pose
+  mrpt_bridge::convert(mean, p.pose.pose) ;
+
   // Copy in the covariance, converting from 3-D to 6-D
-  for (int i = 0 ; i < 2 ; i++) {
-    for (int j = 0 ; j < 2 ; j++) {
-      double cov_val ;
+  for (int i = 0 ; i < 3 ; i++) {
+    for (int j = 0 ; j < 3 ; j++) {
       int ros_i = i ;
       int ros_j = j ;
-      if (i > 2 || j > 2) {
-	cov_val = 0 ;
+      if (i == 2 || j == 2) {
+        ros_i = i == 2 ? 5 : i ;
+        ros_j = j == 2 ? 5 : j ;
       }
-      else {
-	ros_i = i == 2 ? 5 : i ;
-	ros_j = j == 2 ? 5 : j ;
-	cov_val = cov(i, j) ;
-      }
-      
-      p.pose.covariance[ros_i * 6 + ros_j] = cov_val;
+      p.pose.covariance[ros_i * 6 + ros_j] = cov(i, j);
     }
   }
-   
-  
+
   pub_pose_.publish(p) ;
-  
+}
+
+void PFLocalizationNode::setLogLevel() {
+  // Set ROS log level also on MRPT internal log system; level enums are fully compatible
+  std::map<std::string, ros::console::levels::Level> loggers;
+  ros::console::get_loggers(loggers);
+  if (loggers.find("ros.roscpp") != loggers.end())
+    pdf_.setVerbosityLevel(static_cast<mrpt::utils::VerbosityLevel>(loggers["ros.roscpp"]));
+  if (loggers.find("ros.mrpt_localization") != loggers.end())
+    pdf_.setVerbosityLevel(static_cast<mrpt::utils::VerbosityLevel>(loggers["ros.mrpt_localization"]));
 }

@@ -31,6 +31,8 @@
 
 PFLocalizationNode::Parameters::Parameters(PFLocalizationNode *p)
     : PFLocalization::Parameters(p), node("~") {
+    node.param<double>("transform_tolerance", transform_tolerance, 0.1);
+    ROS_INFO("transform_tolerance: %f", transform_tolerance);
     node.param<double>("rate", rate, MRPT_LOCALIZATION_NODE_DEFAULT_RATE);
     ROS_INFO("rate: %f", rate);
     node.getParam("gui_mrpt", gui_mrpt);
@@ -51,6 +53,10 @@ PFLocalizationNode::Parameters::Parameters(PFLocalizationNode *p)
     ROS_INFO("odom_frame_id: %s", odom_frame_id.c_str());
     node.param<std::string>("base_frame_id", base_frame_id, "base_link");
     ROS_INFO("base_frame_id: %s", base_frame_id.c_str());
+    node.param<bool>("pose_broadcast", pose_broadcast, false);
+    ROS_INFO("pose_broadcast:  %s", (pose_broadcast ? "true" : "false"));
+    node.param<bool>("tf_broadcast", tf_broadcast, true);
+    ROS_INFO("tf_broadcast:  %s", (tf_broadcast ? "true" : "false"));
 
     reconfigureFnc_ = boost::bind(&PFLocalizationNode::Parameters::callbackParameters, this ,  _1, _2);
     reconfigureServer_.setCallback(reconfigureFnc_);
