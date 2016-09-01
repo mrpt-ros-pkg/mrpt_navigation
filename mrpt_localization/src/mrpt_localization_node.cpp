@@ -373,3 +373,13 @@ void PFLocalizationNode::publishPose() {
 
   pub_pose_.publish(p) ;
 }
+
+void PFLocalizationNode::setLogLevel() {
+  // Set ROS log level also on MRPT internal log system; level enums are fully compatible
+  std::map<std::string, ros::console::levels::Level> loggers;
+  ros::console::get_loggers(loggers);
+  if (loggers.find("ros.roscpp") != loggers.end())
+    pdf_.setVerbosityLevel(static_cast<mrpt::utils::VerbosityLevel>(loggers["ros.roscpp"]));
+  if (loggers.find("ros.mrpt_localization") != loggers.end())
+    pdf_.setVerbosityLevel(static_cast<mrpt::utils::VerbosityLevel>(loggers["ros.mrpt_localization"]));
+}
