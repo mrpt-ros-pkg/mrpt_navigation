@@ -119,7 +119,7 @@ private: //functions
     ros::NodeHandle n_;
     unsigned long loop_count_;
     void publishParticles();
-    void setLogLevel();
+    void useROSLogLevel();
 
     bool waitForTransform(mrpt::poses::CPose3D &des, const std::string& target_frame, const std::string& source_frame, const ros::Time& time, const ros::Duration& timeout, const ros::Duration& polling_sleep_duration = ros::Duration(0.01));
     bool mapCallback(nav_msgs::GetMap::Request  &req, nav_msgs::GetMap::Response &res );

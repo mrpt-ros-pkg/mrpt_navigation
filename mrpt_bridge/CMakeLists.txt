@@ -8,6 +8,8 @@ find_package(catkin REQUIRED COMPONENTS
 	roscpp std_msgs tf 
 	message_generation geometry_msgs sensor_msgs mrpt_msgs nav_msgs)
 
+find_package(MRPT REQUIRED base obs maps slam)
+include_directories(${MRPT_INCLUDE_DIRS})
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
 #find_package( OpenCV REQUIRED )
@@ -18,7 +20,7 @@ include_directories(${PCL_INCLUDE_DIRS})
 link_directories(${PCL_LIBRARY_DIRS})
 add_definitions(${PCL_DEFINITIONS})
 
-find_package(MRPT REQUIRED base obs maps slam)
+#find_package(MRPT REQUIRED base obs maps slam)
 #include_directories(${MRPT_INCLUDE_DIRS})
 #MESSAGE( STATUS "MRPT_INCLUDE_DIRS: " ${MRPT_INCLUDE_DIRS})
 #link_directories(${MRPT_LIBRARY_DIRS})

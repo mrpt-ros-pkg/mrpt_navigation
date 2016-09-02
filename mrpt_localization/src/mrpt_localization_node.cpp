@@ -70,6 +70,9 @@ PFLocalizationNode::Parameters *PFLocalizationNode::param() {
 }
 
 void PFLocalizationNode::init() {
+    // Use MRPT library the same log level as on ROS nodes (only for MRPT_VERSION >= 0x130)
+    useROSLogLevel();
+
     PFLocalization::init();
     subInitPose_ = n_.subscribe("initialpose", 1, &PFLocalizationNode::callbackInitialpose, this);
 
@@ -376,7 +379,8 @@ void PFLocalizationNode::publishPose() {
   pub_pose_.publish(p) ;
 }
 
-void PFLocalizationNode::setLogLevel() {
+void PFLocalizationNode::useROSLogLevel() {
+#if MRPT_VERSION>=0x130
   // Set ROS log level also on MRPT internal log system; level enums are fully compatible
   std::map<std::string, ros::console::levels::Level> loggers;
   ros::console::get_loggers(loggers);
@@ -384,4 +388,5 @@ void PFLocalizationNode::setLogLevel() {
     pdf_.setVerbosityLevel(static_cast<mrpt::utils::VerbosityLevel>(loggers["ros.roscpp"]));
   if (loggers.find("ros.mrpt_localization") != loggers.end())
     pdf_.setVerbosityLevel(static_cast<mrpt::utils::VerbosityLevel>(loggers["ros.mrpt_localization"]));
+#endif
 }
