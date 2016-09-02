@@ -37,7 +37,6 @@
 #include <mrpt/poses/CPosePDFGaussian.h>
 #include <mrpt/utils/CTicTac.h>
 #include <mrpt/utils/CTicTac.h>
-#include <mrpt/poses/CPose2D.h>
 #include <mrpt/slam/CMonteCarloLocalization2D.h>
 #include <mrpt_bridge/mrpt_log_macros.h>
 
