@@ -70,7 +70,7 @@ PFLocalizationNode::Parameters *PFLocalizationNode::param() {
 }
 
 void PFLocalizationNode::init() {
-    // Use MRPT library the same log level as on ROS nodes (only for MRPT_VERSION >= 0x130)
+    // Use MRPT library the same log level as on ROS nodes (only for MRPT_VERSION >= 0x150)
     useROSLogLevel();
 
     PFLocalization::init();
@@ -380,7 +380,7 @@ void PFLocalizationNode::publishPose() {
 }
 
 void PFLocalizationNode::useROSLogLevel() {
-#if MRPT_VERSION>=0x130
+#if MRPT_VERSION>=0x150
   // Set ROS log level also on MRPT internal log system; level enums are fully compatible
   std::map<std::string, ros::console::levels::Level> loggers;
   ros::console::get_loggers(loggers);
