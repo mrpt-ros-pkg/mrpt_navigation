@@ -2,8 +2,8 @@
 Changelog for package mrpt_localization
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+0.1.12 (2016-09-03)
+-------------------
 * Put the ROS log setting withing if MRPT_VERSION>=0x150 so it doesn't break the compilation agains .deb mrpt libs
 * Restamp pose on first iteration with ROS time because filter time is still not initialized and can create problems when integrating on robot_localization
 * Set ROS log level also on MRPT internal log system. Prevents spamming of [FIXED_SAMPLING] and [ADAPTIVE SAMPLE SIZE] messages

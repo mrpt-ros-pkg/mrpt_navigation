@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <package>
   <name>mrpt_localization</name>
-  <version>0.1.11</version>
+  <version>0.1.12</version>
   <description>This package uses dynamic or static (MRPT or ROS) maps for 2D 
    self-localization. The interface is similar to amcl (http://wiki.ros.org/amcl) 
    but supports different particle-filter algorithms, several grid maps at 
