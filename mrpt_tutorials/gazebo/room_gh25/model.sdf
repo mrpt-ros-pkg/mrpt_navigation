@@ -7,14 +7,14 @@
       <collision name="collision">
         <geometry>
           <mesh>
-            <uri>model://room_gh25/meshes/gußhausstraße25_collision.dae</uri>
+            <uri>model://room_gh25/meshes/gusshausstrasse25_collision.dae</uri>
           </mesh>
         </geometry>
       </collision>
       <visual name="visual">
         <geometry>
           <mesh>
-            <uri>model://room_gh25/meshes/gußhausstraße25_visual.dae</uri>
+            <uri>model://room_gh25/meshes/gusshausstrasse25_visual.dae</uri>
           </mesh>
         </geometry>
         <cast_shadows>false</cast_shadows>
