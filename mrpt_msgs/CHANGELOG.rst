@@ -2,6 +2,9 @@
 Changelog for package mrpt_msgs
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+
 0.1.11 (2016-08-21)
 -------------------
 * Add landmark to bridge.

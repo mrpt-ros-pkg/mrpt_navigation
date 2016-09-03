@@ -2,6 +2,14 @@
 Changelog for package mrpt_bridge
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Put the ROS log setting withing if MRPT_VERSION>=0x150 so it doesn't break the compilation agains .deb mrpt libs
+* Add a check for an empty string.
+* Strip trailing \n in logs if present.
+* Add a callback function to stream MRPT logs to ROS.
+* Contributors: Jorge Santos, Logrus
+
 0.1.11 (2016-08-21)
 -------------------
 * fix unit test error due to uninitialized tf::Pose
