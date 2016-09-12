@@ -2,6 +2,9 @@
 Changelog for package mrpt_tutorials
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+
 0.1.13 (2016-09-03)
 -------------------
 * fix problematic (for bloom) German characters
