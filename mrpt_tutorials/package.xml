@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <package>
   <name>mrpt_tutorials</name>
-  <version>0.1.13</version>
+  <version>0.1.14</version>
   <description>The mrpt_tutorials package</description>
 
   <maintainer email="markus.bader@tuwien.ac.at">Markus Bader</maintainer>

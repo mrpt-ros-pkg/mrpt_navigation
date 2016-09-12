@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <package>
   <name>mrpt_rawlog</name>
-  <version>0.1.13</version>
+  <version>0.1.14</version>
   <description>This package enables you to record a rawlog from a ROS drive robot. 
   At the moment the package is able to deal with odometry and 2d laser scans.</description>
 
