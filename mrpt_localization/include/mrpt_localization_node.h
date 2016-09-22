@@ -29,104 +29,113 @@
 #ifndef MRPT_LOCALIZATION_NODE_H
 #define MRPT_LOCALIZATION_NODE_H
 
-#include "ros/ros.h"
+#include <cstring>  // size_t
+
+#include <ros/ros.h>
 #include <tf/transform_listener.h>
 #include <tf/transform_broadcaster.h>
+#include <std_msgs/Header.h>
 #include <nav_msgs/Odometry.h>
 #include <nav_msgs/GetMap.h>
 #include <sensor_msgs/LaserScan.h>
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
 #include <nav_msgs/OccupancyGrid.h>
+#include <nav_msgs/MapMetaData.h>
 #include <dynamic_reconfigure/server.h>
-#include "mrpt_localization/MotionConfig.h"
-#include "mrpt_localization/mrpt_localization.h"
-#include "nav_msgs/MapMetaData.h"
-#include "mrpt_msgs/ObservationRangeBeacon.h"
-#include <std_msgs/Header.h>
 
 #include <mrpt/math.h>
-#include <mrpt_bridge/pose.h>
-
-#include <cstring>  // size_t
-
 #include <mrpt/version.h>
 #if MRPT_VERSION>=0x130
-#	include <mrpt/obs/CObservationOdometry.h>
-	using mrpt::obs::CObservationOdometry;
-	using mrpt::obs::CObservationOdometryPtr;
+  #include <mrpt/obs/CObservationOdometry.h>
+  using mrpt::obs::CObservationOdometry;
+  using mrpt::obs::CObservationOdometryPtr;
 #else
-#	include <mrpt/slam/CObservationOdometry.h>
-	using mrpt::slam::CObservationOdometry;
-	using mrpt::slam::CObservationOdometryPtr;
+  #include <mrpt/slam/CObservationOdometry.h>
+  using mrpt::slam::CObservationOdometry;
+  using mrpt::slam::CObservationOdometryPtr;
 #endif
+
+#include "mrpt_localization/MotionConfig.h"
+#include "mrpt_localization/mrpt_localization.h"
+#include "mrpt_msgs/ObservationRangeBeacon.h"
 
 
 /// ROS Node
-class PFLocalizationNode : public PFLocalization {
-  MRPT_ROS_LOG_MACROS;
+class PFLocalizationNode : public PFLocalization
+{
+MRPT_ROS_LOG_MACROS;
+
 public:
-	struct Parameters : public PFLocalization::Parameters{
-        static const int MOTION_MODEL_GAUSSIAN = 0;
-        static const int MOTION_MODEL_THRUN = 1;
-		Parameters(PFLocalizationNode *p);
-        ros::NodeHandle node;
-        void callbackParameters (mrpt_localization::MotionConfig &config, uint32_t level );
-        dynamic_reconfigure::Server<mrpt_localization::MotionConfig> reconfigureServer_;
-        dynamic_reconfigure::Server<mrpt_localization::MotionConfig>::CallbackType reconfigureFnc_;
-		void update(const unsigned long &loop_count);
-        double rate;
-        double transform_tolerance;
-        int parameter_update_skip;
-        int particlecloud_update_skip;
-        int map_update_skip;
-        std::string tf_prefix;
-        std::string odom_frame_id;
-        std::string global_frame_id;
-        std::string base_frame_id;
-        bool pose_broadcast;
-        bool tf_broadcast;
-	};
-    
-    PFLocalizationNode ( ros::NodeHandle &n );
-    ~PFLocalizationNode();
-    void init ();
-    void loop ();
-    void callbackLaser (const sensor_msgs::LaserScan&);
-    void callbackBeacon (const mrpt_msgs::ObservationRangeBeacon&);
-	void odometryForCallback(CObservationOdometryPtr&, const std_msgs::Header&);
-    void callbackInitialpose (const geometry_msgs::PoseWithCovarianceStamped&);
-    void updateMap (const nav_msgs::OccupancyGrid&);
-    void publishTF();
-    void publishPose();
+  struct Parameters : public PFLocalization::Parameters
+  {
+    static const int MOTION_MODEL_GAUSSIAN = 0;
+    static const int MOTION_MODEL_THRUN = 1;
+    Parameters(PFLocalizationNode *p);
+    ros::NodeHandle node;
+    void callbackParameters(mrpt_localization::MotionConfig &config, uint32_t level);
+    dynamic_reconfigure::Server<mrpt_localization::MotionConfig> reconfigureServer_;
+    dynamic_reconfigure::Server<mrpt_localization::MotionConfig>::CallbackType reconfigureFnc_;
+    void update(const unsigned long &loop_count);
+    double rate;
+    double transform_tolerance;
+    int parameter_update_skip;
+    int particlecloud_update_skip;
+    int map_update_skip;
+    std::string tf_prefix;
+    std::string odom_frame_id;
+    std::string global_frame_id;
+    std::string base_frame_id;
+    bool pose_broadcast;
+    bool tf_broadcast;
+  };
 
-private: //functions
-    Parameters *param();
-    void update ();
-    void updateSensorPose (std::string frame_id);
-    ros::Subscriber subInitPose_;
-	std::vector<ros::Subscriber> subSensors_;
-    ros::Subscriber subMap_;
-    ros::ServiceClient clientMap_;
-    ros::Publisher pub_Particles_;
-    ros::Publisher pub_map_;
-    ros::Publisher pub_metadata_;
-    ros::Publisher pub_pose_ ;
-    ros::ServiceServer service_map_;
-    tf::TransformListener listenerTF_;
-    tf::TransformBroadcaster tf_broadcaster_;
-    std::map<std::string, mrpt::poses::CPose3D> laser_poses_;
-    std::map<std::string, mrpt::poses::CPose3D> beacon_poses_;
-    ros::NodeHandle n_;
-    unsigned long loop_count_;
-    void publishParticles();
-    void useROSLogLevel();
+  PFLocalizationNode(ros::NodeHandle &n);
+  virtual ~PFLocalizationNode();
+  void init();
+  void loop();
+  void callbackLaser(const sensor_msgs::LaserScan&);
+  void callbackBeacon(const mrpt_msgs::ObservationRangeBeacon&);
+  void odometryForCallback(CObservationOdometryPtr&, const std_msgs::Header&);
+  void callbackInitialpose(const geometry_msgs::PoseWithCovarianceStamped&);
+  void callbackOdometry(const nav_msgs::Odometry&);
+  void updateMap(const nav_msgs::OccupancyGrid&);
+  void publishTF();
+  void publishPose();
 
-    bool waitForTransform(mrpt::poses::CPose3D &des, const std::string& target_frame, const std::string& source_frame, const ros::Time& time, const ros::Duration& timeout, const ros::Duration& polling_sleep_duration = ros::Duration(0.01));
-    bool mapCallback(nav_msgs::GetMap::Request  &req, nav_msgs::GetMap::Response &res );
-    void publishMap ();
-    virtual bool waitForMap();
-    nav_msgs::GetMap::Response resp_;
-    
+private:
+  //functions
+  Parameters *param();
+  void update();
+  void updateSensorPose(std::string frame_id);
+
+  bool update_filter_;
+  ros::Subscriber subInitPose_;
+  ros::Subscriber subOdometry_;
+  std::vector<ros::Subscriber> subSensors_;
+  ros::Subscriber subMap_;
+  ros::ServiceClient clientMap_;
+  ros::Publisher pub_Particles_;
+  ros::Publisher pub_map_;
+  ros::Publisher pub_metadata_;
+  ros::Publisher pub_pose_;
+  ros::ServiceServer service_map_;
+  tf::TransformListener listenerTF_;
+  tf::TransformBroadcaster tf_broadcaster_;
+  std::map<std::string, mrpt::poses::CPose3D> laser_poses_;
+  std::map<std::string, mrpt::poses::CPose3D> beacon_poses_;
+  ros::NodeHandle n_;
+  unsigned long loop_count_;
+  void publishParticles();
+  void useROSLogLevel();
+
+  bool waitForTransform(mrpt::poses::CPose3D &des, const std::string& target_frame, const std::string& source_frame,
+                        const ros::Time& time, const ros::Duration& timeout,
+                        const ros::Duration& polling_sleep_duration = ros::Duration(0.01));
+  bool mapCallback(nav_msgs::GetMap::Request &req, nav_msgs::GetMap::Response &res);
+  void publishMap();
+  virtual bool waitForMap();
+  nav_msgs::GetMap::Response resp_;
+
 };
 
 #endif // MRPT_LOCALIZATION_NODE_H
