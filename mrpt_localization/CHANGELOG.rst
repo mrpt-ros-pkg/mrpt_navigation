@@ -2,6 +2,20 @@
 Changelog for package mrpt_localization
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.1.14 (2016-09-12)
+-------------------
+
+0.1.13 (2016-09-03)
+-------------------
+
+0.1.12 (2016-09-03)
+-------------------
+* Put the ROS log setting withing if MRPT_VERSION>=0x150 so it doesn't break the compilation agains .deb mrpt libs
+* Restamp pose on first iteration with ROS time because filter time is still not initialized and can create problems when integrating on robot_localization
+* Set ROS log level also on MRPT internal log system. Prevents spamming of [FIXED_SAMPLING] and [ADAPTIVE SAMPLE SIZE] messages
+* Modify so we can use in conjuntion with robot_localization package: provide a PoseWithCovarianceStamped, allow disabling tf publishing and make transform_tolerance a parameter
+* Contributors: Jorge Santos
+
 0.1.11 (2016-08-21)
 -------------------
 

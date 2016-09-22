@@ -2,6 +2,17 @@
 Changelog for package mrpt_tutorials
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.1.14 (2016-09-12)
+-------------------
+
+0.1.13 (2016-09-03)
+-------------------
+* fix problematic (for bloom) German characters
+* Contributors: Jose Luis Blanco
+
+0.1.12 (2016-09-03)
+-------------------
+
 0.1.11 (2016-08-21)
 -------------------
 

@@ -8,11 +8,15 @@
 #define MRPT_BRIDGE_UTILS_H
 #include <ros/console.h>
 #include <mrpt/system/datetime.h>
-#include <mrpt/utils/COutputLogger.h>
+#include <mrpt/version.h>
+#if MRPT_VERSION>=0x150
+#	include <mrpt/utils/COutputLogger.h>
+#endif
 #include <log4cxx/logger.h>
 
 namespace mrpt_bridge {
 
+#if MRPT_VERSION>=0x150
 	/**
    * @brief function that converts ROS verbosity level log4cxx::Level to MRPT equivalent mrpt::utils::VerbosityLevel
    */
@@ -40,18 +44,18 @@ namespace mrpt_bridge {
 	}
 
 	/**
-   * @brief callback that is called by MRPT mrpt::utils::COuputLogger to refirect log messages to ROS logger. 
+   * @brief callback that is called by MRPT mrpt::utils::COuputLogger to refirect log messages to ROS logger.
    * 	This function has to be inline, otherwise option log4j.logger.ros.package_name will be taken from mrpt_bridge
    *  instead of the package from which macro is actually called.
    */
 	inline void mrptToROSLoggerCallback(const std::string &msg, const mrpt::utils::VerbosityLevel level, const std::string &loggerName, const mrpt::system::TTimeStamp timestamp, void *userParam){
-		
+
 		// Remove trailing \n if present
 		std::string tmsg = msg;
 		if (!tmsg.empty() && tmsg.compare(tmsg.length()-1, tmsg.length(), "\n")==0){
 			tmsg.erase(tmsg.end()-1);
 		}
-		
+
 		if (level == mrpt::utils::LVL_DEBUG){
 	    ROS_DEBUG("%s", tmsg.c_str());
 	  } else if (level == mrpt::utils::LVL_INFO) {
@@ -62,6 +66,7 @@ namespace mrpt_bridge {
 	    ROS_ERROR("%s", tmsg.c_str());
 	  }
 	}
+	#endif
 
 } //namespace mrpt_bridge
 
