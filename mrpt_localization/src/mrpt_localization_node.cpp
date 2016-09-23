@@ -303,6 +303,7 @@ void PFLocalizationNode::callbackInitialpose(const geometry_msgs::PoseWithCovari
   log_info("callbackInitialpose");
   const geometry_msgs::PoseWithCovariance &pose = _msg.pose;
   mrpt_bridge::convert(pose, initialPose_);
+  update_filter_ = true;
   state_ = INIT;
 }
 
@@ -310,9 +311,9 @@ void PFLocalizationNode::callbackOdometry(const nav_msgs::Odometry& _msg)
 {
   if (_msg.twist.twist.linear.x != 0.0 || _msg.twist.twist.linear.y != 0.0 || _msg.twist.twist.linear.z != 0.0 ||
       _msg.twist.twist.angular.x != 0.0 || _msg.twist.twist.angular.y != 0.0 || _msg.twist.twist.angular.z != 0.0)
-    // only update filter if we are moving or for the first iterations after startup
+    // only update filter if we are moving or on initialization and the first iterations after startup
     update_filter_ = true;
-  else if (update_counter_ > 100)
+  else if (state_ == RUN && update_counter_ >= 100)
     update_filter_ = false;
 }
 
