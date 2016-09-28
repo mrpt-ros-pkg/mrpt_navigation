@@ -224,6 +224,7 @@ private:
 			timestamp = mrpt::system::now();
 #else
 		virtual bool senseObstacles( CSimplePointsMap  &obstacles)
+		{
 #endif
 			mrpt::synch::CCriticalSectionLocker csl(&m_parent.m_last_obstacles_cs);
 			obstacles = m_parent.m_last_obstacles;
