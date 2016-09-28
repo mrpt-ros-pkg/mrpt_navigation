@@ -127,12 +127,11 @@ private:
 		 */
 #if MRPT_VERSION>=0x150
 		bool getCurrentPoseAndSpeeds(mrpt::math::TPose2D &curPose, mrpt::math::TTwist2D &curVel, mrpt::system::TTimeStamp &timestamp)
-		{
-			double curV,curW;
 #else
 		bool getCurrentPoseAndSpeeds( mrpt::poses::CPose2D &curPose, float &curV, float &curW)
-		{
 #endif
+		{
+			double curV,curW;
 			mrpt::utils::CTimeLoggerEntry tle(m_parent.m_profiler,"getCurrentPoseAndSpeeds");
 			tf::StampedTransform txRobotPose;
 			try {
@@ -146,9 +145,9 @@ private:
 
 			mrpt::poses::CPose3D curRobotPose;
 			mrpt_bridge::convert(txRobotPose, curRobotPose);
-			mrpt_bridge::convert(txRobotPose.stamp_, timestamp);
 
 #if MRPT_VERSION>=0x150
+			mrpt_bridge::convert(txRobotPose.stamp_, timestamp);
 			curPose = mrpt::math::TPose2D( mrpt::poses::CPose2D(curRobotPose) );  // Explicit 3d->2d to confirm we know we're losing information
 #else
 			curPose = mrpt::poses::CPose2D(curRobotPose);  // Explicit 3d->2d to confirm we know we're losing information
