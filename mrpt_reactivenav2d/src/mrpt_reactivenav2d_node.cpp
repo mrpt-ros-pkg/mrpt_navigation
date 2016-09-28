@@ -59,7 +59,11 @@
 
 #include <mrpt_bridge/pose.h>
 #include <mrpt_bridge/point_cloud.h>
+#include <mrpt_bridge/time.h>
 
+#if MRPT_VERSION>=0x150
+#include <mrpt/kinematics/CVehicleVelCmd_DiffDriven.h>
+#endif
 
 // The ROS node
 class ReactiveNav2DNode
@@ -122,7 +126,7 @@ private:
 		 * \return false on any error.
 		 */
 #if MRPT_VERSION>=0x150
-		bool getCurrentPoseAndSpeeds(mrpt::math::TPose2D &curPose, mrpt::math::TTwist2D &curVel)
+		bool getCurrentPoseAndSpeeds(mrpt::math::TPose2D &curPose, mrpt::math::TTwist2D &curVel, mrpt::system::TTimeStamp &timestamp)
 		{
 			double curV,curW;
 #else
@@ -141,9 +145,10 @@ private:
 			}
 
 			mrpt::poses::CPose3D curRobotPose;
-			mrpt_bridge::convert(txRobotPose,curRobotPose);
+			mrpt_bridge::convert(txRobotPose, curRobotPose);
 
 #if MRPT_VERSION>=0x150
+			mrpt_bridge::convert(txRobotPose.stamp_, timestamp);
 			curPose = mrpt::math::TPose2D( mrpt::poses::CPose2D(curRobotPose) );  // Explicit 3d->2d to confirm we know we're losing information
 #else
 			curPose = mrpt::poses::CPose2D(curRobotPose);  // Explicit 3d->2d to confirm we know we're losing information
@@ -166,10 +171,14 @@ private:
 		 * \return false on any error.
 		 */
 #if MRPT_VERSION>=0x150
-		bool changeSpeeds(const std::vector<double> &vel_cmd)
+		bool changeSpeeds(const mrpt::kinematics::CVehicleVelCmd &vel_cmd)
 		{
-			ASSERT_(vel_cmd.size()==2);
-			const double v = vel_cmd[0], w = vel_cmd[1];
+			using namespace mrpt::kinematics;
+			const CVehicleVelCmd_DiffDriven* vel_cmd_diff_driven =
+				dynamic_cast<const CVehicleVelCmd_DiffDriven*>(&vel_cmd);
+
+			const double v = vel_cmd_diff_driven->lin_vel;
+			const double w = vel_cmd_diff_driven->ang_vel;
 #else
 		virtual bool changeSpeeds( float v, float w )
 		{
@@ -185,8 +194,10 @@ private:
 #if MRPT_VERSION>=0x150
 		bool stop()
 		{
-			std::vector<double> cmds(2,0.0);
-			return changeSpeeds(cmds);
+			mrpt::kinematics::CVehicleVelCmd_DiffDriven vel_cmd;
+			vel_cmd.lin_vel = 0;
+			vel_cmd.ang_vel = 0;
+			return changeSpeeds(vel_cmd);
 		}
 #endif
 
@@ -207,10 +218,17 @@ private:
 
 		/** Return the current set of obstacle points.
 		  * \return false on any error. */
-		virtual bool senseObstacles( CSimplePointsMap  &obstacles )
+#if MRPT_VERSION>=0x150
+		virtual bool senseObstacles( CSimplePointsMap  &obstacles, mrpt::system::TTimeStamp &timestamp)
 		{
+			timestamp = mrpt::system::now();
+#else
+		virtual bool senseObstacles( CSimplePointsMap  &obstacles)
+		{
+#endif
 			mrpt::synch::CCriticalSectionLocker csl(&m_parent.m_last_obstacles_cs);
 			obstacles = m_parent.m_last_obstacles;
+
 
 			MRPT_TODO("TODO: Check age of obstacles!");
 			return true;
