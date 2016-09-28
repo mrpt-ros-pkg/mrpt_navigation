@@ -60,7 +60,9 @@
 #include <mrpt_bridge/pose.h>
 #include <mrpt_bridge/point_cloud.h>
 
+#if MRPT_VERSION>=0x150
 #include <mrpt/kinematics/CVehicleVelCmd_DiffDriven.h>
+#endif
 
 // The ROS node
 class ReactiveNav2DNode
