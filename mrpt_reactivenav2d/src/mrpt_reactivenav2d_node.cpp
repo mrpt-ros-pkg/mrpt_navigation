@@ -59,6 +59,7 @@
 
 #include <mrpt_bridge/pose.h>
 #include <mrpt_bridge/point_cloud.h>
+#include <mrpt_bridge/time.h>
 
 #if MRPT_VERSION>=0x150
 #include <mrpt/kinematics/CVehicleVelCmd_DiffDriven.h>
@@ -144,7 +145,8 @@ private:
 			}
 
 			mrpt::poses::CPose3D curRobotPose;
-			mrpt_bridge::convert(txRobotPose,curRobotPose);
+			mrpt_bridge::convert(txRobotPose, curRobotPose);
+			mrpt_bridge::convert(txRobotPose.stamp_, timestamp);
 
 #if MRPT_VERSION>=0x150
 			curPose = mrpt::math::TPose2D( mrpt::poses::CPose2D(curRobotPose) );  // Explicit 3d->2d to confirm we know we're losing information
@@ -193,8 +195,8 @@ private:
 		bool stop()
 		{
 			mrpt::kinematics::CVehicleVelCmd_DiffDriven vel_cmd;
-			vel_cmd.lin_vel = 2;
-			vel_cmd.ang_vel = 0.0;
+			vel_cmd.lin_vel = 0;
+			vel_cmd.ang_vel = 0;
 			return changeSpeeds(vel_cmd);
 		}
 #endif
@@ -216,10 +218,16 @@ private:
 
 		/** Return the current set of obstacle points.
 		  * \return false on any error. */
+#if MRPT_VERSION>=0x150
 		virtual bool senseObstacles( CSimplePointsMap  &obstacles, mrpt::system::TTimeStamp &timestamp)
 		{
+			timestamp = mrpt::system::now();
+#else
+		virtual bool senseObstacles( CSimplePointsMap  &obstacles)
+#endif
 			mrpt::synch::CCriticalSectionLocker csl(&m_parent.m_last_obstacles_cs);
 			obstacles = m_parent.m_last_obstacles;
+
 
 			MRPT_TODO("TODO: Check age of obstacles!");
 			return true;
