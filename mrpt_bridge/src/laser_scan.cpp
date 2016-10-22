@@ -46,14 +46,20 @@ bool convert(const sensor_msgs::LaserScan &_msg, const mrpt::poses::CPose3D &_po
 		int i_ros = inv_ang_step*( -fov05-_msg.angle_min+ang_step*i_mrpt);
 		if (i_ros<0) i_ros+=N; else if (i_ros>=(int)N) i_ros-=N;  // wrap around 2PI...
 
+		// set the scan
 		const float r = _msg.ranges[i_ros];
-		const bool r_valid = ((_obj.scan[i_mrpt] < (_msg.range_max*0.95)) && (_obj.scan[i_mrpt] > _msg.range_min));
 #if MRPT_VERSION>=0x150
 		_obj.setScanRange(i_mrpt, r);
-		_obj.setScanRangeValidity(i_mrpt, r_valid);
 #else
 		_obj.scan[i_mrpt] = r;
-		_obj.validRange[i_mrpt] = r_valid ? 1:0;
+#endif
+
+		// set the validity of the scan
+		const bool r_valid = ((_obj.scan[i_mrpt] < (_msg.range_max*0.95)) && (_obj.scan[i_mrpt] > _msg.range_min));
+#if MRPT_VERSION>=0x150
+		_obj.setScanRangeValidity(i_mrpt, r_valid);
+#else
+		_obj.validRange[i_mrpt] = r_valid;
 #endif
 	}
 
