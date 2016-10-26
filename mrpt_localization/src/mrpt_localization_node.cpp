@@ -421,8 +421,8 @@ void PFLocalizationNode::publishPose()
   // Fill in the header
   mrpt_bridge::convert(timeLastUpdate_, p.header.stamp);
   p.header.frame_id = tf::resolve(param()->tf_prefix, param()->global_frame_id);
-  if (loop_count_ == 0)
-    p.header.stamp = ros::Time::now();  // on first iteration timestamp is nonsense
+  if (loop_count_ < 10)
+    p.header.stamp = ros::Time::now();  // on first iterations timestamp differs a lot from ROS time
 
   // Copy in the pose
   mrpt_bridge::convert(mean, p.pose.pose);
