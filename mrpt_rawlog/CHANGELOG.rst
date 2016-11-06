@@ -2,8 +2,8 @@
 Changelog for package mrpt_rawlog
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+0.1.15 (2016-11-06)
+-------------------
 * Fix build against MRPT 1.5.0
 * Contributors: Jose-Luis Blanco-Claraco
 

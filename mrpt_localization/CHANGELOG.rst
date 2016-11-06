@@ -2,8 +2,8 @@
 Changelog for package mrpt_localization
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+0.1.15 (2016-11-06)
+-------------------
 * Fix build against MRPT 1.5.0
 * Use ros::Time::now() to time stamp first 10 poses
   If not, they contain wall time, what when working on simulation prevents robot_localization fusion to work.

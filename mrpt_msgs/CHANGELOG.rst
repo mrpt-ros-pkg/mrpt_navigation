@@ -2,8 +2,8 @@
 Changelog for package mrpt_msgs
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+0.1.15 (2016-11-06)
+-------------------
 * Add Pose2DStamped ROS message
 * Contributors: Nikos Koukis
 

@@ -2,8 +2,8 @@
 Changelog for package mrpt_reactivenav2d
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+0.1.15 (2016-11-06)
+-------------------
 * Fix mrpt-reactivenav2d compilation errors
 * Fix compilation for MRPT < 1.5.0
 * Add include guard  for MRPT >= 1.5.0, fill timestamp entries
