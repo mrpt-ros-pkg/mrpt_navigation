@@ -2,6 +2,16 @@
 Changelog for package mrpt_localization
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Fix build against MRPT 1.5.0
+* Use ros::Time::now() to time stamp first 10 poses
+  If not, they contain wall time, what when working on simulation prevents robot_localization fusion to work.
+  Other than that, the change is innocuous
+* PR `#33 <https://github.com/mrpt-ros-pkg/mrpt_navigation/issues/33>`_ prevented pose initialization with the robot stopped; fix it!
+* Stop mrpt_localization updating when robot is not moving (odom twist is zero)
+* Contributors: Jorge Santos, Jorge Santos Simón, Jose-Luis Blanco-Claraco
+
 0.1.14 (2016-09-12)
 -------------------
 

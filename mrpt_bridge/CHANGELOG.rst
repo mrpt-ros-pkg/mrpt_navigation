@@ -2,6 +2,12 @@
 Changelog for package mrpt_bridge
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* mrpt_bridge: Fix bug in laserScans conversion
+* Fix new scanRange API in MRPT 1.5.0
+* Contributors: Jose-Luis Blanco-Claraco, Nikos Koukis
+
 0.1.14 (2016-09-12)
 -------------------
 * fix build against mrpt < 1.5.0
