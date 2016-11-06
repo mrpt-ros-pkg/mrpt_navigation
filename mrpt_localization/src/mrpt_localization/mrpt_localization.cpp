@@ -104,6 +104,11 @@ void PFLocalization::init()
   // Default odometry uncertainty parameters in "odom_params_default_" depending on how fast the robot moves, etc...
   //  Only used for observations-only rawlogs:
   motion_model_default_options_.modelSelection = CActionRobotMovement2D::mmGaussian;
+
+#if MRPT_VERSION>=0x150
+#define gausianModel gaussianModel    // a typo was fixed in 1.5.0
+#endif
+
   motion_model_default_options_.gausianModel.minStdXY = iniFile.read_double("DummyOdometryParams", "minStdXY", 0.04);
   motion_model_default_options_.gausianModel.minStdPHI =
       DEG2RAD(iniFile.read_double("DefaultOdometryParams", "minStdPHI", 2.0));

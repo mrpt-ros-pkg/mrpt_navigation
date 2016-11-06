@@ -90,8 +90,11 @@ void PFLocalizationNode::Parameters::callbackParameters(mrpt_localization::Motio
   if (config.motion_noise_type == MOTION_MODEL_GAUSSIAN)
   {
     motion_model_options->modelSelection = CActionRobotMovement2D::mmGaussian;
-    motion_model_options->gausianModel.a1 = config.gaussian_alpha_1;
-    motion_model_options->gausianModel.a2 = config.gaussian_alpha_2;
+#if MRPT_VERSION>=0x150
+#define gausianModel gaussianModel    // a typo was fixed in 1.5.0
+#endif
+	motion_model_options->gausianModel.a1 = config.gaussian_alpha_1;
+	motion_model_options->gausianModel.a2 = config.gaussian_alpha_2;
     motion_model_options->gausianModel.a3 = config.gaussian_alpha_3;
     motion_model_options->gausianModel.a4 = config.gaussian_alpha_4;
     motion_model_options->gausianModel.minStdXY = config.gaussian_alpha_xy;
