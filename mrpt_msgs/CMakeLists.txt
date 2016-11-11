@@ -10,7 +10,6 @@ add_message_files(
   ObservationRangeBeacon.msg
   SingleRangeBearingObservation.msg
   SingleRangeBeaconObservation.msg
-  Pose2DStamped.msg
   )
 
 generate_messages(DEPENDENCIES std_msgs geometry_msgs)
