@@ -28,14 +28,13 @@
 
 #include <boost/interprocess/sync/scoped_lock.hpp>
 #include <geometry_msgs/PoseArray.h>
+#include <pose_cov_ops/pose_cov_ops.h>
 
 #include <mrpt_bridge/pose.h>
 #include <mrpt_bridge/laser_scan.h>
 #include <mrpt_bridge/time.h>
 #include <mrpt_bridge/map.h>
 #include <mrpt_bridge/beacon.h>
-#include <mrpt_bridge/landmark.h>
-#include <pose_cov_ops/pose_cov_ops.h>
 
 #include <mrpt/version.h>
 #if MRPT_VERSION>=0x130
