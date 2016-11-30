@@ -70,10 +70,6 @@ protected:
   bool SCENE3D_FOLLOW_;
   bool SHOW_PROGRESS_3D_REAL_TIME_;
   int SHOW_PROGRESS_3D_REAL_TIME_DELAY_MS_;
-  float init_PDF_min_x;
-  float init_PDF_max_x;
-  float init_PDF_min_y;
-  float init_PDF_max_y;
 };
 
 #endif // MRPT_LOCALIZATION_H

@@ -95,8 +95,13 @@ protected:
   mrpt::system::TTimeStamp timeLastUpdate_;    /// time of the last update
   mrpt::utils::CTicTac tictac_;                /// timer to measure performance
   size_t update_counter_;                      /// internal counter to count the number of filter updates
-  PFStates state_;                             /// filter states to perform things like init on the corret time
-  mrpt::poses::CPose2D odomLastObservation_;   /// pose at the last overvation
+  PFStates state_;                             /// filter states to perform things like init on the correct time
+  mrpt::poses::CPose2D odomLastObservation_;   /// pose at the last observation
+  bool  init_PDF_mode;                         /// Initial PDF mode: 0 for free space cells, 1 for any cell
+  float init_PDF_min_x;                        /// Initial PDF boundaries
+  float init_PDF_max_x;
+  float init_PDF_min_y;
+  float init_PDF_max_y;
 
 private:
   /**

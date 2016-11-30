@@ -64,20 +64,20 @@ void PFLocalizationCore::initializeFilter()
 {
   mrpt::math::CMatrixDouble33 cov;
   mrpt::poses::CPose2D mean_point;
-  log_info("InitializeFilter: %4.3fm, %4.3fm, %4.3frad ", mean_point.x(), mean_point.y(), mean_point.phi());
   initialPose_.getCovarianceAndMean(cov, mean_point);
+  log_info("InitializeFilter: %4.3fm, %4.3fm, %4.3frad ", mean_point.x(), mean_point.y(), mean_point.phi());
   float min_x = mean_point.x() - cov(0, 0);
   float max_x = mean_point.x() + cov(0, 0);
   float min_y = mean_point.y() - cov(1, 1);
   float max_y = mean_point.y() + cov(1, 1);
   float min_phi = mean_point.phi() - cov(2, 2);
   float max_phi = mean_point.phi() + cov(2, 2);
-  if (metric_map_.m_gridMaps.size())
+  if (metric_map_.m_gridMaps.size() && !init_PDF_mode)
   {
-    pdf_.resetUniformFreeSpace(metric_map_.m_gridMaps[0].pointer(), 0.7f, initialParticleCount_, min_x, max_x, min_y,
-                               max_y, min_phi, max_phi);
+    pdf_.resetUniformFreeSpace(metric_map_.m_gridMaps[0].pointer(), 0.7f, initialParticleCount_,
+                               min_x, max_x, min_y, max_y, min_phi, max_phi);
   }
-  else if (metric_map_.m_landmarksMap)
+  else if (metric_map_.m_landmarksMap || init_PDF_mode)
   {
     pdf_.resetUniform(min_x, max_x, min_y, max_y, min_phi, max_phi, initialParticleCount_);
   }
