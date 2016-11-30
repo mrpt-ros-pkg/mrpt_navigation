@@ -95,6 +95,7 @@ public:
   void loop();
   void callbackLaser(const sensor_msgs::LaserScan&);
   void callbackBeacon(const mrpt_msgs::ObservationRangeBeacon&);
+  void callbackRobotPose(const geometry_msgs::PoseWithCovarianceStamped&);
   void odometryForCallback(CObservationOdometryPtr&, const std_msgs::Header&);
   void callbackInitialpose(const geometry_msgs::PoseWithCovarianceStamped&);
   void callbackOdometry(const nav_msgs::Odometry&);

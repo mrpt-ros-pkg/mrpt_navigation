@@ -28,6 +28,7 @@
 
 #include <boost/interprocess/sync/scoped_lock.hpp>
 #include <geometry_msgs/PoseArray.h>
+#include <pose_cov_ops/pose_cov_ops.h>
 
 #include <mrpt_bridge/pose.h>
 #include <mrpt_bridge/laser_scan.h>
@@ -39,6 +40,9 @@
 #if MRPT_VERSION>=0x130
   #include <mrpt/obs/CObservationBeaconRanges.h>
   using namespace mrpt::obs;
+  #if MRPT_VERSION>=0x150
+    #include <mrpt/obs/CObservationRobotPose.h>
+  #endif
 #else
   #include <mrpt/slam/CObservationBeaconRanges.h>
   using namespace mrpt::slam;
@@ -94,9 +98,13 @@ void PFLocalizationNode::init()
     {
       subSensors_[i] = n_.subscribe(lstSources[i], 1, &PFLocalizationNode::callbackLaser, this);
     }
-    else
+    else if (lstSources[i].find("beacon") != std::string::npos)
     {
       subSensors_[i] = n_.subscribe(lstSources[i], 1, &PFLocalizationNode::callbackBeacon, this);
+    }
+    else
+    {
+      subSensors_[i] = n_.subscribe(lstSources[i], 1, &PFLocalizationNode::callbackRobotPose, this);
     }
   }
 
@@ -226,6 +234,65 @@ void PFLocalizationNode::callbackBeacon(const mrpt_msgs::ObservationRangeBeacon 
   }
 }
 
+void PFLocalizationNode::callbackRobotPose(const geometry_msgs::PoseWithCovarianceStamped &_msg)
+{
+#if MRPT_VERSION>=0x150
+  using namespace mrpt::maps;
+  using namespace mrpt::obs;
+
+  std::string base_frame_id = tf::resolve(param()->tf_prefix, param()->base_frame_id);
+  std::string global_frame_id = tf::resolve(param()->tf_prefix, param()->global_frame_id);
+
+  tf::StampedTransform map_to_obs_tf;
+  try
+  {
+    listenerTF_.waitForTransform(global_frame_id, _msg.header.frame_id, ros::Time(0.0), ros::Duration(10.0));
+    listenerTF_.lookupTransform(global_frame_id, _msg.header.frame_id, ros::Time(0.0), map_to_obs_tf);
+  }
+  catch (tf::TransformException& ex)
+  {
+    ROS_ERROR("%s", ex.what());
+    return;
+  }
+
+  // Transform observation into global frame, including covariance. For that, we must first obtain
+  // the global frame -> observation frame tf as a Pose msg, as required by pose_cov_ops::compose
+  geometry_msgs::Pose map_to_obs_pose;
+  tf::pointTFToMsg(map_to_obs_tf.getOrigin(), map_to_obs_pose.position);
+  tf::quaternionTFToMsg(map_to_obs_tf.getRotation(), map_to_obs_pose.orientation);
+  geometry_msgs::PoseWithCovarianceStamped obs_pose_world;
+  obs_pose_world.header.stamp = _msg.header.stamp;
+  obs_pose_world.header.frame_id = global_frame_id;
+  pose_cov_ops::compose(map_to_obs_pose, _msg.pose, obs_pose_world.pose);
+
+  // Ensure the covariance matrix can be inverted (no zeros in the diagonal)
+  for (int i = 0; i < obs_pose_world.pose.covariance.size(); ++i)
+  {
+    if (i/6 == i%6 && obs_pose_world.pose.covariance[i] <= 0.0)
+   	  obs_pose_world.pose.covariance[i] = 1.0;
+  }
+
+  // Covert the received pose into an observation the filter can integrate
+  CObservationRobotPosePtr feature = CObservationRobotPose::Create();
+
+  feature->sensorLabel = _msg.header.frame_id;
+  mrpt_bridge::convert(_msg.header.stamp, feature->timestamp);
+  mrpt_bridge::convert(obs_pose_world.pose, feature->pose);
+
+  CSensoryFramePtr sf = CSensoryFrame::Create();
+  CObservationOdometryPtr odometry;
+  odometryForCallback(odometry, _msg.header);
+
+  CObservationPtr obs = CObservationPtr(feature);
+  sf->insert(obs);
+  observation(sf, odometry);
+  if (param()->gui_mrpt)
+    show3DDebug(sf);
+#else
+  // not implemented
+#endif
+}
+
 void PFLocalizationNode::odometryForCallback(CObservationOdometryPtr &_odometry, const std_msgs::Header &_msg_header)
 {
   std::string base_frame_id = tf::resolve(param()->tf_prefix, param()->base_frame_id);
@@ -300,7 +367,6 @@ void PFLocalizationNode::updateSensorPose(std::string _frame_id)
 
 void PFLocalizationNode::callbackInitialpose(const geometry_msgs::PoseWithCovarianceStamped& _msg)
 {
-  log_info("callbackInitialpose");
   const geometry_msgs::PoseWithCovariance &pose = _msg.pose;
   mrpt_bridge::convert(pose, initialPose_);
   update_filter_ = true;
