@@ -113,30 +113,25 @@ void PFLocalization::init()
   motion_model_default_options_.gausianModel.minStdPHI =
       DEG2RAD(iniFile.read_double("DefaultOdometryParams", "minStdPHI", 2.0));
 
-  if (!iniFile.read_bool(iniSectionName, "init_PDF_mode", false, /*Fail if not found*/true))
-  {
-    init_PDF_min_x = iniFile.read_float(iniSectionName, "init_PDF_min_x", 0, true);
-    init_PDF_max_x = iniFile.read_float(iniSectionName, "init_PDF_max_x", 0, true);
-    init_PDF_min_y = iniFile.read_float(iniSectionName, "init_PDF_min_y", 0, true);
-    init_PDF_max_y = iniFile.read_float(iniSectionName, "init_PDF_max_y", 0, true);
-    float min_phi = DEG2RAD(iniFile.read_float(iniSectionName, "init_PDF_min_phi_deg", -180));
-    float max_phi = DEG2RAD(iniFile.read_float(iniSectionName, "init_PDF_max_phi_deg", 180));
-    mrpt::poses::CPose2D p;
-    mrpt::math::CMatrixDouble33 cov;
-    cov(0, 0) = fabs(init_PDF_max_x - init_PDF_min_x);
-    cov(1, 1) = fabs(init_PDF_max_x - init_PDF_min_x);
-    cov(2, 2) = min_phi < max_phi ? max_phi - min_phi : (max_phi + 2 * M_PI) - min_phi;
-    p.x() = init_PDF_min_x + cov(0, 0) / 2.0;
-    p.y() = init_PDF_min_y + cov(1, 1) / 2.0;
-    p.phi() = min_phi + cov(2, 2) / 2.0;
-    printf("----------- phi: %4.3f: %4.3f <-> %4.3f, %4.3f\n", p.phi(), min_phi, max_phi, cov(2, 2));
-    initialPose_ = mrpt::poses::CPosePDFGaussian(p, cov);
-    state_ = INIT;
-  }
-  else
-  {
-    log_error("no initial pose");
-  }
+  // Read initial particles distribution; fail if any parameter is not found
+  init_PDF_mode = iniFile.read_bool(iniSectionName, "init_PDF_mode", false, true);
+  init_PDF_min_x = iniFile.read_float(iniSectionName, "init_PDF_min_x", 0, true);
+  init_PDF_max_x = iniFile.read_float(iniSectionName, "init_PDF_max_x", 0, true);
+  init_PDF_min_y = iniFile.read_float(iniSectionName, "init_PDF_min_y", 0, true);
+  init_PDF_max_y = iniFile.read_float(iniSectionName, "init_PDF_max_y", 0, true);
+  float min_phi = DEG2RAD(iniFile.read_float(iniSectionName, "init_PDF_min_phi_deg", -180));
+  float max_phi = DEG2RAD(iniFile.read_float(iniSectionName, "init_PDF_max_phi_deg", 180));
+  mrpt::poses::CPose2D p;
+  mrpt::math::CMatrixDouble33 cov;
+  cov(0, 0) = fabs(init_PDF_max_x - init_PDF_min_x);
+  cov(1, 1) = fabs(init_PDF_max_x - init_PDF_min_x);
+  cov(2, 2) = min_phi < max_phi ? max_phi - min_phi : (max_phi + 2 * M_PI) - min_phi;
+  p.x() = init_PDF_min_x + cov(0, 0) / 2.0;
+  p.y() = init_PDF_min_y + cov(1, 1) / 2.0;
+  p.phi() = min_phi + cov(2, 2) / 2.0;
+  printf("----------- phi: %4.3f: %4.3f <-> %4.3f, %4.3f\n", p.phi(), min_phi, max_phi, cov(2, 2));
+  initialPose_ = mrpt::poses::CPosePDFGaussian(p, cov);
+  state_ = INIT;
 
   configureFilter(iniFile);
   // Metric map options:
