@@ -75,7 +75,7 @@ void PFLocalizationCore::initializeFilter()
   if (metric_map_.m_gridMaps.size() && !init_PDF_mode)
   {
     pdf_.resetUniformFreeSpace(metric_map_.m_gridMaps[0].pointer(), 0.7f, initialParticleCount_,
-							   min_x, max_x, min_y, max_y, min_phi, max_phi);
+                               min_x, max_x, min_y, max_y, min_phi, max_phi);
   }
   else if (metric_map_.m_landmarksMap || init_PDF_mode)
   {
