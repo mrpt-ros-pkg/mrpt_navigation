@@ -110,7 +110,7 @@ private:
 
 	struct MyReactiveInterface :
 #if MRPT_VERSION>=0x150
-			public mrpt::nav::CRobot2NavInterface_DiffDriven
+			public mrpt::nav::CRobot2NavInterface
 #else
 			public CReactiveInterfaceImplementation
 #endif
