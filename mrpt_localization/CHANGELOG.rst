@@ -2,6 +2,16 @@
 Changelog for package mrpt_localization
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Fix for issue `#50 <https://github.com/mrpt-ros-pkg/mrpt_navigation/issues/50>`_
+* Tabs to spaces
+* Fix for issue `#48 <https://github.com/mrpt-ros-pkg/mrpt_navigation/issues/48>`_
+* Remove unneeded include
+* Allow robot poses from external algorithms to be integrated into mrpt particles filter
+* fix typo
+* Contributors: Jorge Santos, Jorge Santos Simón, Jose-Luis Blanco-Claraco
+
 0.1.15 (2016-11-06)
 -------------------
 * Fix build against MRPT 1.5.0

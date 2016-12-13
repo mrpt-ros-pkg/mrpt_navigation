@@ -2,6 +2,9 @@
 Changelog for package mrpt_bridge
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+
 0.1.15 (2016-11-06)
 -------------------
 * mrpt_bridge: Fix bug in laserScans conversion

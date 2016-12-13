@@ -2,6 +2,11 @@
 Changelog for package mrpt_reactivenav2d
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Fix `#52 <https://github.com/mrpt-ros-pkg/mrpt_navigation/issues/52>`_
+* Contributors: Jose-Luis Blanco-Claraco
+
 0.1.15 (2016-11-06)
 -------------------
 * Fix mrpt-reactivenav2d compilation errors
