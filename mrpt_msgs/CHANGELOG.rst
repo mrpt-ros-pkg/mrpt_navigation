@@ -2,8 +2,8 @@
 Changelog for package mrpt_msgs
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+0.1.16 (2016-12-13)
+-------------------
 * Remove unecessary Pose2DStamped msg
 * Contributors: Nikos Koukis
 

@@ -2,8 +2,8 @@
 Changelog for package mrpt_localization
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+0.1.16 (2016-12-13)
+-------------------
 * Fix for issue `#50 <https://github.com/mrpt-ros-pkg/mrpt_navigation/issues/50>`_
 * Tabs to spaces
 * Fix for issue `#48 <https://github.com/mrpt-ros-pkg/mrpt_navigation/issues/48>`_
