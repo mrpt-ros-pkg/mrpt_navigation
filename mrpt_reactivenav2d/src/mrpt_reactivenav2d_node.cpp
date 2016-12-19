@@ -192,7 +192,7 @@ private:
 		}
 
 #if MRPT_VERSION>=0x150
-		bool stop()
+		bool stop(bool isEmergency)
 		{
 			mrpt::kinematics::CVehicleVelCmd_DiffDriven vel_cmd;
 			vel_cmd.lin_vel = 0;
