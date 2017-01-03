@@ -85,6 +85,7 @@ public:
     std::string odom_frame_id;
     std::string global_frame_id;
     std::string base_frame_id;
+    bool update_while_stopped;
     bool pose_broadcast;
     bool tf_broadcast;
   };

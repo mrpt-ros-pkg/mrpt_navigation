@@ -171,9 +171,6 @@ void PFLocalizationNode::callbackLaser(const sensor_msgs::LaserScan &_msg)
   using namespace mrpt::slam;
 #endif
 
-  if (!update_filter_)
-    return;             // not updating filter; we must be stopped
-
   //ROS_INFO("callbackLaser");
   CObservation2DRangeScanPtr laser = CObservation2DRangeScan::Create();
 
@@ -182,7 +179,7 @@ void PFLocalizationNode::callbackLaser(const sensor_msgs::LaserScan &_msg)
   {
     updateSensorPose(_msg.header.frame_id);
   }
-  else
+  else if (update_filter_) // updating filter; we must be moving or update_while_stopped set to true
   {
     //mrpt::poses::CPose3D pose = laser_poses_[_msg.header.frame_id];
     //ROS_INFO("LASER POSE %4.3f, %4.3f, %4.3f, %4.3f, %4.3f, %4.3f",  pose.x(), pose.y(), pose.z(), pose.roll(), pose.pitch(), pose.yaw());
@@ -216,7 +213,7 @@ void PFLocalizationNode::callbackBeacon(const mrpt_msgs::ObservationRangeBeacon 
   {
     updateSensorPose(_msg.header.frame_id);
   }
-  else
+  else if (update_filter_) // updating filter; we must be moving or update_while_stopped set to true
   {
     //mrpt::poses::CPose3D pose = beacon_poses_[_msg.header.frame_id];
     //ROS_INFO("BEACON POSE %4.3f, %4.3f, %4.3f, %4.3f, %4.3f, %4.3f",  pose.x(), pose.y(), pose.z(), pose.roll(), pose.pitch(), pose.yaw());
@@ -240,13 +237,17 @@ void PFLocalizationNode::callbackRobotPose(const geometry_msgs::PoseWithCovarian
   using namespace mrpt::maps;
   using namespace mrpt::obs;
 
+  // Robot pose externally provided; update filter regardless update_filter_ flag's value, as these
+  // corrections are typically independent from robot motion (e.g. inputs from GPS or tracking system)
+  // XXX admittedly an arbitrary choice; feel free to open an issue if you think it doesn't make sense
+
   std::string base_frame_id = tf::resolve(param()->tf_prefix, param()->base_frame_id);
   std::string global_frame_id = tf::resolve(param()->tf_prefix, param()->global_frame_id);
 
   tf::StampedTransform map_to_obs_tf;
   try
   {
-    listenerTF_.waitForTransform(global_frame_id, _msg.header.frame_id, ros::Time(0.0), ros::Duration(10.0));
+    listenerTF_.waitForTransform(global_frame_id, _msg.header.frame_id, ros::Time(0.0), ros::Duration(0.5));
     listenerTF_.lookupTransform(global_frame_id, _msg.header.frame_id, ros::Time(0.0), map_to_obs_tf);
   }
   catch (tf::TransformException& ex)
@@ -375,9 +376,10 @@ void PFLocalizationNode::callbackInitialpose(const geometry_msgs::PoseWithCovari
 
 void PFLocalizationNode::callbackOdometry(const nav_msgs::Odometry& _msg)
 {
-  if (_msg.twist.twist.linear.x != 0.0 || _msg.twist.twist.linear.y != 0.0 || _msg.twist.twist.linear.z != 0.0 ||
+  if (param()->update_while_stopped ||  // always update the filter, regardless robot is moving or not
+      _msg.twist.twist.linear.x != 0.0 || _msg.twist.twist.linear.y != 0.0 || _msg.twist.twist.linear.z != 0.0 ||
       _msg.twist.twist.angular.x != 0.0 || _msg.twist.twist.angular.y != 0.0 || _msg.twist.twist.angular.z != 0.0)
-    // only update filter if we are moving or on initialization and the first iterations after startup
+    // update filter if update_while_stopped is true, we are moving or at initialization (100 first iterations)
     update_filter_ = true;
   else if (state_ == RUN && update_counter_ >= 100)
     update_filter_ = false;
@@ -485,10 +487,11 @@ void PFLocalizationNode::publishPose()
   geometry_msgs::PoseWithCovarianceStamped p;
 
   // Fill in the header
-  mrpt_bridge::convert(timeLastUpdate_, p.header.stamp);
   p.header.frame_id = tf::resolve(param()->tf_prefix, param()->global_frame_id);
   if (loop_count_ < 10)
     p.header.stamp = ros::Time::now();  // on first iterations timestamp differs a lot from ROS time
+  else
+    mrpt_bridge::convert(timeLastUpdate_, p.header.stamp);
 
   // Copy in the pose
   mrpt_bridge::convert(mean, p.pose.pose);
