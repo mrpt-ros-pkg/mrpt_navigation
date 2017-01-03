@@ -37,7 +37,7 @@ PFLocalizationNode::Parameters::Parameters(PFLocalizationNode *p) :
   node.param<double>("rate", rate, MRPT_LOCALIZATION_NODE_DEFAULT_RATE);
   ROS_INFO("rate: %f", rate);
   node.getParam("gui_mrpt", gui_mrpt);
-  ROS_INFO("gui_mrpt:  %s", (gui_mrpt ? "true" : "false"));
+  ROS_INFO("gui_mrpt: %s", (gui_mrpt ? "true" : "false"));
   node.param<int>("parameter_update_skip", parameter_update_skip, MRPT_LOCALIZATION_NODE_DEFAULT_PARAMETER_UPDATE_SKIP);
   ROS_INFO("parameter_update_skip: %i", parameter_update_skip);
   node.getParam("ini_file", iniFile);
@@ -55,9 +55,9 @@ PFLocalizationNode::Parameters::Parameters(PFLocalizationNode *p) :
   node.param<std::string>("base_frame_id", base_frame_id, "base_link");
   ROS_INFO("base_frame_id: %s", base_frame_id.c_str());
   node.param<bool>("pose_broadcast", pose_broadcast, false);
-  ROS_INFO("pose_broadcast:  %s", (pose_broadcast ? "true" : "false"));
+  ROS_INFO("pose_broadcast: %s", (pose_broadcast ? "true" : "false"));
   node.param<bool>("tf_broadcast", tf_broadcast, true);
-  ROS_INFO("tf_broadcast:  %s", (tf_broadcast ? "true" : "false"));
+  ROS_INFO("tf_broadcast: %s", (tf_broadcast ? "true" : "false"));
 
   reconfigureFnc_ = boost::bind(&PFLocalizationNode::Parameters::callbackParameters, this, _1, _2);
   reconfigureServer_.setCallback(reconfigureFnc_);
@@ -117,4 +117,6 @@ void PFLocalizationNode::Parameters::callbackParameters(mrpt_localization::Motio
   ROS_INFO("default_noise_xy: %f", motion_model_default_options->gausianModel.minStdXY);
   motion_model_default_options->gausianModel.minStdPHI = config.default_noise_phi;
   ROS_INFO("default_noise_phi: %f", motion_model_default_options->gausianModel.minStdPHI);
+  update_while_stopped = config.update_while_stopped;
+  ROS_INFO("update_while_stopped: %s", update_while_stopped ? "true" : "false");
 }
