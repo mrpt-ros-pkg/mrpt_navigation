@@ -11,7 +11,19 @@ add_message_files(
   SingleRangeBearingObservation.msg
   SingleRangeBeaconObservation.msg
   GraphSlamStats.msg
+  GraphSlamAgent.msg
+  GraphSlamAgents.msg
+  NodeIDWithPose.msg
+  GraphConstraint.msg
+  NetworkOfPoses.msg
   )
+
+
+ add_service_files(
+   DIRECTORY srv
+   FILES
+   GetCMGraph.srv
+   )
 
 generate_messages(DEPENDENCIES std_msgs geometry_msgs)
 

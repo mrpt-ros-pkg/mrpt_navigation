@@ -1,0 +1,7 @@
+# Compute and return a condensed measurements graph
+# Service is currently used in mrpt_graphslam_2d application
+# Returned graph should, at all cost contain the specified nodes
+
+uint64[] nodeIDs
+---
+mrpt_msgs/NetworkOfPoses cm_graph
