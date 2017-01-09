@@ -22,7 +22,10 @@
 #include <mrpt/poses/CPose3D.h>
 #include <mrpt/poses/CPosePDFGaussian.h>
 #include <mrpt/poses/CPose3DPDFGaussian.h>
+#include <mrpt/poses/CPosePDFGaussianInf.h>
+#include <mrpt/poses/CPose3DPDFGaussianInf.h>
 #include <mrpt/math/CQuaternion.h>
+#include <mrpt/utils/mrpt_macros.h>
 #include <geometry_msgs/PoseWithCovariance.h>
 #include <geometry_msgs/Pose.h>
 #include <geometry_msgs/Quaternion.h>
@@ -30,26 +33,25 @@
 #include <tf/tf.h>
 #include "mrpt_bridge/pose.h"
 
-mrpt::math::CMatrixDouble33 &mrpt_bridge::convert( const tf::Matrix3x3& _src, mrpt::math::CMatrixDouble33& _des){
+mrpt::math::CMatrixDouble33& mrpt_bridge::convert(const tf::Matrix3x3& _src, mrpt::math::CMatrixDouble33& _des){
     for(int r = 0; r < 3; r++)
         for(int c = 0; c < 3; c++)
             _des(r,c) = _src[r][c];
     return _des;
 }
 
-tf::Matrix3x3 &mrpt_bridge::convert( const mrpt::math::CMatrixDouble33& _src, tf::Matrix3x3& _des){
+tf::Matrix3x3& mrpt_bridge::convert(const mrpt::math::CMatrixDouble33& _src, tf::Matrix3x3& _des){
     for(int r = 0; r < 3; r++)
         for(int c = 0; c < 3; c++)
              _des[r][c] = _src(r,c);
     return _des;
 }
 
-tf::Transform& mrpt_bridge::convert( const mrpt::poses::CPose3DPDFGaussian& _src, tf::Transform& _des){
+tf::Transform& mrpt_bridge::convert(const mrpt::poses::CPose3DPDFGaussian& _src, tf::Transform& _des){
     return convert(_src.mean, _des);
 }
 
-geometry_msgs::PoseWithCovariance& mrpt_bridge::convert(const mrpt::poses::CPose3DPDFGaussian& _src, geometry_msgs::PoseWithCovariance& _des)
-{
+geometry_msgs::PoseWithCovariance& mrpt_bridge::convert(const mrpt::poses::CPose3DPDFGaussian& _src, geometry_msgs::PoseWithCovariance& _des) {
   convert(_src.mean, _des.pose);
 
   // Read REP103: http://ros.org/reps/rep-0103.html#covariance-representation
@@ -63,13 +65,27 @@ geometry_msgs::PoseWithCovariance& mrpt_bridge::convert(const mrpt::poses::CPose
 
   const unsigned int indxs_map[6] = {0, 1, 2, 5, 4, 3};  // X,Y,Z,YAW,PITCH,ROLL
 
-  for (int i = 0; i < 6; i++)
-    for (int j = 0; j < 6; j++)
+  for (int i = 0; i < 6; i++) {
+    for (int j = 0; j < 6; j++) {
       _des.covariance[indxs_map[i] * 6 + indxs_map[j]] = _src.cov(i, j);
+    }
+  }
   return _des;
 }
 
-tf::Transform &mrpt_bridge::convert(const mrpt::poses::CPose3D& _src, tf::Transform &_des){
+geometry_msgs::PoseWithCovariance& mrpt_bridge::convert(
+		const mrpt::poses::CPose3DPDFGaussianInf& _src,
+		geometry_msgs::PoseWithCovariance& _des) {
+
+	mrpt::poses::CPose3DPDFGaussian mrpt_gaussian;
+	mrpt_gaussian.copyFrom(_src);
+	convert(mrpt_gaussian, _des);
+
+	return _des;
+
+}
+
+tf::Transform& mrpt_bridge::convert(const mrpt::poses::CPose3D& _src, tf::Transform& _des) {
     tf::Vector3 origin(_src[0], _src[1], _src[2]);
     mrpt::math::CMatrixDouble33 R;
     _src.getRotationMatrix(R);
@@ -78,7 +94,7 @@ tf::Transform &mrpt_bridge::convert(const mrpt::poses::CPose3D& _src, tf::Transf
     _des.setOrigin(origin);
     return _des;
 }
-mrpt::poses::CPose3D &mrpt_bridge::convert(const tf::Transform &_src, mrpt::poses::CPose3D &_des){
+mrpt::poses::CPose3D& mrpt_bridge::convert(const tf::Transform& _src, mrpt::poses::CPose3D& _des){
     const tf::Vector3 &t = _src.getOrigin();
     _des.x() = t[0], _des.y() = t[1], _des.z() = t[2];
     const tf::Matrix3x3 &basis = _src.getBasis();
@@ -88,7 +104,7 @@ mrpt::poses::CPose3D &mrpt_bridge::convert(const tf::Transform &_src, mrpt::pose
     return _des;
 }
 
-geometry_msgs::Pose &mrpt_bridge::convert(const mrpt::poses::CPose3D& _src, geometry_msgs::Pose& _des)
+geometry_msgs::Pose& mrpt_bridge::convert(const mrpt::poses::CPose3D& _src, geometry_msgs::Pose& _des)
 {
   _des.position.x = _src[0];
   _des.position.y = _src[1];
@@ -154,9 +170,8 @@ geometry_msgs::PoseWithCovariance& mrpt_bridge::convert(const mrpt::poses::CPose
   // Old comment: "MRPT uses non-fixed axis for 6x6 covariance: should use a transform Jacobian here!"
   //           JL ==> Nope! non-fixed z-y-x equals fixed x-y-z rotations.
 
-  for (int i = 0; i < 6; i++)
-    for (int j = 0; j < 6; j++)
-    {
+  for (int i = 0; i < 6; i++) {
+    for (int j = 0; j < 6; j++) {
       double cov_val;
       int ros_i = i;
       int ros_j = j;
@@ -170,8 +185,19 @@ geometry_msgs::PoseWithCovariance& mrpt_bridge::convert(const mrpt::poses::CPose
       }
       _des.covariance[ros_i * 6 + ros_j] = cov_val;
     }
+  }
   return _des;
 }
+
+geometry_msgs::PoseWithCovariance& mrpt_bridge::convert(const mrpt::poses::CPosePDFGaussianInf& _src, geometry_msgs::PoseWithCovariance& _des)
+{
+	mrpt::poses::CPosePDFGaussian mrpt_gaussian;
+	mrpt_gaussian.copyFrom(_src);
+
+	convert(mrpt_gaussian, _des);
+	return _des;
+}
+
 
 mrpt::poses::CPose3DPDFGaussian& mrpt_bridge::convert(const geometry_msgs::PoseWithCovariance& _src, mrpt::poses::CPose3DPDFGaussian& _des)
 {
@@ -179,10 +205,21 @@ mrpt::poses::CPose3DPDFGaussian& mrpt_bridge::convert(const geometry_msgs::PoseW
 
   const unsigned int indxs_map[6] = {0, 1, 2, 5, 4, 3};
 
-  for (int i = 0; i < 6; i++)
-    for (int j = 0; j < 6; j++)
+  for (int i = 0; i < 6; i++) {
+    for (int j = 0; j < 6; j++) {
       _des.cov(i, j) = _src.covariance[indxs_map[i] * 6 + indxs_map[j]];
+    }
+  }
+
   return _des;
+}
+
+mrpt::poses::CPose3DPDFGaussianInf& mrpt_bridge::convert(const geometry_msgs::PoseWithCovariance& _src, mrpt::poses::CPose3DPDFGaussianInf& _des) {
+	mrpt::poses::CPose3DPDFGaussian mrpt_gaussian;
+	convert(_src, mrpt_gaussian); // Intermediate transform => CPose3DPDFGaussian
+	_des.copyFrom(mrpt_gaussian);
+
+	return _des;
 }
 
 mrpt::poses::CPosePDFGaussian& mrpt_bridge::convert(const geometry_msgs::PoseWithCovariance& _src, mrpt::poses::CPosePDFGaussian& _des)
@@ -199,6 +236,16 @@ mrpt::poses::CPosePDFGaussian& mrpt_bridge::convert(const geometry_msgs::PoseWit
   _des.cov(2, 2) = _src.covariance[5+30];
   return _des;
 }
+
+mrpt::poses::CPosePDFGaussianInf& mrpt_bridge::convert(const geometry_msgs::PoseWithCovariance& _src, mrpt::poses::CPosePDFGaussianInf& _des)
+{
+	mrpt::poses::CPosePDFGaussian mrpt_gaussian;
+	convert(_src, mrpt_gaussian); // intermediate transform: PoseWithCovariance => CPosePDFGaussian
+	_des.copyFrom(mrpt_gaussian);
+
+	return _des;
+}
+
 mrpt::poses::CQuaternionDouble&  mrpt_bridge::convert(const geometry_msgs::Quaternion& _src, mrpt::poses::CQuaternionDouble& _des)
 {
   _des.x(_src.x);
