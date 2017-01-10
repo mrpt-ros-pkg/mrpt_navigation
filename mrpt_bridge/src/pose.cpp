@@ -170,22 +170,25 @@ geometry_msgs::PoseWithCovariance& mrpt_bridge::convert(const mrpt::poses::CPose
   // Old comment: "MRPT uses non-fixed axis for 6x6 covariance: should use a transform Jacobian here!"
   //           JL ==> Nope! non-fixed z-y-x equals fixed x-y-z rotations.
 
-  for (int i = 0; i < 6; i++) {
-    for (int j = 0; j < 6; j++) {
-      double cov_val;
-      int ros_i = i;
-      int ros_j = j;
-      if (i > 2 || j > 2)
-        cov_val = 0;
-      else
-      {
-        ros_i = i == 2 ? 5 : i;
-        ros_j = j == 2 ? 5 : j;
-        cov_val = _src.cov(i, j);
-      }
-      _des.covariance[ros_i * 6 + ros_j] = cov_val;
-    }
-  }
+	// geometry_msgs/PoseWithCovariance msg stores the covariance matrix in row-major representation
+	// Indexes are :
+	// [ 0   1   2   3   4   5  ]
+	// [ 6   7   8   9   10  11 ]
+	// [ 12  13  14  15  16  17 ]
+	// [ 18  19  20  21  22  23 ]
+	// [ 24  25  26  27  28  29 ]
+	// [ 30  31  32  33  34  35 ]
+
+	_des.covariance[0]  = _src.cov(0, 0);
+	_des.covariance[1]  = _src.cov(0, 1);
+	_des.covariance[5]  = _src.cov(0, 2);
+	_des.covariance[6]  = _src.cov(1, 0);
+	_des.covariance[7]  = _src.cov(1, 1);
+	_des.covariance[11] = _src.cov(1, 2);
+	_des.covariance[30] = _src.cov(2, 0);
+	_des.covariance[31] = _src.cov(2, 1);
+	_des.covariance[35] = _src.cov(2, 2);
+
   return _des;
 }
 
