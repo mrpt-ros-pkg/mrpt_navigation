@@ -44,7 +44,7 @@ namespace mrpt_bridge {
 	}
 
 	/**
-   * @brief callback that is called by MRPT mrpt::utils::COuputLogger to refirect log messages to ROS logger.
+   * @brief callback that is called by MRPT mrpt::utils::COuputLogger to redirect log messages to ROS logger.
    * 	This function has to be inline, otherwise option log4j.logger.ros.package_name will be taken from mrpt_bridge
    *  instead of the package from which macro is actually called.
    */
