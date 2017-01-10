@@ -8,6 +8,15 @@
 	 +---------------------------------------------------------------------------+ */
 
 #include "mrpt_bridge/network_of_poses.h"
+#include "mrpt_bridge/pose.h"
+
+#include <geometry_msgs/Pose.h>
+#include <geometry_msgs/PoseWithCovariance.h>
+#include <mrpt_msgs/NodeIDWithPose.h>
+
+#include <mrpt/utils/types_simple.h>
+
+#include <iostream> // for debugging reasons
 
 namespace mrpt_bridge {
 
@@ -149,6 +158,18 @@ bool convert(
 		mrpt::graphs::CNetworkOfPoses3DInf& mrpt_graph) {
 	THROW_EXCEPTION("Conversion not yet implemented.");
 	MRPT_TODO("Implement mrpt_msgs::NetworkOfPoses => CNetworkOfPoses3DInf conversion.");
+}
+
+bool convert(
+		mrpt_msgs::NetworkOfPoses& ros_graph,
+		const mrpt::graphs::CNetworkOfPoses2D& mrpt_graph) {
+	THROW_EXCEPTION("Conversion not yet implemented.");
+}
+
+bool convert(
+		mrpt_msgs::NetworkOfPoses& ros_graph,
+		const mrpt::graphs::CNetworkOfPoses3D& mrpt_graph) {
+	THROW_EXCEPTION("Conversion not yet implemented.");
 }
 
 } // end of namespace

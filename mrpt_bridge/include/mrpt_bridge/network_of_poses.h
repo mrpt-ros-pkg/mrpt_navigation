@@ -15,19 +15,8 @@
 #ifndef NETWORK_OF_POSES_H
 #define NETWORK_OF_POSES_H
 
-#include <geometry_msgs/Pose.h>
-#include <geometry_msgs/PoseWithCovariance.h>
 #include <mrpt_msgs/NetworkOfPoses.h>
-#include <mrpt_msgs/NodeIDWithPose.h>
-
 #include <mrpt/graphs/CNetworkOfPoses.h>
-#include <mrpt/math/CMatrix.h>
-#include <mrpt/utils/types_simple.h>
-#include <mrpt/system/os.h>
-
-#include "mrpt_bridge/pose.h"
-
-#include <iostream> // for debugging reasons
 
 namespace mrpt_bridge {
 
@@ -61,6 +50,13 @@ bool convert(
  * \param[out] ros_graph MRPT graph representation
  */
 /**\{ */
+bool convert(
+		const mrpt::graphs::CNetworkOfPoses2D& mrpt_graph,
+		mrpt_msgs::NetworkOfPoses& ros_graph);
+
+bool convert(
+		const mrpt::graphs::CNetworkOfPoses3D& mrpt_graph,
+		mrpt_msgs::NetworkOfPoses& ros_graph);
 
 bool convert(
 		const mrpt_msgs::NetworkOfPoses& ros_graph,
