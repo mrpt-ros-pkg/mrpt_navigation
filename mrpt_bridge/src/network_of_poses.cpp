@@ -11,6 +11,10 @@
 
 namespace mrpt_bridge {
 
+///////////////////////////////////////////////////////////////////////////////////////////
+// MRPT => ROS
+///////////////////////////////////////////////////////////////////////////////////////////
+
 bool convert(
 		const mrpt::graphs::CNetworkOfPoses2DInf& mrpt_graph,
 		mrpt_msgs::NetworkOfPoses& ros_graph) {
@@ -18,6 +22,7 @@ bool convert(
 	using namespace mrpt::math;
 	using namespace mrpt::graphs;
 	using namespace mrpt::poses;
+	using namespace std;
 
 	typedef typename mrpt::graphs::CNetworkOfPoses2DInf::global_poses_t::const_iterator poses_cit_t;
 
@@ -61,6 +66,7 @@ bool convert(
 		else {
 			convert(constr_it->second, ros_constr.constraint);
 		}
+		mrpt::system::pause();
 
 		ros_graph.constraints.push_back(ros_constr);
 	}
@@ -72,6 +78,22 @@ bool convert(
 	THROW_EXCEPTION("Conversion not yet implemented.");
 	MRPT_TODO("Implement CNetworkOfPoses3DInf => mrpt_msgs::NetworkOfPoses conversion.");
 }
+
+bool convert(
+		const mrpt::graphs::CNetworkOfPoses2D& mrpt_graph,
+		mrpt_msgs::NetworkOfPoses& ros_graph) {
+	THROW_EXCEPTION("Conversion not yet implemented.");
+}
+
+bool convert(
+		const mrpt::graphs::CNetworkOfPoses3D& mrpt_graph,
+		mrpt_msgs::NetworkOfPoses& ros_graph) {
+	THROW_EXCEPTION("Conversion not yet implemented.");
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////
+// ROS => MRPT
+///////////////////////////////////////////////////////////////////////////////////////////
 
 bool convert(
 		const mrpt_msgs::NetworkOfPoses& ros_graph,

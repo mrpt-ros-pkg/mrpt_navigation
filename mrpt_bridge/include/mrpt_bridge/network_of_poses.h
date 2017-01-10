@@ -23,17 +23,27 @@
 #include <mrpt/graphs/CNetworkOfPoses.h>
 #include <mrpt/math/CMatrix.h>
 #include <mrpt/utils/types_simple.h>
+#include <mrpt/system/os.h>
 
 #include "mrpt_bridge/pose.h"
+
+#include <iostream> // for debugging reasons
 
 namespace mrpt_bridge {
 
 /**\name ROS \rightarrow MRPT conversions */
-/**\brief Convert [MRPT] CNetworkOfPoses*DInf \rightarrow [ROS] NetworkOfPoses.
+/**\brief Convert [MRPT] CNetworkOfPoses*D \rightarrow [ROS] NetworkOfPoses.
  * \param[in] mrpt_graph MRPT graph representation
  * \param[out] ros_graph ROS graph representation
  */
 /**\{*/
+bool convert(
+		const mrpt::graphs::CNetworkOfPoses2D& mrpt_graph,
+		mrpt_msgs::NetworkOfPoses& ros_graph);
+
+bool convert(
+		const mrpt::graphs::CNetworkOfPoses3D& mrpt_graph,
+		mrpt_msgs::NetworkOfPoses& ros_graph);
 
 bool convert(
 		const mrpt::graphs::CNetworkOfPoses2DInf& mrpt_graph,
