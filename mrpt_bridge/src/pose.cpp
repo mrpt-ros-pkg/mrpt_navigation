@@ -33,25 +33,37 @@
 #include <tf/tf.h>
 #include "mrpt_bridge/pose.h"
 
-mrpt::math::CMatrixDouble33& mrpt_bridge::convert(const tf::Matrix3x3& _src, mrpt::math::CMatrixDouble33& _des){
-    for(int r = 0; r < 3; r++)
-        for(int c = 0; c < 3; c++)
-            _des(r,c) = _src[r][c];
-    return _des;
+mrpt::math::CMatrixDouble33& mrpt_bridge::convert(
+		const tf::Matrix3x3& _src,
+		mrpt::math::CMatrixDouble33& _des){
+
+  for(int r = 0; r < 3; r++)
+    for(int c = 0; c < 3; c++)
+      _des(r,c) = _src[r][c];
+  return _des;
 }
 
-tf::Matrix3x3& mrpt_bridge::convert(const mrpt::math::CMatrixDouble33& _src, tf::Matrix3x3& _des){
-    for(int r = 0; r < 3; r++)
-        for(int c = 0; c < 3; c++)
-             _des[r][c] = _src(r,c);
-    return _des;
+tf::Matrix3x3& mrpt_bridge::convert(
+		const mrpt::math::CMatrixDouble33& _src,
+		tf::Matrix3x3& _des){
+
+  for(int r = 0; r < 3; r++)
+    for(int c = 0; c < 3; c++)
+      _des[r][c] = _src(r,c);
+  return _des;
 }
 
-tf::Transform& mrpt_bridge::convert(const mrpt::poses::CPose3DPDFGaussian& _src, tf::Transform& _des){
-    return convert(_src.mean, _des);
+tf::Transform& mrpt_bridge::convert(
+		const mrpt::poses::CPose3DPDFGaussian& _src,
+		tf::Transform& _des){
+
+  return convert(_src.mean, _des);
 }
 
-geometry_msgs::PoseWithCovariance& mrpt_bridge::convert(const mrpt::poses::CPose3DPDFGaussian& _src, geometry_msgs::PoseWithCovariance& _des) {
+geometry_msgs::PoseWithCovariance& mrpt_bridge::convert(
+		const mrpt::poses::CPose3DPDFGaussian& _src,
+		geometry_msgs::PoseWithCovariance& _des) {
+
   convert(_src.mean, _des.pose);
 
   // Read REP103: http://ros.org/reps/rep-0103.html#covariance-representation
@@ -85,23 +97,28 @@ geometry_msgs::PoseWithCovariance& mrpt_bridge::convert(
 
 }
 
-tf::Transform& mrpt_bridge::convert(const mrpt::poses::CPose3D& _src, tf::Transform& _des) {
-    tf::Vector3 origin(_src[0], _src[1], _src[2]);
-    mrpt::math::CMatrixDouble33 R;
-    _src.getRotationMatrix(R);
-    tf::Matrix3x3 basis;
-    _des.setBasis(convert(R,basis));
-    _des.setOrigin(origin);
-    return _des;
+tf::Transform& mrpt_bridge::convert(
+		const mrpt::poses::CPose3D& _src,
+		tf::Transform& _des) {
+
+  tf::Vector3 origin(_src[0], _src[1], _src[2]);
+  mrpt::math::CMatrixDouble33 R;
+  _src.getRotationMatrix(R);
+  tf::Matrix3x3 basis;
+  _des.setBasis(convert(R,basis));
+  _des.setOrigin(origin);
+
+  return _des;
 }
 mrpt::poses::CPose3D& mrpt_bridge::convert(const tf::Transform& _src, mrpt::poses::CPose3D& _des){
-    const tf::Vector3 &t = _src.getOrigin();
-    _des.x() = t[0], _des.y() = t[1], _des.z() = t[2];
-    const tf::Matrix3x3 &basis = _src.getBasis();
-    mrpt::math::CMatrixDouble33 R;
-    convert(basis, R);
-    _des.setRotationMatrix(R);
-    return _des;
+  const tf::Vector3 &t = _src.getOrigin();
+  _des.x() = t[0], _des.y() = t[1], _des.z() = t[2];
+  const tf::Matrix3x3 &basis = _src.getBasis();
+  mrpt::math::CMatrixDouble33 R;
+  convert(basis, R);
+  _des.setRotationMatrix(R);
+
+  return _des;
 }
 
 geometry_msgs::Pose& mrpt_bridge::convert(const mrpt::poses::CPose3D& _src, geometry_msgs::Pose& _des)
@@ -117,6 +134,7 @@ geometry_msgs::Pose& mrpt_bridge::convert(const mrpt::poses::CPose3D& _src, geom
   _des.orientation.y = q.y();
   _des.orientation.z = q.z();
   _des.orientation.w = q.r();
+
   return _des;
 }
 
@@ -144,6 +162,7 @@ geometry_msgs::Pose& mrpt_bridge::convert(const mrpt::poses::CPose2D& _src, geom
     _des.orientation.z = s;
     _des.orientation.w = c;
   }
+
   return _des;
 }
 
@@ -159,6 +178,7 @@ mrpt::poses::CPose2D& mrpt_bridge::convert(const geometry_msgs::Pose& _src, mrpt
   quat.rpy(roll, pitch, yaw);
 
   _des.phi(yaw);
+
   return _des;
 }
 
@@ -192,8 +212,9 @@ geometry_msgs::PoseWithCovariance& mrpt_bridge::convert(const mrpt::poses::CPose
   return _des;
 }
 
-geometry_msgs::PoseWithCovariance& mrpt_bridge::convert(const mrpt::poses::CPosePDFGaussianInf& _src, geometry_msgs::PoseWithCovariance& _des)
-{
+geometry_msgs::PoseWithCovariance& mrpt_bridge::convert(
+		const mrpt::poses::CPosePDFGaussianInf& _src,
+		geometry_msgs::PoseWithCovariance& _des) {
 	mrpt::poses::CPosePDFGaussian mrpt_gaussian;
 	mrpt_gaussian.copyFrom(_src);
 
@@ -202,8 +223,9 @@ geometry_msgs::PoseWithCovariance& mrpt_bridge::convert(const mrpt::poses::CPose
 }
 
 
-mrpt::poses::CPose3DPDFGaussian& mrpt_bridge::convert(const geometry_msgs::PoseWithCovariance& _src, mrpt::poses::CPose3DPDFGaussian& _des)
-{
+mrpt::poses::CPose3DPDFGaussian& mrpt_bridge::convert(
+		const geometry_msgs::PoseWithCovariance& _src,
+		mrpt::poses::CPose3DPDFGaussian& _des) {
   convert(_src.pose, _des.mean);
 
   const unsigned int indxs_map[6] = {0, 1, 2, 5, 4, 3};
@@ -217,7 +239,10 @@ mrpt::poses::CPose3DPDFGaussian& mrpt_bridge::convert(const geometry_msgs::PoseW
   return _des;
 }
 
-mrpt::poses::CPose3DPDFGaussianInf& mrpt_bridge::convert(const geometry_msgs::PoseWithCovariance& _src, mrpt::poses::CPose3DPDFGaussianInf& _des) {
+mrpt::poses::CPose3DPDFGaussianInf& mrpt_bridge::convert(
+		const geometry_msgs::PoseWithCovariance& _src,
+		mrpt::poses::CPose3DPDFGaussianInf& _des) {
+
 	mrpt::poses::CPose3DPDFGaussian mrpt_gaussian;
 	convert(_src, mrpt_gaussian); // Intermediate transform => CPose3DPDFGaussian
 	_des.copyFrom(mrpt_gaussian);
@@ -225,9 +250,12 @@ mrpt::poses::CPose3DPDFGaussianInf& mrpt_bridge::convert(const geometry_msgs::Po
 	return _des;
 }
 
-mrpt::poses::CPosePDFGaussian& mrpt_bridge::convert(const geometry_msgs::PoseWithCovariance& _src, mrpt::poses::CPosePDFGaussian& _des)
-{
+mrpt::poses::CPosePDFGaussian& mrpt_bridge::convert(
+		const geometry_msgs::PoseWithCovariance& _src,
+		mrpt::poses::CPosePDFGaussian& _des) {
+
   convert(_src.pose, _des.mean);
+
   _des.cov(0, 0) = _src.covariance[0];
   _des.cov(0, 1) = _src.covariance[1];
   _des.cov(0, 2) = _src.covariance[5];
@@ -237,11 +265,14 @@ mrpt::poses::CPosePDFGaussian& mrpt_bridge::convert(const geometry_msgs::PoseWit
   _des.cov(2, 0) = _src.covariance[0+30];
   _des.cov(2, 1) = _src.covariance[1+30];
   _des.cov(2, 2) = _src.covariance[5+30];
+
   return _des;
 }
 
-mrpt::poses::CPosePDFGaussianInf& mrpt_bridge::convert(const geometry_msgs::PoseWithCovariance& _src, mrpt::poses::CPosePDFGaussianInf& _des)
-{
+mrpt::poses::CPosePDFGaussianInf& mrpt_bridge::convert(
+		const geometry_msgs::PoseWithCovariance& _src,
+		mrpt::poses::CPosePDFGaussianInf& _des) {
+
 	mrpt::poses::CPosePDFGaussian mrpt_gaussian;
 	convert(_src, mrpt_gaussian); // intermediate transform: PoseWithCovariance => CPosePDFGaussian
 	_des.copyFrom(mrpt_gaussian);
@@ -249,8 +280,9 @@ mrpt::poses::CPosePDFGaussianInf& mrpt_bridge::convert(const geometry_msgs::Pose
 	return _des;
 }
 
-mrpt::poses::CQuaternionDouble&  mrpt_bridge::convert(const geometry_msgs::Quaternion& _src, mrpt::poses::CQuaternionDouble& _des)
-{
+mrpt::poses::CQuaternionDouble&  mrpt_bridge::convert(
+		const geometry_msgs::Quaternion& _src,
+		mrpt::poses::CQuaternionDouble& _des) {
   _des.x(_src.x);
   _des.y(_src.y);
   _des.z(_src.z);
@@ -258,19 +290,30 @@ mrpt::poses::CQuaternionDouble&  mrpt_bridge::convert(const geometry_msgs::Quate
   return _des;
 }
 
-geometry_msgs::Quaternion& mrpt_bridge::convert(const mrpt::poses::CQuaternionDouble& _src, geometry_msgs::Quaternion& _des)
-{
+geometry_msgs::Quaternion& mrpt_bridge::convert(
+		const mrpt::poses::CQuaternionDouble& _src,
+		geometry_msgs::Quaternion& _des) {
+
   _des.x=_src.x();
   _des.y=_src.y();
   _des.z=_src.z();
   _des.w=_src.r();
+
   return _des;
 }
 
-mrpt::poses::CPose3D& mrpt_bridge::convert(const geometry_msgs::Pose& _src, mrpt::poses::CPose3D& _des)
-{
-  const mrpt::math::CQuaternionDouble q(_src.orientation.w, _src.orientation.x, _src.orientation.y, _src.orientation.z);
-    _des= mrpt::poses::CPose3D(q,_src.position.x,_src.position.y,_src.position.z);
-    return _des;
+mrpt::poses::CPose3D& mrpt_bridge::convert(
+		const geometry_msgs::Pose& _src,
+		mrpt::poses::CPose3D& _des) {
+
+  const mrpt::math::CQuaternionDouble q(
+  		_src.orientation.w,
+  		_src.orientation.x,
+  		_src.orientation.y,
+  		_src.orientation.z);
+  _des= mrpt::poses::CPose3D(q,
+  		_src.position.x, _src.position.y, _src.position.z);
+
+  return _des;
 }
 
