@@ -2,40 +2,40 @@
 <package>
   <name>mrpt_localization</name>
   <version>0.1.16</version>
-  <description>This package uses dynamic or static (MRPT or ROS) maps for 2D 
-   self-localization. The interface is similar to amcl (http://wiki.ros.org/amcl) 
-   but supports different particle-filter algorithms, several grid maps at 
+  <description>This package uses dynamic or static (MRPT or ROS) maps for 2D
+   self-localization. The interface is similar to amcl (http://wiki.ros.org/amcl)
+   but supports different particle-filter algorithms, several grid maps at
    different heights, range-only localization, etc.</description>
 
   <url type="website">http://www.mrpt.org/</url>
   <maintainer email="markus.bader@tuwien.ac.at">Markus Bader</maintainer>
   <author>Markus Bader</author>
   <author email="raffi.z@gmail.com">Raphael Zack</author>
-  <license>BSD</license>  
+  <license>BSD</license>
 
 
   <license>BSD</license>
   <url>http://wiki.ros.org/mrpt_localization</url>
-  
+
   <buildtool_depend>catkin</buildtool_depend>
 
   <build_depend>roscpp</build_depend>
-  <build_depend>rospy</build_depend>
   <build_depend>tf</build_depend>
   <build_depend>std_msgs</build_depend>
   <build_depend>sensor_msgs</build_depend>
   <build_depend>nav_msgs</build_depend>
+  <build_depend>mrpt_msgs</build_depend>
   <build_depend>mrpt_bridge</build_depend>
   <build_depend>pose_cov_ops</build_depend>
   <build_depend>dynamic_reconfigure</build_depend>
   <build_depend>mrpt</build_depend> <!-- Depend on mrpt system pkgs -->
 
   <run_depend>roscpp</run_depend>
-  <run_depend>rospy</run_depend>
   <run_depend>tf</run_depend>
   <run_depend>std_msgs</run_depend>
   <run_depend>sensor_msgs</run_depend>
   <run_depend>nav_msgs</run_depend>
+  <run_depend>mrpt_msgs</run_depend>
   <run_depend>mrpt_bridge</run_depend>
   <run_depend>pose_cov_ops</run_depend>
   <run_depend>dynamic_reconfigure</run_depend>
