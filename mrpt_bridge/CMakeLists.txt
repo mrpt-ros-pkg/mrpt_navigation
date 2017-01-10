@@ -5,13 +5,12 @@ project(mrpt_bridge)
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
-    roscpp tf pcl_conversions message_generation
-    std_msgs geometry_msgs sensor_msgs mrpt_msgs nav_msgs)
+	geometry_msgs message_generation mrpt_msgs nav_msgs
+	pcl_conversions roscpp sensor_msgs std_msgs  tf )
 
 ## System dependencies are found with CMake's conventions
 find_package(PCL 1.3 REQUIRED COMPONENTS common io)
 include_directories(${PCL_INCLUDE_DIRS})
-link_directories(${PCL_LIBRARY_DIRS})
 add_definitions(${PCL_DEFINITIONS})
 
 find_package(MRPT REQUIRED base obs maps slam)
@@ -27,8 +26,8 @@ find_package(MRPT REQUIRED base obs maps slam)
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
   INCLUDE_DIRS include
-  LIBRARIES mrpt_bridge
-  CATKIN_DEPENDS message_runtime std_msgs geometry_msgs sensor_msgs mrpt_msgs nav_msgs
+  LIBRARIES ${PROJECT_NAME}
+  CATKIN_DEPENDS geometry_msgs message_runtime mrpt_msgs nav_msgs sensor_msgs std_msgs
 #  DEPENDS pcl mrpt  # opencv
 )
 
@@ -41,15 +40,15 @@ catkin_package(
 include_directories(include ${catkin_INCLUDE_DIRS})
 
 ## Declare a cpp library
-add_library(${PROJECT_NAME} 
-  src/pose.cpp 
-  src/point_cloud.cpp 
-  src/point_cloud2.cpp 
-  src/laser_scan.cpp
-  src/map.cpp
-  src/beacon.cpp
-  src/landmark.cpp
-  src/network_of_poses.cpp
+add_library(${PROJECT_NAME}
+	src/beacon.cpp
+	src/landmark.cpp
+	src/laser_scan.cpp
+	src/map.cpp
+	src/network_of_poses.cpp
+  src/point_cloud.cpp
+  src/point_cloud2.cpp
+	src/pose.cpp
 )
 
 ## Declare a cpp executable
@@ -62,7 +61,7 @@ add_dependencies(${PROJECT_NAME}
 )
 
 ## Specify libraries to link a library or executable target against
-target_link_libraries(${PROJECT_NAME} 
+target_link_libraries(${PROJECT_NAME}
    ${catkin_LIBRARIES}
    ${MRPT_LIBS}
 )
@@ -75,7 +74,7 @@ target_link_libraries(${PROJECT_NAME}
 # See http://ros.org/doc/api/catkin/html/adv_user_guide/variables.html
 
 ## Mark executables and/or libraries for installation
-install(TARGETS ${PROJECT_NAME} 
+install(TARGETS ${PROJECT_NAME}
   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}

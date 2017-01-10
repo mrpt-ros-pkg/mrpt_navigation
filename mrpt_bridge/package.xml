@@ -2,7 +2,7 @@
 <package>
   <name>mrpt_bridge</name>
   <version>0.1.16</version>
-  <description>The mrpt_bridge package</description>
+  <description>C++ libraries to convert between ROS and MRPT classes and messages</description>
 
   <maintainer email="jlblanco@ual.es">Jose-Luis Blanco-Claraco</maintainer>
   <author email="markus.bader@tuwien.ac.at">Markus Bader</author>

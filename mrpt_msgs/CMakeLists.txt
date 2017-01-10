@@ -19,7 +19,7 @@ add_message_files(
   )
 
 
- add_service_files(
+add_service_files(
    DIRECTORY srv
    FILES
    GetCMGraph.srv
