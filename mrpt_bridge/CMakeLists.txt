@@ -49,6 +49,7 @@ add_library(${PROJECT_NAME}
   src/map.cpp
   src/beacon.cpp
   src/landmark.cpp
+  src/network_of_poses.cpp
 )
 
 ## Declare a cpp executable
