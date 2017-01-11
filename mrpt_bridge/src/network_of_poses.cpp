@@ -14,8 +14,6 @@
 #include <geometry_msgs/PoseWithCovariance.h>
 #include <mrpt_msgs/NodeIDWithPose.h>
 
-#include <mrpt/utils/types_simple.h>
-
 #include <iostream> // for debugging reasons
 
 namespace mrpt_bridge {

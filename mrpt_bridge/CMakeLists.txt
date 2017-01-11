@@ -14,7 +14,7 @@ include_directories(${PCL_INCLUDE_DIRS})
 link_directories(${PCL_LIBRARY_DIRS})
 add_definitions(${PCL_DEFINITIONS})
 
-find_package(MRPT REQUIRED base obs maps slam)
+find_package(MRPT REQUIRED base obs graphs maps slam)
 
 ###################################
 ## catkin specific configuration ##
@@ -41,10 +41,10 @@ catkin_package(
 include_directories(include ${catkin_INCLUDE_DIRS})
 
 ## Declare a cpp library
-add_library(${PROJECT_NAME} 
-  src/pose.cpp 
-  src/point_cloud.cpp 
-  src/point_cloud2.cpp 
+add_library(${PROJECT_NAME}
+  src/pose.cpp
+  src/point_cloud.cpp
+  src/point_cloud2.cpp
   src/laser_scan.cpp
   src/map.cpp
   src/beacon.cpp
@@ -62,7 +62,7 @@ add_dependencies(${PROJECT_NAME}
 )
 
 ## Specify libraries to link a library or executable target against
-target_link_libraries(${PROJECT_NAME} 
+target_link_libraries(${PROJECT_NAME}
    ${catkin_LIBRARIES}
    ${MRPT_LIBS}
 )
@@ -75,7 +75,7 @@ target_link_libraries(${PROJECT_NAME}
 # See http://ros.org/doc/api/catkin/html/adv_user_guide/variables.html
 
 ## Mark executables and/or libraries for installation
-install(TARGETS ${PROJECT_NAME} 
+install(TARGETS ${PROJECT_NAME}
   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
