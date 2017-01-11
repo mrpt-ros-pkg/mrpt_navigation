@@ -40,7 +40,7 @@ bool convert(
 
 	// fill root node
 	ros_graph.root = mrpt_graph.root;
-	
+
 	// fill nodeIDs, positions
 	for (poses_cit_t poses_cit = mrpt_graph.nodes.begin();
 			poses_cit != mrpt_graph.nodes.end();
@@ -75,7 +75,7 @@ bool convert(
 		else {
 			convert(constr_it->second, ros_constr.constraint);
 		}
-		mrpt::system::pause();
+		//mrpt::system::pause();
 
 		ros_graph.constraints.push_back(ros_constr);
 	}
@@ -141,7 +141,7 @@ bool convert(
 		TPairNodeIDs constr_ends(make_pair(
 					static_cast<TNodeID>(constr_cit->nodeID_from),
 					static_cast<TNodeID>(constr_cit->nodeID_to)));
-		
+
 		// constraint value
 		mrpt::poses::CPosePDFGaussianInf mrpt_constr;
 		convert(constr_cit->constraint, mrpt_constr);
@@ -173,5 +173,3 @@ bool convert(
 }
 
 } // end of namespace
-
-
