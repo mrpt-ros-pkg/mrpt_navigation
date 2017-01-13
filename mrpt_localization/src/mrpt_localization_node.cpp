@@ -377,8 +377,12 @@ void PFLocalizationNode::callbackInitialpose(const geometry_msgs::PoseWithCovari
 void PFLocalizationNode::callbackOdometry(const nav_msgs::Odometry& _msg)
 {
   if (param()->update_while_stopped ||  // always update the filter, regardless robot is moving or not
-      _msg.twist.twist.linear.x != 0.0 || _msg.twist.twist.linear.y != 0.0 || _msg.twist.twist.linear.z != 0.0 ||
-      _msg.twist.twist.angular.x != 0.0 || _msg.twist.twist.angular.y != 0.0 || _msg.twist.twist.angular.z != 0.0)
+      std::abs(_msg.twist.twist.linear.x) > 1e-3 ||
+      std::abs(_msg.twist.twist.linear.y) > 1e-3 ||
+      std::abs(_msg.twist.twist.linear.z) > 1e-3 ||
+      std::abs(_msg.twist.twist.angular.x) > 1e-3 ||
+      std::abs(_msg.twist.twist.angular.y) > 1e-3 ||
+      std::abs(_msg.twist.twist.angular.z) > 1e-3)
     // update filter if update_while_stopped is true, we are moving or at initialization (100 first iterations)
     update_filter_ = true;
   else if (state_ == RUN && update_counter_ >= 100)
