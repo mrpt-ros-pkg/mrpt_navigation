@@ -49,7 +49,7 @@ add_library(${PROJECT_NAME}
 	src/point_cloud.cpp
 	src/point_cloud2.cpp
 	src/pose.cpp
-)
+    )
 
 ## Declare a cpp executable
 

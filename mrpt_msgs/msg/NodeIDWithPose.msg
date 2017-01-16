@@ -4,4 +4,3 @@
 
 uint64 nodeID
 geometry_msgs/Pose pose
-
