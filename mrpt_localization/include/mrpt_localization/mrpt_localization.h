@@ -43,9 +43,9 @@ public:
     Parameters(PFLocalization *p);
     bool debug;
     bool gui_mrpt;
-    std::string iniFile;
-    std::string mapFile;
-    std::string sensorSources; //!< A list of topics (e.g. laser scanners) to subscribe to for sensory data. Split with "," (e.g. "laser1,laser2")
+    std::string ini_file;
+    std::string map_file;
+    std::string sensor_sources; //!< A list of topics (e.g. laser scanners) to subscribe to for sensory data. Split with "," (e.g. "laser1,laser2")
     bool *use_motion_model_default_options;
     CActionRobotMovement2D::TMotionModelOptions *motion_model_options;
     CActionRobotMovement2D::TMotionModelOptions *motion_model_default_options;

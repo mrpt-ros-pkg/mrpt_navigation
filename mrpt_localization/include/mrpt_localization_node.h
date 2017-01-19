@@ -73,18 +73,20 @@ public:
     Parameters(PFLocalizationNode *p);
     ros::NodeHandle node;
     void callbackParameters(mrpt_localization::MotionConfig &config, uint32_t level);
-    dynamic_reconfigure::Server<mrpt_localization::MotionConfig> reconfigureServer_;
-    dynamic_reconfigure::Server<mrpt_localization::MotionConfig>::CallbackType reconfigureFnc_;
+    dynamic_reconfigure::Server<mrpt_localization::MotionConfig> reconfigure_server_;
+    dynamic_reconfigure::Server<mrpt_localization::MotionConfig>::CallbackType reconfigure_cb_;
     void update(const unsigned long &loop_count);
     double rate;
-    double transform_tolerance;
+    double transform_tolerance;  ///< projection into the future added to the published tf to extend its validity
+    double no_update_tolerance;  ///< maximum time without updating we keep using filter time instead of Time::now
+    double no_inputs_tolerance;  ///< maximum time without any observation we wait before start complaining
     int parameter_update_skip;
     int particlecloud_update_skip;
     int map_update_skip;
     std::string tf_prefix;
+    std::string base_frame_id;
     std::string odom_frame_id;
     std::string global_frame_id;
-    std::string base_frame_id;
     bool update_while_stopped;
     bool pose_broadcast;
     bool tf_broadcast;
@@ -105,28 +107,30 @@ public:
   void publishPose();
 
 private:
-  //functions
-  Parameters *param();
-  void update();
-  void updateSensorPose(std::string frame_id);
-
-  bool update_filter_;
-  ros::Subscriber subInitPose_;
-  ros::Subscriber subOdometry_;
-  std::vector<ros::Subscriber> subSensors_;
-  ros::Subscriber subMap_;
-  ros::ServiceClient clientMap_;
-  ros::Publisher pub_Particles_;
+  ros::NodeHandle nh_;
+  ros::Time time_last_input_;
+  unsigned long long loop_count_;
+  nav_msgs::GetMap::Response resp_;
+  ros::Subscriber sub_init_pose_;
+  ros::Subscriber sub_odometry_;
+  std::vector<ros::Subscriber> sub_sensors_;
+  ros::Subscriber sub_map_;
+  ros::ServiceClient client_map_;
+  ros::Publisher pub_particles_;
   ros::Publisher pub_map_;
   ros::Publisher pub_metadata_;
   ros::Publisher pub_pose_;
   ros::ServiceServer service_map_;
-  tf::TransformListener listenerTF_;
+  tf::TransformListener tf_listener_;
   tf::TransformBroadcaster tf_broadcaster_;
   std::map<std::string, mrpt::poses::CPose3D> laser_poses_;
   std::map<std::string, mrpt::poses::CPose3D> beacon_poses_;
-  ros::NodeHandle n_;
-  unsigned long loop_count_;
+
+  // methods
+  Parameters *param();
+  void update();
+  void updateSensorPose(std::string frame_id);
+
   void publishParticles();
   void useROSLogLevel();
 
@@ -136,8 +140,6 @@ private:
   bool mapCallback(nav_msgs::GetMap::Request &req, nav_msgs::GetMap::Response &res);
   void publishMap();
   virtual bool waitForMap();
-  nav_msgs::GetMap::Response resp_;
-
 };
 
 #endif // MRPT_LOCALIZATION_NODE_H

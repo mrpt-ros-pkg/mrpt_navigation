@@ -54,8 +54,8 @@
 int main(int argc, char **argv)
 {
   ros::init(argc, argv, "localization");
-  ros::NodeHandle n;
-  PFLocalizationNode my_node(n);
+  ros::NodeHandle nh;
+  PFLocalizationNode my_node(nh);
   my_node.init();
   my_node.loop();
   return 0;
@@ -66,7 +66,7 @@ PFLocalizationNode::~PFLocalizationNode()
 }
 
 PFLocalizationNode::PFLocalizationNode(ros::NodeHandle &n) :
-    PFLocalization(new PFLocalizationNode::Parameters(this)), n_(n), loop_count_(0), update_filter_(true)
+    PFLocalization(new PFLocalizationNode::Parameters(this)), nh_(n), loop_count_(0)
 {
 }
 
@@ -81,46 +81,46 @@ void PFLocalizationNode::init()
   useROSLogLevel();
 
   PFLocalization::init();
-  subInitPose_ = n_.subscribe("initialpose", 1, &PFLocalizationNode::callbackInitialpose, this);
+  sub_init_pose_ = nh_.subscribe("initialpose", 1, &PFLocalizationNode::callbackInitialpose, this);
 
-  subOdometry_ = n_.subscribe("odom", 1, &PFLocalizationNode::callbackOdometry, this);
+  sub_odometry_ = nh_.subscribe("odom", 1, &PFLocalizationNode::callbackOdometry, this);
 
   // Subscribe to one or more laser sources:
-  std::vector<std::string> lstSources;
-  mrpt::system::tokenize(param()->sensorSources, " ,\t\n", lstSources);
+  std::vector<std::string> sources;
+  mrpt::system::tokenize(param()->sensor_sources, " ,\t\n", sources);
   ROS_ASSERT_MSG(
-      !lstSources.empty(),
+      !sources.empty(),
       "*Fatal*: At least one sensor source must be provided in ~sensor_sources (e.g. \"scan\" or \"beacon\")");
-  subSensors_.resize(lstSources.size());
-  for (size_t i = 0; i < lstSources.size(); i++)
+  sub_sensors_.resize(sources.size());
+  for (size_t i = 0; i < sources.size(); i++)
   {
-    if (lstSources[i].find("scan") != std::string::npos)
+    if (sources[i].find("scan") != std::string::npos)
     {
-      subSensors_[i] = n_.subscribe(lstSources[i], 1, &PFLocalizationNode::callbackLaser, this);
+      sub_sensors_[i] = nh_.subscribe(sources[i], 1, &PFLocalizationNode::callbackLaser, this);
     }
-    else if (lstSources[i].find("beacon") != std::string::npos)
+    else if (sources[i].find("beacon") != std::string::npos)
     {
-      subSensors_[i] = n_.subscribe(lstSources[i], 1, &PFLocalizationNode::callbackBeacon, this);
+      sub_sensors_[i] = nh_.subscribe(sources[i], 1, &PFLocalizationNode::callbackBeacon, this);
     }
     else
     {
-      subSensors_[i] = n_.subscribe(lstSources[i], 1, &PFLocalizationNode::callbackRobotPose, this);
+      sub_sensors_[i] = nh_.subscribe(sources[i], 1, &PFLocalizationNode::callbackRobotPose, this);
     }
   }
 
-  if (!param()->mapFile.empty())
+  if (!param()->map_file.empty())
   {
     if (metric_map_.m_gridMaps.size())
     {
       mrpt_bridge::convert(*metric_map_.m_gridMaps[0], resp_.map);
     }
-    pub_map_ = n_.advertise<nav_msgs::OccupancyGrid>("map", 1, true);
-    pub_metadata_ = n_.advertise<nav_msgs::MapMetaData>("map_metadata", 1, true);
-    service_map_ = n_.advertiseService("static_map", &PFLocalizationNode::mapCallback, this);
+    pub_map_ = nh_.advertise<nav_msgs::OccupancyGrid>("map", 1, true);
+    pub_metadata_ = nh_.advertise<nav_msgs::MapMetaData>("map_metadata", 1, true);
+    service_map_ = nh_.advertiseService("static_map", &PFLocalizationNode::mapCallback, this);
   }
-  pub_Particles_ = n_.advertise<geometry_msgs::PoseArray>("particlecloud", 1, true);
+  pub_particles_ = nh_.advertise<geometry_msgs::PoseArray>("particlecloud", 1, true);
 
-  pub_pose_ = n_.advertise<geometry_msgs::PoseWithCovarianceStamped>("mrpt_pose", 2, true);
+  pub_pose_ = nh_.advertise<geometry_msgs::PoseWithCovarianceStamped>("mrpt_pose", 2, true);
 }
 
 void PFLocalizationNode::loop()
@@ -135,8 +135,9 @@ void PFLocalizationNode::loop()
       publishParticles();
     if (param()->tf_broadcast) // tf always needed
       publishTF();
-    if (param()->pose_broadcast && update_filter_)
+    if (param()->pose_broadcast && state_ == RUN)
       publishPose();
+
     ros::spinOnce();
     rate.sleep();
   }
@@ -149,8 +150,8 @@ bool PFLocalizationNode::waitForTransform(mrpt::poses::CPose3D &des, const std::
   tf::StampedTransform transform;
   try
   {
-    listenerTF_.waitForTransform(target_frame, source_frame, time, timeout, polling_sleep_duration);
-    listenerTF_.lookupTransform(target_frame, source_frame, time, transform);
+    tf_listener_.waitForTransform(target_frame, source_frame, time, timeout, polling_sleep_duration);
+    tf_listener_.lookupTransform(target_frame, source_frame, time, transform);
   }
   catch (tf::TransformException& e)
   {
@@ -171,6 +172,8 @@ void PFLocalizationNode::callbackLaser(const sensor_msgs::LaserScan &_msg)
   using namespace mrpt::slam;
 #endif
 
+  time_last_input_ = ros::Time::now();
+
   //ROS_INFO("callbackLaser");
   CObservation2DRangeScanPtr laser = CObservation2DRangeScan::Create();
 
@@ -179,7 +182,7 @@ void PFLocalizationNode::callbackLaser(const sensor_msgs::LaserScan &_msg)
   {
     updateSensorPose(_msg.header.frame_id);
   }
-  else if (update_filter_) // updating filter; we must be moving or update_while_stopped set to true
+  else if (state_ != IDLE) // updating filter; we must be moving or update_while_stopped set to true
   {
     //mrpt::poses::CPose3D pose = laser_poses_[_msg.header.frame_id];
     //ROS_INFO("LASER POSE %4.3f, %4.3f, %4.3f, %4.3f, %4.3f, %4.3f",  pose.x(), pose.y(), pose.z(), pose.roll(), pose.pitch(), pose.yaw());
@@ -206,6 +209,8 @@ void PFLocalizationNode::callbackBeacon(const mrpt_msgs::ObservationRangeBeacon 
   using namespace mrpt::slam;
 #endif
 
+  time_last_input_ = ros::Time::now();
+
   //ROS_INFO("callbackBeacon");
   CObservationBeaconRangesPtr beacon = CObservationBeaconRanges::Create();
   //printf("callbackBeacon %s\n", _msg.header.frame_id.c_str());
@@ -213,7 +218,7 @@ void PFLocalizationNode::callbackBeacon(const mrpt_msgs::ObservationRangeBeacon 
   {
     updateSensorPose(_msg.header.frame_id);
   }
-  else if (update_filter_) // updating filter; we must be moving or update_while_stopped set to true
+  else if (state_ != IDLE) // updating filter; we must be moving or update_while_stopped set to true
   {
     //mrpt::poses::CPose3D pose = beacon_poses_[_msg.header.frame_id];
     //ROS_INFO("BEACON POSE %4.3f, %4.3f, %4.3f, %4.3f, %4.3f, %4.3f",  pose.x(), pose.y(), pose.z(), pose.roll(), pose.pitch(), pose.yaw());
@@ -237,18 +242,20 @@ void PFLocalizationNode::callbackRobotPose(const geometry_msgs::PoseWithCovarian
   using namespace mrpt::maps;
   using namespace mrpt::obs;
 
-  // Robot pose externally provided; update filter regardless update_filter_ flag's value, as these
+  time_last_input_ = ros::Time::now();
+
+  // Robot pose externally provided; we update filter regardless state_ attribute's value, as these
   // corrections are typically independent from robot motion (e.g. inputs from GPS or tracking system)
   // XXX admittedly an arbitrary choice; feel free to open an issue if you think it doesn't make sense
 
-  std::string base_frame_id = tf::resolve(param()->tf_prefix, param()->base_frame_id);
-  std::string global_frame_id = tf::resolve(param()->tf_prefix, param()->global_frame_id);
+  static std::string base_frame_id = tf::resolve(param()->tf_prefix, param()->base_frame_id);
+  static std::string global_frame_id = tf::resolve(param()->tf_prefix, param()->global_frame_id);
 
   tf::StampedTransform map_to_obs_tf;
   try
   {
-    listenerTF_.waitForTransform(global_frame_id, _msg.header.frame_id, ros::Time(0.0), ros::Duration(0.5));
-    listenerTF_.lookupTransform(global_frame_id, _msg.header.frame_id, ros::Time(0.0), map_to_obs_tf);
+    tf_listener_.waitForTransform(global_frame_id, _msg.header.frame_id, ros::Time(0.0), ros::Duration(0.5));
+    tf_listener_.lookupTransform(global_frame_id, _msg.header.frame_id, ros::Time(0.0), map_to_obs_tf);
   }
   catch (tf::TransformException& ex)
   {
@@ -315,9 +322,9 @@ bool PFLocalizationNode::waitForMap()
 {
   int wait_counter = 0;
   int wait_limit = 1;
-  clientMap_ = n_.serviceClient<nav_msgs::GetMap>("static_map");
+  client_map_ = nh_.serviceClient<nav_msgs::GetMap>("static_map");
   nav_msgs::GetMap srv;
-  while (!clientMap_.call(srv) && ros::ok() && wait_counter < wait_limit)
+  while (!client_map_.call(srv) && ros::ok() && wait_counter < wait_limit)
   {
     ROS_INFO("waiting for map service!");
     sleep(1);
@@ -327,12 +334,12 @@ bool PFLocalizationNode::waitForMap()
   {
     ROS_INFO_STREAM("Map service complete.");
     updateMap(srv.response.map);
-    clientMap_.shutdown();
+    client_map_.shutdown();
     return true;
   }
 
   ROS_WARN_STREAM("No map received.");
-  clientMap_.shutdown();
+  client_map_.shutdown();
   return false;
 }
 
@@ -343,7 +350,7 @@ void PFLocalizationNode::updateSensorPose(std::string _frame_id)
   try
   {
     std::string base_frame_id = tf::resolve(param()->tf_prefix, param()->base_frame_id);
-    listenerTF_.lookupTransform(base_frame_id, _frame_id, ros::Time(0), transform);
+    tf_listener_.lookupTransform(base_frame_id, _frame_id, ros::Time(0), transform);
     tf::Vector3 translation = transform.getOrigin();
     tf::Quaternion quat = transform.getRotation();
     pose.x() = translation.x();
@@ -369,24 +376,29 @@ void PFLocalizationNode::updateSensorPose(std::string _frame_id)
 void PFLocalizationNode::callbackInitialpose(const geometry_msgs::PoseWithCovarianceStamped& _msg)
 {
   const geometry_msgs::PoseWithCovariance &pose = _msg.pose;
-  mrpt_bridge::convert(pose, initialPose_);
-  update_filter_ = true;
+  mrpt_bridge::convert(pose, initial_pose_);
+  update_counter_ = 0;
   state_ = INIT;
 }
 
 void PFLocalizationNode::callbackOdometry(const nav_msgs::Odometry& _msg)
 {
-  if (param()->update_while_stopped ||  // always update the filter, regardless robot is moving or not
-      std::abs(_msg.twist.twist.linear.x) > 1e-3 ||
-      std::abs(_msg.twist.twist.linear.y) > 1e-3 ||
-      std::abs(_msg.twist.twist.linear.z) > 1e-3 ||
-      std::abs(_msg.twist.twist.angular.x) > 1e-3 ||
-      std::abs(_msg.twist.twist.angular.y) > 1e-3 ||
-      std::abs(_msg.twist.twist.angular.z) > 1e-3)
+  if ((state_ == IDLE) &&
+      (param()->update_while_stopped ||  // always update the filter, regardless robot is moving or not
+       std::abs(_msg.twist.twist.linear.x) > 1e-3 ||
+       std::abs(_msg.twist.twist.linear.y) > 1e-3 ||
+       std::abs(_msg.twist.twist.linear.z) > 1e-3 ||
+       std::abs(_msg.twist.twist.angular.x) > 1e-3 ||
+       std::abs(_msg.twist.twist.angular.y) > 1e-3 ||
+       std::abs(_msg.twist.twist.angular.z) > 1e-3))
+  {
     // update filter if update_while_stopped is true, we are moving or at initialization (100 first iterations)
-    update_filter_ = true;
+    state_ = RUN;
+  }
   else if (state_ == RUN && update_counter_ >= 100)
-    update_filter_ = false;
+  {
+    state_ = IDLE;
+  }
 }
 
 void PFLocalizationNode::updateMap(const nav_msgs::OccupancyGrid &_msg)
@@ -419,7 +431,7 @@ void PFLocalizationNode::publishMap()
 
 void PFLocalizationNode::publishParticles()
 {
-  if (pub_Particles_.getNumSubscribers() > 0)
+  if (pub_particles_.getNumSubscribers() > 0)
   {
     geometry_msgs::PoseArray poseArray;
     poseArray.header.frame_id = tf::resolve(param()->tf_prefix, param()->global_frame_id);
@@ -432,54 +444,74 @@ void PFLocalizationNode::publishParticles()
       mrpt_bridge::convert(p, poseArray.poses[i]);
     }
     mrpt::poses::CPose2D p;
-    pub_Particles_.publish(poseArray);
+    pub_particles_.publish(poseArray);
   }
-}
-
-void PFLocalizationNode::publishTF()
-{
-  // Most of this code was copy and paste from ros::amcl
-  // sorry it is really ugly
-  mrpt::poses::CPose2D robot_pose;
-  pdf_.getMean(robot_pose);
-  std::string base_frame_id = tf::resolve(param()->tf_prefix, param()->base_frame_id);
-  std::string odom_frame_id = tf::resolve(param()->tf_prefix, param()->odom_frame_id);
-  std::string global_frame_id = tf::resolve(param()->tf_prefix, param()->global_frame_id);
-  tf::Stamped<tf::Pose> odom_to_map;
-  tf::Transform robot_tf;
-  mrpt_bridge::convert(robot_pose, robot_tf);
-  ros::Time stamp(0.0);
-  if (update_filter_)
-    mrpt_bridge::convert(timeLastUpdate_, stamp);
-
-  try
-  {
-    tf::Stamped<tf::Pose> tmp_tf_stamped(robot_tf.inverse(), stamp, base_frame_id);
-    //ROS_INFO("subtract global_frame (%s) from odom_frame (%s)", global_frame_id.c_str(), odom_frame_id.c_str());
-
-    listenerTF_.transformPose(odom_frame_id, tmp_tf_stamped, odom_to_map);
-  }
-  catch (tf::TransformException& e)
-  {
-    ROS_WARN("Failed to subtract global_frame (%s) from odom_frame (%s): %s",
-             global_frame_id.c_str(), odom_frame_id.c_str(), e.what());
-    return;
-  }
-
-  tf::Transform latest_tf_ = tf::Transform(tf::Quaternion(odom_to_map.getRotation()),
-                                           tf::Point(odom_to_map.getOrigin()));
-
-  // We want to send a transform that is good up until a tolerance time so that odom can be used
-  ros::Time transform_expiration = (update_filter_ ? stamp : ros::Time::now()) + ros::Duration(param()->transform_tolerance);
-  tf::StampedTransform tmp_tf_stamped(latest_tf_.inverse(), transform_expiration, global_frame_id, odom_frame_id);
-  tf_broadcaster_.sendTransform(tmp_tf_stamped);
-  //ROS_INFO("%s, %s\n", global_frame_id.c_str(), odom_frame.c_str());
 }
 
 /**
- * publishPose()
- * @beief publish the current pose of the robot
- * @param msg  Laser Scan Message
+ * @brief Publish map -> odom tf; as the filter provides map -> base, we multiply it by base -> odom
+ */
+void PFLocalizationNode::publishTF()
+{
+  static std::string base_frame_id = tf::resolve(param()->tf_prefix, param()->base_frame_id);
+  static std::string odom_frame_id = tf::resolve(param()->tf_prefix, param()->odom_frame_id);
+  static std::string global_frame_id = tf::resolve(param()->tf_prefix, param()->global_frame_id);
+
+  mrpt::poses::CPose2D robot_pose;
+  pdf_.getMean(robot_pose);
+  tf::StampedTransform base_on_map_tf, odom_on_base_tf;
+  mrpt_bridge::convert(robot_pose, base_on_map_tf);
+  ros::Time time_last_update(0.0);
+  if (state_ == RUN)
+  {
+    mrpt_bridge::convert(time_last_update_, time_last_update);
+
+    // Last update time can be too far in the past if we where not updating filter, due to robot stopped or no
+    // observations for a while (we optionally show a warning in the second case)
+    // We use time zero if so when getting base -> odom tf to prevent an extrapolation into the past exception
+    if ((ros::Time::now() - time_last_update).toSec() > param()->no_update_tolerance)
+    {
+      if ((ros::Time::now() - time_last_input_).toSec() > param()->no_inputs_tolerance)
+      {
+        ROS_WARN_THROTTLE(2.0, "No observations received for %.2fs (tolerance %.2fs); are robot sensors working?",
+                          (ros::Time::now() - time_last_input_).toSec(), param()->no_inputs_tolerance);
+      }
+      else
+      {
+        ROS_DEBUG_THROTTLE(2.0, "No filter updates for %.2fs (tolerance %.2fs); probably robot stopped for a while",
+                           (ros::Time::now() - time_last_update).toSec(), param()->no_update_tolerance);
+      }
+
+      time_last_update = ros::Time(0.0);
+    }
+  }
+
+  try
+  {
+    // Get base -> odom transform
+    tf_listener_.waitForTransform(base_frame_id, odom_frame_id, time_last_update, ros::Duration(0.1));
+    tf_listener_.lookupTransform(base_frame_id, odom_frame_id, time_last_update, odom_on_base_tf);
+  }
+  catch (tf::TransformException& e)
+  {
+    ROS_WARN_THROTTLE(2.0, "Transform from base frame (%s) to odom frame (%s) failed: %s",
+                      base_frame_id.c_str(), odom_frame_id.c_str(), e.what());
+    ROS_WARN_THROTTLE(2.0, "Ensure that your mobile base driver is broadcasting %s -> %s tf",
+                      odom_frame_id.c_str(), base_frame_id.c_str());
+    return;
+  }
+
+  // We want to send a transform that is good up until a tolerance time so that odom can be used
+  ros::Time transform_expiration =
+      (time_last_update.isZero() ? ros::Time::now() : time_last_update)
+      + ros::Duration(param()->transform_tolerance);
+  tf::StampedTransform tmp_tf_stamped(base_on_map_tf * odom_on_base_tf, transform_expiration,
+                                      global_frame_id, odom_frame_id);
+  tf_broadcaster_.sendTransform(tmp_tf_stamped);
+}
+
+/**
+ * @brief Publish the current pose of the robot
  **/
 void PFLocalizationNode::publishPose()
 {
@@ -495,7 +527,7 @@ void PFLocalizationNode::publishPose()
   if (loop_count_ < 10)
     p.header.stamp = ros::Time::now();  // on first iterations timestamp differs a lot from ROS time
   else
-    mrpt_bridge::convert(timeLastUpdate_, p.header.stamp);
+    mrpt_bridge::convert(time_last_update_, p.header.stamp);
 
   // Copy in the pose
   mrpt_bridge::convert(mean, p.pose.pose);
