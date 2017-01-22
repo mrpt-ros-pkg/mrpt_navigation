@@ -25,18 +25,19 @@ before_install:
   - sudo sh -c "echo \"deb http://packages.ros.org/ros/ubuntu $ROS_CI_DESKTOP main\" > /etc/apt/sources.list.d/ros-latest.list"
   - wget http://packages.ros.org/ros.key -O - | sudo apt-key add -
   - sudo apt-get update -qq
-  - sudo apt-get install -y python-catkin-pkg python-rosdep python-wstool ros-$ROS_DISTRO-catkin 
+  - sudo apt-get install -y python-catkin-pkg python-rosdep python-wstool ros-$ROS_DISTRO-catkin
   - source /opt/ros/$ROS_DISTRO/setup.bash
   # Prepare rosdep to install dependencies.
   - sudo rosdep init
   - rosdep update -qq
-  - sudo apt-get install -y build-essential pkg-config cmake 
+  - sudo apt-get install -y build-essential pkg-config cmake
   - sudo apt-get install -y libvtk5-dev python-vtk libvtk-java
   - sudo apt-get install -y libwxgtk2.8-dev libftdi-dev freeglut3-dev
   - sudo apt-get install -y zlib1g-dev libusb-1.0-0-dev libudev-dev libfreenect-dev
   - sudo apt-get install -y libdc1394-22-dev libavformat-dev libswscale-dev
   - sudo apt-get install -y libassimp-dev libjpeg-dev libopencv-dev libgtest-dev
   - sudo apt-get install -y libeigen3-dev libsuitesparse-dev libpcap-dev
+  - if [[ "$TASK" == "build_mrpt_ppa" ]] ; then sudo add-apt-repository ppa:joseluisblancoc/mrpt -y ; fi
   - sudo apt-get -y install libmrpt-dev
 
 # Create a catkin workspace with the package under integration.
@@ -73,3 +74,7 @@ script:
   # Testing: Use both run_tests (to see the output) and test (to error out).
   - catkin_make run_tests  # This always returns 0, but looks pretty.
   - catkin_make test  # This will return non-zero if a test fails.
+
+env:
+  - TASK="build_mrpt_ppa"
+  - TASK="build_mrpt_default"
