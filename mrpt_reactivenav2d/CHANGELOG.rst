@@ -2,6 +2,9 @@
 Changelog for package mrpt_reactivenav2d
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+
 0.1.17 (2017-01-22)
 -------------------
 * fix build against latest mrpt 1.5.0

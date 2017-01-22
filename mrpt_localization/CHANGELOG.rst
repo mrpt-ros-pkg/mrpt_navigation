@@ -2,6 +2,9 @@
 Changelog for package mrpt_localization
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+
 0.1.17 (2017-01-22)
 -------------------
 * Do not consider epsilon velocities (<1e-3) as robot moving

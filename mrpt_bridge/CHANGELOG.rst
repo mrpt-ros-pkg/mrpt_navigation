@@ -2,6 +2,11 @@
 Changelog for package mrpt_bridge
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Remove types_simple.h header to fix compilation
+* Contributors: Jose Luis Blanco, Nikos Koukis
+
 0.1.17 (2017-01-22)
 -------------------
 * remove debug ::pause()
