@@ -10,6 +10,8 @@ cache:
 # Configuration variables. All variables are global now, but this can be used to
 # trigger a build matrix for different ROS distributions if desired.
 env:
+  - TASK="build_mrpt_ppa"
+  - TASK="build_mrpt_default"
   global:
     - ROS_DISTRO=indigo
     - ROS_CI_DESKTOP="`lsb_release -cs`"  # e.g. [precise|trusty|...]
@@ -74,7 +76,3 @@ script:
   # Testing: Use both run_tests (to see the output) and test (to error out).
   - catkin_make run_tests  # This always returns 0, but looks pretty.
   - catkin_make test  # This will return non-zero if a test fails.
-
-env:
-  - TASK="build_mrpt_ppa"
-  - TASK="build_mrpt_default"
