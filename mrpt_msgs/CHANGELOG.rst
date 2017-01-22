@@ -2,8 +2,8 @@
 Changelog for package mrpt_msgs
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+0.1.17 (2017-01-22)
+-------------------
 * make catkin_lint clean
 * mrpt_bridge: Add conversion methods for Information-related Pose classes
 * Add graphslam-related messages, service

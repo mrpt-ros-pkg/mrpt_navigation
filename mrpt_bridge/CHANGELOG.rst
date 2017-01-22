@@ -2,8 +2,8 @@
 Changelog for package mrpt_bridge
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+0.1.17 (2017-01-22)
+-------------------
 * remove debug ::pause()
 * make catkin_lint clean
 * mrpt_bridge: Move includes in implementation file
