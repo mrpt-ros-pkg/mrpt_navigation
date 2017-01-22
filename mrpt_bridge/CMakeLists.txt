@@ -13,7 +13,7 @@ find_package(PCL 1.3 REQUIRED COMPONENTS common io)
 include_directories(${PCL_INCLUDE_DIRS})
 add_definitions(${PCL_DEFINITIONS})
 
-find_package(MRPT REQUIRED base obs maps slam)
+find_package(MRPT REQUIRED base obs graphs maps slam)
 
 ###################################
 ## catkin specific configuration ##
@@ -46,8 +46,8 @@ add_library(${PROJECT_NAME}
 	src/laser_scan.cpp
 	src/map.cpp
 	src/network_of_poses.cpp
-  src/point_cloud.cpp
-  src/point_cloud2.cpp
+	src/point_cloud.cpp
+	src/point_cloud2.cpp
 	src/pose.cpp
 )
 
