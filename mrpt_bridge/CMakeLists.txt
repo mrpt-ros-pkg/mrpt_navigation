@@ -46,10 +46,15 @@ add_library(${PROJECT_NAME}
 	src/laser_scan.cpp
 	src/map.cpp
 	src/network_of_poses.cpp
+<<<<<<< HEAD
 	src/point_cloud.cpp
 	src/point_cloud2.cpp
+=======
+  src/point_cloud.cpp
+  src/point_cloud2.cpp
+>>>>>>> Implement converion method for CNetworkOfPoses2DInf_NA specialization class
 	src/pose.cpp
-    )
+  )
 
 ## Declare a cpp executable
 

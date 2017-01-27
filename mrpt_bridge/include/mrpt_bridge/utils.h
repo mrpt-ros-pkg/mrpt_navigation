@@ -6,6 +6,7 @@
 
 #ifndef MRPT_BRIDGE_UTILS_H
 #define MRPT_BRIDGE_UTILS_H
+
 #include <ros/console.h>
 #include <mrpt/system/datetime.h>
 #include <mrpt/version.h>
@@ -66,7 +67,8 @@ namespace mrpt_bridge {
 	    ROS_ERROR("%s", tmsg.c_str());
 	  }
 	}
-	#endif
+
+#endif
 
 } //namespace mrpt_bridge
 

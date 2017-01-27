@@ -7,9 +7,8 @@
 	 | Released under BSD License. See details in http://www.mrpt.org/License    |
 	 +---------------------------------------------------------------------------+ */
 
-/**
- * File includes methods for converting CNetworkOfPoses*DInf <=> NetworkOfPoses
- * message types
+/**\brief File includes methods for converting CNetworkOfPoses*DInf <=>
+ * NetworkOfPoses message types
  */
 
 #ifndef NETWORK_OF_POSES_H
@@ -26,6 +25,8 @@ namespace mrpt_bridge {
  * \param[out] ros_graph ROS graph representation
  */
 /**\{*/
+
+// TODO - convert these methods into a common polymorphic method
 bool convert(
 		const mrpt::graphs::CNetworkOfPoses2D& mrpt_graph,
 		mrpt_msgs::NetworkOfPoses& ros_graph);
@@ -42,7 +43,17 @@ bool convert(
 		const mrpt::graphs::CNetworkOfPoses3DInf& mrpt_graph,
 		mrpt_msgs::NetworkOfPoses& ros_graph);
 
+bool convert(
+		const mrpt::graphs::CNetworkOfPoses2DInf_NA& mrpt_graph,
+		mrpt_msgs::NetworkOfPoses& ros_graph);
+
+bool convert(
+		const mrpt::graphs::CNetworkOfPoses3DInf_NA& mrpt_graph,
+		mrpt_msgs::NetworkOfPoses& ros_graph);
+
 /**\} */
+
+/////////////////////////////////////////////////////////////////////////
 
 /**\name ROS \rightarrow MRPT conversions */
 /**\brief Convert [ROS] NetworkOfPoses \rightarrow [MRPT] CNetworkOfPoses*DInf.
@@ -65,6 +76,15 @@ bool convert(
 bool convert(
 		const mrpt_msgs::NetworkOfPoses& ros_graph,
 		mrpt::graphs::CNetworkOfPoses3DInf& mrpt_graph);
+
+bool convert(
+		mrpt_msgs::NetworkOfPoses& ros_graph,
+		const mrpt::graphs::CNetworkOfPoses2DInf_NA& mrpt_graph);
+
+bool convert(
+		mrpt_msgs::NetworkOfPoses& ros_graph,
+		const mrpt::graphs::CNetworkOfPoses3DInf_NA& mrpt_graph);
+
 
 /**\} */
 
