@@ -4,4 +4,4 @@
 
 uint64[] nodeIDs
 ---
-mrpt_msgs/NetworkOfPoses_NA cm_graph
+mrpt_msgs/NetworkOfPoses cm_graph

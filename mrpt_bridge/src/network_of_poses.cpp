@@ -25,6 +25,7 @@ namespace mrpt_bridge {
 bool convert(
 		const mrpt::graphs::CNetworkOfPoses2DInf& mrpt_graph,
 		mrpt_msgs::NetworkOfPoses& ros_graph) {
+	MRPT_START;
 	using namespace geometry_msgs;
 	using namespace mrpt::math;
 	using namespace mrpt::graphs;
@@ -51,6 +52,10 @@ bool convert(
 		// pose
 		convert(poses_cit->second, ros_node.pose);
 
+		// zero the optional fields
+		ros_node.str_ID.data = "";
+		ros_node.nodeID_loc = 0;
+
 		ros_graph.nodes.vec.push_back(ros_node);
 	}
 
@@ -76,6 +81,8 @@ bool convert(
 
 		ros_graph.constraints.push_back(ros_constr);
 	}
+
+	MRPT_END;
 }
 
 bool convert(
@@ -88,6 +95,8 @@ bool convert(
 bool convert(
 		const mrpt::graphs::CNetworkOfPoses2DInf_NA& mrpt_graph,
 		mrpt_msgs::NetworkOfPoses& ros_graph) {
+	MRPT_START;
+
 	using namespace geometry_msgs;
 	using namespace mrpt::math;
 	using namespace mrpt::graphs;
@@ -95,6 +104,13 @@ bool convert(
 	using namespace std;
 
 	typedef typename mrpt::graphs::CNetworkOfPoses2DInf_NA::global_poses_t::const_iterator poses_cit_t;
+
+	//// debugging print.
+	//for (poses_cit_t it = mrpt_graph.nodes.begin();
+			//it != mrpt_graph.nodes.end();
+			//++it) {
+		//cout << it->first << " | " << it->second << endl;
+	//}
 
 	const CNetworkOfPoses2DInf_NA::BASE::edges_map_t& constraints =
 		mrpt_graph.BASE::edges;
@@ -143,6 +159,8 @@ bool convert(
 
 		ros_graph.constraints.push_back(ros_constr);
 	}
+
+	 MRPT_END;
 }
 
 bool convert(
@@ -158,6 +176,7 @@ bool convert(
 bool convert(
 		const mrpt_msgs::NetworkOfPoses& ros_graph,
 		mrpt::graphs::CNetworkOfPoses2DInf& mrpt_graph) {
+	MRPT_START;
 	using namespace mrpt::utils;
 	using namespace mrpt::poses;
 	using namespace mrpt_msgs;
@@ -202,6 +221,7 @@ bool convert(
 
 	mrpt_graph.edges_store_inverse_poses = false;
 
+	MRPT_END;
 }
 
 bool convert(
@@ -214,6 +234,7 @@ bool convert(
 bool convert(
 		const mrpt_msgs::NetworkOfPoses& ros_graph,
 		mrpt::graphs::CNetworkOfPoses2DInf_NA& mrpt_graph) {
+	MRPT_START;
 	using namespace mrpt::utils;
 	using namespace mrpt::poses;
 	using namespace mrpt_msgs;
@@ -265,6 +286,7 @@ bool convert(
 
 	mrpt_graph.edges_store_inverse_poses = false;
 
+	MRPT_END;
 }
 
 bool convert(

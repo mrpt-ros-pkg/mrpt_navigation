@@ -78,12 +78,12 @@ bool convert(
 		mrpt::graphs::CNetworkOfPoses3DInf& mrpt_graph);
 
 bool convert(
-		mrpt_msgs::NetworkOfPoses& ros_graph,
-		const mrpt::graphs::CNetworkOfPoses2DInf_NA& mrpt_graph);
+		const mrpt_msgs::NetworkOfPoses& ros_graph,
+		mrpt::graphs::CNetworkOfPoses2DInf_NA& mrpt_graph);
 
 bool convert(
-		mrpt_msgs::NetworkOfPoses& ros_graph,
-		const mrpt::graphs::CNetworkOfPoses3DInf_NA& mrpt_graph);
+		const mrpt_msgs::NetworkOfPoses& ros_graph,
+		mrpt::graphs::CNetworkOfPoses3DInf_NA& mrpt_graph);
 
 
 /**\} */
