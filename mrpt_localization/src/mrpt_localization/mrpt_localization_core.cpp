@@ -49,8 +49,8 @@ void PFLocalizationCore::init()
 {
   mrpt::math::CMatrixDouble33 cov;
   cov(0, 0) = 1, cov(1, 1) = 1, cov(2, 2) = 2 * M_PI;
-  initialPose_ = mrpt::poses::CPosePDFGaussian(mrpt::poses::CPose2D(0, 0, 0), cov);
-  initialParticleCount_ = 1000;
+  initial_pose_ = mrpt::poses::CPosePDFGaussian(mrpt::poses::CPose2D(0, 0, 0), cov);
+  initial_particle_count_ = 1000;
 
 #if MRPT_VERSION>=0x150
 #define gausianModel gaussianModel    // a typo was fixed in 1.5.0
@@ -64,7 +64,7 @@ void PFLocalizationCore::initializeFilter()
 {
   mrpt::math::CMatrixDouble33 cov;
   mrpt::poses::CPose2D mean_point;
-  initialPose_.getCovarianceAndMean(cov, mean_point);
+  initial_pose_.getCovarianceAndMean(cov, mean_point);
   log_info("InitializeFilter: %4.3fm, %4.3fm, %4.3frad ", mean_point.x(), mean_point.y(), mean_point.phi());
   float min_x = mean_point.x() - cov(0, 0);
   float max_x = mean_point.x() + cov(0, 0);
@@ -74,12 +74,12 @@ void PFLocalizationCore::initializeFilter()
   float max_phi = mean_point.phi() + cov(2, 2);
   if (metric_map_.m_gridMaps.size() && !init_PDF_mode)
   {
-    pdf_.resetUniformFreeSpace(metric_map_.m_gridMaps[0].pointer(), 0.7f, initialParticleCount_,
+    pdf_.resetUniformFreeSpace(metric_map_.m_gridMaps[0].pointer(), 0.7f, initial_particle_count_,
                                min_x, max_x, min_y, max_y, min_phi, max_phi);
   }
   else if (metric_map_.m_landmarksMap || init_PDF_mode)
   {
-    pdf_.resetUniform(min_x, max_x, min_y, max_y, min_phi, max_phi, initialParticleCount_);
+    pdf_.resetUniform(min_x, max_x, min_y, max_y, min_phi, max_phi, initial_particle_count_);
   }
   state_ = RUN;
 }
@@ -90,7 +90,7 @@ void PFLocalizationCore::updateFilter(CActionCollectionPtr _action, CSensoryFram
     initializeFilter();
   tictac_.Tic();
   pf_.executeOn(pdf_, _action.pointer(), _sf.pointer(), &pf_stats_);
-  timeLastUpdate_ = _sf->getObservationByIndex(0)->timestamp;
+  time_last_update_ = _sf->getObservationByIndex(0)->timestamp;
   update_counter_++;
 }
 
@@ -101,12 +101,12 @@ void PFLocalizationCore::observation(CSensoryFramePtr _sf, CObservationOdometryP
   odom_move.timestamp = _sf->getObservationByIndex(0)->timestamp;
   if (_odometry)
   {
-    if (odomLastObservation_.empty())
+    if (odom_last_observation_.empty())
     {
-      odomLastObservation_ = _odometry->odometry;
+      odom_last_observation_ = _odometry->odometry;
     }
-    mrpt::poses::CPose2D incOdoPose = _odometry->odometry - odomLastObservation_;
-    odomLastObservation_ = _odometry->odometry;
+    mrpt::poses::CPose2D incOdoPose = _odometry->odometry - odom_last_observation_;
+    odom_last_observation_ = _odometry->odometry;
     odom_move.computeFromOdometry(incOdoPose, motion_model_options_);
     action->insert(odom_move);
     updateFilter(action, _sf);

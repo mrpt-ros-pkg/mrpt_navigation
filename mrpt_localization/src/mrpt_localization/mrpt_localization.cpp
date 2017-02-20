@@ -68,12 +68,12 @@ PFLocalization::PFLocalization(Parameters *param) :
 
 void PFLocalization::init()
 {
-  printf("iniFile ready %s\n", param_->iniFile.c_str());
-  ASSERT_FILE_EXISTS_(param_->iniFile);
-  printf("ASSERT_FILE_EXISTS_ %s\n", param_->iniFile.c_str());
-  mrpt::utils::CConfigFile iniFile;
-  iniFile.setFileName(param_->iniFile);
-  printf("CConfigFile %s\n", param_->iniFile.c_str());
+  printf("ini_file ready %s\n", param_->ini_file.c_str());
+  ASSERT_FILE_EXISTS_(param_->ini_file);
+  printf("ASSERT_FILE_EXISTS_ %s\n", param_->ini_file.c_str());
+  mrpt::utils::CConfigFile ini_file;
+  ini_file.setFileName(param_->ini_file);
+  printf("CConfigFile %s\n", param_->ini_file.c_str());
 
   vector_int particles_count;    // Number of initial particles (if size>1, run the experiments N times)
 
@@ -83,19 +83,19 @@ void PFLocalization::init()
   update_counter_ = 0;
 
   // Mandatory entries:
-  iniFile.read_vector(iniSectionName, "particles_count", vector_int(1, 0), particles_count, /*Fail if not found*/true);
+  ini_file.read_vector(iniSectionName, "particles_count", vector_int(1, 0), particles_count, /*Fail if not found*/true);
 
-  if (param_->mapFile.empty())
+  if (param_->map_file.empty())
   {
-    param_->mapFile = iniFile.read_string(iniSectionName, "map_file", "");
+    param_->map_file = ini_file.read_string(iniSectionName, "map_file", "");
   }
 
   // Non-mandatory entries:
-  SCENE3D_FREQ_ = iniFile.read_int(iniSectionName, "3DSceneFrequency", 10);
-  SCENE3D_FOLLOW_ = iniFile.read_bool(iniSectionName, "3DSceneFollowRobot", true);
+  SCENE3D_FREQ_ = ini_file.read_int(iniSectionName, "3DSceneFrequency", 10);
+  SCENE3D_FOLLOW_ = ini_file.read_bool(iniSectionName, "3DSceneFollowRobot", true);
 
-  SHOW_PROGRESS_3D_REAL_TIME_ = iniFile.read_bool(iniSectionName, "SHOW_PROGRESS_3D_REAL_TIME", false);
-  SHOW_PROGRESS_3D_REAL_TIME_DELAY_MS_ = iniFile.read_int(iniSectionName, "SHOW_PROGRESS_3D_REAL_TIME_DELAY_MS", 1);
+  SHOW_PROGRESS_3D_REAL_TIME_ = ini_file.read_bool(iniSectionName, "SHOW_PROGRESS_3D_REAL_TIME", false);
+  SHOW_PROGRESS_3D_REAL_TIME_DELAY_MS_ = ini_file.read_int(iniSectionName, "SHOW_PROGRESS_3D_REAL_TIME_DELAY_MS", 1);
 
 #if !MRPT_HAS_WXWIDGETS
   SHOW_PROGRESS_3D_REAL_TIME_ = false;
@@ -109,18 +109,18 @@ void PFLocalization::init()
 #define gausianModel gaussianModel    // a typo was fixed in 1.5.0
 #endif
 
-  motion_model_default_options_.gausianModel.minStdXY = iniFile.read_double("DummyOdometryParams", "minStdXY", 0.04);
+  motion_model_default_options_.gausianModel.minStdXY = ini_file.read_double("DummyOdometryParams", "minStdXY", 0.04);
   motion_model_default_options_.gausianModel.minStdPHI =
-      DEG2RAD(iniFile.read_double("DefaultOdometryParams", "minStdPHI", 2.0));
+      DEG2RAD(ini_file.read_double("DefaultOdometryParams", "minStdPHI", 2.0));
 
   // Read initial particles distribution; fail if any parameter is not found
-  init_PDF_mode = iniFile.read_bool(iniSectionName, "init_PDF_mode", false, true);
-  init_PDF_min_x = iniFile.read_float(iniSectionName, "init_PDF_min_x", 0, true);
-  init_PDF_max_x = iniFile.read_float(iniSectionName, "init_PDF_max_x", 0, true);
-  init_PDF_min_y = iniFile.read_float(iniSectionName, "init_PDF_min_y", 0, true);
-  init_PDF_max_y = iniFile.read_float(iniSectionName, "init_PDF_max_y", 0, true);
-  float min_phi = DEG2RAD(iniFile.read_float(iniSectionName, "init_PDF_min_phi_deg", -180));
-  float max_phi = DEG2RAD(iniFile.read_float(iniSectionName, "init_PDF_max_phi_deg", 180));
+  init_PDF_mode = ini_file.read_bool(iniSectionName, "init_PDF_mode", false, true);
+  init_PDF_min_x = ini_file.read_float(iniSectionName, "init_PDF_min_x", 0, true);
+  init_PDF_max_x = ini_file.read_float(iniSectionName, "init_PDF_max_x", 0, true);
+  init_PDF_min_y = ini_file.read_float(iniSectionName, "init_PDF_min_y", 0, true);
+  init_PDF_max_y = ini_file.read_float(iniSectionName, "init_PDF_max_y", 0, true);
+  float min_phi = DEG2RAD(ini_file.read_float(iniSectionName, "init_PDF_min_phi_deg", -180));
+  float max_phi = DEG2RAD(ini_file.read_float(iniSectionName, "init_PDF_max_phi_deg", 180));
   mrpt::poses::CPose2D p;
   mrpt::math::CMatrixDouble33 cov;
   cov(0, 0) = fabs(init_PDF_max_x - init_PDF_min_x);
@@ -130,18 +130,18 @@ void PFLocalization::init()
   p.y() = init_PDF_min_y + cov(1, 1) / 2.0;
   p.phi() = min_phi + cov(2, 2) / 2.0;
   printf("----------- phi: %4.3f: %4.3f <-> %4.3f, %4.3f\n", p.phi(), min_phi, max_phi, cov(2, 2));
-  initialPose_ = mrpt::poses::CPosePDFGaussian(p, cov);
+  initial_pose_ = mrpt::poses::CPosePDFGaussian(p, cov);
   state_ = INIT;
 
-  configureFilter(iniFile);
+  configureFilter(ini_file);
   // Metric map options:
 
-  if (!mrpt_bridge::MapHdl::loadMap(metric_map_, iniFile, param_->mapFile, "metricMap", param_->debug))
+  if (!mrpt_bridge::MapHdl::loadMap(metric_map_, ini_file, param_->map_file, "metricMap", param_->debug))
   {
     waitForMap();
   }
 
-  initialParticleCount_ = *particles_count.begin();
+  initial_particle_count_ = *particles_count.begin();
 
   if (param_->gui_mrpt)
     init3DDebug();
@@ -185,19 +185,19 @@ void PFLocalization::init3DDebug()
     //win3D_->waitForKey();
 
     // Create the 3D scene and get the map only once, later we'll modify only the particles, etc..
-    COccupancyGridMap2D::TEntropyInfo gridInfo;
+    COccupancyGridMap2D::TEntropyInfo grid_info;
     // The gridmap:
     if (metric_map_.m_gridMaps.size())
     {
-      metric_map_.m_gridMaps[0]->computeEntropy(gridInfo);
+      metric_map_.m_gridMaps[0]->computeEntropy(grid_info);
     }
     else
     {
-      gridInfo.effectiveMappedArea = (init_PDF_max_x - init_PDF_min_x) * (init_PDF_max_y - init_PDF_min_y);
+      grid_info.effectiveMappedArea = (init_PDF_max_x - init_PDF_min_x) * (init_PDF_max_y - init_PDF_min_y);
     }
-    printf("The gridmap has %.04fm2 observed area, %u observed cells\n", gridInfo.effectiveMappedArea,
-           (unsigned)gridInfo.effectiveMappedCells);
-    printf("Initial PDF: %f particles/m2\n", initialParticleCount_ / gridInfo.effectiveMappedArea);
+    printf("The gridmap has %.04fm2 observed area, %u observed cells\n", grid_info.effectiveMappedArea,
+           (unsigned)grid_info.effectiveMappedCells);
+    printf("Initial PDF: %f particles/m2\n", initial_particle_count_ / grid_info.effectiveMappedArea);
 
     CSetOfObjectsPtr plane = CSetOfObjects::Create();
     metric_map_.getAs3DObject(plane);
@@ -205,11 +205,11 @@ void PFLocalization::init3DDebug()
 
     if (SHOW_PROGRESS_3D_REAL_TIME_)
     {
-      COpenGLScenePtr ptrScene = win3D_->get3DSceneAndLock();
+      COpenGLScenePtr ptr_scene = win3D_->get3DSceneAndLock();
 
-      ptrScene->insert(plane);
+      ptr_scene->insert(plane);
 
-      ptrScene->enableFollowCamera(true);
+      ptr_scene->enableFollowCamera(true);
 
       win3D_->unlockAccess3DScene();
     }
@@ -233,7 +233,7 @@ void PFLocalization::show3DDebug(CSensoryFramePtr _observations)
     CMatrixDouble33 cov;
     pdf_.getCovarianceAndMean(cov, meanPose);
 
-    COpenGLScenePtr ptrScene = win3D_->get3DSceneAndLock();
+    COpenGLScenePtr ptr_scene = win3D_->get3DSceneAndLock();
 
     win3D_->setCameraPointingToPoint(meanPose.x(), meanPose.y(), 0);
     win3D_->addTextMessage(
@@ -248,18 +248,18 @@ void PFLocalization::show3DDebug(CSensoryFramePtr _observations)
 
     // The particles:
     {
-      CRenderizablePtr parts = ptrScene->getByName("particles");
+      CRenderizablePtr parts = ptr_scene->getByName("particles");
       if (parts)
-        ptrScene->removeObject(parts);
+        ptr_scene->removeObject(parts);
 
       CSetOfObjectsPtr p = pdf_.getAs3DObject<CSetOfObjectsPtr>();
       p->setName("particles");
-      ptrScene->insert(p);
+      ptr_scene->insert(p);
     }
 
     // The particles' cov:
     {
-      CRenderizablePtr ellip = ptrScene->getByName("parts_cov");
+      CRenderizablePtr ellip = ptr_scene->getByName("parts_cov");
       if (!ellip)
       {
         ellip = CEllipsoid::Create();
@@ -269,7 +269,7 @@ void PFLocalization::show3DDebug(CSensoryFramePtr _observations)
         getAs<CEllipsoid>(ellip)->setLineWidth(2);
         getAs<CEllipsoid>(ellip)->setQuantiles(3);
         getAs<CEllipsoid>(ellip)->set2DsegmentsCount(60);
-        ptrScene->insert(ellip);
+        ptr_scene->insert(ellip);
       }
       ellip->setLocation(meanPose.x(), meanPose.y(), 0.05);
 
@@ -278,35 +278,35 @@ void PFLocalization::show3DDebug(CSensoryFramePtr _observations)
 
     // The laser scan:
     {
-      CRenderizablePtr scanPts = ptrScene->getByName("scan");
-      if (!scanPts)
+      CRenderizablePtr scan_pts = ptr_scene->getByName("scan");
+      if (!scan_pts)
       {
-        scanPts = CPointCloud::Create();
-        scanPts->setName("scan");
-        scanPts->setColor(1, 0, 0, 0.9);
-        getAs<CPointCloud>(scanPts)->enableColorFromZ(false);
-        getAs<CPointCloud>(scanPts)->setPointSize(4);
-        ptrScene->insert(scanPts);
+        scan_pts = CPointCloud::Create();
+        scan_pts->setName("scan");
+        scan_pts->setColor(1, 0, 0, 0.9);
+        getAs<CPointCloud>(scan_pts)->enableColorFromZ(false);
+        getAs<CPointCloud>(scan_pts)->setPointSize(4);
+        ptr_scene->insert(scan_pts);
       }
 
       CSimplePointsMap map;
       static CSimplePointsMap last_map;
 
-      CPose3D robotPose3D(meanPose);
+      CPose3D robot_pose_3D(meanPose);
 
       map.clear();
       _observations->insertObservationsInto(&map);
 
-      getAs<CPointCloud>(scanPts)->loadFromPointsMap(&last_map);
-      getAs<CPointCloud>(scanPts)->setPose(robotPose3D);
+      getAs<CPointCloud>(scan_pts)->loadFromPointsMap(&last_map);
+      getAs<CPointCloud>(scan_pts)->setPose(robot_pose_3D);
       last_map = map;
     }
 
     // The camera:
-    ptrScene->enableFollowCamera(true);
+    ptr_scene->enableFollowCamera(true);
 
     // Views:
-    COpenGLViewportPtr view1 = ptrScene->getViewport("main");
+    COpenGLViewportPtr view1 = ptr_scene->getViewport("main");
     {
       CCamera &cam = view1->getCamera();
       cam.setAzimuthDegrees(-90);

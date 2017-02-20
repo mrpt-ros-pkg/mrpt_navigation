@@ -64,7 +64,7 @@ class PFLocalizationCore
 public:
   enum PFStates
   {
-    NA, INIT, RUN
+    NA, INIT, RUN, IDLE
   };
 
   PFLocalizationCore();
@@ -81,31 +81,31 @@ public:
    * @param _odometry the odom data can also be NULL
    **/
   void observation(CSensoryFramePtr _sf, CObservationOdometryPtr _odometry);
-protected:
 
-  bool use_motion_model_default_options_; /// used default odom_params
-  CActionRobotMovement2D::TMotionModelOptions motion_model_default_options_; /// used if there are is not odom
-  CActionRobotMovement2D::TMotionModelOptions motion_model_options_;         /// used with odom value motion noise
-  CMultiMetricMap metric_map_;                 /// map
-  mrpt::bayes::CParticleFilter pf_;            /// common interface for particle filters
-  mrpt::bayes::CParticleFilter::TParticleFilterStats pf_stats_; /// filter statistics
-  mrpt::slam::CMonteCarloLocalization2D pdf_;  /// the filter
-  mrpt::poses::CPosePDFGaussian initialPose_;  /// initial posed used in initializeFilter()
-  int initialParticleCount_;                   /// number of particles for initialization
-  mrpt::system::TTimeStamp timeLastUpdate_;    /// time of the last update
-  mrpt::utils::CTicTac tictac_;                /// timer to measure performance
-  size_t update_counter_;                      /// internal counter to count the number of filter updates
-  PFStates state_;                             /// filter states to perform things like init on the correct time
-  mrpt::poses::CPose2D odomLastObservation_;   /// pose at the last observation
-  bool  init_PDF_mode;                         /// Initial PDF mode: 0 for free space cells, 1 for any cell
-  float init_PDF_min_x;                        /// Initial PDF boundaries
+protected:
+  bool use_motion_model_default_options_;      ///< used default odom_params
+  CActionRobotMovement2D::TMotionModelOptions motion_model_default_options_; ///< used if there are is not odom
+  CActionRobotMovement2D::TMotionModelOptions motion_model_options_;         ///< used with odom value motion noise
+  CMultiMetricMap metric_map_;                 ///< map
+  mrpt::bayes::CParticleFilter pf_;            ///< common interface for particle filters
+  mrpt::bayes::CParticleFilter::TParticleFilterStats pf_stats_; ///< filter statistics
+  mrpt::slam::CMonteCarloLocalization2D pdf_;  ///< the filter
+  mrpt::poses::CPosePDFGaussian initial_pose_; ///< initial posed used in initializeFilter()
+  int initial_particle_count_;                 ///< number of particles for initialization
+  mrpt::system::TTimeStamp time_last_update_;  ///< time of the last update
+  mrpt::utils::CTicTac tictac_;                ///< timer to measure performance
+  size_t update_counter_;                      ///< internal counter to count the number of filter updates
+  PFStates state_;                             ///< filter states to perform things like init on the correct time
+  mrpt::poses::CPose2D odom_last_observation_; ///< pose at the last observation
+  bool  init_PDF_mode;                         ///< Initial PDF mode: 0 for free space cells, 1 for any cell
+  float init_PDF_min_x;                        ///< Initial PDF boundaries
   float init_PDF_max_x;
   float init_PDF_min_y;
   float init_PDF_max_y;
 
 private:
   /**
-   * Initilizes the filter at pose PFLocalizationCore::initialPose_ with PFLocalizationCore::initialParticleCount_
+   * Initializes the filter at pose PFLocalizationCore::initial_pose_ with PFLocalizationCore::initial_particle_count_
    * it is called by the PFLocalizationCore::updateFilter if the state_ == INIT
    **/
   void initializeFilter();

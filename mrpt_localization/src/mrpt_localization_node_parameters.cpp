@@ -34,18 +34,22 @@ PFLocalizationNode::Parameters::Parameters(PFLocalizationNode *p) :
 {
   node.param<double>("transform_tolerance", transform_tolerance, 0.1);
   ROS_INFO("transform_tolerance: %f", transform_tolerance);
+  node.param<double>("no_update_tolerance", no_update_tolerance, 1.0);
+  ROS_INFO("no_update_tolerance: %f", no_update_tolerance);
+  node.param<double>("no_inputs_tolerance", no_inputs_tolerance, std::numeric_limits<double>::infinity());
+  ROS_INFO("no_inputs_tolerance: %f", no_inputs_tolerance);  // disabled by default
   node.param<double>("rate", rate, MRPT_LOCALIZATION_NODE_DEFAULT_RATE);
   ROS_INFO("rate: %f", rate);
   node.getParam("gui_mrpt", gui_mrpt);
   ROS_INFO("gui_mrpt: %s", gui_mrpt ? "true" : "false");
   node.param<int>("parameter_update_skip", parameter_update_skip, MRPT_LOCALIZATION_NODE_DEFAULT_PARAMETER_UPDATE_SKIP);
   ROS_INFO("parameter_update_skip: %i", parameter_update_skip);
-  node.getParam("ini_file", iniFile);
-  ROS_INFO("ini_file: %s", iniFile.c_str());
-  node.getParam("map_file", mapFile);
-  ROS_INFO("map_file: %s", mapFile.c_str());
-  node.getParam("sensor_sources", sensorSources);
-  ROS_INFO("sensor_sources: %s", sensorSources.c_str());
+  node.getParam("ini_file", ini_file);
+  ROS_INFO("ini_file: %s", ini_file.c_str());
+  node.getParam("map_file", map_file);
+  ROS_INFO("map_file: %s", map_file.c_str());
+  node.getParam("sensor_sources", sensor_sources);
+  ROS_INFO("sensor_sources: %s", sensor_sources.c_str());
   node.param<std::string>("tf_prefix", tf_prefix, "");
   ROS_INFO("tf_prefix: %s", tf_prefix.c_str());
   node.param<std::string>("global_frame_id", global_frame_id, "map");
@@ -59,8 +63,8 @@ PFLocalizationNode::Parameters::Parameters(PFLocalizationNode *p) :
   node.param<bool>("tf_broadcast", tf_broadcast, true);
   ROS_INFO("tf_broadcast: %s", tf_broadcast ? "true" : "false");
 
-  reconfigureFnc_ = boost::bind(&PFLocalizationNode::Parameters::callbackParameters, this, _1, _2);
-  reconfigureServer_.setCallback(reconfigureFnc_);
+  reconfigure_cb_ = boost::bind(&PFLocalizationNode::Parameters::callbackParameters, this, _1, _2);
+  reconfigure_server_.setCallback(reconfigure_cb_);
 }
 
 void PFLocalizationNode::Parameters::update(const unsigned long &loop_count)
