@@ -198,7 +198,7 @@ const bool MapHdl::loadMap(CMultiMetricMap &_metric_map, const mrpt::utils::CCon
         }
         else
         {
-            THROW_EXCEPTION_CUSTOM_MSG1("Map file has unknown extension: '%s'",mapExt.c_str());
+			THROW_EXCEPTION( mrpt::format("Map file has unknown extension: '%s'",mapExt.c_str()));
             return false;
         }
 
