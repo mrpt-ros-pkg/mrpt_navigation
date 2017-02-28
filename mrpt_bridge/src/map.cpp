@@ -153,7 +153,6 @@ const bool MapHdl::loadMap(CMultiMetricMap &_metric_map, const mrpt::utils::CCon
 
 	TSetOfMetricMapInitializers mapInitializers;
     mapInitializers.loadFromConfigFile( _config_file, _section_name);
-    if(_debug) mapInitializers.dumpToConsole();
 
 	CSimpleMap  simpleMap;
 

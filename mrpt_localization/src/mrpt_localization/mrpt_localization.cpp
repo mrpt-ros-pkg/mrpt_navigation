@@ -68,12 +68,12 @@ PFLocalization::PFLocalization(Parameters *param) :
 
 void PFLocalization::init()
 {
-  printf("ini_file ready %s\n", param_->ini_file.c_str());
+  log_info("ini_file ready %s", param_->ini_file.c_str());
   ASSERT_FILE_EXISTS_(param_->ini_file);
-  printf("ASSERT_FILE_EXISTS_ %s\n", param_->ini_file.c_str());
+  log_info("ASSERT_FILE_EXISTS_ %s", param_->ini_file.c_str());
   mrpt::utils::CConfigFile ini_file;
   ini_file.setFileName(param_->ini_file);
-  printf("CConfigFile %s\n", param_->ini_file.c_str());
+  log_info("CConfigFile %s", param_->ini_file.c_str());
 
   vector_int particles_count;    // Number of initial particles (if size>1, run the experiments N times)
 
@@ -129,7 +129,7 @@ void PFLocalization::init()
   p.x() = init_PDF_min_x + cov(0, 0) / 2.0;
   p.y() = init_PDF_min_y + cov(1, 1) / 2.0;
   p.phi() = min_phi + cov(2, 2) / 2.0;
-  printf("----------- phi: %4.3f: %4.3f <-> %4.3f, %4.3f\n", p.phi(), min_phi, max_phi, cov(2, 2));
+  log_debug("----------- phi: %4.3f: %4.3f <-> %4.3f, %4.3f\n", p.phi(), min_phi, max_phi, cov(2, 2));
   initial_pose_ = mrpt::poses::CPosePDFGaussian(p, cov);
   state_ = INIT;
 
@@ -195,9 +195,9 @@ void PFLocalization::init3DDebug()
     {
       grid_info.effectiveMappedArea = (init_PDF_max_x - init_PDF_min_x) * (init_PDF_max_y - init_PDF_min_y);
     }
-    printf("The gridmap has %.04fm2 observed area, %u observed cells\n", grid_info.effectiveMappedArea,
+    log_info("The gridmap has %.04fm2 observed area, %u observed cells\n", grid_info.effectiveMappedArea,
            (unsigned)grid_info.effectiveMappedCells);
-    printf("Initial PDF: %f particles/m2\n", initial_particle_count_ / grid_info.effectiveMappedArea);
+    log_info("Initial PDF: %f particles/m2\n", initial_particle_count_ / grid_info.effectiveMappedArea);
 
     CSetOfObjectsPtr plane = CSetOfObjects::Create();
     metric_map_.getAs3DObject(plane);
@@ -215,7 +215,7 @@ void PFLocalization::init3DDebug()
     }
   } // Show 3D?
   if (param_->debug)
-    printf(" --------------------------- init3DDebug done \n");
+    log_info(" --------------------------- init3DDebug done \n");
   if (param_->debug)
     fflush(stdout);
 }

@@ -62,6 +62,8 @@ PFLocalizationNode::Parameters::Parameters(PFLocalizationNode *p) :
   ROS_INFO("pose_broadcast: %s", pose_broadcast ? "true" : "false");
   node.param<bool>("tf_broadcast", tf_broadcast, true);
   ROS_INFO("tf_broadcast: %s", tf_broadcast ? "true" : "false");
+  node.param<bool>("debug", debug, true);
+  ROS_INFO("debug: %s", debug? "true" : "false");
 
   reconfigure_cb_ = boost::bind(&PFLocalizationNode::Parameters::callbackParameters, this, _1, _2);
   reconfigure_server_.setCallback(reconfigure_cb_);
