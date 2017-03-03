@@ -30,10 +30,10 @@ namespace mrpt { namespace poses { class CPose3D; } }
 
 namespace mrpt_bridge {
 
-	/** @name LaserScan: ROS <-> MRPT
+	/** @name ObservationRangeBeacon: ROS <-> MRPT
 	 *  @{ */
 
-	/** ROS->MRPT: Takes a mrpt_msgs::ObservationRangeBeacon and the relative pose of the laser wrt base_link and builds a CObservationBeaconRanges
+	/** ROS->MRPT: Takes a mrpt_msgs::ObservationRangeBeacon and the relative pose of the range sensor wrt base_link and builds a CObservationBeaconRanges
 	  * \return true on sucessful conversion, false on any error.
 	  * \sa mrpt2ros
 	  */
