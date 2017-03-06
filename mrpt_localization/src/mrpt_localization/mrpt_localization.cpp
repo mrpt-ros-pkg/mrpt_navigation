@@ -124,7 +124,7 @@ void PFLocalization::init()
   mrpt::poses::CPose2D p;
   mrpt::math::CMatrixDouble33 cov;
   cov(0, 0) = fabs(init_PDF_max_x - init_PDF_min_x);
-  cov(1, 1) = fabs(init_PDF_max_x - init_PDF_min_x);
+  cov(1, 1) = fabs(init_PDF_max_y - init_PDF_min_y);
   cov(2, 2) = min_phi < max_phi ? max_phi - min_phi : (max_phi + 2 * M_PI) - min_phi;
   p.x() = init_PDF_min_x + cov(0, 0) / 2.0;
   p.y() = init_PDF_min_y + cov(1, 1) / 2.0;
