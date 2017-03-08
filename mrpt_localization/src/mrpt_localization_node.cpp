@@ -133,9 +133,9 @@ void PFLocalizationNode::loop()
       publishMap();
     if (loop_count_ % param()->particlecloud_update_skip == 0)
       publishParticles();
-    if (param()->tf_broadcast) // tf always needed
+    if (param()->tf_broadcast)
       publishTF();
-    if (param()->pose_broadcast && state_ == RUN)
+    if (param()->pose_broadcast)
       publishPose();
 
     ros::spinOnce();
@@ -277,7 +277,7 @@ void PFLocalizationNode::callbackRobotPose(const geometry_msgs::PoseWithCovarian
   for (int i = 0; i < obs_pose_world.pose.covariance.size(); ++i)
   {
     if (i/6 == i%6 && obs_pose_world.pose.covariance[i] <= 0.0)
-   	  obs_pose_world.pose.covariance[i] = 1.0;
+      obs_pose_world.pose.covariance[i] = std::numeric_limits<double>().infinity();
   }
 
   // Covert the received pose into an observation the filter can integrate
@@ -383,29 +383,24 @@ void PFLocalizationNode::callbackInitialpose(const geometry_msgs::PoseWithCovari
 
 void PFLocalizationNode::callbackOdometry(const nav_msgs::Odometry& _msg)
 {
-  if (param()->update_while_stopped)  // always update the filter, regardless robot is moving or not
-    return;
-
-  // otherwise, update filter if we are moving or at initialization (100 first iterations)
+  // We always update the filter if update_while_stopped is true, regardless robot is moving or
+  // not; otherwise, update filter if we are moving or at initialization (100 first iterations)
   bool moving = std::abs(_msg.twist.twist.linear.x) > 1e-3 ||
                 std::abs(_msg.twist.twist.linear.y) > 1e-3 ||
                 std::abs(_msg.twist.twist.linear.z) > 1e-3 ||
                 std::abs(_msg.twist.twist.angular.x) > 1e-3 ||
                 std::abs(_msg.twist.twist.angular.y) > 1e-3 ||
                 std::abs(_msg.twist.twist.angular.z) > 1e-3;
-  if (moving)
+  if (param()->update_while_stopped || moving)
   {
     if (state_ == IDLE)
     {
       state_ = RUN;
     }
   }
-  else
+  else if (state_ == RUN && update_counter_ >= 100)
   {
-    if (state_ == RUN && update_counter_ >= 100)
-    {
-      state_ = IDLE;
-    }
+    state_ = IDLE;
   }
 }
 
@@ -532,7 +527,7 @@ void PFLocalizationNode::publishPose()
 
   // Fill in the header
   p.header.frame_id = tf::resolve(param()->tf_prefix, param()->global_frame_id);
-  if (loop_count_ < 10)
+  if (loop_count_ < 10 || state_ == IDLE)
     p.header.stamp = ros::Time::now();  // on first iterations timestamp differs a lot from ROS time
   else
     mrpt_bridge::convert(time_last_update_, p.header.stamp);
