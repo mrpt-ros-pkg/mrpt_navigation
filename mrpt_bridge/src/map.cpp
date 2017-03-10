@@ -44,7 +44,7 @@ MapHdl* MapHdl::instance_ = NULL;
 
 MapHdl::MapHdl ()
 {
-    /// ceation of the lookup table and pointers
+    /// creation of the lookup table and pointers
 	CLogOddsGridMapLUT<COccupancyGridMap2D::cellType> table;
 #ifdef  OCCUPANCY_GRIDMAP_CELL_SIZE_8BITS
     lut_cellmrpt2rosPtr = lut_cellmrpt2ros + INT8_MAX + 1; // center the pointer
