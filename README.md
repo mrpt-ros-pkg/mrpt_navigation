@@ -8,7 +8,9 @@ This repository provides packages and tools related to the Mobile Robot Programm
 * ROS wiki: http://wiki.ros.org/mrpt_navigation
 * Compiling instructions: http://wiki.ros.org/mrpt_navigation/Tutorials/Installing
 * Usage examples and tutorials: http://wiki.ros.org/mrpt_navigation/Tutorials
-
+* Branches:
+  * `master`: Intended for use with latest MRPT versions (1.5.x, 2.0.x).
+  * `compat-mrpt-1.3`: Stall branch, archived for backwards compatibility with MRPT versions 1.3.x or older.
 
 Demo videos
 ------------
