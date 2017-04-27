@@ -26,6 +26,8 @@ namespace math{
     template<class T> class CQuaternion;
     template <typename T,size_t NROWS,size_t NCOLS> class CMatrixFixedNumeric;
     typedef CMatrixFixedNumeric<double,3,3> CMatrixDouble33;
+    struct TPose3D;
+    struct TPose2D;
 }
 namespace poses{
         class CPose2D;
@@ -52,6 +54,13 @@ namespace mrpt_bridge
 	tf::Transform& convert(
 			const mrpt::poses::CPose3D& _src,
 			tf::Transform&  _des);
+
+	/** Convert: [MRPT] TPose3D \rightarrow [ROS] Transform */
+	tf::Transform& convert(const mrpt::math::TPose3D& _src, tf::Transform&  _des);
+	/** Convert: [MRPT] CPose2D \rightarrow [ROS] Transform */
+	tf::Transform& convert(const mrpt::poses::CPose2D& _src, tf::Transform&  _des);
+	/** Convert: [MRPT] TPose2D \rightarrow [ROS] Transform */
+	tf::Transform& convert(const mrpt::math::TPose2D& _src, tf::Transform&  _des);
 
 	/** Convert: [MRPT] CPose3D \rightarrow [ROS] Pose */
 	geometry_msgs::Pose&  convert(

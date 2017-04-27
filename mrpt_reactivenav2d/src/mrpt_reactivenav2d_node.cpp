@@ -125,13 +125,17 @@ private:
 		 *	 \param curW Current angular speed, in radians per second.
 		 * \return false on any error.
 		 */
+		 bool getCurrentPoseAndSpeeds(
 #if MRPT_VERSION>=0x150
-		bool getCurrentPoseAndSpeeds(mrpt::math::TPose2D &curPose, mrpt::math::TTwist2D &curVel, mrpt::system::TTimeStamp &timestamp)
-		{
-			double curV,curW;
+		mrpt::math::TPose2D &curPose, mrpt::math::TTwist2D &curVel, mrpt::system::TTimeStamp &timestamp,	mrpt::math::TPose2D &	curOdometry,
+std::string & frame_id
 #else
-		bool getCurrentPoseAndSpeeds( mrpt::poses::CPose2D &curPose, float &curV, float &curW)
+		mrpt::poses::CPose2D &curPose, float &curV, float &curW
+#endif
+		) override
 		{
+#if MRPT_VERSION>=0x150
+			double curV,curW;
 #endif
 			mrpt::utils::CTimeLoggerEntry tle(m_parent.m_profiler,"getCurrentPoseAndSpeeds");
 			tf::StampedTransform txRobotPose;
@@ -150,6 +154,7 @@ private:
 #if MRPT_VERSION>=0x150
 			mrpt_bridge::convert(txRobotPose.stamp_, timestamp);
 			curPose = mrpt::math::TPose2D( mrpt::poses::CPose2D(curRobotPose) );  // Explicit 3d->2d to confirm we know we're losing information
+			curOdometry = curPose;
 #else
 			curPose = mrpt::poses::CPose2D(curRobotPose);  // Explicit 3d->2d to confirm we know we're losing information
 #endif
@@ -170,9 +175,15 @@ private:
 		 *	 \param w Angular speed, in radians per second.
 		 * \return false on any error.
 		 */
+		bool changeSpeeds(
 #if MRPT_VERSION>=0x150
-		bool changeSpeeds(const mrpt::kinematics::CVehicleVelCmd &vel_cmd)
+		const mrpt::kinematics::CVehicleVelCmd &vel_cmd
+#else
+		float v, float w
+#endif
+) override
 		{
+#if MRPT_VERSION>=0x150
 			using namespace mrpt::kinematics;
 			const CVehicleVelCmd_DiffDriven* vel_cmd_diff_driven =
 				dynamic_cast<const CVehicleVelCmd_DiffDriven*>(&vel_cmd);
@@ -180,9 +191,6 @@ private:
 
 			const double v = vel_cmd_diff_driven->lin_vel;
 			const double w = vel_cmd_diff_driven->ang_vel;
-#else
-		virtual bool changeSpeeds( float v, float w )
-		{
 #endif
 			ROS_DEBUG("changeSpeeds: v=%7.4f m/s  w=%8.3f deg/s", v, w*180.0f/M_PI);
 			geometry_msgs::Twist cmd;
@@ -193,7 +201,7 @@ private:
 		}
 
 #if MRPT_VERSION>=0x150
-		bool stop(bool isEmergency)
+		bool stop(bool isEmergency) override
 		{
 			mrpt::kinematics::CVehicleVelCmd_DiffDriven vel_cmd;
 			vel_cmd.lin_vel = 0;
@@ -205,31 +213,33 @@ private:
 		/** Start the watchdog timer of the robot platform, if any.
 		 * \param T_ms Period, in ms.
 		 * \return false on any error. */
-		virtual bool startWatchdog(float T_ms)
+		virtual bool startWatchdog(float T_ms) override
 		{
 			return true;
 		}
 
 		/** Stop the watchdog timer.
 		 * \return false on any error. */
-		virtual bool stopWatchdog()
+		virtual bool stopWatchdog() override
 		{
 			return true;
 		}
 
 		/** Return the current set of obstacle points.
 		  * \return false on any error. */
+		bool senseObstacles(
 #if MRPT_VERSION>=0x150
-		virtual bool senseObstacles( CSimplePointsMap  &obstacles, mrpt::system::TTimeStamp &timestamp)
-		{
-			timestamp = mrpt::system::now();
+		CSimplePointsMap  &obstacles, mrpt::system::TTimeStamp &timestamp
 #else
-		virtual bool senseObstacles( CSimplePointsMap  &obstacles)
+		CSimplePointsMap  &obstacles
+#endif
+		) override
 		{
+#if MRPT_VERSION>=0x150
+			timestamp = mrpt::system::now();
 #endif
 			mrpt::synch::CCriticalSectionLocker csl(&m_parent.m_last_obstacles_cs);
 			obstacles = m_parent.m_last_obstacles;
-
 
 			MRPT_TODO("TODO: Check age of obstacles!");
 			return true;

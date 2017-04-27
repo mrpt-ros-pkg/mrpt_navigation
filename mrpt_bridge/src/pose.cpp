@@ -25,6 +25,7 @@
 #include <mrpt/poses/CPosePDFGaussianInf.h>
 #include <mrpt/poses/CPose3DPDFGaussianInf.h>
 #include <mrpt/math/CQuaternion.h>
+#include <mrpt/math/lightweight_geom_data.h>
 #include <mrpt/utils/mrpt_macros.h>
 #include <geometry_msgs/PoseWithCovariance.h>
 #include <geometry_msgs/Pose.h>
@@ -317,3 +318,16 @@ mrpt::poses::CPose3D& mrpt_bridge::convert(
   return _des;
 }
 
+tf::Transform& mrpt_bridge::convert(const mrpt::math::TPose3D& _src,tf::Transform&  _des)
+{
+	return mrpt_bridge::convert(mrpt::poses::CPose3D(_src),_des);
+}
+
+tf::Transform& mrpt_bridge::convert(const mrpt::poses::CPose2D& _src, tf::Transform&  _des)
+{
+	return mrpt_bridge::convert(mrpt::poses::CPose3D(_src),_des);
+}
+tf::Transform& mrpt_bridge::convert(const mrpt::math::TPose2D& _src, tf::Transform&  _des)
+{
+	return mrpt_bridge::convert(mrpt::poses::CPose3D(mrpt::math::TPose3D(_src)),_des);
+}
