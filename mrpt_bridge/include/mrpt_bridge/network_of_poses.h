@@ -7,9 +7,8 @@
 	 | Released under BSD License. See details in http://www.mrpt.org/License    |
 	 +---------------------------------------------------------------------------+ */
 
-/**
- * File includes methods for converting CNetworkOfPoses*DInf <=> NetworkOfPoses
- * message types
+/**\brief File includes methods for converting CNetworkOfPoses*DInf <=>
+ * NetworkOfPoses message types
  */
 
 #ifndef NETWORK_OF_POSES_H
@@ -26,23 +25,35 @@ namespace mrpt_bridge {
  * \param[out] ros_graph ROS graph representation
  */
 /**\{*/
-bool convert(
+
+// TODO - convert these methods into a common polymorphic method
+void convert(
 		const mrpt::graphs::CNetworkOfPoses2D& mrpt_graph,
 		mrpt_msgs::NetworkOfPoses& ros_graph);
 
-bool convert(
+void convert(
 		const mrpt::graphs::CNetworkOfPoses3D& mrpt_graph,
 		mrpt_msgs::NetworkOfPoses& ros_graph);
 
-bool convert(
+void convert(
 		const mrpt::graphs::CNetworkOfPoses2DInf& mrpt_graph,
 		mrpt_msgs::NetworkOfPoses& ros_graph);
 
-bool convert(
+void convert(
 		const mrpt::graphs::CNetworkOfPoses3DInf& mrpt_graph,
 		mrpt_msgs::NetworkOfPoses& ros_graph);
 
+void convert(
+		const mrpt::graphs::CNetworkOfPoses2DInf_NA& mrpt_graph,
+		mrpt_msgs::NetworkOfPoses& ros_graph);
+
+void convert(
+		const mrpt::graphs::CNetworkOfPoses3DInf_NA& mrpt_graph,
+		mrpt_msgs::NetworkOfPoses& ros_graph);
+
 /**\} */
+
+/////////////////////////////////////////////////////////////////////////
 
 /**\name ROS \rightarrow MRPT conversions */
 /**\brief Convert [ROS] NetworkOfPoses \rightarrow [MRPT] CNetworkOfPoses*DInf.
@@ -50,21 +61,30 @@ bool convert(
  * \param[out] ros_graph MRPT graph representation
  */
 /**\{ */
-bool convert(
+void convert(
 		const mrpt::graphs::CNetworkOfPoses2D& mrpt_graph,
 		mrpt_msgs::NetworkOfPoses& ros_graph);
 
-bool convert(
+void convert(
 		const mrpt::graphs::CNetworkOfPoses3D& mrpt_graph,
 		mrpt_msgs::NetworkOfPoses& ros_graph);
 
-bool convert(
+void convert(
 		const mrpt_msgs::NetworkOfPoses& ros_graph,
 		mrpt::graphs::CNetworkOfPoses2DInf& mrpt_graph);
 
-bool convert(
+void convert(
 		const mrpt_msgs::NetworkOfPoses& ros_graph,
 		mrpt::graphs::CNetworkOfPoses3DInf& mrpt_graph);
+
+void convert(
+		const mrpt_msgs::NetworkOfPoses& ros_graph,
+		mrpt::graphs::CNetworkOfPoses2DInf_NA& mrpt_graph);
+
+void convert(
+		const mrpt_msgs::NetworkOfPoses& ros_graph,
+		mrpt::graphs::CNetworkOfPoses3DInf_NA& mrpt_graph);
+
 
 /**\} */
 
