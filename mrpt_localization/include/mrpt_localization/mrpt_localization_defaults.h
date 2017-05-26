@@ -27,7 +27,7 @@
  ***********************************************************************************/
 
 #ifndef MRPT_LOCALIZATION_DEFAULTS_H
-#define MRPT_LOCALIZATION_RECORD_DEFAULTS_H
+#define MRPT_LOCALIZATION_DEFAULTS_H
 
 #define MRPT_LOCALIZATION_DEFAULT_DEBUG true
 #define MRPT_LOCALIZATION_DEFAULT_GUI_MRPT true
