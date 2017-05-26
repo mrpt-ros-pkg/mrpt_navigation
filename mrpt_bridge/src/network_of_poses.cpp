@@ -22,7 +22,7 @@ namespace mrpt_bridge {
 // MRPT => ROS
 ///////////////////////////////////////////////////////////////////////////////////////////
 
-bool convert(
+void convert(
 		const mrpt::graphs::CNetworkOfPoses2DInf& mrpt_graph,
 		mrpt_msgs::NetworkOfPoses& ros_graph) {
 	MRPT_START;
@@ -85,14 +85,14 @@ bool convert(
 	MRPT_END;
 }
 
-bool convert(
+void convert(
 		const mrpt::graphs::CNetworkOfPoses3DInf& mrpt_graph,
 		mrpt_msgs::NetworkOfPoses& ros_graph) {
-	THROW_EXCEPTION("Conversion not yet implemented.");
+	THROW_EXCEPTION("Conversion not implemented yet");
 	MRPT_TODO("Implement CNetworkOfPoses3DInf => mrpt_msgs::NetworkOfPoses conversion.");
 }
 
-bool convert(
+void convert(
 		const mrpt::graphs::CNetworkOfPoses2DInf_NA& mrpt_graph,
 		mrpt_msgs::NetworkOfPoses& ros_graph) {
 	MRPT_START;
@@ -163,17 +163,17 @@ bool convert(
 	 MRPT_END;
 }
 
-bool convert(
+void convert(
 		const mrpt::graphs::CNetworkOfPoses3DInf_NA& mrpt_graph,
 		mrpt_msgs::NetworkOfPoses& ros_graph) {
-	THROW_EXCEPTION("Conversion not yet implemented.");
+	THROW_EXCEPTION("Conversion not implemented yet");
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////
 // ROS => MRPT
 ///////////////////////////////////////////////////////////////////////////////////////////
 
-bool convert(
+void convert(
 		const mrpt_msgs::NetworkOfPoses& ros_graph,
 		mrpt::graphs::CNetworkOfPoses2DInf& mrpt_graph) {
 	MRPT_START;
@@ -224,14 +224,14 @@ bool convert(
 	MRPT_END;
 }
 
-bool convert(
+void convert(
 		const mrpt_msgs::NetworkOfPoses& ros_graph,
 		mrpt::graphs::CNetworkOfPoses3DInf& mrpt_graph) {
-	THROW_EXCEPTION("Conversion not yet implemented.");
+	THROW_EXCEPTION("Conversion not implemented yet");
 	MRPT_TODO("Implement mrpt_msgs::NetworkOfPoses => CNetworkOfPoses3DInf conversion.");
 }
 
-bool convert(
+void convert(
 		const mrpt_msgs::NetworkOfPoses& ros_graph,
 		mrpt::graphs::CNetworkOfPoses2DInf_NA& mrpt_graph) {
 	MRPT_START;
@@ -289,10 +289,10 @@ bool convert(
 	MRPT_END;
 }
 
-bool convert(
+void convert(
 		mrpt_msgs::NetworkOfPoses& ros_graph,
 		const mrpt::graphs::CNetworkOfPoses3DInf_NA& mrpt_graph) {
-	THROW_EXCEPTION("Conversion not yet implemented.");
+	THROW_EXCEPTION("Conversion not implemented yet");
 }
 
 } // end of namespace

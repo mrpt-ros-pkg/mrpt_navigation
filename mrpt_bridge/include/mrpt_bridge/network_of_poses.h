@@ -27,27 +27,27 @@ namespace mrpt_bridge {
 /**\{*/
 
 // TODO - convert these methods into a common polymorphic method
-bool convert(
+void convert(
 		const mrpt::graphs::CNetworkOfPoses2D& mrpt_graph,
 		mrpt_msgs::NetworkOfPoses& ros_graph);
 
-bool convert(
+void convert(
 		const mrpt::graphs::CNetworkOfPoses3D& mrpt_graph,
 		mrpt_msgs::NetworkOfPoses& ros_graph);
 
-bool convert(
+void convert(
 		const mrpt::graphs::CNetworkOfPoses2DInf& mrpt_graph,
 		mrpt_msgs::NetworkOfPoses& ros_graph);
 
-bool convert(
+void convert(
 		const mrpt::graphs::CNetworkOfPoses3DInf& mrpt_graph,
 		mrpt_msgs::NetworkOfPoses& ros_graph);
 
-bool convert(
+void convert(
 		const mrpt::graphs::CNetworkOfPoses2DInf_NA& mrpt_graph,
 		mrpt_msgs::NetworkOfPoses& ros_graph);
 
-bool convert(
+void convert(
 		const mrpt::graphs::CNetworkOfPoses3DInf_NA& mrpt_graph,
 		mrpt_msgs::NetworkOfPoses& ros_graph);
 
@@ -61,27 +61,27 @@ bool convert(
  * \param[out] ros_graph MRPT graph representation
  */
 /**\{ */
-bool convert(
+void convert(
 		const mrpt::graphs::CNetworkOfPoses2D& mrpt_graph,
 		mrpt_msgs::NetworkOfPoses& ros_graph);
 
-bool convert(
+void convert(
 		const mrpt::graphs::CNetworkOfPoses3D& mrpt_graph,
 		mrpt_msgs::NetworkOfPoses& ros_graph);
 
-bool convert(
+void convert(
 		const mrpt_msgs::NetworkOfPoses& ros_graph,
 		mrpt::graphs::CNetworkOfPoses2DInf& mrpt_graph);
 
-bool convert(
+void convert(
 		const mrpt_msgs::NetworkOfPoses& ros_graph,
 		mrpt::graphs::CNetworkOfPoses3DInf& mrpt_graph);
 
-bool convert(
+void convert(
 		const mrpt_msgs::NetworkOfPoses& ros_graph,
 		mrpt::graphs::CNetworkOfPoses2DInf_NA& mrpt_graph);
 
-bool convert(
+void convert(
 		const mrpt_msgs::NetworkOfPoses& ros_graph,
 		mrpt::graphs::CNetworkOfPoses3DInf_NA& mrpt_graph);
 

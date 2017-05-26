@@ -22,34 +22,44 @@ namespace mrpt_bridge {
    * @brief function that converts ROS verbosity level log4cxx::Level to MRPT equivalent mrpt::utils::VerbosityLevel
    */
 	inline mrpt::utils::VerbosityLevel rosLoggerLvlToMRPTLoggerLvl(log4cxx::LevelPtr lvl){
-		if (lvl == log4cxx::Level::getFatal())
+		using namespace mrpt::utils;
+		using namespace log4cxx;
+
+		// determine on the corresponding VerbosityLevel
+		VerbosityLevel mrpt_lvl;
+
+		if (lvl == Level::getFatal() ||
+				lvl == Level::getError())
 	  {
-	    return mrpt::utils::LVL_ERROR;
+	    mrpt_lvl = LVL_ERROR;
 	  }
-	  else if (lvl == log4cxx::Level::getError())
+	  else if (lvl == Level::getWarn())
 	  {
-	    return mrpt::utils::LVL_ERROR;
+	    mrpt_lvl = LVL_WARN;
 	  }
-	  else if (lvl == log4cxx::Level::getWarn())
+	  else if (lvl == Level::getInfo())
 	  {
-	    return mrpt::utils::LVL_WARN;
+	    mrpt_lvl = LVL_INFO;
 	  }
-	  else if (lvl == log4cxx::Level::getInfo())
+	  else if (lvl == Level::getDebug())
 	  {
-	    return mrpt::utils::LVL_INFO;
+	    mrpt_lvl = LVL_DEBUG;
 	  }
-	  else if (lvl == log4cxx::Level::getDebug())
+	  else
 	  {
-	    return mrpt::utils::LVL_DEBUG;
-	  }
-	}
+			THROW_EXCEPTION("Unknown log4cxx::Level is given.");
+		}
+
+		return mrpt_lvl;
+
+	} // end of rosLoggerLvlToMRPTLoggerLvl
 
 	/**
    * @brief callback that is called by MRPT mrpt::utils::COuputLogger to redirect log messages to ROS logger.
    * 	This function has to be inline, otherwise option log4j.logger.ros.package_name will be taken from mrpt_bridge
    *  instead of the package from which macro is actually called.
    */
-	inline void mrptToROSLoggerCallback(const std::string &msg, const mrpt::utils::VerbosityLevel level, const std::string &loggerName, const mrpt::system::TTimeStamp timestamp, void *userParam){
+	inline void mrptToROSLoggerCallback(const std::string &msg, const mrpt::utils::VerbosityLevel level, const std::string &loggerName, const mrpt::system::TTimeStamp timestamp, void *userParam) {
 
 		// Remove trailing \n if present
 		std::string tmsg = msg;
