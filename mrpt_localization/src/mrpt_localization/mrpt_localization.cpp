@@ -49,13 +49,11 @@ using namespace mrpt::system;
 using namespace mrpt::utils;
 using namespace mrpt::bayes;
 using namespace mrpt::poses;
+using namespace mrpt::maps;
+using namespace mrpt::obs;
 using namespace std;
 
 #include <mrpt/version.h>
-#if MRPT_VERSION>=0x130
-  using namespace mrpt::maps;
-  using namespace mrpt::obs;
-#endif
 
 PFLocalization::~PFLocalization()
 {
@@ -105,9 +103,7 @@ void PFLocalization::init()
   //  Only used for observations-only rawlogs:
   motion_model_default_options_.modelSelection = CActionRobotMovement2D::mmGaussian;
 
-#if MRPT_VERSION>=0x150
 #define gausianModel gaussianModel    // a typo was fixed in 1.5.0
-#endif
 
   motion_model_default_options_.gausianModel.minStdXY = ini_file.read_double("DummyOdometryParams", "minStdXY", 0.04);
   motion_model_default_options_.gausianModel.minStdPHI =
@@ -199,16 +195,15 @@ void PFLocalization::init3DDebug()
            (unsigned)grid_info.effectiveMappedCells);
     log_info("Initial PDF: %f particles/m2\n", initial_particle_count_ / grid_info.effectiveMappedArea);
 
-    CSetOfObjectsPtr plane = CSetOfObjects::Create();
+    CSetOfObjects::Ptr plane = mrpt::make_aligned_shared<CSetOfObjects>();
     metric_map_.getAs3DObject(plane);
     scene_.insert(plane);
 
     if (SHOW_PROGRESS_3D_REAL_TIME_)
     {
-      COpenGLScenePtr ptr_scene = win3D_->get3DSceneAndLock();
 
+      COpenGLScene::Ptr ptr_scene = win3D_->get3DSceneAndLock();
       ptr_scene->insert(plane);
-
       ptr_scene->enableFollowCamera(true);
 
       win3D_->unlockAccess3DScene();
@@ -220,7 +215,7 @@ void PFLocalization::init3DDebug()
     fflush(stdout);
 }
 
-void PFLocalization::show3DDebug(CSensoryFramePtr _observations)
+void PFLocalization::show3DDebug(CSensoryFrame::Ptr _observations)
 {
   // Create 3D window if requested:
   if (SHOW_PROGRESS_3D_REAL_TIME_)
@@ -232,9 +227,7 @@ void PFLocalization::show3DDebug(CSensoryFramePtr _observations)
     CPose2D meanPose;
     CMatrixDouble33 cov;
     pdf_.getCovarianceAndMean(cov, meanPose);
-
-    COpenGLScenePtr ptr_scene = win3D_->get3DSceneAndLock();
-
+    COpenGLScene::Ptr ptr_scene = win3D_->get3DSceneAndLock();
     win3D_->setCameraPointingToPoint(meanPose.x(), meanPose.y(), 0);
     win3D_->addTextMessage(
         10, 10, mrpt::format("timestamp: %s", mrpt::system::dateTimeLocalToString(cur_obs_timestamp).c_str()),
@@ -248,21 +241,21 @@ void PFLocalization::show3DDebug(CSensoryFramePtr _observations)
 
     // The particles:
     {
-      CRenderizablePtr parts = ptr_scene->getByName("particles");
+      CRenderizable::Ptr parts = ptr_scene->getByName("particles");
       if (parts)
         ptr_scene->removeObject(parts);
 
-      CSetOfObjectsPtr p = pdf_.getAs3DObject<CSetOfObjectsPtr>();
+      CSetOfObjects::Ptr p = pdf_.getAs3DObject<CSetOfObjects::Ptr>();
       p->setName("particles");
       ptr_scene->insert(p);
     }
 
     // The particles' cov:
     {
-      CRenderizablePtr ellip = ptr_scene->getByName("parts_cov");
+      CRenderizable::Ptr ellip = ptr_scene->getByName("parts_cov");
       if (!ellip)
       {
-        ellip = CEllipsoid::Create();
+        ellip = mrpt::make_aligned_shared<CEllipsoid>();
         ellip->setName("parts_cov");
         ellip->setColor(1, 0, 0, 0.6);
 
@@ -278,10 +271,10 @@ void PFLocalization::show3DDebug(CSensoryFramePtr _observations)
 
     // The laser scan:
     {
-      CRenderizablePtr scan_pts = ptr_scene->getByName("scan");
+      CRenderizable::Ptr scan_pts = ptr_scene->getByName("scan");
       if (!scan_pts)
       {
-        scan_pts = CPointCloud::Create();
+        scan_pts = mrpt::make_aligned_shared<CPointCloud>();
         scan_pts->setName("scan");
         scan_pts->setColor(1, 0, 0, 0.9);
         getAs<CPointCloud>(scan_pts)->enableColorFromZ(false);
@@ -306,7 +299,7 @@ void PFLocalization::show3DDebug(CSensoryFramePtr _observations)
     ptr_scene->enableFollowCamera(true);
 
     // Views:
-    COpenGLViewportPtr view1 = ptr_scene->getViewport("main");
+    COpenGLViewport::Ptr view1 = ptr_scene->getViewport("main");
     {
       CCamera &cam = view1->getCamera();
       cam.setAzimuthDegrees(-90);

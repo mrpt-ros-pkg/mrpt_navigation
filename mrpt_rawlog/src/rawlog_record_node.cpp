@@ -34,12 +34,9 @@
 #include <mrpt_bridge/time.h>
 
 #include <mrpt/version.h>
-#if MRPT_VERSION>=0x130
-	using namespace mrpt::maps;
-	using namespace mrpt::obs;
-#else
-	using namespace mrpt::slam;
-#endif
+
+using namespace mrpt::maps;
+using namespace mrpt::obs;
 
 int main(int argc, char **argv) {
 
@@ -79,7 +76,6 @@ void RawlogRecordNode::loop() {
     }
 }
 
-
 bool RawlogRecordNode::waitForTransform(mrpt::poses::CPose3D &des, const std::string& target_frame, const std::string& source_frame, const ros::Time& time, const ros::Duration& timeout, const ros::Duration& polling_sleep_duration){
     tf::StampedTransform transform;
     try
@@ -101,8 +97,7 @@ bool RawlogRecordNode::waitForTransform(mrpt::poses::CPose3D &des, const std::st
 
 void RawlogRecordNode::callbackLaser (const sensor_msgs::LaserScan &_msg) {
     //ROS_INFO("callbackLaser");
-	CObservation2DRangeScanPtr laser = CObservation2DRangeScan::Create();
-
+    CObservation2DRangeScan::Ptr laser = mrpt::make_aligned_shared<CObservation2DRangeScan>();
     if(laser_poses_.find(_msg.header.frame_id) == laser_poses_.end()) {
         updateLaserPose (_msg.header.frame_id);
     } else {
@@ -110,12 +105,11 @@ void RawlogRecordNode::callbackLaser (const sensor_msgs::LaserScan &_msg) {
         //ROS_INFO("LASER POSE %4.3f, %4.3f, %4.3f, %4.3f, %4.3f, %4.3f",  pose.x(), pose.y(), pose.z(), pose.roll(), pose.pitch(), pose.yaw());
         mrpt_bridge::convert(_msg, laser_poses_[_msg.header.frame_id],  *laser);
 
-
         std::string base_frame_id = tf::resolve(param()->tf_prefix, param()->base_frame_id);
         std::string odom_frame_id = tf::resolve(param()->tf_prefix, param()->odom_frame_id);
         mrpt::poses::CPose3D poseOdom;
         if(this->waitForTransform(poseOdom, odom_frame_id, base_frame_id, _msg.header.stamp, ros::Duration(1))){
-			CObservationOdometryPtr odometry = CObservationOdometry::Create();
+            CObservationOdometry::Ptr odometry = mrpt::make_aligned_shared<CObservationOdometry>();
             odometry->sensorLabel = odom_frame_id;
             odometry->hasEncodersInfo = false;
             odometry->hasVelocities = false;
@@ -158,6 +152,4 @@ void RawlogRecordNode::updateLaserPose (std::string _frame_id) {
         ROS_ERROR("%s",ex.what());
         ros::Duration(1.0).sleep();
     }
-
 }
-

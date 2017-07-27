@@ -12,24 +12,14 @@
 #include <mrpt/system/string_utils.h> // for lowerCase()
 
 #include <mrpt/version.h>
-#if MRPT_VERSION>=0x130
-#	include <mrpt/maps/COccupancyGridMap2D.h>
-#	include <mrpt/maps/CMultiMetricMap.h>
-#	include <mrpt/maps/CSimpleMap.h>
-	using mrpt::maps::COccupancyGridMap2D;
-	using mrpt::maps::CMultiMetricMap;
-	using mrpt::maps::CSimpleMap;
-	using mrpt::maps::CLogOddsGridMapLUT;
-#else
-#	include <mrpt/slam/COccupancyGridMap2D.h>
-#	include <mrpt/slam/CMultiMetricMap.h>
-#	include <mrpt/slam/CSimpleMap.h>
-	using mrpt::slam::COccupancyGridMap2D;
-	using mrpt::slam::CMultiMetricMap;
-	using mrpt::slam::CSimpleMap;
-	using mrpt::slam::CLogOddsGridMapLUT;
-#endif
 
+#include <mrpt/maps/COccupancyGridMap2D.h>
+#include <mrpt/maps/CMultiMetricMap.h>
+#include <mrpt/maps/CSimpleMap.h>
+using mrpt::maps::COccupancyGridMap2D;
+using mrpt::maps::CMultiMetricMap;
+using mrpt::maps::CSimpleMap;
+using mrpt::maps::CLogOddsGridMapLUT;
 
 #ifndef INT8_MAX // avoid duplicated #define's
 #define INT8_MAX    0x7f

@@ -37,19 +37,11 @@
 #include <mrpt_bridge/beacon.h>
 
 #include <mrpt/version.h>
-#if MRPT_VERSION>=0x130
-  #include <mrpt/obs/CObservationBeaconRanges.h>
-  using namespace mrpt::obs;
-  #if MRPT_VERSION>=0x150
-    #include <mrpt/obs/CObservationRobotPose.h>
-  #endif
-#else
-  #include <mrpt/slam/CObservationBeaconRanges.h>
-  using namespace mrpt::slam;
-#endif
-
+#include <mrpt/obs/CObservationBeaconRanges.h>
+#include <mrpt/obs/CObservationRobotPose.h>
 #include "mrpt_localization_node.h"
 
+using namespace mrpt::obs;
 
 int main(int argc, char **argv)
 {
@@ -165,18 +157,13 @@ bool PFLocalizationNode::waitForTransform(mrpt::poses::CPose3D &des, const std::
 
 void PFLocalizationNode::callbackLaser(const sensor_msgs::LaserScan &_msg)
 {
-#if MRPT_VERSION>=0x130
   using namespace mrpt::maps;
   using namespace mrpt::obs;
-#else
-  using namespace mrpt::slam;
-#endif
 
   time_last_input_ = ros::Time::now();
 
   //ROS_INFO("callbackLaser");
-  CObservation2DRangeScanPtr laser = CObservation2DRangeScan::Create();
-
+  CObservation2DRangeScan::Ptr laser = mrpt::make_aligned_shared<CObservation2DRangeScan>();
   //printf("callbackLaser %s\n", _msg.header.frame_id.c_str());
   if (laser_poses_.find(_msg.header.frame_id) == laser_poses_.end())
   {
@@ -188,11 +175,11 @@ void PFLocalizationNode::callbackLaser(const sensor_msgs::LaserScan &_msg)
     //ROS_INFO("LASER POSE %4.3f, %4.3f, %4.3f, %4.3f, %4.3f, %4.3f",  pose.x(), pose.y(), pose.z(), pose.roll(), pose.pitch(), pose.yaw());
     mrpt_bridge::convert(_msg, laser_poses_[_msg.header.frame_id], *laser);
 
-    CSensoryFramePtr sf = CSensoryFrame::Create();
-    CObservationOdometryPtr odometry;
+    CSensoryFrame::Ptr sf = mrpt::make_aligned_shared<CSensoryFrame>();
+    CObservationOdometry::Ptr odometry;
     odometryForCallback(odometry, _msg.header);
 
-    CObservationPtr obs = CObservationPtr(laser);
+    CObservation::Ptr obs = std::dynamic_pointer_cast<CObservation>(laser);
     sf->insert(obs);
     observation(sf, odometry);
     if (param()->gui_mrpt)
@@ -202,17 +189,13 @@ void PFLocalizationNode::callbackLaser(const sensor_msgs::LaserScan &_msg)
 
 void PFLocalizationNode::callbackBeacon(const mrpt_msgs::ObservationRangeBeacon &_msg)
 {
-#if MRPT_VERSION>=0x130
   using namespace mrpt::maps;
   using namespace mrpt::obs;
-#else
-  using namespace mrpt::slam;
-#endif
 
   time_last_input_ = ros::Time::now();
 
   //ROS_INFO("callbackBeacon");
-  CObservationBeaconRangesPtr beacon = CObservationBeaconRanges::Create();
+  CObservationBeaconRanges::Ptr beacon = mrpt::make_aligned_shared<CObservationBeaconRanges>();
   //printf("callbackBeacon %s\n", _msg.header.frame_id.c_str());
   if (beacon_poses_.find(_msg.header.frame_id) == beacon_poses_.end())
   {
@@ -223,12 +206,11 @@ void PFLocalizationNode::callbackBeacon(const mrpt_msgs::ObservationRangeBeacon 
     //mrpt::poses::CPose3D pose = beacon_poses_[_msg.header.frame_id];
     //ROS_INFO("BEACON POSE %4.3f, %4.3f, %4.3f, %4.3f, %4.3f, %4.3f",  pose.x(), pose.y(), pose.z(), pose.roll(), pose.pitch(), pose.yaw());
     mrpt_bridge::convert(_msg, beacon_poses_[_msg.header.frame_id], *beacon);
-
-    CSensoryFramePtr sf = CSensoryFrame::Create();
-    CObservationOdometryPtr odometry;
+    CSensoryFrame::Ptr sf = mrpt::make_aligned_shared<CSensoryFrame>();
+    CObservationOdometry::Ptr odometry;
     odometryForCallback(odometry, _msg.header);
 
-    CObservationPtr obs = CObservationPtr(beacon);
+    CObservation::Ptr obs = std::dynamic_pointer_cast<CObservation>(beacon);
     sf->insert(obs);
     observation(sf, odometry);
     if (param()->gui_mrpt)
@@ -238,7 +220,6 @@ void PFLocalizationNode::callbackBeacon(const mrpt_msgs::ObservationRangeBeacon 
 
 void PFLocalizationNode::callbackRobotPose(const geometry_msgs::PoseWithCovarianceStamped &_msg)
 {
-#if MRPT_VERSION>=0x150
   using namespace mrpt::maps;
   using namespace mrpt::obs;
 
@@ -281,34 +262,36 @@ void PFLocalizationNode::callbackRobotPose(const geometry_msgs::PoseWithCovarian
   }
 
   // Covert the received pose into an observation the filter can integrate
-  CObservationRobotPosePtr feature = CObservationRobotPose::Create();
+  // CObservationRobotPosePtr feature = CObservationRobotPose::Create();
+  CObservationRobotPose::Ptr feature = mrpt::make_aligned_shared<CObservationRobotPose>();
 
   feature->sensorLabel = _msg.header.frame_id;
   mrpt_bridge::convert(_msg.header.stamp, feature->timestamp);
   mrpt_bridge::convert(obs_pose_world.pose, feature->pose);
 
-  CSensoryFramePtr sf = CSensoryFrame::Create();
-  CObservationOdometryPtr odometry;
+  // CSensoryFramePtr sf = CSensoryFrame::Create();
+  CSensoryFrame::Ptr sf = mrpt::make_aligned_shared<CSensoryFrame>();
+  // CObservationOdometryPtr odometry;
+  CObservationOdometry::Ptr odometry;
   odometryForCallback(odometry, _msg.header);
 
-  CObservationPtr obs = CObservationPtr(feature);
+  // CObservationPtr obs = CObservationPtr(feature);
+  CObservation::Ptr obs = std::dynamic_pointer_cast<CObservation>(feature);
   sf->insert(obs);
   observation(sf, odometry);
   if (param()->gui_mrpt)
     show3DDebug(sf);
-#else
-  // not implemented
-#endif
 }
-
-void PFLocalizationNode::odometryForCallback(CObservationOdometryPtr &_odometry, const std_msgs::Header &_msg_header)
+void PFLocalizationNode::odometryForCallback(
+    CObservationOdometry::Ptr &_odometry,
+    const std_msgs::Header &_msg_header)
 {
   std::string base_frame_id = tf::resolve(param()->tf_prefix, param()->base_frame_id);
   std::string odom_frame_id = tf::resolve(param()->tf_prefix, param()->odom_frame_id);
   mrpt::poses::CPose3D poseOdom;
   if (this->waitForTransform(poseOdom, odom_frame_id, base_frame_id, _msg_header.stamp, ros::Duration(1.0)))
   {
-    _odometry = CObservationOdometry::Create();
+    _odometry = mrpt::make_aligned_shared<CObservationOdometry>();
     _odometry->sensorLabel = odom_frame_id;
     _odometry->hasEncodersInfo = false;
     _odometry->hasVelocities = false;
@@ -463,7 +446,7 @@ void PFLocalizationNode::publishTF()
   mrpt::poses::CPose2D robot_pose;
   pdf_.getMean(robot_pose);
   tf::StampedTransform base_on_map_tf, odom_on_base_tf;
-  mrpt_bridge::convert(robot_pose, base_on_map_tf);
+  mrpt_bridge::convert(mrpt::poses::CPose3D(robot_pose), base_on_map_tf);
   ros::Time time_last_update(0.0);
   if (state_ == RUN)
   {
@@ -556,7 +539,6 @@ void PFLocalizationNode::publishPose()
 
 void PFLocalizationNode::useROSLogLevel()
 {
-#if MRPT_VERSION>=0x150
   // Set ROS log level also on MRPT internal log system; level enums are fully compatible
   std::map<std::string, ros::console::levels::Level> loggers;
   ros::console::get_loggers(loggers);
@@ -564,5 +546,4 @@ void PFLocalizationNode::useROSLogLevel()
   pdf_.setVerbosityLevel(static_cast<mrpt::utils::VerbosityLevel>(loggers["ros.roscpp"]));
   if (loggers.find("ros.mrpt_localization") != loggers.end())
   pdf_.setVerbosityLevel(static_cast<mrpt::utils::VerbosityLevel>(loggers["ros.mrpt_localization"]));
-#endif
 }

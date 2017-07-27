@@ -40,22 +40,13 @@
 #include <mrpt_bridge/mrpt_log_macros.h>
 
 #include <mrpt/version.h>
-#if MRPT_VERSION>=0x130
-  #include <mrpt/obs/CActionRobotMovement2D.h>
-  #include <mrpt/obs/CActionCollection.h>
-  #include <mrpt/obs/CObservationOdometry.h>
-  #include <mrpt/obs/CSensoryFrame.h>
-  #include <mrpt/maps/CMultiMetricMap.h>
-  using namespace mrpt::maps;
-  using namespace mrpt::obs;
-#else
-  #include <mrpt/slam/CActionRobotMovement2D.h>
-  #include <mrpt/slam/CActionCollection.h>
-  #include <mrpt/slam/CObservationOdometry.h>
-  #include <mrpt/slam/CSensoryFrame.h>
-  #include <mrpt/slam/CMultiMetricMap.h>
-  using namespace mrpt::slam;
-#endif
+#include <mrpt/obs/CActionRobotMovement2D.h>
+#include <mrpt/obs/CActionCollection.h>
+#include <mrpt/obs/CObservationOdometry.h>
+#include <mrpt/obs/CSensoryFrame.h>
+#include <mrpt/maps/CMultiMetricMap.h>
+using namespace mrpt::maps;
+using namespace mrpt::obs;
 
 class PFLocalizationCore
 {
@@ -80,7 +71,7 @@ public:
    * @param _sf sensor observation
    * @param _odometry the odom data can also be NULL
    **/
-  void observation(CSensoryFramePtr _sf, CObservationOdometryPtr _odometry);
+  void observation(CSensoryFrame::Ptr _sf, CObservationOdometry::Ptr _odometry);
 
 protected:
   bool use_motion_model_default_options_;      ///< used default odom_params
@@ -110,7 +101,7 @@ private:
    **/
   void initializeFilter();
 
-  void updateFilter(CActionCollectionPtr _action, CSensoryFramePtr _sf);
+  void updateFilter(CActionCollection::Ptr _action, CSensoryFrame::Ptr _sf);
 };
 
 #endif // MRPT_LOCALIZATION_CORE_H

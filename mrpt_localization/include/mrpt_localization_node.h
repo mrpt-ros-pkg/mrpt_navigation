@@ -45,20 +45,13 @@
 
 #include <mrpt/math.h>
 #include <mrpt/version.h>
-#if MRPT_VERSION>=0x130
-  #include <mrpt/obs/CObservationOdometry.h>
-  using mrpt::obs::CObservationOdometry;
-  using mrpt::obs::CObservationOdometryPtr;
-#else
-  #include <mrpt/slam/CObservationOdometry.h>
-  using mrpt::slam::CObservationOdometry;
-  using mrpt::slam::CObservationOdometryPtr;
-#endif
 
+#include <mrpt/obs/CObservationOdometry.h>
 #include "mrpt_localization/MotionConfig.h"
 #include "mrpt_localization/mrpt_localization.h"
 #include "mrpt_msgs/ObservationRangeBeacon.h"
 
+using mrpt::obs::CObservationOdometry;
 
 /// ROS Node
 class PFLocalizationNode : public PFLocalization
@@ -99,7 +92,7 @@ public:
   void callbackLaser(const sensor_msgs::LaserScan&);
   void callbackBeacon(const mrpt_msgs::ObservationRangeBeacon&);
   void callbackRobotPose(const geometry_msgs::PoseWithCovarianceStamped&);
-  void odometryForCallback(CObservationOdometryPtr&, const std_msgs::Header&);
+  void odometryForCallback(CObservationOdometry::Ptr&, const std_msgs::Header&);
   void callbackInitialpose(const geometry_msgs::PoseWithCovarianceStamped&);
   void callbackOdometry(const nav_msgs::Odometry&);
   void updateMap(const nav_msgs::OccupancyGrid&);

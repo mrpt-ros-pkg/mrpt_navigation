@@ -17,12 +17,7 @@ namespace sensor_msgs{
 }
 
 #include <mrpt/version.h>
-#if MRPT_VERSION>=0x130
 namespace mrpt { namespace maps { class CSimplePointsMap; class CColouredPointsMap; } }
-#else
-namespace mrpt { namespace slam { class CSimplePointsMap; class CColouredPointsMap; } }
-#endif
-
 namespace mrpt_bridge
 {
 
@@ -34,14 +29,7 @@ namespace mrpt_bridge
  * \return true on sucessful conversion, false on any error.
  * \sa mrpt2ros
  */
-bool copy(
-		const sensor_msgs::PointCloud2 &msg,
-#if MRPT_VERSION>=0x130
-		mrpt::maps::CSimplePointsMap &obj
-#else
-		mrpt::slam::CSimplePointsMap &obj
-#endif
-		);
+bool copy( const sensor_msgs::PointCloud2 &msg, mrpt::maps::CSimplePointsMap &obj );
 
 /** Convert mrpt::slam::CSimplePointsMap -> sensor_msgs/PointCloud2
  *  The user must supply the "msg_header" field to be copied into the output message object, since that part does not appear in MRPT classes.
@@ -50,14 +38,7 @@ bool copy(
  * \return true on sucessful conversion, false on any error.
  * \sa ros2mrpt
  */
-bool copy(
-#if MRPT_VERSION>=0x130
-		const mrpt::maps::CSimplePointsMap &obj,
-#else
-		const mrpt::slam::CSimplePointsMap &obj,
-#endif
-		const std_msgs::Header &msg_header,
-		sensor_msgs::PointCloud2 &msg);
+bool copy( const mrpt::maps::CSimplePointsMap &obj, const std_msgs::Header &msg_header, sensor_msgs::PointCloud2 &msg);
 
 /** @} */
 

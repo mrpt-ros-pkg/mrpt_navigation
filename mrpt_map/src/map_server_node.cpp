@@ -27,27 +27,17 @@
  ***********************************************************************************/
 
 #include <map_server_node.h>
-
 #include <mrpt_bridge/map.h>
 
 #include <mrpt/system/filesystem.h> // ASSERT_FILE_EXISTS_()
 #include <mrpt/utils/CConfigFile.h>
 
 #include <mrpt/version.h>
-#if MRPT_VERSION>=0x130
-#	include <mrpt/maps/COccupancyGridMap2D.h>
-#	include <mrpt/maps/CMultiMetricMap.h>
-	using mrpt::maps::COccupancyGridMap2D;
-	using mrpt::maps::CMultiMetricMap;
-#else
-#	include <mrpt/slam/COccupancyGridMap2D.h>
-#	include <mrpt/slam/CMultiMetricMap.h>
-	using mrpt::slam::COccupancyGridMap2D;
-	using mrpt::slam::CMultiMetricMap;
-#endif
 
-
-
+#include <mrpt/maps/COccupancyGridMap2D.h>
+#include <mrpt/maps/CMultiMetricMap.h>
+using mrpt::maps::COccupancyGridMap2D;
+using mrpt::maps::CMultiMetricMap;
 
 MapServer::MapServer(ros::NodeHandle &n)
     : n_(n)

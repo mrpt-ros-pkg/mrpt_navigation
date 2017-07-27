@@ -25,7 +25,6 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS   *
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.                    *                       *
  ***********************************************************************************/
-
 #include <iostream>
 #include <stdint.h>
 #include <boost/interprocess/sync/interprocess_mutex.hpp>
@@ -33,30 +32,18 @@
 #ifndef MRPT_RAWLOG_RECORD_H
 #define MRPT_RAWLOG_RECORD_H
 
-
 #include <mrpt/version.h>
-#if MRPT_VERSION>=0x130
-#	include <mrpt/obs/CRawlog.h>
-#	include <mrpt/obs/CActionRobotMovement2D.h>
-#	include <mrpt/obs/CObservationOdometry.h>
-#	include <mrpt/obs/CObservation2DRangeScan.h>
-	using mrpt::obs::CRawlog;
-	using mrpt::obs::CObservation2DRangeScanPtr;
-	using mrpt::obs::CObservationOdometryPtr;
-	using mrpt::obs::CActionRobotMovement2D;
-#else
-#	include <mrpt/slam/CRawlog.h>
-#	include <mrpt/slam/CActionRobotMovement2D.h>
-#	include <mrpt/slam/CObservationOdometry.h>
-#	include <mrpt/slam/CObservation2DRangeScan.h>
-	using mrpt::slam::CRawlog;
-	using mrpt::slam::CObservation2DRangeScanPtr;
-	using mrpt::slam::CObservationOdometryPtr;
-	using mrpt::slam::CActionRobotMovement2D;
-#endif
-
+#include <mrpt/obs/CRawlog.h>
+#include <mrpt/obs/CActionRobotMovement2D.h>
+#include <mrpt/obs/CObservationOdometry.h>
+#include <mrpt/obs/CObservation2DRangeScan.h>
 #include <mrpt/poses/CPose2D.h>
 #include <mrpt_bridge/mrpt_log_macros.h>
+
+using mrpt::obs::CRawlog;
+using mrpt::obs::CObservation2DRangeScan;
+using mrpt::obs::CObservationOdometry;
+using mrpt::obs::CActionRobotMovement2D;
 
 class RawlogRecord {
     MRPT_VIRTUAL_LOG_MACROS;
@@ -77,7 +64,7 @@ protected:
 	CRawlog *pRawLogASF;
     mrpt::poses::CPose2D odomLastPose_;
     void updateRawLogName(const mrpt::system::TTimeStamp &t);
-	void observation(CObservation2DRangeScanPtr laser, CObservationOdometryPtr _odometry);
+    void observation(CObservation2DRangeScan::Ptr laser, CObservationOdometry::Ptr _odometry);
     boost::interprocess::interprocess_mutex mutexRawLog;
 };
 

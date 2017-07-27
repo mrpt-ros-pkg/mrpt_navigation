@@ -81,12 +81,9 @@ void RawlogRecord::updateRawLogName(const mrpt::system::TTimeStamp &t) {
                                    param_->raw_log_name_asf.c_str());
 }
 
-void RawlogRecord::observation(CObservation2DRangeScanPtr laser, CObservationOdometryPtr odometry) {
-#if MRPT_VERSION>=0x130
-	using namespace mrpt::obs;
-#else
-	using namespace mrpt::slam;
-#endif
+
+void RawlogRecord::observation(CObservation2DRangeScan::Ptr laser, CObservationOdometry::Ptr odometry) {
+    using namespace mrpt::obs;
 
     pRawLog->addObservationMemoryReference(odometry);
     pRawLog->addObservationMemoryReference(laser);
@@ -97,16 +94,16 @@ void RawlogRecord::observation(CObservation2DRangeScanPtr laser, CObservationOdo
 
     mrpt::poses::CPose2D incOdoPose = odometry->odometry - odomLastPose_;
 
-
-	CActionRobotMovement2D odom_move;
+    CActionRobotMovement2D odom_move;
     odom_move.timestamp = odometry->timestamp;
     odom_move.computeFromOdometry(incOdoPose, param_->motionModelOptions);
-	CActionCollectionPtr action = CActionCollection::Create();
+
+    CActionCollection::Ptr action = mrpt::make_aligned_shared<CActionCollection>();
     action->insert(odom_move);
     pRawLogASF->addActionsMemoryReference(action);
 
-	CSensoryFramePtr sf = CSensoryFrame::Create();
-	CObservationPtr obs = CObservationPtr(laser);
+    CSensoryFrame::Ptr sf = mrpt::make_aligned_shared<CSensoryFrame>();
+    CObservation::Ptr obs = std::dynamic_pointer_cast<CObservation>(laser);
     sf->insert(obs);
     pRawLogASF->addObservationsMemoryReference(sf);
 

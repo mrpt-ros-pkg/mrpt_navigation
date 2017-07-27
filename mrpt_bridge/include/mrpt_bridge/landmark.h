@@ -27,12 +27,8 @@ namespace mrpt_msgs{
 }
 
 namespace mrpt { namespace poses { class CPose3D; } }
-#include <mrpt/version.h>
-#if MRPT_VERSION>=0x130
-	namespace mrpt { namespace obs { class CObservationBearingRange; } }
-#else
-	namespace mrpt { namespace slam  { class CObservationBearingRange; } }
-#endif
+
+namespace mrpt { namespace obs { class CObservationBearingRange; } }
 
 namespace mrpt_bridge {
 
@@ -46,11 +42,7 @@ namespace mrpt_bridge {
 	bool convert(
 			const mrpt_msgs::ObservationRangeBearing &_msg,
 			const mrpt::poses::CPose3D &_pose,
-#if MRPT_VERSION>=0x130
 			mrpt::obs::CObservationBearingRange &_obj
-#else
-			mrpt::slam::CObservationBearingRange &_obj
-#endif
 			);
 
 	/** MRPT->ROS: Takes a CObservationBearingRange and outputs range data in mrpt_msgs::ObservationRangeBearing
@@ -58,11 +50,7 @@ namespace mrpt_bridge {
       * \sa ros2mrpt
       */
 	bool convert(
-#if MRPT_VERSION>=0x130
 		const mrpt::obs::CObservationBearingRange &_obj,
-#else
-		const mrpt::slam::CObservationBearingRange &_obj,
-#endif
 		mrpt_msgs::ObservationRangeBearing &_msg);
 
 	/** MRPT->ROS: Takes a CObservationBearingRange and outputs range data in mrpt_msgs::ObservationRangeBearing + the relative pose of the range sensor wrt base_link
@@ -70,11 +58,7 @@ namespace mrpt_bridge {
       * \sa ros2mrpt
       */
 	bool convert(
-		#if MRPT_VERSION>=0x130
-				const mrpt::obs::CObservationBearingRange &_obj,
-		#else
-				const mrpt::slam::CObservationBearingRange &_obj,
-		#endif
+                const mrpt::obs::CObservationBearingRange &_obj,
 		mrpt_msgs::ObservationRangeBearing &_msg,
 		geometry_msgs::Pose &_pose);
 

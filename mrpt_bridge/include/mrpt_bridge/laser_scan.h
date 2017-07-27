@@ -21,13 +21,7 @@ namespace sensor_msgs{
 }
 
 namespace mrpt { namespace poses { class CPose3D; } }
-#include <mrpt/version.h>
-#if MRPT_VERSION>=0x130
-	namespace mrpt { namespace obs { class CObservation2DRangeScan; } }
-#else
-	namespace mrpt { namespace slam  { class CObservation2DRangeScan; } }
-#endif
-
+namespace mrpt { namespace obs { class CObservation2DRangeScan; } }
 namespace mrpt_bridge {
 
 	/** @name LaserScan: ROS <-> MRPT
@@ -40,11 +34,7 @@ namespace mrpt_bridge {
 	bool convert(
 			const sensor_msgs::LaserScan &_msg,
 			const mrpt::poses::CPose3D &_pose,
-#if MRPT_VERSION>=0x130
 			mrpt::obs::CObservation2DRangeScan &_obj
-#else
-			mrpt::slam::CObservation2DRangeScan &_obj
-#endif
 			);
 
 	/** MRPT->ROS: Takes a CObservation2DRangeScan and outputs range data in sensor_msgs::LaserScan
@@ -52,24 +42,16 @@ namespace mrpt_bridge {
       * \sa ros2mrpt
       */
 	bool convert(
-#if MRPT_VERSION>=0x130
 		const mrpt::obs::CObservation2DRangeScan &_obj,
-#else
-		const mrpt::slam::CObservation2DRangeScan &_obj,
-#endif
 		sensor_msgs::LaserScan &_msg);
 
 	/** MRPT->ROS: Takes a CObservation2DRangeScan and outputs range data in sensor_msgs::LaserScan + the relative pose of the laser wrt base_link
 	  * \return true on sucessful conversion, false on any error.
       * \sa ros2mrpt
       */
-	bool convert(
-		#if MRPT_VERSION>=0x130
-				const mrpt::obs::CObservation2DRangeScan &_obj,
-		#else
-				const mrpt::slam::CObservation2DRangeScan &_obj,
-		#endif
-		sensor_msgs::LaserScan &_msg,
+        bool convert(
+                const mrpt::obs::CObservation2DRangeScan &_obj,
+                sensor_msgs::LaserScan &_msg,
 		geometry_msgs::Pose &_pose);
 
 	/** @} */

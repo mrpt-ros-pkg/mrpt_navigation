@@ -1,8 +1,6 @@
 #ifndef MRPT_BRIDGE_BEACON_H
 #define MRPT_BRIDGE_BEACON_H
 
-
-
 #include <stdint.h>
 #include <string>
 
@@ -21,12 +19,8 @@ namespace mrpt_msgs{
 }
 
 namespace mrpt { namespace poses { class CPose3D; } }
-#include <mrpt/version.h>
-#if MRPT_VERSION>=0x130
-	namespace mrpt { namespace obs { class CObservationBeaconRanges; } }
-#else
-	namespace mrpt { namespace slam  { class CObservationBeaconRanges; } }
-#endif
+
+namespace mrpt { namespace obs { class CObservationBeaconRanges; } }
 
 namespace mrpt_bridge {
 
@@ -40,11 +34,7 @@ namespace mrpt_bridge {
 	bool convert(
 			const mrpt_msgs::ObservationRangeBeacon &_msg,
 			const mrpt::poses::CPose3D &_pose,
-#if MRPT_VERSION>=0x130
 			mrpt::obs::CObservationBeaconRanges &_obj
-#else
-			mrpt::slam::CObservationBeaconRanges &_obj
-#endif
 			);
 
 	/** MRPT->ROS: Takes a CObservationBeaconRanges and outputs range data in mrpt_msgs::ObservationRangeBeacon
@@ -52,11 +42,7 @@ namespace mrpt_bridge {
       * \sa ros2mrpt
       */
 	bool convert(
-#if MRPT_VERSION>=0x130
 		const mrpt::obs::CObservationBeaconRanges &_obj,
-#else
-		const mrpt::slam::CObservationBeaconRanges &_obj,
-#endif
 		mrpt_msgs::ObservationRangeBeacon &_msg);
 
 	/** MRPT->ROS: Takes a CObservationBeaconRanges and outputs range data in mrpt_msgs::ObservationRangeBeacon + the relative pose of the range sensor wrt base_link
@@ -64,11 +50,7 @@ namespace mrpt_bridge {
       * \sa ros2mrpt
       */
 	bool convert(
-		#if MRPT_VERSION>=0x130
-				const mrpt::obs::CObservationBeaconRanges &_obj,
-		#else
-				const mrpt::slam::CObservationBeaconRanges &_obj,
-		#endif
+                const mrpt::obs::CObservationBeaconRanges &_obj,
 		mrpt_msgs::ObservationRangeBeacon &_msg,
 		geometry_msgs::Pose &_pose);
 

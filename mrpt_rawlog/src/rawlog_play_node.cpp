@@ -36,22 +36,13 @@
 #include <mrpt/system/filesystem.h>
 
 #include <mrpt/version.h>
-#if MRPT_VERSION>=0x130
-#	include <mrpt/obs/CSensoryFrame.h>
-#	include <mrpt/obs/CRawlog.h>
-#	include <mrpt/obs/CObservation2DRangeScan.h>
-#	include <mrpt/obs/CObservationBeaconRanges.h>
-#	include <mrpt/obs/CObservationBearingRange.h>
-	using namespace mrpt::obs;
-#else
-#	include <mrpt/slam/CSensoryFrame.h>
-#	include <mrpt/slam/CRawlog.h>
-#	include <mrpt/slam/CObservation2DRangeScan.h>
-#	include <mrpt/slam/CObservationBeaconRanges.h>
-#	include <mrpt/slam/CObservationBearingRange.h>
-	using namespace mrpt::slam;
-#endif
+#include <mrpt/obs/CSensoryFrame.h>
+#include <mrpt/obs/CRawlog.h>
+#include <mrpt/obs/CObservation2DRangeScan.h>
+#include <mrpt/obs/CObservationBeaconRanges.h>
+#include <mrpt/obs/CObservationBearingRange.h>
 
+using namespace mrpt::obs;
 
 int main(int argc, char **argv) {
 
@@ -88,13 +79,13 @@ void RawlogPlayNode::init() {
     base_frame_ = tf::resolve(param()->tf_prefix, param()->base_frame);
     robotPose = mrpt::poses::CPose3DPDFGaussian();
 }
-
 bool RawlogPlayNode::nextEntry() {
-	CActionCollectionPtr action;
-	CSensoryFramePtr     observations;
-	CObservationPtr      obs;
+        CActionCollection::Ptr action;
+        CSensoryFrame::Ptr     observations;
+        CObservation::Ptr      obs;
 
-	if(!CRawlog::getActionObservationPairOrObservation( rawlog_stream_, action, observations, obs, entry_)) {
+        if(!CRawlog::getActionObservationPairOrObservation( rawlog_stream_, action, observations, obs, entry_)) {
+
         ROS_INFO("end of stream!");
         return true;
     }
@@ -104,10 +95,10 @@ bool RawlogPlayNode::nextEntry() {
 
     // loop over laser overservations
     for(size_t i = 0;i < observations->size() ;i++){
-		CObservation2DRangeScanPtr laser = observations->getObservationByClass<CObservation2DRangeScan>(i);
-		CObservationBeaconRangesPtr beacon = observations->getObservationByClass<CObservationBeaconRanges>(i);
-        CObservationBearingRangePtr landmark=observations->getObservationByClass<CObservationBearingRange>(i);
-	if(laser.pointer() != NULL) {// laser observation detected
+        CObservation2DRangeScan::Ptr laser = observations->getObservationByClass<CObservation2DRangeScan>(i);
+        CObservationBeaconRanges::Ptr beacon = observations->getObservationByClass<CObservationBeaconRanges>(i);
+        CObservationBearingRange::Ptr landmark = observations->getObservationByClass<CObservationBearingRange>(i);
+        if(laser.get() != NULL) { // laser observation detected
 		mrpt_bridge::convert(*laser, msg_laser_, msg_pose_sensor);
 		laser->getSensorPose(pose_sensor);
 		if (msg_laser_.header.frame_id.empty())
@@ -119,7 +110,7 @@ bool RawlogPlayNode::nextEntry() {
 		pub_laser_.publish(msg_laser_);
 		laser = observations->getObservationByClass<CObservation2DRangeScan>();
 	}
-	else if(beacon.pointer() != NULL) {
+        else if(beacon.get() != NULL) {
 		mrpt_bridge::convert(*beacon, msg_beacon_, msg_pose_sensor);
 		beacon->getSensorPose(pose_sensor);
 		if (msg_beacon_.header.frame_id.empty())
@@ -131,7 +122,7 @@ bool RawlogPlayNode::nextEntry() {
 		pub_beacon_.publish(msg_beacon_);
 		beacon = observations->getObservationByClass<CObservationBeaconRanges>();
     }
-    else if(landmark.pointer() != NULL) {
+    else if(landmark.get() != NULL) {
 		mrpt_bridge::convert(*landmark, msg_landmark_, msg_pose_sensor);
 		landmark->getSensorPose(pose_sensor);
 		if (msg_landmark_.header.frame_id.empty())

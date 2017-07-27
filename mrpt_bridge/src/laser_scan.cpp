@@ -6,13 +6,8 @@
 #include "mrpt_bridge/laser_scan.h"
 
 #include <mrpt/version.h>
-#if MRPT_VERSION>=0x130
-#	include <mrpt/obs/CObservation2DRangeScan.h>
-	using namespace mrpt::obs;
-#else
-#	include <mrpt/slam/CObservation2DRangeScan.h>
-	using namespace mrpt::slam;
-#endif
+#include <mrpt/obs/CObservation2DRangeScan.h>
+using namespace mrpt::obs;
 
 namespace mrpt_bridge {
 
@@ -32,12 +27,7 @@ bool convert(const sensor_msgs::LaserScan &_msg, const mrpt::poses::CPose3D &_po
 	const double fov05 = 0.5*_obj.aperture;
 	const double inv_ang_step = (N-1)/_obj.aperture;
 
-#if MRPT_VERSION>=0x150
 	_obj.resizeScan(N);
-#else
-	_obj.scan.resize(N);
-	_obj.validRange.resize(N);
-#endif
 	for(std::size_t i_mrpt = 0; i_mrpt < N; i_mrpt++)
 	{
 
@@ -48,19 +38,11 @@ bool convert(const sensor_msgs::LaserScan &_msg, const mrpt::poses::CPose3D &_po
 
 		// set the scan
 		const float r = _msg.ranges[i_ros];
-#if MRPT_VERSION>=0x150
 		_obj.setScanRange(i_mrpt, r);
-#else
-		_obj.scan[i_mrpt] = r;
-#endif
 
 		// set the validity of the scan
 		const bool r_valid = ((_obj.scan[i_mrpt] < (_msg.range_max*0.95)) && (_obj.scan[i_mrpt] > _msg.range_min));
-#if MRPT_VERSION>=0x150
 		_obj.setScanRangeValidity(i_mrpt, r_valid);
-#else
-		_obj.validRange[i_mrpt] = r_valid;
-#endif
 	}
 
 	return true;

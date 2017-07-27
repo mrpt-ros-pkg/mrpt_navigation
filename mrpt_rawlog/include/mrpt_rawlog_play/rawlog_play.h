@@ -37,14 +37,8 @@
 #include <mrpt/poses/CPose3DPDFGaussian.h>
 
 #include <mrpt/version.h>
-#if MRPT_VERSION>=0x130
-#	include <mrpt/obs/CActionRobotMovement2D.h>
-	using namespace mrpt::obs;
-#else
-#	include <mrpt/slam/CActionRobotMovement2D.h>
-	using namespace mrpt::slam;
-#endif
-
+#include <mrpt/obs/CActionRobotMovement2D.h>
+using namespace mrpt::obs;
 
 class RawlogPlay {
 public:
@@ -61,7 +55,6 @@ protected:
     mrpt::utils::CFileGZInputStream rawlog_stream_;
     mrpt::poses::CPose3DPDFGaussian robotPose;
     size_t entry_;
-
 
 };
 

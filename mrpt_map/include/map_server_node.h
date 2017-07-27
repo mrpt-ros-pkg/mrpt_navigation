@@ -36,13 +36,8 @@
 
 #include <mrpt/utils/CConfigFile.h>
 #include <mrpt/version.h>
-#if MRPT_VERSION>=0x130
-#	include <mrpt/maps/CMultiMetricMap.h>
-	using mrpt::maps::CMultiMetricMap;
-#else
-#	include <mrpt/slam/CMultiMetricMap.h>
-	using mrpt::slam::CMultiMetricMap;
-#endif
+#include <mrpt/maps/CMultiMetricMap.h>
+using mrpt::maps::CMultiMetricMap;
 
 class MapServer {
 public:

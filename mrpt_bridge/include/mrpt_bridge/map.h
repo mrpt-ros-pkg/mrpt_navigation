@@ -19,15 +19,9 @@ namespace nav_msgs{
 }
 
 #include <mrpt/version.h>
-#if MRPT_VERSION>=0x130
-	namespace mrpt { namespace maps { class COccupancyGridMap2D; class CMultiMetricMap; } }
-	using mrpt::maps::COccupancyGridMap2D;
-	using mrpt::maps::CMultiMetricMap;
-#else
-	namespace mrpt {namespace slam { class COccupancyGridMap2D; class CMultiMetricMap; } }
-	using mrpt::slam::COccupancyGridMap2D;
-	using mrpt::slam::CMultiMetricMap;
-#endif
+namespace mrpt { namespace maps { class COccupancyGridMap2D; class CMultiMetricMap; } }
+using mrpt::maps::COccupancyGridMap2D;
+using mrpt::maps::CMultiMetricMap;
 namespace mrpt { namespace utils { class CConfigFile; } }
 
 namespace mrpt_bridge

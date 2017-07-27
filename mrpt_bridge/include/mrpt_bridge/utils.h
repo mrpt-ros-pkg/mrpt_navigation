@@ -6,60 +6,46 @@
 
 #ifndef MRPT_BRIDGE_UTILS_H
 #define MRPT_BRIDGE_UTILS_H
-
 #include <ros/console.h>
 #include <mrpt/system/datetime.h>
 #include <mrpt/version.h>
-#if MRPT_VERSION>=0x150
-#	include <mrpt/utils/COutputLogger.h>
-#endif
+#include <mrpt/utils/COutputLogger.h>
 #include <log4cxx/logger.h>
 
 namespace mrpt_bridge {
 
-#if MRPT_VERSION>=0x150
 	/**
    * @brief function that converts ROS verbosity level log4cxx::Level to MRPT equivalent mrpt::utils::VerbosityLevel
    */
 	inline mrpt::utils::VerbosityLevel rosLoggerLvlToMRPTLoggerLvl(log4cxx::LevelPtr lvl){
-		using namespace mrpt::utils;
-		using namespace log4cxx;
-
-		// determine on the corresponding VerbosityLevel
-		VerbosityLevel mrpt_lvl;
-
-		if (lvl == Level::getFatal() ||
-				lvl == Level::getError())
+		if (lvl == log4cxx::Level::getFatal())
 	  {
-	    mrpt_lvl = LVL_ERROR;
+	    return mrpt::utils::LVL_ERROR;
 	  }
-	  else if (lvl == Level::getWarn())
+	  else if (lvl == log4cxx::Level::getError())
 	  {
-	    mrpt_lvl = LVL_WARN;
+	    return mrpt::utils::LVL_ERROR;
 	  }
-	  else if (lvl == Level::getInfo())
+	  else if (lvl == log4cxx::Level::getWarn())
 	  {
-	    mrpt_lvl = LVL_INFO;
+	    return mrpt::utils::LVL_WARN;
 	  }
-	  else if (lvl == Level::getDebug())
+	  else if (lvl == log4cxx::Level::getInfo())
 	  {
-	    mrpt_lvl = LVL_DEBUG;
+	    return mrpt::utils::LVL_INFO;
 	  }
-	  else
+	  else if (lvl == log4cxx::Level::getDebug())
 	  {
-			THROW_EXCEPTION("Unknown log4cxx::Level is given.");
-		}
-
-		return mrpt_lvl;
-
-	} // end of rosLoggerLvlToMRPTLoggerLvl
+	    return mrpt::utils::LVL_DEBUG;
+	  }
+	}
 
 	/**
    * @brief callback that is called by MRPT mrpt::utils::COuputLogger to redirect log messages to ROS logger.
    * 	This function has to be inline, otherwise option log4j.logger.ros.package_name will be taken from mrpt_bridge
    *  instead of the package from which macro is actually called.
    */
-	inline void mrptToROSLoggerCallback(const std::string &msg, const mrpt::utils::VerbosityLevel level, const std::string &loggerName, const mrpt::system::TTimeStamp timestamp, void *userParam) {
+	inline void mrptToROSLoggerCallback(const std::string &msg, const mrpt::utils::VerbosityLevel level, const std::string &loggerName, const mrpt::system::TTimeStamp timestamp, void *userParam){
 
 		// Remove trailing \n if present
 		std::string tmsg = msg;
@@ -77,8 +63,6 @@ namespace mrpt_bridge {
 	    ROS_ERROR("%s", tmsg.c_str());
 	  }
 	}
-
-#endif
 
 } //namespace mrpt_bridge
 

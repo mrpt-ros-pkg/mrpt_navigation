@@ -56,15 +56,10 @@ void RawlogRecordNode::ParametersNode::update(const unsigned long &loop_count) {
 }
 
 void RawlogRecordNode::ParametersNode::callbackParameters (mrpt_rawlog::MotionConfig &config, uint32_t level ) {
-#if MRPT_VERSION>=0x130
 	using namespace mrpt::maps;
 	using namespace mrpt::obs;
-#else
-	using namespace mrpt::slam;
-#endif
-#if MRPT_VERSION>=0x150
+
 #define gausianModel gaussianModel    // a typo was fixed in 1.5.0
-#endif
 
     if(config.motion_noise_type == MOTION_MODEL_GAUSSIAN) {
 		motionModelOptions.modelSelection = CActionRobotMovement2D::mmGaussian;
