@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(mrpt_bridge)
+set (CMAKE_CXX_STANDARD 14)  # Require C++14
 
 ## Find catkin macros and# libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
@@ -49,7 +50,7 @@ add_library(${PROJECT_NAME}
 	src/point_cloud.cpp
 	src/point_cloud2.cpp
 	src/pose.cpp
-  )
+)
 
 ## Declare a cpp executable
 
