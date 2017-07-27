@@ -407,18 +407,24 @@ public:
 	{
 		ROS_INFO_STREAM("[onRosSetRobotShape] Robot shape received via topic: " <<  *newShape );
 
-		mrpt::math::CPolygon poly;
-		poly.resize(newShape->points.size());
-		for (size_t i=0;i<newShape->points.size();i++)
-		{
-			poly[i].x = newShape->points[i].x;
-			poly[i].y = newShape->points[i].y;
-		}
+                CReactiveNavigationSystem* rns2D = dynamic_cast<CReactiveNavigationSystem*>(m_reactive_nav_engine.get());
+                // CReactiveNavigationSystem3D* rns3D = dynamic_pointer_cast<CReactiveNavigationSystem3D*>(m_reactive_nav_engine.get());
 
-		{
-                    std::lock_guard<std::mutex> csl(m_reactive_nav_engine_cs);
-                    m_reactive_nav_engine->changeRobotShape(poly);
-		}
+                if( rns2D )
+                {
+                    mrpt::math::CPolygon poly;
+                    poly.resize(newShape->points.size());
+                    for (size_t i=0;i<newShape->points.size();i++)
+                    {
+                            poly[i].x = newShape->points[i].x;
+                            poly[i].y = newShape->points[i].y;
+                    }
+
+                    {
+                        std::lock_guard<std::mutex> csl(m_reactive_nav_engine_cs);
+                        rns2D->changeRobotShape(poly);
+                    }
+                }
 	}
 
 
