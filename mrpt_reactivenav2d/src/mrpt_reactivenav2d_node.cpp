@@ -371,15 +371,29 @@ public:
 	void navigateTo(const mrpt::math::TPose2D &target)
 	{
 		ROS_INFO("[navigateTo] Starting navigation to %s", target.asString().c_str() );
-#if MRPT_VERSION>=0x130
+#if MRPT_VERSION>=0x150
 		CAbstractPTGBasedReactive::TNavigationParamsPTG   navParams;
-#else
-		CAbstractReactiveNavigationSystem::TNavigationParams navParams;
-#endif
+		CAbstractNavigator::TargetInfo target_info;
+		target_info.target_coords.x = target.x;
+		target_info.target_coords.y = target.y;
+		target_info.targetAllowedDistance = m_target_allowed_distance;
+		target_info.targetIsRelative = false;
+
+		navParams.multiple_targets.push_back(target_info);
+#elif MRPT_VERSION>=0x130
+		CAbstractPTGBasedReactive::TNavigationParamsPTG   navParams;
 		navParams.target.x = target.x;
 		navParams.target.y = target.y ;
 		navParams.targetAllowedDistance = m_target_allowed_distance;
 		navParams.targetIsRelative = false;
+
+#else
+		CAbstractReactiveNavigationSystem::TNavigationParams navParams;
+		navParams.target.x = target.x;
+		navParams.target.y = target.y ;
+		navParams.targetAllowedDistance = m_target_allowed_distance;
+		navParams.targetIsRelative = false;
+#endif
 
 		// Optional: restrict the PTGs to use
 		//navParams.restrict_PTG_indices.push_back(1);
