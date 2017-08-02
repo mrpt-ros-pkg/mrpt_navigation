@@ -62,6 +62,10 @@ PFLocalizationNode::Parameters::Parameters(PFLocalizationNode *p) :
   ROS_INFO("pose_broadcast: %s", pose_broadcast ? "true" : "false");
   node.param<bool>("tf_broadcast", tf_broadcast, true);
   ROS_INFO("tf_broadcast: %s", tf_broadcast ? "true" : "false");
+  node.param<bool>("use_map_topic", use_map_topic, false);
+  ROS_INFO("use_map_topic: %s", use_map_topic? "true" : "false");
+  node.param<bool>("first_map_only", first_map_only, false);
+  ROS_INFO("first_map_only: %s", first_map_only? "true" : "false");
   node.param<bool>("debug", debug, true);
   ROS_INFO("debug: %s", debug? "true" : "false");
 
