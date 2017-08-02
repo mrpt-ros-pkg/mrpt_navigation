@@ -90,6 +90,8 @@ public:
     bool update_while_stopped;
     bool pose_broadcast;
     bool tf_broadcast;
+    bool use_map_topic;
+    bool first_map_only;
   };
 
   PFLocalizationNode(ros::NodeHandle &n);
@@ -102,12 +104,14 @@ public:
   void odometryForCallback(CObservationOdometryPtr&, const std_msgs::Header&);
   void callbackInitialpose(const geometry_msgs::PoseWithCovarianceStamped&);
   void callbackOdometry(const nav_msgs::Odometry&);
+  void callbackMap(const nav_msgs::OccupancyGrid&);
   void updateMap(const nav_msgs::OccupancyGrid&);
   void publishTF();
   void publishPose();
 
 private:
   ros::NodeHandle nh_;
+  bool first_map_received_;
   ros::Time time_last_input_;
   unsigned long long loop_count_;
   nav_msgs::GetMap::Response resp_;

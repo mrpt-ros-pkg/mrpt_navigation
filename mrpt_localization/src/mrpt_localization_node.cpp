@@ -66,7 +66,7 @@ PFLocalizationNode::~PFLocalizationNode()
 }
 
 PFLocalizationNode::PFLocalizationNode(ros::NodeHandle &n) :
-    PFLocalization(new PFLocalizationNode::Parameters(this)), nh_(n), loop_count_(0)
+    PFLocalization(new PFLocalizationNode::Parameters(this)), nh_(n), first_map_received_(false), loop_count_(0)
 {
 }
 
@@ -321,26 +321,59 @@ void PFLocalizationNode::odometryForCallback(CObservationOdometryPtr &_odometry,
 bool PFLocalizationNode::waitForMap()
 {
   int wait_counter = 0;
-  int wait_limit = 1;
-  client_map_ = nh_.serviceClient<nav_msgs::GetMap>("static_map");
-  nav_msgs::GetMap srv;
-  while (!client_map_.call(srv) && ros::ok() && wait_counter < wait_limit)
+  int wait_limit = 10;
+
+  if (param()->use_map_topic)
   {
-    ROS_INFO("waiting for map service!");
-    sleep(1);
-    wait_counter++;
+    sub_map_ = nh_.subscribe("map", 1, &PFLocalizationNode::callbackMap, this);
+    ROS_INFO("Subscribed to map topic.");
+
+    while (!first_map_received_ && ros::ok() && wait_counter < wait_limit)
+    {
+      ROS_INFO("waiting for map callback..");
+      ros::Duration(0.5).sleep();
+      ros::spinOnce();
+      wait_counter++;
+    }
+    if (wait_counter != wait_limit)
+    {
+      return true;
+    }
   }
-  if (wait_counter != wait_limit)
+  else
   {
-    ROS_INFO_STREAM("Map service complete.");
-    updateMap(srv.response.map);
+    client_map_ = nh_.serviceClient<nav_msgs::GetMap>("static_map");
+    nav_msgs::GetMap srv;
+    while (!client_map_.call(srv) && ros::ok() && wait_counter < wait_limit)
+    {
+      ROS_INFO("waiting for map service!");
+      ros::Duration(0.5).sleep();
+      wait_counter++;
+    }
     client_map_.shutdown();
-    return true;
+    if (wait_counter != wait_limit)
+    {
+      ROS_INFO_STREAM("Map service complete.");
+      updateMap(srv.response.map);
+      return true;
+    }
   }
 
   ROS_WARN_STREAM("No map received.");
-  client_map_.shutdown();
   return false;
+}
+
+void PFLocalizationNode::callbackMap(const nav_msgs::OccupancyGrid& msg)
+{
+  if (param()->first_map_only && first_map_received_)
+  {
+    return;
+  }
+
+  ROS_INFO_STREAM("Map received.");
+  updateMap(msg);
+
+  first_map_received_ = true;
 }
 
 void PFLocalizationNode::updateSensorPose(std::string _frame_id)
