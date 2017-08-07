@@ -55,7 +55,6 @@
 #include <mrpt/utils/CConfigFileMemory.h>
 #include <mrpt/utils/CConfigFile.h>
 #include <mrpt/system/filesystem.h>
-#include <mrpt/synch/CCriticalSection.h>
 
 #include <mrpt_bridge/pose.h>
 #include <mrpt_bridge/point_cloud.h>
@@ -106,7 +105,7 @@ private:
 	ros::Timer m_timer_run_nav;
 
 	CSimplePointsMap  m_last_obstacles;
-	mrpt::synch::CCriticalSection m_last_obstacles_cs;
+  std::mutex m_last_obstacles_cs;
 
 	struct MyReactiveInterface :
 #if MRPT_VERSION>=0x150
@@ -238,7 +237,7 @@ std::string & frame_id
 #if MRPT_VERSION>=0x150
 			timestamp = mrpt::system::now();
 #endif
-			mrpt::synch::CCriticalSectionLocker csl(&m_parent.m_last_obstacles_cs);
+      std::lock_guard<std::mutex> csl(m_parent.m_last_obstacles_cs);
 			obstacles = m_parent.m_last_obstacles;
 
 			MRPT_TODO("TODO: Check age of obstacles!");
@@ -246,13 +245,13 @@ std::string & frame_id
 		}
 
 #if MRPT_VERSION>=0x150
-		mrpt::kinematics::CVehicleVelCmdPtr getEmergencyStopCmd() override
+    mrpt::kinematics::CVehicleVelCmd::Ptr getEmergencyStopCmd() override
 		{
 			return getStopCmd();
 		}
-		mrpt::kinematics::CVehicleVelCmdPtr getStopCmd() override
+    mrpt::kinematics::CVehicleVelCmd::Ptr getStopCmd() override
 		{
-			mrpt::kinematics::CVehicleVelCmdPtr ret = mrpt::kinematics::CVehicleVelCmdPtr(new mrpt::kinematics::CVehicleVelCmd_DiffDriven);
+      mrpt::kinematics::CVehicleVelCmd::Ptr ret = mrpt::kinematics::CVehicleVelCmd::Ptr(new mrpt::kinematics::CVehicleVelCmd_DiffDriven);
 			ret->setToStop();
 			return ret;
 		}
@@ -279,7 +278,7 @@ std::string & frame_id
 	MyReactiveInterface  m_reactive_if;
 
 	CReactiveNavigationSystem     m_reactive_nav_engine;
-	mrpt::synch::CCriticalSection m_reactive_nav_engine_cs;
+  std::mutex m_reactive_nav_engine_cs;
 
 public:
 	/**  Constructor: Inits ROS system */
@@ -389,17 +388,19 @@ public:
 
 #else
 		CAbstractReactiveNavigationSystem::TNavigationParams navParams;
-		navParams.target.x = target.x;
-		navParams.target.y = target.y ;
-		navParams.targetAllowedDistance = m_target_allowed_distance;
-		navParams.targetIsRelative = false;
+
+
+	    navParams.target.target_coords.x = target.x;
+	    navParams.target.target_coords.y = target.y ;
+	    navParams.target.targetAllowedDistance = m_target_allowed_distance;
+	    navParams.target.targetIsRelative = false;
 #endif
 
 		// Optional: restrict the PTGs to use
 		//navParams.restrict_PTG_indices.push_back(1);
 
 		{
-			mrpt::synch::CCriticalSectionLocker csl(&m_reactive_nav_engine_cs);
+      std::lock_guard<std::mutex> csl(m_reactive_nav_engine_cs);
 			m_reactive_nav_engine.navigate( &navParams );
 		}
 	}
@@ -414,7 +415,7 @@ public:
 			m_1st_time_init = true;
 			ROS_INFO("[ReactiveNav2DNode] Initializing reactive navigation engine...");
 			{
-				mrpt::synch::CCriticalSectionLocker csl(&m_reactive_nav_engine_cs);
+        std::lock_guard<std::mutex> csl(m_reactive_nav_engine_cs);
 				m_reactive_nav_engine.initialize();
 			}
 			ROS_INFO("[ReactiveNav2DNode] Reactive navigation engine init done!");
@@ -452,7 +453,7 @@ public:
 
 	void onRosLocalObstacles(const sensor_msgs::PointCloudConstPtr &obs )
 	{
-		mrpt::synch::CCriticalSectionLocker csl(&m_last_obstacles_cs);
+    std::lock_guard<std::mutex> csl(m_last_obstacles_cs);
 		mrpt_bridge::point_cloud::ros2mrpt(*obs,m_last_obstacles);
 		//ROS_DEBUG("Local obstacles received: %u points", static_cast<unsigned int>(m_last_obstacles.size()) );
 	}
@@ -470,7 +471,7 @@ public:
 		}
 
 		{
-			mrpt::synch::CCriticalSectionLocker csl(&m_reactive_nav_engine_cs);
+      std::lock_guard<std::mutex> csl(m_reactive_nav_engine_cs);
 			m_reactive_nav_engine.changeRobotShape(poly);
 		}
 	}

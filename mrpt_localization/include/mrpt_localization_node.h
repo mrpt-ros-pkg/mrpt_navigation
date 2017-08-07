@@ -47,8 +47,7 @@
 #include <mrpt/version.h>
 #if MRPT_VERSION>=0x130
   #include <mrpt/obs/CObservationOdometry.h>
-  using mrpt::obs::CObservationOdometry;
-  using mrpt::obs::CObservationOdometryPtr;
+  using mrpt::obs::CObservationOdometry;  
 #else
   #include <mrpt/slam/CObservationOdometry.h>
   using mrpt::slam::CObservationOdometry;
@@ -101,7 +100,7 @@ public:
   void callbackLaser(const sensor_msgs::LaserScan&);
   void callbackBeacon(const mrpt_msgs::ObservationRangeBeacon&);
   void callbackRobotPose(const geometry_msgs::PoseWithCovarianceStamped&);
-  void odometryForCallback(CObservationOdometryPtr&, const std_msgs::Header&);
+  void odometryForCallback(CObservationOdometry::Ptr&, const std_msgs::Header&);
   void callbackInitialpose(const geometry_msgs::PoseWithCovarianceStamped&);
   void callbackOdometry(const nav_msgs::Odometry&);
   void callbackMap(const nav_msgs::OccupancyGrid&);

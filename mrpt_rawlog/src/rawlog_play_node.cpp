@@ -90,9 +90,9 @@ void RawlogPlayNode::init() {
 }
 
 bool RawlogPlayNode::nextEntry() {
-	CActionCollectionPtr action;
-	CSensoryFramePtr     observations;
-	CObservationPtr      obs;
+  CActionCollection::Ptr action;
+  CSensoryFrame::Ptr     observations;
+  CObservation::Ptr      obs;
 
 	if(!CRawlog::getActionObservationPairOrObservation( rawlog_stream_, action, observations, obs, entry_)) {
         ROS_INFO("end of stream!");
@@ -104,10 +104,10 @@ bool RawlogPlayNode::nextEntry() {
 
     // loop over laser overservations
     for(size_t i = 0;i < observations->size() ;i++){
-		CObservation2DRangeScanPtr laser = observations->getObservationByClass<CObservation2DRangeScan>(i);
-		CObservationBeaconRangesPtr beacon = observations->getObservationByClass<CObservationBeaconRanges>(i);
-        CObservationBearingRangePtr landmark=observations->getObservationByClass<CObservationBearingRange>(i);
-	if(laser.pointer() != NULL) {// laser observation detected
+    CObservation2DRangeScan::Ptr laser = observations->getObservationByClass<CObservation2DRangeScan>(i);
+    CObservationBeaconRanges::Ptr beacon = observations->getObservationByClass<CObservationBeaconRanges>(i);
+        CObservationBearingRange::Ptr landmark=observations->getObservationByClass<CObservationBearingRange>(i);
+  if(laser) {// laser observation detected
 		mrpt_bridge::convert(*laser, msg_laser_, msg_pose_sensor);
 		laser->getSensorPose(pose_sensor);
 		if (msg_laser_.header.frame_id.empty())
@@ -119,7 +119,7 @@ bool RawlogPlayNode::nextEntry() {
 		pub_laser_.publish(msg_laser_);
 		laser = observations->getObservationByClass<CObservation2DRangeScan>();
 	}
-	else if(beacon.pointer() != NULL) {
+  else if(beacon) {
 		mrpt_bridge::convert(*beacon, msg_beacon_, msg_pose_sensor);
 		beacon->getSensorPose(pose_sensor);
 		if (msg_beacon_.header.frame_id.empty())
@@ -131,7 +131,7 @@ bool RawlogPlayNode::nextEntry() {
 		pub_beacon_.publish(msg_beacon_);
 		beacon = observations->getObservationByClass<CObservationBeaconRanges>();
     }
-    else if(landmark.pointer() != NULL) {
+    else if(landmark) {
 		mrpt_bridge::convert(*landmark, msg_landmark_, msg_pose_sensor);
 		landmark->getSensorPose(pose_sensor);
 		if (msg_landmark_.header.frame_id.empty())

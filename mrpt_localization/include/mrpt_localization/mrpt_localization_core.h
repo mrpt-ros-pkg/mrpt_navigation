@@ -80,7 +80,7 @@ public:
    * @param _sf sensor observation
    * @param _odometry the odom data can also be NULL
    **/
-  void observation(CSensoryFramePtr _sf, CObservationOdometryPtr _odometry);
+  void observation(CSensoryFrame::Ptr _sf, CObservationOdometry::Ptr _odometry);
 
 protected:
   bool use_motion_model_default_options_;      ///< used default odom_params
@@ -110,7 +110,7 @@ private:
    **/
   void initializeFilter();
 
-  void updateFilter(CActionCollectionPtr _action, CSensoryFramePtr _sf);
+  void updateFilter(CActionCollection::Ptr _action, CSensoryFrame::Ptr _sf);
 };
 
 #endif // MRPT_LOCALIZATION_CORE_H

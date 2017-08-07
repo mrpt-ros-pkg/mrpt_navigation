@@ -175,7 +175,7 @@ void PFLocalizationNode::callbackLaser(const sensor_msgs::LaserScan &_msg)
   time_last_input_ = ros::Time::now();
 
   //ROS_INFO("callbackLaser");
-  CObservation2DRangeScanPtr laser = CObservation2DRangeScan::Create();
+  CObservation2DRangeScan::Ptr laser = mrpt::make_aligned_shared<CObservation2DRangeScan>();
 
   //printf("callbackLaser %s\n", _msg.header.frame_id.c_str());
   if (laser_poses_.find(_msg.header.frame_id) == laser_poses_.end())
@@ -188,11 +188,11 @@ void PFLocalizationNode::callbackLaser(const sensor_msgs::LaserScan &_msg)
     //ROS_INFO("LASER POSE %4.3f, %4.3f, %4.3f, %4.3f, %4.3f, %4.3f",  pose.x(), pose.y(), pose.z(), pose.roll(), pose.pitch(), pose.yaw());
     mrpt_bridge::convert(_msg, laser_poses_[_msg.header.frame_id], *laser);
 
-    CSensoryFramePtr sf = CSensoryFrame::Create();
-    CObservationOdometryPtr odometry;
+    CSensoryFrame::Ptr sf = mrpt::make_aligned_shared<CSensoryFrame>();
+    CObservationOdometry::Ptr odometry;
     odometryForCallback(odometry, _msg.header);
 
-    CObservationPtr obs = CObservationPtr(laser);
+    CObservation::Ptr obs = CObservation::Ptr(laser);
     sf->insert(obs);
     observation(sf, odometry);
     if (param()->gui_mrpt)
@@ -212,7 +212,7 @@ void PFLocalizationNode::callbackBeacon(const mrpt_msgs::ObservationRangeBeacon 
   time_last_input_ = ros::Time::now();
 
   //ROS_INFO("callbackBeacon");
-  CObservationBeaconRangesPtr beacon = CObservationBeaconRanges::Create();
+  CObservationBeaconRanges::Ptr beacon = mrpt::make_aligned_shared<CObservationBeaconRanges>();
   //printf("callbackBeacon %s\n", _msg.header.frame_id.c_str());
   if (beacon_poses_.find(_msg.header.frame_id) == beacon_poses_.end())
   {
@@ -224,11 +224,11 @@ void PFLocalizationNode::callbackBeacon(const mrpt_msgs::ObservationRangeBeacon 
     //ROS_INFO("BEACON POSE %4.3f, %4.3f, %4.3f, %4.3f, %4.3f, %4.3f",  pose.x(), pose.y(), pose.z(), pose.roll(), pose.pitch(), pose.yaw());
     mrpt_bridge::convert(_msg, beacon_poses_[_msg.header.frame_id], *beacon);
 
-    CSensoryFramePtr sf = CSensoryFrame::Create();
-    CObservationOdometryPtr odometry;
+    CSensoryFrame::Ptr sf = mrpt::make_aligned_shared<CSensoryFrame>();
+    CObservationOdometry::Ptr odometry;
     odometryForCallback(odometry, _msg.header);
 
-    CObservationPtr obs = CObservationPtr(beacon);
+    CObservation::Ptr obs = CObservation::Ptr(beacon);
     sf->insert(obs);
     observation(sf, odometry);
     if (param()->gui_mrpt)
@@ -281,17 +281,17 @@ void PFLocalizationNode::callbackRobotPose(const geometry_msgs::PoseWithCovarian
   }
 
   // Covert the received pose into an observation the filter can integrate
-  CObservationRobotPosePtr feature = CObservationRobotPose::Create();
+  CObservationRobotPose::Ptr feature = mrpt::make_aligned_shared<CObservationRobotPose>();
 
   feature->sensorLabel = _msg.header.frame_id;
   mrpt_bridge::convert(_msg.header.stamp, feature->timestamp);
   mrpt_bridge::convert(obs_pose_world.pose, feature->pose);
 
-  CSensoryFramePtr sf = CSensoryFrame::Create();
-  CObservationOdometryPtr odometry;
+  CSensoryFrame::Ptr sf = mrpt::make_aligned_shared<CSensoryFrame>();
+  CObservationOdometry::Ptr odometry;
   odometryForCallback(odometry, _msg.header);
 
-  CObservationPtr obs = CObservationPtr(feature);
+  CObservation::Ptr obs = CObservation::Ptr(feature);
   sf->insert(obs);
   observation(sf, odometry);
   if (param()->gui_mrpt)
@@ -301,14 +301,14 @@ void PFLocalizationNode::callbackRobotPose(const geometry_msgs::PoseWithCovarian
 #endif
 }
 
-void PFLocalizationNode::odometryForCallback(CObservationOdometryPtr &_odometry, const std_msgs::Header &_msg_header)
+void PFLocalizationNode::odometryForCallback(CObservationOdometry::Ptr &_odometry, const std_msgs::Header &_msg_header)
 {
   std::string base_frame_id = tf::resolve(param()->tf_prefix, param()->base_frame_id);
   std::string odom_frame_id = tf::resolve(param()->tf_prefix, param()->odom_frame_id);
   mrpt::poses::CPose3D poseOdom;
   if (this->waitForTransform(poseOdom, odom_frame_id, base_frame_id, _msg_header.stamp, ros::Duration(1.0)))
   {
-    _odometry = CObservationOdometry::Create();
+    _odometry = mrpt::make_aligned_shared<CObservationOdometry>();
     _odometry->sensorLabel = odom_frame_id;
     _odometry->hasEncodersInfo = false;
     _odometry->hasVelocities = false;

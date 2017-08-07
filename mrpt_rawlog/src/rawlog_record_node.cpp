@@ -101,7 +101,7 @@ bool RawlogRecordNode::waitForTransform(mrpt::poses::CPose3D &des, const std::st
 
 void RawlogRecordNode::callbackLaser (const sensor_msgs::LaserScan &_msg) {
     //ROS_INFO("callbackLaser");
-	CObservation2DRangeScanPtr laser = CObservation2DRangeScan::Create();
+  CObservation2DRangeScan::Ptr laser =  mrpt::make_aligned_shared<CObservation2DRangeScan>();
 
     if(laser_poses_.find(_msg.header.frame_id) == laser_poses_.end()) {
         updateLaserPose (_msg.header.frame_id);
@@ -115,7 +115,7 @@ void RawlogRecordNode::callbackLaser (const sensor_msgs::LaserScan &_msg) {
         std::string odom_frame_id = tf::resolve(param()->tf_prefix, param()->odom_frame_id);
         mrpt::poses::CPose3D poseOdom;
         if(this->waitForTransform(poseOdom, odom_frame_id, base_frame_id, _msg.header.stamp, ros::Duration(1))){
-			CObservationOdometryPtr odometry = CObservationOdometry::Create();
+      CObservationOdometry::Ptr odometry =  mrpt::make_aligned_shared<CObservationOdometry>();
             odometry->sensorLabel = odom_frame_id;
             odometry->hasEncodersInfo = false;
             odometry->hasVelocities = false;
