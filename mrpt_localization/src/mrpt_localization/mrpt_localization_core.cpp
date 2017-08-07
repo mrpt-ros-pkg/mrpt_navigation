@@ -74,7 +74,7 @@ void PFLocalizationCore::initializeFilter()
   float max_phi = mean_point.phi() + cov(2, 2);
   if (metric_map_.m_gridMaps.size() && !init_PDF_mode)
   {
-    pdf_.resetUniformFreeSpace(metric_map_.m_gridMaps[0].pointer(), 0.7f, initial_particle_count_,
+    pdf_.resetUniformFreeSpace(metric_map_.m_gridMaps[0].get(), 0.7f, initial_particle_count_,
                                min_x, max_x, min_y, max_y, min_phi, max_phi);
   }
   else if (metric_map_.m_landmarksMap || init_PDF_mode)
@@ -84,19 +84,19 @@ void PFLocalizationCore::initializeFilter()
   state_ = RUN;
 }
 
-void PFLocalizationCore::updateFilter(CActionCollectionPtr _action, CSensoryFramePtr _sf)
+void PFLocalizationCore::updateFilter(CActionCollection::Ptr _action, CSensoryFrame::Ptr _sf)
 {
   if (state_ == INIT)
     initializeFilter();
   tictac_.Tic();
-  pf_.executeOn(pdf_, _action.pointer(), _sf.pointer(), &pf_stats_);
+  pf_.executeOn(pdf_, _action.get(), _sf.get(), &pf_stats_);
   time_last_update_ = _sf->getObservationByIndex(0)->timestamp;
   update_counter_++;
 }
 
-void PFLocalizationCore::observation(CSensoryFramePtr _sf, CObservationOdometryPtr _odometry)
+void PFLocalizationCore::observation(CSensoryFrame::Ptr _sf, CObservationOdometry::Ptr _odometry)
 {
-  CActionCollectionPtr action = CActionCollection::Create();
+  CActionCollection::Ptr action =  mrpt::make_aligned_shared<CActionCollection>();
   CActionRobotMovement2D odom_move;
   odom_move.timestamp = _sf->getObservationByIndex(0)->timestamp;
   if (_odometry)

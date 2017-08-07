@@ -56,14 +56,14 @@ protected:
   Parameters *param_;
   void init();
   void init3DDebug();
-  void show3DDebug(CSensoryFramePtr _observations);
+  void show3DDebug(CSensoryFrame::Ptr _observations);
   void configureFilter(const mrpt::utils::CConfigFile &_configFile);
   virtual bool waitForMap()
   {
     return false;
   }
 
-  mrpt::gui::CDisplayWindow3DPtr win3D_;
+  mrpt::gui::CDisplayWindow3D::Ptr win3D_;
   mrpt::opengl::COpenGLScene scene_;
 
   int SCENE3D_FREQ_;

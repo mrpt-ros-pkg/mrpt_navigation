@@ -93,7 +93,7 @@ private:
 	// Sensor data:
 	struct TInfoPerTimeStep
 	{
-		CObservationPtr observation;
+    CObservation::Ptr observation;
 		mrpt::poses::CPose3D        robot_pose;
 	};
 	typedef std::multimap<double,TInfoPerTimeStep> TListObservations;
@@ -104,7 +104,7 @@ private:
 	CSimplePointsMap    m_localmap_pts;
 	//COccupancyGridMap2D m_localmap_grid;
 
-	mrpt::gui::CDisplayWindow3DPtr  m_gui_win;
+  mrpt::gui::CDisplayWindow3D::Ptr  m_gui_win;
 
 
 	/** @name ROS pubs/subs
@@ -154,7 +154,7 @@ private:
 		mrpt::poses::CPose3D sensorOnRobot_mrpt;
 		mrpt_bridge::convert(sensorOnRobot,sensorOnRobot_mrpt);
 		// In MRPT, CObservation2DRangeScan holds both: sensor data + relative pose:
-		CObservation2DRangeScanPtr obsScan = CObservation2DRangeScan::Create();
+    CObservation2DRangeScan::Ptr obsScan = mrpt::make_aligned_shared<CObservation2DRangeScan>();
 		mrpt_bridge::convert(*scan,sensorOnRobot_mrpt, *obsScan);
 
 		ROS_DEBUG("[onNewSensor_Laser2D] %u rays, sensor pose on robot %s", static_cast<unsigned int>(obsScan->scan.size()), sensorOnRobot_mrpt.asString().c_str() );
@@ -276,15 +276,15 @@ private:
 			if (!m_gui_win)
 			{
 				m_gui_win = mrpt::gui::CDisplayWindow3D::Create("LocalObstaclesNode",800,600);
-				mrpt::opengl::COpenGLScenePtr &scene = m_gui_win->get3DSceneAndLock();
-				scene->insert( mrpt::opengl::CGridPlaneXY::Create() );
+        mrpt::opengl::COpenGLScene::Ptr &scene = m_gui_win->get3DSceneAndLock();
+        scene->insert( mrpt::make_aligned_shared<mrpt::opengl::CGridPlaneXY>() );
 				scene->insert( mrpt::opengl::stock_objects::CornerXYZSimple(1.0,4.0) );
 
-				mrpt::opengl::CSetOfObjectsPtr gl_obs = mrpt::opengl::CSetOfObjects::Create();
+        mrpt::opengl::CSetOfObjects::Ptr gl_obs = mrpt::make_aligned_shared<mrpt::opengl::CSetOfObjects>();
 				gl_obs->setName("obstacles");
 				scene->insert( gl_obs );
 
-				mrpt::opengl::CPointCloudPtr gl_pts = mrpt::opengl::CPointCloud::Create();
+        mrpt::opengl::CPointCloud::Ptr gl_pts = mrpt::make_aligned_shared<mrpt::opengl::CPointCloud>();
 				gl_pts->setName("points");
 				gl_pts->setPointSize(2.0);
 				gl_pts->setColor_u8( mrpt::utils::TColor(0x0000ff) );
@@ -293,12 +293,12 @@ private:
 				m_gui_win->unlockAccess3DScene();
 			}
 
-			mrpt::opengl::COpenGLScenePtr &scene = m_gui_win->get3DSceneAndLock();
-			mrpt::opengl::CSetOfObjectsPtr gl_obs = mrpt::opengl::CSetOfObjectsPtr( scene->getByName("obstacles") );
-			ROS_ASSERT(gl_obs.present());
+      mrpt::opengl::COpenGLScene::Ptr &scene = m_gui_win->get3DSceneAndLock();
+      mrpt::opengl::CSetOfObjects::Ptr gl_obs = std::dynamic_pointer_cast<mrpt::opengl::CSetOfObjects>( scene->getByName("obstacles") );
+      ROS_ASSERT(!!gl_obs);
 			gl_obs->clear();
 
-			mrpt::opengl::CPointCloudPtr gl_pts = mrpt::opengl::CPointCloudPtr( scene->getByName("points") );
+      mrpt::opengl::CPointCloud::Ptr gl_pts = std::dynamic_pointer_cast<mrpt::opengl::CPointCloud>( scene->getByName("points") );
 
 			for (TListObservations::const_iterator it=obs.begin();it!=obs.end();++it)
 			{
@@ -307,9 +307,9 @@ private:
 				mrpt::poses::CPose3D relPose(mrpt::poses::UNINITIALIZED_POSE);
 				relPose.inverseComposeFrom( ipt.robot_pose, curRobotPose );
 
-				mrpt::opengl::CSetOfObjectsPtr gl_axis = mrpt::opengl::stock_objects::CornerXYZSimple(0.9,2.0);
+        mrpt::opengl::CSetOfObjects::Ptr gl_axis = mrpt::opengl::stock_objects::CornerXYZSimple(0.9,2.0);
 				gl_axis->setPose(relPose);
-				gl_obs->insert(gl_axis);
+        gl_obs->insert(gl_axis);
 			} // end for
 
 			gl_pts->loadFromPointsMap(&m_localmap_pts);

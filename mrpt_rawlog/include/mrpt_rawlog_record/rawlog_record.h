@@ -41,8 +41,6 @@
 #	include <mrpt/obs/CObservationOdometry.h>
 #	include <mrpt/obs/CObservation2DRangeScan.h>
 	using mrpt::obs::CRawlog;
-	using mrpt::obs::CObservation2DRangeScanPtr;
-	using mrpt::obs::CObservationOdometryPtr;
 	using mrpt::obs::CActionRobotMovement2D;
 #else
 #	include <mrpt/slam/CRawlog.h>
@@ -77,7 +75,7 @@ protected:
 	CRawlog *pRawLogASF;
     mrpt::poses::CPose2D odomLastPose_;
     void updateRawLogName(const mrpt::system::TTimeStamp &t);
-	void observation(CObservation2DRangeScanPtr laser, CObservationOdometryPtr _odometry);
+  void observation(mrpt::obs::CObservation2DRangeScan::Ptr laser, mrpt::obs::CObservationOdometry::Ptr _odometry);
     boost::interprocess::interprocess_mutex mutexRawLog;
 };
 
