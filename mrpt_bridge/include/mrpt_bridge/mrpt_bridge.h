@@ -11,4 +11,10 @@
 #include "beacon.h"
 #include "landmark.h"
 #include "utils.h"
+
+#include "imu.h"
+#include "GPS.h"
+#include "range.h"
+#include "image.h"
+
 #endif

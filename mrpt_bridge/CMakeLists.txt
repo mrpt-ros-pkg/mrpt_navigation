@@ -51,7 +51,7 @@ add_library(${PROJECT_NAME}
 	src/point_cloud.cpp
 	src/point_cloud2.cpp
 	src/pose.cpp
-  )
+		src/imu.cpp include/mrpt_bridge/imu.h src/image.cpp include/mrpt_bridge/image.h src/GPS.cpp include/mrpt_bridge/GPS.h src/range.cpp include/mrpt_bridge/range.h)
 
 ## Declare a cpp executable
 
