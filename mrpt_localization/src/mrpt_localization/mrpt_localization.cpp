@@ -1,36 +1,43 @@
 /***********************************************************************************
- * Revised BSD License                                                             *
- * Copyright (c) 2014, Markus Bader <markus.bader@tuwien.ac.at>                    *
- * All rights reserved.                                                            *
+ * Revised BSD License *
+ * Copyright (c) 2014, Markus Bader <markus.bader@tuwien.ac.at> *
+ * All rights reserved. *
  *                                                                                 *
- * Redistribution and use in source and binary forms, with or without              *
- * modification, are permitted provided that the following conditions are met:     *
- *     * Redistributions of source code must retain the above copyright            *
- *       notice, this list of conditions and the following disclaimer.             *
- *     * Redistributions in binary form must reproduce the above copyright         *
- *       notice, this list of conditions and the following disclaimer in the       *
- *       documentation and/or other materials provided with the distribution.      *
- *     * Neither the name of the Vienna University of Technology nor the           *
- *       names of its contributors may be used to endorse or promote products      *
- *       derived from this software without specific prior written permission.     *
+ * Redistribution and use in source and binary forms, with or without *
+ * modification, are permitted provided that the following conditions are met: *
+ *     * Redistributions of source code must retain the above copyright *
+ *       notice, this list of conditions and the following disclaimer. *
+ *     * Redistributions in binary form must reproduce the above copyright *
+ *       notice, this list of conditions and the following disclaimer in the *
+ *       documentation and/or other materials provided with the distribution. *
+ *     * Neither the name of the Vienna University of Technology nor the *
+ *       names of its contributors may be used to endorse or promote products *
+ *       derived from this software without specific prior written permission. *
  *                                                                                 *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND *
- * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED   *
- * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE          *
- * DISCLAIMED. IN NO EVENT SHALL Markus Bader BE LIABLE FOR ANY                    *
- * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES      *
- * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;    *
- * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND     *
- * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT      *
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS   *
- * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.                    *                       *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ *AND *
+ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ **
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE *
+ * DISCLAIMED. IN NO EVENT SHALL Markus Bader BE LIABLE FOR ANY *
+ * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES *
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ **
+ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND *
+ * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT *
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ **
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ **                       *
  ***********************************************************************************/
 
 #include <mrpt_localization/mrpt_localization.h>
 #include <mrpt_localization/mrpt_localization_defaults.h>
 
-// JLB: I really can't explain this, but if this header is not included here (though unneeded!)
-// the behavior of the particle filter does not converge as expected (WTF!!!) (Verified with MRPT 1.0.2 & 1.3.0)
+// JLB: I really can't explain this, but if this header is not included here
+// (though unneeded!)
+// the behavior of the particle filter does not converge as expected (WTF!!!)
+// (Verified with MRPT 1.0.2 & 1.3.0)
 #define MRPT_NO_WARN_BIG_HDR
 #include <mrpt/base.h>
 
@@ -52,278 +59,314 @@ using namespace mrpt::poses;
 using namespace std;
 
 #include <mrpt/version.h>
-#if MRPT_VERSION>=0x130
-  using namespace mrpt::maps;
-  using namespace mrpt::obs;
+#if MRPT_VERSION >= 0x130
+using namespace mrpt::maps;
+using namespace mrpt::obs;
 #endif
 
-PFLocalization::~PFLocalization()
-{
-}
-
-PFLocalization::PFLocalization(Parameters *param) :
-    PFLocalizationCore(), param_(param)
+PFLocalization::~PFLocalization() {}
+PFLocalization::PFLocalization(Parameters* param)
+	: PFLocalizationCore(), param_(param)
 {
 }
 
 void PFLocalization::init()
 {
-  log_info("ini_file ready %s", param_->ini_file.c_str());
-  ASSERT_FILE_EXISTS_(param_->ini_file);
-  log_info("ASSERT_FILE_EXISTS_ %s", param_->ini_file.c_str());
-  mrpt::utils::CConfigFile ini_file;
-  ini_file.setFileName(param_->ini_file);
-  log_info("CConfigFile %s", param_->ini_file.c_str());
+	log_info("ini_file ready %s", param_->ini_file.c_str());
+	ASSERT_FILE_EXISTS_(param_->ini_file);
+	log_info("ASSERT_FILE_EXISTS_ %s", param_->ini_file.c_str());
+	mrpt::utils::CConfigFile ini_file;
+	ini_file.setFileName(param_->ini_file);
+	log_info("CConfigFile %s", param_->ini_file.c_str());
 
-  vector_int particles_count;    // Number of initial particles (if size>1, run the experiments N times)
+	vector_int particles_count;  // Number of initial particles (if size>1, run
+								 // the experiments N times)
 
-  // Load configuration:
-  // -----------------------------------------
-  string iniSectionName("LocalizationExperiment");
-  update_counter_ = 0;
+	// Load configuration:
+	// -----------------------------------------
+	string iniSectionName("LocalizationExperiment");
+	update_counter_ = 0;
 
-  // Mandatory entries:
-  ini_file.read_vector(iniSectionName, "particles_count", vector_int(1, 0), particles_count, /*Fail if not found*/true);
+	// Mandatory entries:
+	ini_file.read_vector(
+		iniSectionName, "particles_count", vector_int(1, 0), particles_count,
+		/*Fail if not found*/ true);
 
-  if (param_->map_file.empty())
-  {
-    param_->map_file = ini_file.read_string(iniSectionName, "map_file", "");
-  }
+	if (param_->map_file.empty())
+	{
+		param_->map_file = ini_file.read_string(iniSectionName, "map_file", "");
+	}
 
-  // Non-mandatory entries:
-  SCENE3D_FREQ_ = ini_file.read_int(iniSectionName, "3DSceneFrequency", 10);
-  SCENE3D_FOLLOW_ = ini_file.read_bool(iniSectionName, "3DSceneFollowRobot", true);
+	// Non-mandatory entries:
+	SCENE3D_FREQ_ = ini_file.read_int(iniSectionName, "3DSceneFrequency", 10);
+	SCENE3D_FOLLOW_ =
+		ini_file.read_bool(iniSectionName, "3DSceneFollowRobot", true);
 
-  SHOW_PROGRESS_3D_REAL_TIME_ = ini_file.read_bool(iniSectionName, "SHOW_PROGRESS_3D_REAL_TIME", false);
-  SHOW_PROGRESS_3D_REAL_TIME_DELAY_MS_ = ini_file.read_int(iniSectionName, "SHOW_PROGRESS_3D_REAL_TIME_DELAY_MS", 1);
+	SHOW_PROGRESS_3D_REAL_TIME_ =
+		ini_file.read_bool(iniSectionName, "SHOW_PROGRESS_3D_REAL_TIME", false);
+	SHOW_PROGRESS_3D_REAL_TIME_DELAY_MS_ = ini_file.read_int(
+		iniSectionName, "SHOW_PROGRESS_3D_REAL_TIME_DELAY_MS", 1);
 
 #if !MRPT_HAS_WXWIDGETS
-  SHOW_PROGRESS_3D_REAL_TIME_ = false;
+	SHOW_PROGRESS_3D_REAL_TIME_ = false;
 #endif
 
-  // Default odometry uncertainty parameters in "odom_params_default_" depending on how fast the robot moves, etc...
-  //  Only used for observations-only rawlogs:
-  motion_model_default_options_.modelSelection = CActionRobotMovement2D::mmGaussian;
+	// Default odometry uncertainty parameters in "odom_params_default_"
+	// depending on how fast the robot moves, etc...
+	//  Only used for observations-only rawlogs:
+	motion_model_default_options_.modelSelection =
+		CActionRobotMovement2D::mmGaussian;
 
-#if MRPT_VERSION>=0x150
-#define gausianModel gaussianModel    // a typo was fixed in 1.5.0
+#if MRPT_VERSION >= 0x150
+#define gausianModel gaussianModel  // a typo was fixed in 1.5.0
 #endif
 
-  motion_model_default_options_.gausianModel.minStdXY = ini_file.read_double("DummyOdometryParams", "minStdXY", 0.04);
-  motion_model_default_options_.gausianModel.minStdPHI =
-      DEG2RAD(ini_file.read_double("DefaultOdometryParams", "minStdPHI", 2.0));
+	motion_model_default_options_.gausianModel.minStdXY =
+		ini_file.read_double("DummyOdometryParams", "minStdXY", 0.04);
+	motion_model_default_options_.gausianModel.minStdPHI = DEG2RAD(
+		ini_file.read_double("DefaultOdometryParams", "minStdPHI", 2.0));
 
-  // Read initial particles distribution; fail if any parameter is not found
-  init_PDF_mode = ini_file.read_bool(iniSectionName, "init_PDF_mode", false, true);
-  init_PDF_min_x = ini_file.read_float(iniSectionName, "init_PDF_min_x", 0, true);
-  init_PDF_max_x = ini_file.read_float(iniSectionName, "init_PDF_max_x", 0, true);
-  init_PDF_min_y = ini_file.read_float(iniSectionName, "init_PDF_min_y", 0, true);
-  init_PDF_max_y = ini_file.read_float(iniSectionName, "init_PDF_max_y", 0, true);
-  float min_phi = DEG2RAD(ini_file.read_float(iniSectionName, "init_PDF_min_phi_deg", -180));
-  float max_phi = DEG2RAD(ini_file.read_float(iniSectionName, "init_PDF_max_phi_deg", 180));
-  mrpt::poses::CPose2D p;
-  mrpt::math::CMatrixDouble33 cov;
-  cov(0, 0) = fabs(init_PDF_max_x - init_PDF_min_x);
-  cov(1, 1) = fabs(init_PDF_max_y - init_PDF_min_y);
-  cov(2, 2) = min_phi < max_phi ? max_phi - min_phi : (max_phi + 2 * M_PI) - min_phi;
-  p.x() = init_PDF_min_x + cov(0, 0) / 2.0;
-  p.y() = init_PDF_min_y + cov(1, 1) / 2.0;
-  p.phi() = min_phi + cov(2, 2) / 2.0;
-  log_debug("----------- phi: %4.3f: %4.3f <-> %4.3f, %4.3f\n", p.phi(), min_phi, max_phi, cov(2, 2));
-  initial_pose_ = mrpt::poses::CPosePDFGaussian(p, cov);
-  state_ = INIT;
+	// Read initial particles distribution; fail if any parameter is not found
+	init_PDF_mode =
+		ini_file.read_bool(iniSectionName, "init_PDF_mode", false, true);
+	init_PDF_min_x =
+		ini_file.read_float(iniSectionName, "init_PDF_min_x", 0, true);
+	init_PDF_max_x =
+		ini_file.read_float(iniSectionName, "init_PDF_max_x", 0, true);
+	init_PDF_min_y =
+		ini_file.read_float(iniSectionName, "init_PDF_min_y", 0, true);
+	init_PDF_max_y =
+		ini_file.read_float(iniSectionName, "init_PDF_max_y", 0, true);
+	float min_phi = DEG2RAD(
+		ini_file.read_float(iniSectionName, "init_PDF_min_phi_deg", -180));
+	float max_phi = DEG2RAD(
+		ini_file.read_float(iniSectionName, "init_PDF_max_phi_deg", 180));
+	mrpt::poses::CPose2D p;
+	mrpt::math::CMatrixDouble33 cov;
+	cov(0, 0) = fabs(init_PDF_max_x - init_PDF_min_x);
+	cov(1, 1) = fabs(init_PDF_max_y - init_PDF_min_y);
+	cov(2, 2) =
+		min_phi < max_phi ? max_phi - min_phi : (max_phi + 2 * M_PI) - min_phi;
+	p.x() = init_PDF_min_x + cov(0, 0) / 2.0;
+	p.y() = init_PDF_min_y + cov(1, 1) / 2.0;
+	p.phi() = min_phi + cov(2, 2) / 2.0;
+	log_debug(
+		"----------- phi: %4.3f: %4.3f <-> %4.3f, %4.3f\n", p.phi(), min_phi,
+		max_phi, cov(2, 2));
+	initial_pose_ = mrpt::poses::CPosePDFGaussian(p, cov);
+	state_ = INIT;
 
-  configureFilter(ini_file);
-  // Metric map options:
+	configureFilter(ini_file);
+	// Metric map options:
 
-  if (!mrpt_bridge::MapHdl::loadMap(metric_map_, ini_file, param_->map_file, "metricMap", param_->debug))
-  {
-    waitForMap();
-  }
+	if (!mrpt_bridge::MapHdl::loadMap(
+			metric_map_, ini_file, param_->map_file, "metricMap",
+			param_->debug))
+	{
+		waitForMap();
+	}
 
-  initial_particle_count_ = *particles_count.begin();
+	initial_particle_count_ = *particles_count.begin();
 
-  if (param_->gui_mrpt)
-    init3DDebug();
-
+	if (param_->gui_mrpt) init3DDebug();
 }
 
-void PFLocalization::configureFilter(const mrpt::utils::CConfigFile &_configFile)
+void PFLocalization::configureFilter(
+	const mrpt::utils::CConfigFile& _configFile)
 {
-  // PF-algorithm Options:
-  // ---------------------------
-  CParticleFilter::TParticleFilterOptions pfOptions;
-  pfOptions.loadFromConfigFile(_configFile, "PF_options");
-  pfOptions.dumpToConsole();
+	// PF-algorithm Options:
+	// ---------------------------
+	CParticleFilter::TParticleFilterOptions pfOptions;
+	pfOptions.loadFromConfigFile(_configFile, "PF_options");
+	pfOptions.dumpToConsole();
 
-  // PDF Options:
-  // ------------------
-  TMonteCarloLocalizationParams pdfPredictionOptions;
-  pdfPredictionOptions.KLD_params.loadFromConfigFile(_configFile, "KLD_options");
+	// PDF Options:
+	// ------------------
+	TMonteCarloLocalizationParams pdfPredictionOptions;
+	pdfPredictionOptions.KLD_params.loadFromConfigFile(
+		_configFile, "KLD_options");
 
-  pdf_.clear();
+	pdf_.clear();
 
-  // PDF Options:
-  pdf_.options = pdfPredictionOptions;
+	// PDF Options:
+	pdf_.options = pdfPredictionOptions;
 
-  pdf_.options.metricMap = &metric_map_;
+	pdf_.options.metricMap = &metric_map_;
 
-  // Create the PF object:
-  pf_.m_options = pfOptions;
+	// Create the PF object:
+	pf_.m_options = pfOptions;
 }
 
 void PFLocalization::init3DDebug()
 {
-  log_info("init3DDebug");
-  if (!SHOW_PROGRESS_3D_REAL_TIME_)
-    return;
-  if (!win3D_)
-  {
-    win3D_ = CDisplayWindow3D::Create("pf-localization - The MRPT project", 1000, 600);
-    win3D_->setCameraZoom(20);
-    win3D_->setCameraAzimuthDeg(-45);
-    //win3D_->waitForKey();
+	log_info("init3DDebug");
+	if (!SHOW_PROGRESS_3D_REAL_TIME_) return;
+	if (!win3D_)
+	{
+		win3D_ = CDisplayWindow3D::Create(
+			"pf-localization - The MRPT project", 1000, 600);
+		win3D_->setCameraZoom(20);
+		win3D_->setCameraAzimuthDeg(-45);
+		// win3D_->waitForKey();
 
-    // Create the 3D scene and get the map only once, later we'll modify only the particles, etc..
-    COccupancyGridMap2D::TEntropyInfo grid_info;
-    // The gridmap:
-    if (metric_map_.m_gridMaps.size())
-    {
-      metric_map_.m_gridMaps[0]->computeEntropy(grid_info);
-    }
-    else
-    {
-      grid_info.effectiveMappedArea = (init_PDF_max_x - init_PDF_min_x) * (init_PDF_max_y - init_PDF_min_y);
-    }
-    log_info("The gridmap has %.04fm2 observed area, %u observed cells\n", grid_info.effectiveMappedArea,
-           (unsigned)grid_info.effectiveMappedCells);
-    log_info("Initial PDF: %f particles/m2\n", initial_particle_count_ / grid_info.effectiveMappedArea);
+		// Create the 3D scene and get the map only once, later we'll modify
+		// only the particles, etc..
+		COccupancyGridMap2D::TEntropyInfo grid_info;
+		// The gridmap:
+		if (metric_map_.m_gridMaps.size())
+		{
+			metric_map_.m_gridMaps[0]->computeEntropy(grid_info);
+		}
+		else
+		{
+			grid_info.effectiveMappedArea = (init_PDF_max_x - init_PDF_min_x) *
+											(init_PDF_max_y - init_PDF_min_y);
+		}
+		log_info(
+			"The gridmap has %.04fm2 observed area, %u observed cells\n",
+			grid_info.effectiveMappedArea,
+			(unsigned)grid_info.effectiveMappedCells);
+		log_info(
+			"Initial PDF: %f particles/m2\n",
+			initial_particle_count_ / grid_info.effectiveMappedArea);
 
-    CSetOfObjects::Ptr plane =  mrpt::make_aligned_shared<CSetOfObjects>();
-    metric_map_.getAs3DObject(plane);
-    scene_.insert(plane);
+		CSetOfObjects::Ptr plane = mrpt::make_aligned_shared<CSetOfObjects>();
+		metric_map_.getAs3DObject(plane);
+		scene_.insert(plane);
 
-    if (SHOW_PROGRESS_3D_REAL_TIME_)
-    {
-      COpenGLScene::Ptr ptr_scene = win3D_->get3DSceneAndLock();
+		if (SHOW_PROGRESS_3D_REAL_TIME_)
+		{
+			COpenGLScene::Ptr ptr_scene = win3D_->get3DSceneAndLock();
 
-      ptr_scene->insert(plane);
+			ptr_scene->insert(plane);
 
-      ptr_scene->enableFollowCamera(true);
+			ptr_scene->enableFollowCamera(true);
 
-      win3D_->unlockAccess3DScene();
-    }
-  } // Show 3D?
-  if (param_->debug)
-    log_info(" --------------------------- init3DDebug done \n");
-  if (param_->debug)
-    fflush(stdout);
+			win3D_->unlockAccess3DScene();
+		}
+	}  // Show 3D?
+	if (param_->debug)
+		log_info(" --------------------------- init3DDebug done \n");
+	if (param_->debug) fflush(stdout);
 }
 
 void PFLocalization::show3DDebug(CSensoryFrame::Ptr _observations)
 {
-  // Create 3D window if requested:
-  if (SHOW_PROGRESS_3D_REAL_TIME_)
-  {
-    TTimeStamp cur_obs_timestamp;
-    if (_observations->size() > 0)
-      cur_obs_timestamp = _observations->getObservationByIndex(0)->timestamp;
+	// Create 3D window if requested:
+	if (SHOW_PROGRESS_3D_REAL_TIME_)
+	{
+		TTimeStamp cur_obs_timestamp;
+		if (_observations->size() > 0)
+			cur_obs_timestamp =
+				_observations->getObservationByIndex(0)->timestamp;
 
-    CPose2D meanPose;
-    CMatrixDouble33 cov;
-    pdf_.getCovarianceAndMean(cov, meanPose);
+		CPose2D meanPose;
+		CMatrixDouble33 cov;
+		pdf_.getCovarianceAndMean(cov, meanPose);
 
-    COpenGLScene::Ptr ptr_scene = win3D_->get3DSceneAndLock();
+		COpenGLScene::Ptr ptr_scene = win3D_->get3DSceneAndLock();
 
-    win3D_->setCameraPointingToPoint(meanPose.x(), meanPose.y(), 0);
-    win3D_->addTextMessage(
-        10, 10, mrpt::format("timestamp: %s", mrpt::system::dateTimeLocalToString(cur_obs_timestamp).c_str()),
-        mrpt::utils::TColorf(.8f, .8f, .8f), "mono", 15, mrpt::opengl::NICE, 6001);
+		win3D_->setCameraPointingToPoint(meanPose.x(), meanPose.y(), 0);
+		win3D_->addTextMessage(
+			10, 10,
+			mrpt::format(
+				"timestamp: %s",
+				mrpt::system::dateTimeLocalToString(cur_obs_timestamp).c_str()),
+			mrpt::utils::TColorf(.8f, .8f, .8f), "mono", 15, mrpt::opengl::NICE,
+			6001);
 
-    win3D_->addTextMessage(10, 33, mrpt::format("#particles= %7u", static_cast<unsigned int>(pdf_.size())),
-                           mrpt::utils::TColorf(.8f, .8f, .8f), "mono", 15, mrpt::opengl::NICE, 6002);
+		win3D_->addTextMessage(
+			10, 33,
+			mrpt::format(
+				"#particles= %7u", static_cast<unsigned int>(pdf_.size())),
+			mrpt::utils::TColorf(.8f, .8f, .8f), "mono", 15, mrpt::opengl::NICE,
+			6002);
 
-    win3D_->addTextMessage(10, 55, mrpt::format("mean pose (x y phi_deg)= %s", meanPose.asString().c_str()),
-                           mrpt::utils::TColorf(.8f, .8f, .8f), "mono", 15, mrpt::opengl::NICE, 6003);
+		win3D_->addTextMessage(
+			10, 55,
+			mrpt::format(
+				"mean pose (x y phi_deg)= %s", meanPose.asString().c_str()),
+			mrpt::utils::TColorf(.8f, .8f, .8f), "mono", 15, mrpt::opengl::NICE,
+			6003);
 
-    // The particles:
-    {
-      CRenderizable::Ptr parts = ptr_scene->getByName("particles");
-      if (parts)
-        ptr_scene->removeObject(parts);
+		// The particles:
+		{
+			CRenderizable::Ptr parts = ptr_scene->getByName("particles");
+			if (parts) ptr_scene->removeObject(parts);
 
-      CSetOfObjects::Ptr p = pdf_.getAs3DObject<CSetOfObjects::Ptr>();
-      p->setName("particles");
-      ptr_scene->insert(p);
-    }
+			CSetOfObjects::Ptr p = pdf_.getAs3DObject<CSetOfObjects::Ptr>();
+			p->setName("particles");
+			ptr_scene->insert(p);
+		}
 
-    // The particles' cov:
-    {
-      CRenderizable::Ptr ellip = ptr_scene->getByName("parts_cov");
-      if (!ellip)
-      {
-        ellip =  mrpt::make_aligned_shared<CEllipsoid>();
-        ellip->setName("parts_cov");
-        ellip->setColor(1, 0, 0, 0.6);
+		// The particles' cov:
+		{
+			CRenderizable::Ptr ellip = ptr_scene->getByName("parts_cov");
+			if (!ellip)
+			{
+				ellip = mrpt::make_aligned_shared<CEllipsoid>();
+				ellip->setName("parts_cov");
+				ellip->setColor(1, 0, 0, 0.6);
 
-        getAs<CEllipsoid>(ellip)->setLineWidth(2);
-        getAs<CEllipsoid>(ellip)->setQuantiles(3);
-        getAs<CEllipsoid>(ellip)->set2DsegmentsCount(60);
-        ptr_scene->insert(ellip);
-      }
-      ellip->setLocation(meanPose.x(), meanPose.y(), 0.05);
+				getAs<CEllipsoid>(ellip)->setLineWidth(2);
+				getAs<CEllipsoid>(ellip)->setQuantiles(3);
+				getAs<CEllipsoid>(ellip)->set2DsegmentsCount(60);
+				ptr_scene->insert(ellip);
+			}
+			ellip->setLocation(meanPose.x(), meanPose.y(), 0.05);
 
-      getAs<CEllipsoid>(ellip)->setCovMatrix(cov, 2);
-    }
+			getAs<CEllipsoid>(ellip)->setCovMatrix(cov, 2);
+		}
 
-    // The laser scan:
-    {
-      CRenderizable::Ptr scan_pts = ptr_scene->getByName("scan");
-      if (!scan_pts)
-      {
-        scan_pts =  mrpt::make_aligned_shared<CPointCloud>();
-        scan_pts->setName("scan");
-        scan_pts->setColor(1, 0, 0, 0.9);
-        getAs<CPointCloud>(scan_pts)->enableColorFromZ(false);
-        getAs<CPointCloud>(scan_pts)->setPointSize(4);
-        ptr_scene->insert(scan_pts);
-      }
+		// The laser scan:
+		{
+			CRenderizable::Ptr scan_pts = ptr_scene->getByName("scan");
+			if (!scan_pts)
+			{
+				scan_pts = mrpt::make_aligned_shared<CPointCloud>();
+				scan_pts->setName("scan");
+				scan_pts->setColor(1, 0, 0, 0.9);
+				getAs<CPointCloud>(scan_pts)->enableColorFromZ(false);
+				getAs<CPointCloud>(scan_pts)->setPointSize(4);
+				ptr_scene->insert(scan_pts);
+			}
 
-      CSimplePointsMap map;
-      static CSimplePointsMap last_map;
+			CSimplePointsMap map;
+			static CSimplePointsMap last_map;
 
-      CPose3D robot_pose_3D(meanPose);
+			CPose3D robot_pose_3D(meanPose);
 
-      map.clear();
-      _observations->insertObservationsInto(&map);
+			map.clear();
+			_observations->insertObservationsInto(&map);
 
-      getAs<CPointCloud>(scan_pts)->loadFromPointsMap(&last_map);
-      getAs<CPointCloud>(scan_pts)->setPose(robot_pose_3D);
-      last_map = map;
-    }
+			getAs<CPointCloud>(scan_pts)->loadFromPointsMap(&last_map);
+			getAs<CPointCloud>(scan_pts)->setPose(robot_pose_3D);
+			last_map = map;
+		}
 
-    // The camera:
-    ptr_scene->enableFollowCamera(true);
+		// The camera:
+		ptr_scene->enableFollowCamera(true);
 
-    // Views:
-    COpenGLViewport::Ptr view1 = ptr_scene->getViewport("main");
-    {
-      CCamera &cam = view1->getCamera();
-      cam.setAzimuthDegrees(-90);
-      cam.setElevationDegrees(90);
-      cam.setPointingAt(meanPose);
-      cam.setZoomDistance(5);
-      cam.setOrthogonal();
-    }
+		// Views:
+		COpenGLViewport::Ptr view1 = ptr_scene->getViewport("main");
+		{
+			CCamera& cam = view1->getCamera();
+			cam.setAzimuthDegrees(-90);
+			cam.setElevationDegrees(90);
+			cam.setPointingAt(meanPose);
+			cam.setZoomDistance(5);
+			cam.setOrthogonal();
+		}
 
-    win3D_->unlockAccess3DScene();
+		win3D_->unlockAccess3DScene();
 
-    // Move camera:
-    //win3D_->setCameraPointingToPoint( curRobotPose.x, curRobotPose.y, curRobotPose.z );
+		// Move camera:
+		// win3D_->setCameraPointingToPoint( curRobotPose.x, curRobotPose.y,
+		// curRobotPose.z );
 
-    // Update:
-    win3D_->forceRepaint();
+		// Update:
+		win3D_->forceRepaint();
 
-    sleep(SHOW_PROGRESS_3D_REAL_TIME_DELAY_MS_);
-  }
+		sleep(SHOW_PROGRESS_3D_REAL_TIME_DELAY_MS_);
+	}
 }

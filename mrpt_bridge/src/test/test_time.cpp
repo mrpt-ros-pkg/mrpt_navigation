@@ -14,11 +14,13 @@
 
 TEST(Time, basicTest)
 {
-  mrpt::system::TTimeStamp mtime = mrpt::system::getCurrentLocalTime( );
-  ros::Time rtimeDes;
-  mrpt::system::TTimeStamp mtimeDes;
-  mrpt_bridge::convert(mtime, rtimeDes);
-  mrpt_bridge::convert(rtimeDes, mtimeDes);
-  std::cout << "TimeNow: " << boost::posix_time::to_simple_string(rtimeDes.toBoost()) << std::endl;
-  EXPECT_EQ(mtime, mtimeDes);
+	mrpt::system::TTimeStamp mtime = mrpt::system::getCurrentLocalTime();
+	ros::Time rtimeDes;
+	mrpt::system::TTimeStamp mtimeDes;
+	mrpt_bridge::convert(mtime, rtimeDes);
+	mrpt_bridge::convert(rtimeDes, mtimeDes);
+	std::cout << "TimeNow: "
+			  << boost::posix_time::to_simple_string(rtimeDes.toBoost())
+			  << std::endl;
+	EXPECT_EQ(mtime, mtimeDes);
 }
