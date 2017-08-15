@@ -13,13 +13,8 @@
 #include "mrpt_bridge/landmark.h"
 
 #include <mrpt/version.h>
-#if MRPT_VERSION >= 0x130
 #include <mrpt/obs/CObservationBearingRange.h>
 using namespace mrpt::obs;
-#else
-#include <mrpt/slam/CObservationBearingRange.h>
-using namespace mrpt::slam;
-#endif
 
 namespace mrpt_bridge
 {

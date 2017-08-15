@@ -25,7 +25,6 @@ typedef OccupancyGrid_<std::allocator<void>> OccupancyGrid;
 }
 
 #include <mrpt/version.h>
-#if MRPT_VERSION >= 0x130
 namespace mrpt
 {
 namespace maps
@@ -36,18 +35,7 @@ class CMultiMetricMap;
 }
 using mrpt::maps::COccupancyGridMap2D;
 using mrpt::maps::CMultiMetricMap;
-#else
-namespace mrpt
-{
-namespace slam
-{
-class COccupancyGridMap2D;
-class CMultiMetricMap;
-}
-}
-using mrpt::slam::COccupancyGridMap2D;
-using mrpt::slam::CMultiMetricMap;
-#endif
+
 namespace mrpt
 {
 namespace utils
@@ -72,15 +60,15 @@ class MapHdl
 #ifdef OCCUPANCY_GRIDMAP_CELL_SIZE_8BITS
 	int8_t lut_cellmrpt2ros[0xFF];  // lookup table for entry convertion
 	int8_t* lut_cellmrpt2rosPtr;  // pointer to the center of the lookup table
-								  // neede to work with neg. indexes
+// neede to work with neg. indexes
 #else
 	int8_t lut_cellmrpt2ros[0xFFFF];  // lookup table for entry convertion
 	int8_t* lut_cellmrpt2rosPtr;  // pointer to the center of the lookup table
-								  // neede to work with neg. indexes
+// neede to work with neg. indexes
 #endif
 	int8_t lut_cellros2mrpt[0xFF];  // lookup table for entry convertion
 	int8_t* lut_cellros2mrptPtr;  // pointer to the center of the lookup table
-								  // neede to work with neg. indexes
+	// neede to work with neg. indexes
 	MapHdl();
 	MapHdl(const MapHdl&);
 	~MapHdl();

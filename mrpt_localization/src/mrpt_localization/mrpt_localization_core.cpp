@@ -51,13 +51,10 @@ void PFLocalizationCore::init()
 		mrpt::poses::CPosePDFGaussian(mrpt::poses::CPose2D(0, 0, 0), cov);
 	initial_particle_count_ = 1000;
 
-#if MRPT_VERSION >= 0x150
-#define gausianModel gaussianModel  // a typo was fixed in 1.5.0
-#endif
 	motion_model_default_options_.modelSelection =
 		CActionRobotMovement2D::mmGaussian;
-	motion_model_default_options_.gausianModel.minStdXY = 0.10;
-	motion_model_default_options_.gausianModel.minStdPHI = 2.0;
+	motion_model_default_options_.gaussianModel.minStdXY = 0.10;
+	motion_model_default_options_.gaussianModel.minStdPHI = 2.0;
 }
 
 void PFLocalizationCore::initializeFilter()

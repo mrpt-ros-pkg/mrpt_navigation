@@ -39,12 +39,8 @@
 #include <mrpt_bridge/time.h>
 
 #include <mrpt/version.h>
-#if MRPT_VERSION >= 0x130
 using namespace mrpt::maps;
 using namespace mrpt::obs;
-#else
-using namespace mrpt::slam;
-#endif
 
 int main(int argc, char** argv)
 {

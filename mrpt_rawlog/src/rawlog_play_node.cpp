@@ -41,21 +41,12 @@
 #include <mrpt/system/filesystem.h>
 
 #include <mrpt/version.h>
-#if MRPT_VERSION >= 0x130
 #include <mrpt/obs/CSensoryFrame.h>
 #include <mrpt/obs/CRawlog.h>
 #include <mrpt/obs/CObservation2DRangeScan.h>
 #include <mrpt/obs/CObservationBeaconRanges.h>
 #include <mrpt/obs/CObservationBearingRange.h>
 using namespace mrpt::obs;
-#else
-#include <mrpt/slam/CSensoryFrame.h>
-#include <mrpt/slam/CRawlog.h>
-#include <mrpt/slam/CObservation2DRangeScan.h>
-#include <mrpt/slam/CObservationBeaconRanges.h>
-#include <mrpt/slam/CObservationBearingRange.h>
-using namespace mrpt::slam;
-#endif
 
 int main(int argc, char** argv)
 {

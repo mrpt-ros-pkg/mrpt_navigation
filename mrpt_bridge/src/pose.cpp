@@ -288,7 +288,7 @@ mrpt::poses::CPosePDFGaussianInf& mrpt_bridge::convert(
 {
 	mrpt::poses::CPosePDFGaussian mrpt_gaussian;
 	convert(_src, mrpt_gaussian);  // intermediate transform: PoseWithCovariance
-								   // => CPosePDFGaussian
+	// => CPosePDFGaussian
 	_des.copyFrom(mrpt_gaussian);
 
 	return _des;

@@ -42,16 +42,10 @@
 #include <mrpt_bridge/beacon.h>
 
 #include <mrpt/version.h>
-#if MRPT_VERSION >= 0x130
 #include <mrpt/obs/CObservationBeaconRanges.h>
 using namespace mrpt::obs;
-#if MRPT_VERSION >= 0x150
+
 #include <mrpt/obs/CObservationRobotPose.h>
-#endif
-#else
-#include <mrpt/slam/CObservationBeaconRanges.h>
-using namespace mrpt::slam;
-#endif
 
 #include "mrpt_localization_node.h"
 
@@ -184,12 +178,8 @@ bool PFLocalizationNode::waitForTransform(
 
 void PFLocalizationNode::callbackLaser(const sensor_msgs::LaserScan& _msg)
 {
-#if MRPT_VERSION >= 0x130
 	using namespace mrpt::maps;
 	using namespace mrpt::obs;
-#else
-	using namespace mrpt::slam;
-#endif
 
 	time_last_input_ = ros::Time::now();
 
@@ -203,7 +193,7 @@ void PFLocalizationNode::callbackLaser(const sensor_msgs::LaserScan& _msg)
 		updateSensorPose(_msg.header.frame_id);
 	}
 	else if (state_ != IDLE)  // updating filter; we must be moving or
-							  // update_while_stopped set to true
+	// update_while_stopped set to true
 	{
 		// mrpt::poses::CPose3D pose = laser_poses_[_msg.header.frame_id];
 		// ROS_INFO("LASER POSE %4.3f, %4.3f, %4.3f, %4.3f, %4.3f, %4.3f",
@@ -224,12 +214,8 @@ void PFLocalizationNode::callbackLaser(const sensor_msgs::LaserScan& _msg)
 void PFLocalizationNode::callbackBeacon(
 	const mrpt_msgs::ObservationRangeBeacon& _msg)
 {
-#if MRPT_VERSION >= 0x130
 	using namespace mrpt::maps;
 	using namespace mrpt::obs;
-#else
-	using namespace mrpt::slam;
-#endif
 
 	time_last_input_ = ros::Time::now();
 
@@ -242,7 +228,7 @@ void PFLocalizationNode::callbackBeacon(
 		updateSensorPose(_msg.header.frame_id);
 	}
 	else if (state_ != IDLE)  // updating filter; we must be moving or
-							  // update_while_stopped set to true
+	// update_while_stopped set to true
 	{
 		// mrpt::poses::CPose3D pose = beacon_poses_[_msg.header.frame_id];
 		// ROS_INFO("BEACON POSE %4.3f, %4.3f, %4.3f, %4.3f, %4.3f, %4.3f",
@@ -264,7 +250,6 @@ void PFLocalizationNode::callbackBeacon(
 void PFLocalizationNode::callbackRobotPose(
 	const geometry_msgs::PoseWithCovarianceStamped& _msg)
 {
-#if MRPT_VERSION >= 0x150
 	using namespace mrpt::maps;
 	using namespace mrpt::obs;
 
@@ -335,9 +320,6 @@ void PFLocalizationNode::callbackRobotPose(
 	sf->insert(obs);
 	observation(sf, odometry);
 	if (param()->gui_mrpt) show3DDebug(sf);
-#else
-// not implemented
-#endif
 }
 
 void PFLocalizationNode::odometryForCallback(
@@ -640,7 +622,7 @@ void PFLocalizationNode::publishPose()
 		tf::resolve(param()->tf_prefix, param()->global_frame_id);
 	if (loop_count_ < 10 || state_ == IDLE)
 		p.header.stamp = ros::Time::now();  // on first iterations timestamp
-											// differs a lot from ROS time
+	// differs a lot from ROS time
 	else
 		mrpt_bridge::convert(time_last_update_, p.header.stamp);
 
@@ -668,7 +650,6 @@ void PFLocalizationNode::publishPose()
 
 void PFLocalizationNode::useROSLogLevel()
 {
-#if MRPT_VERSION >= 0x150
 	// Set ROS log level also on MRPT internal log system; level enums are fully
 	// compatible
 	std::map<std::string, ros::console::levels::Level> loggers;
@@ -680,5 +661,4 @@ void PFLocalizationNode::useROSLogLevel()
 		pdf_.setVerbosityLevel(
 			static_cast<mrpt::utils::VerbosityLevel>(
 				loggers["ros.mrpt_localization"]));
-#endif
 }

@@ -59,10 +59,8 @@ using namespace mrpt::poses;
 using namespace std;
 
 #include <mrpt/version.h>
-#if MRPT_VERSION >= 0x130
 using namespace mrpt::maps;
 using namespace mrpt::obs;
-#endif
 
 PFLocalization::~PFLocalization() {}
 PFLocalization::PFLocalization(Parameters* param)
@@ -80,7 +78,7 @@ void PFLocalization::init()
 	log_info("CConfigFile %s", param_->ini_file.c_str());
 
 	vector_int particles_count;  // Number of initial particles (if size>1, run
-								 // the experiments N times)
+	// the experiments N times)
 
 	// Load configuration:
 	// -----------------------------------------
@@ -117,13 +115,9 @@ void PFLocalization::init()
 	motion_model_default_options_.modelSelection =
 		CActionRobotMovement2D::mmGaussian;
 
-#if MRPT_VERSION >= 0x150
-#define gausianModel gaussianModel  // a typo was fixed in 1.5.0
-#endif
-
-	motion_model_default_options_.gausianModel.minStdXY =
+	motion_model_default_options_.gaussianModel.minStdXY =
 		ini_file.read_double("DummyOdometryParams", "minStdXY", 0.04);
-	motion_model_default_options_.gausianModel.minStdPHI = DEG2RAD(
+	motion_model_default_options_.gaussianModel.minStdPHI = DEG2RAD(
 		ini_file.read_double("DefaultOdometryParams", "minStdPHI", 2.0));
 
 	// Read initial particles distribution; fail if any parameter is not found

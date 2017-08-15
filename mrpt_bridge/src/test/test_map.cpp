@@ -14,13 +14,8 @@
 #include <ros/console.h>
 
 #include <mrpt/version.h>
-#if MRPT_VERSION >= 0x130
 #include <mrpt/maps/COccupancyGridMap2D.h>
 using mrpt::maps::COccupancyGridMap2D;
-#else
-#include <mrpt/slam/COccupancyGridMap2D.h>
-using mrpt::slam::COccupancyGridMap2D;
-#endif
 
 void getEmptyRosMsg(nav_msgs::OccupancyGrid& msg)
 {
