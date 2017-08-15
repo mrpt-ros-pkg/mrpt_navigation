@@ -39,23 +39,12 @@
 #define MRPT_RAWLOG_RECORD_H
 
 #include <mrpt/version.h>
-#if MRPT_VERSION >= 0x130
 #include <mrpt/obs/CRawlog.h>
 #include <mrpt/obs/CActionRobotMovement2D.h>
 #include <mrpt/obs/CObservationOdometry.h>
 #include <mrpt/obs/CObservation2DRangeScan.h>
 using mrpt::obs::CRawlog;
 using mrpt::obs::CActionRobotMovement2D;
-#else
-#include <mrpt/slam/CRawlog.h>
-#include <mrpt/slam/CActionRobotMovement2D.h>
-#include <mrpt/slam/CObservationOdometry.h>
-#include <mrpt/slam/CObservation2DRangeScan.h>
-using mrpt::slam::CRawlog;
-using mrpt::slam::CObservation2DRangeScanPtr;
-using mrpt::slam::CObservationOdometryPtr;
-using mrpt::slam::CActionRobotMovement2D;
-#endif
 
 #include <mrpt/poses/CPose2D.h>
 #include <mrpt_bridge/mrpt_log_macros.h>

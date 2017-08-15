@@ -12,7 +12,6 @@
 #include <mrpt/system/string_utils.h>  // for lowerCase()
 
 #include <mrpt/version.h>
-#if MRPT_VERSION >= 0x130
 #include <mrpt/maps/COccupancyGridMap2D.h>
 #include <mrpt/maps/CMultiMetricMap.h>
 #include <mrpt/maps/CSimpleMap.h>
@@ -20,15 +19,6 @@ using mrpt::maps::COccupancyGridMap2D;
 using mrpt::maps::CMultiMetricMap;
 using mrpt::maps::CSimpleMap;
 using mrpt::maps::CLogOddsGridMapLUT;
-#else
-#include <mrpt/slam/COccupancyGridMap2D.h>
-#include <mrpt/slam/CMultiMetricMap.h>
-#include <mrpt/slam/CSimpleMap.h>
-using mrpt::slam::COccupancyGridMap2D;
-using mrpt::slam::CMultiMetricMap;
-using mrpt::slam::CSimpleMap;
-using mrpt::slam::CLogOddsGridMapLUT;
-#endif
 
 #ifndef INT8_MAX  // avoid duplicated #define's
 #define INT8_MAX 0x7f
@@ -164,11 +154,7 @@ const bool MapHdl::loadMap(
 	CMultiMetricMap& _metric_map, const mrpt::utils::CConfigFile& _config_file,
 	const std::string& _map_file, const std::string& _section_name, bool _debug)
 {
-#if MRPT_VERSION >= 0x130
 	using namespace mrpt::maps;
-#else
-	using namespace mrpt::slam;
-#endif
 
 	TSetOfMetricMapInitializers mapInitializers;
 	mapInitializers.loadFromConfigFile(_config_file, _section_name);

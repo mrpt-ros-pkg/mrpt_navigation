@@ -32,7 +32,7 @@ class CPose3D;
 }
 }
 #include <mrpt/version.h>
-#if MRPT_VERSION >= 0x130
+
 namespace mrpt
 {
 namespace obs
@@ -40,15 +40,6 @@ namespace obs
 class CObservationBeaconRanges;
 }
 }
-#else
-namespace mrpt
-{
-namespace slam
-{
-class CObservationBeaconRanges;
-}
-}
-#endif
 
 namespace mrpt_bridge
 {
@@ -63,12 +54,8 @@ namespace mrpt_bridge
 bool convert(
 	const mrpt_msgs::ObservationRangeBeacon& _msg,
 	const mrpt::poses::CPose3D& _pose,
-#if MRPT_VERSION >= 0x130
-	mrpt::obs::CObservationBeaconRanges& _obj
-#else
-	mrpt::slam::CObservationBeaconRanges& _obj
-#endif
-	);
+
+	mrpt::obs::CObservationBeaconRanges& _obj);
 
 /** MRPT->ROS: Takes a CObservationBeaconRanges and outputs range data in
  * mrpt_msgs::ObservationRangeBeacon
@@ -76,11 +63,8 @@ bool convert(
   * \sa ros2mrpt
   */
 bool convert(
-#if MRPT_VERSION >= 0x130
+
 	const mrpt::obs::CObservationBeaconRanges& _obj,
-#else
-	const mrpt::slam::CObservationBeaconRanges& _obj,
-#endif
 	mrpt_msgs::ObservationRangeBeacon& _msg);
 
 /** MRPT->ROS: Takes a CObservationBeaconRanges and outputs range data in
@@ -90,11 +74,7 @@ bool convert(
   * \sa ros2mrpt
   */
 bool convert(
-#if MRPT_VERSION >= 0x130
 	const mrpt::obs::CObservationBeaconRanges& _obj,
-#else
-	const mrpt::slam::CObservationBeaconRanges& _obj,
-#endif
 	mrpt_msgs::ObservationRangeBeacon& _msg, geometry_msgs::Pose& _pose);
 
 /** @} */

@@ -8,12 +8,7 @@
 #include <mrpt_bridge/point_cloud2.h>
 
 #include <mrpt/version.h>
-#if MRPT_VERSION >= 0x130
 #include <mrpt/maps/CSimplePointsMap.h>
-#else
-#include <mrpt/slam/CSimplePointsMap.h>
-#endif
-
 #include <pcl/conversions.h>
 #include <pcl/point_cloud.h>
 #include <pcl_conversions/pcl_conversions.h>
@@ -44,11 +39,7 @@ TEST(PointCloud2, basicTest)
 	// pcl_conversions::fromPCL(point_cloud, point_cloud2_msg);
 	pcl::toROSMsg(point_cloud, point_cloud2_msg);
 
-#if MRPT_VERSION >= 0x130
 	mrpt::maps::CSimplePointsMap mrpt_pc;
-#else
-	mrpt::slam::CSimplePointsMap mrpt_pc;
-#endif
 
 	// printf("step 3\n");
 	mrpt_bridge::copy(point_cloud2_msg, mrpt_pc);

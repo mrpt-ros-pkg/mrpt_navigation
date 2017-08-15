@@ -5,15 +5,9 @@
 #include "mrpt_bridge/point_cloud2.h"
 
 #include <mrpt/version.h>
-#if MRPT_VERSION >= 0x130
 #include <mrpt/maps/CSimplePointsMap.h>
 #include <mrpt/maps/CColouredPointsMap.h>
 using namespace mrpt::maps;
-#else
-#include <mrpt/slam/CSimplePointsMap.h>
-#include <mrpt/slam/CColouredPointsMap.h>
-using namespace mrpt::slam;
-#endif
 
 namespace mrpt_bridge
 {

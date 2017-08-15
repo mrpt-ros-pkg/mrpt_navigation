@@ -22,7 +22,6 @@ typedef PointCloud2_<std::allocator<void>> PointCloud2;
 }
 
 #include <mrpt/version.h>
-#if MRPT_VERSION >= 0x130
 namespace mrpt
 {
 namespace maps
@@ -31,16 +30,6 @@ class CSimplePointsMap;
 class CColouredPointsMap;
 }
 }
-#else
-namespace mrpt
-{
-namespace slam
-{
-class CSimplePointsMap;
-class CColouredPointsMap;
-}
-}
-#endif
 
 namespace mrpt_bridge
 {
@@ -54,13 +43,7 @@ namespace mrpt_bridge
  * \sa mrpt2ros
  */
 bool copy(
-	const sensor_msgs::PointCloud2& msg,
-#if MRPT_VERSION >= 0x130
-	mrpt::maps::CSimplePointsMap& obj
-#else
-	mrpt::slam::CSimplePointsMap& obj
-#endif
-	);
+	const sensor_msgs::PointCloud2& msg, mrpt::maps::CSimplePointsMap& obj);
 
 /** Convert mrpt::slam::CSimplePointsMap -> sensor_msgs/PointCloud2
  *  The user must supply the "msg_header" field to be copied into the output
@@ -72,12 +55,8 @@ bool copy(
  * \sa ros2mrpt
  */
 bool copy(
-#if MRPT_VERSION >= 0x130
-	const mrpt::maps::CSimplePointsMap& obj,
-#else
-	const mrpt::slam::CSimplePointsMap& obj,
-#endif
-	const std_msgs::Header& msg_header, sensor_msgs::PointCloud2& msg);
+	const mrpt::maps::CSimplePointsMap& obj, const std_msgs::Header& msg_header,
+	sensor_msgs::PointCloud2& msg);
 
 /** @} */
 

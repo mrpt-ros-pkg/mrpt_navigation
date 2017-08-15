@@ -67,34 +67,27 @@ void RawlogRecordNode::ParametersNode::update(const unsigned long& loop_count)
 void RawlogRecordNode::ParametersNode::callbackParameters(
 	mrpt_rawlog::MotionConfig& config, uint32_t level)
 {
-#if MRPT_VERSION >= 0x130
 	using namespace mrpt::maps;
 	using namespace mrpt::obs;
-#else
-	using namespace mrpt::slam;
-#endif
-#if MRPT_VERSION >= 0x150
-#define gausianModel gaussianModel  // a typo was fixed in 1.5.0
-#endif
 
 	if (config.motion_noise_type == MOTION_MODEL_GAUSSIAN)
 	{
 		motionModelOptions.modelSelection = CActionRobotMovement2D::mmGaussian;
-		motionModelOptions.gausianModel.a1 = config.gaussian_alpha_1;
-		motionModelOptions.gausianModel.a2 = config.gaussian_alpha_2;
-		motionModelOptions.gausianModel.a3 = config.gaussian_alpha_3;
-		motionModelOptions.gausianModel.a4 = config.gaussian_alpha_4;
-		motionModelOptions.gausianModel.minStdXY = config.gaussian_alpha_xy;
-		motionModelOptions.gausianModel.minStdPHI = config.gaussian_alpha_phi;
-		ROS_INFO("gaussianModel.a1: %f", motionModelOptions.gausianModel.a1);
-		ROS_INFO("gaussianModel.a2: %f", motionModelOptions.gausianModel.a2);
-		ROS_INFO("gaussianModel.a3: %f", motionModelOptions.gausianModel.a3);
-		ROS_INFO("gaussianModel.a4: %f", motionModelOptions.gausianModel.a4);
+		motionModelOptions.gaussianModel.a1 = config.gaussian_alpha_1;
+		motionModelOptions.gaussianModel.a2 = config.gaussian_alpha_2;
+		motionModelOptions.gaussianModel.a3 = config.gaussian_alpha_3;
+		motionModelOptions.gaussianModel.a4 = config.gaussian_alpha_4;
+		motionModelOptions.gaussianModel.minStdXY = config.gaussian_alpha_xy;
+		motionModelOptions.gaussianModel.minStdPHI = config.gaussian_alpha_phi;
+		ROS_INFO("gaussianModel.a1: %f", motionModelOptions.gaussianModel.a1);
+		ROS_INFO("gaussianModel.a2: %f", motionModelOptions.gaussianModel.a2);
+		ROS_INFO("gaussianModel.a3: %f", motionModelOptions.gaussianModel.a3);
+		ROS_INFO("gaussianModel.a4: %f", motionModelOptions.gaussianModel.a4);
 		ROS_INFO(
 			"gaussianModel.minStdXY: %f",
-			motionModelOptions.gausianModel.minStdXY);
+			motionModelOptions.gaussianModel.minStdXY);
 		ROS_INFO(
 			"gaussianModel.minStdPHI: %f",
-			motionModelOptions.gausianModel.minStdPHI);
+			motionModelOptions.gaussianModel.minStdPHI);
 	}
 }

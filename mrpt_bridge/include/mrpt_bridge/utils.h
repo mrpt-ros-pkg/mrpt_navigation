@@ -10,14 +10,11 @@
 #include <ros/console.h>
 #include <mrpt/system/datetime.h>
 #include <mrpt/version.h>
-#if MRPT_VERSION >= 0x150
 #include <mrpt/utils/COutputLogger.h>
-#endif
 #include <log4cxx/logger.h>
 
 namespace mrpt_bridge
 {
-#if MRPT_VERSION >= 0x150
 /**
 *@brief function that converts ROS verbosity level log4cxx::Level to MRPT
 * equivalent mrpt::utils::VerbosityLevel
@@ -93,9 +90,6 @@ inline void mrptToROSLoggerCallback(
 		ROS_ERROR("%s", tmsg.c_str());
 	}
 }
-
-#endif
-
 }  // namespace mrpt_bridge
 
 #endif  // MRPT_BRIDGE_UTILS_H

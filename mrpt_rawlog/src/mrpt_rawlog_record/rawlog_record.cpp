@@ -86,11 +86,7 @@ void RawlogRecord::observation(
 	mrpt::obs::CObservation2DRangeScan::Ptr laser,
 	mrpt::obs::CObservationOdometry::Ptr odometry)
 {
-#if MRPT_VERSION >= 0x130
 	using namespace mrpt::obs;
-#else
-	using namespace mrpt::slam;
-#endif
 
 	pRawLog->addObservationMemoryReference(odometry);
 	pRawLog->addObservationMemoryReference(laser);

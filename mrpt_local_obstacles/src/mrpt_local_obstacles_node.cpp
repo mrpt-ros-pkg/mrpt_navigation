@@ -45,20 +45,12 @@
 #include <map>
 
 #include <mrpt/version.h>
-#if MRPT_VERSION >= 0x130
 #include <mrpt/obs/CSensoryFrame.h>
 #include <mrpt/maps/CSimplePointsMap.h>
 #include <mrpt/maps/COccupancyGridMap2D.h>
 #include <mrpt/obs/CObservation2DRangeScan.h>
 using namespace mrpt::maps;
 using namespace mrpt::obs;
-#else
-#include <mrpt/slam/CSensoryFrame.h>
-#include <mrpt/slam/CSimplePointsMap.h>
-#include <mrpt/slam/COccupancyGridMap2D.h>
-#include <mrpt/slam/CObservation2DRangeScan.h>
-using namespace mrpt::slam;
-#endif
 
 #include <mrpt/system/string_utils.h>
 #include <mrpt/utils/CTimeLogger.h>
@@ -92,9 +84,9 @@ class LocalObstaclesNode
 		m_topic_local_map_pointcloud;  //!< Default: "local_map_pointcloud"
 	std::string m_source_topics_2dscan;  //!< Default: "scan,laser1"
 	double m_time_window;  //!< In secs (default: 0.2). This can't be smaller
-						   //!than m_publish_period
+	//! than m_publish_period
 	double m_publish_period;  //!< In secs (default: 0.05). This can't be larger
-							  //!than m_time_window
+	//! than m_time_window
 
 	ros::Timer m_timer_publish;
 
@@ -106,7 +98,7 @@ class LocalObstaclesNode
 	};
 	typedef std::multimap<double, TInfoPerTimeStep> TListObservations;
 	TListObservations m_hist_obs;  //!< The history of past observations during
-								   //!the interest time window.
+	//! the interest time window.
 	boost::mutex m_hist_obs_mtx;
 
 	/** The local maps */

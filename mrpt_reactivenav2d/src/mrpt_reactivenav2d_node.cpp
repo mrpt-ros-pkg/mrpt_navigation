@@ -41,19 +41,11 @@
 
 #include <mrpt/version.h>
 
-#if MRPT_VERSION >= 0x130
 // Use modern headers ------------
 #include <mrpt/nav/reactive/CReactiveNavigationSystem.h>
 #include <mrpt/maps/CSimplePointsMap.h>
 using namespace mrpt::nav;
 using mrpt::maps::CSimplePointsMap;
-#else
-// Use backwards compat. headers ------------
-#include <mrpt/reactivenav/CReactiveNavigationSystem.h>
-#include <mrpt/slam/CSimplePointsMap.h>
-using namespace mrpt::reactivenav;
-using mrpt::slam::CSimplePointsMap;
-#endif
 
 #include <mrpt/utils/CTimeLogger.h>
 #include <mrpt/utils/CConfigFileMemory.h>
@@ -64,9 +56,7 @@ using mrpt::slam::CSimplePointsMap;
 #include <mrpt_bridge/point_cloud.h>
 #include <mrpt_bridge/time.h>
 
-#if MRPT_VERSION >= 0x150
 #include <mrpt/kinematics/CVehicleVelCmd_DiffDriven.h>
-#endif
 
 // The ROS node
 class ReactiveNav2DNode
@@ -113,11 +103,8 @@ class ReactiveNav2DNode
 	std::mutex m_last_obstacles_cs;
 
 	struct MyReactiveInterface :
-#if MRPT_VERSION >= 0x150
+
 		public mrpt::nav::CRobot2NavInterface
-#else
-		public CReactiveInterfaceImplementation
-#endif
 	{
 		ReactiveNav2DNode& m_parent;
 
@@ -129,18 +116,13 @@ class ReactiveNav2DNode
 		 * \return false on any error.
 		 */
 		bool getCurrentPoseAndSpeeds(
-#if MRPT_VERSION >= 0x150
+
 			mrpt::math::TPose2D& curPose, mrpt::math::TTwist2D& curVel,
 			mrpt::system::TTimeStamp& timestamp,
-			mrpt::math::TPose2D& curOdometry, std::string& frame_id
-#else
-			mrpt::poses::CPose2D& curPose, float& curV, float& curW
-#endif
-			) override
+			mrpt::math::TPose2D& curOdometry, std::string& frame_id) override
 		{
-#if MRPT_VERSION >= 0x150
 			double curV, curW;
-#endif
+
 			mrpt::utils::CTimeLoggerEntry tle(
 				m_parent.m_profiler, "getCurrentPoseAndSpeeds");
 			tf::StampedTransform txRobotPose;
@@ -162,30 +144,23 @@ class ReactiveNav2DNode
 			mrpt::poses::CPose3D curRobotPose;
 			mrpt_bridge::convert(txRobotPose, curRobotPose);
 
-#if MRPT_VERSION >= 0x150
 			mrpt_bridge::convert(txRobotPose.stamp_, timestamp);
 			curPose = mrpt::math::TPose2D(
 				mrpt::poses::CPose2D(curRobotPose));  // Explicit 3d->2d to
-													  // confirm we know we're
-													  // losing information
+			// confirm we know we're
+			// losing information
 			curOdometry = curPose;
-#else
-			curPose = mrpt::poses::CPose2D(curRobotPose);  // Explicit 3d->2d to
-														   // confirm we know
-														   // we're losing
-														   // information
-#endif
 
 			curV = curW = 0;
 			MRPT_TODO("Retrieve current speeds from odometry");
 			ROS_DEBUG(
 				"[getCurrentPoseAndSpeeds] Latest pose: %s",
 				curPose.asString().c_str());
-#if MRPT_VERSION >= 0x150
+
 			curVel.vx = curV * cos(curPose.phi);
 			curVel.vy = curV * sin(curPose.phi);
 			curVel.omega = curW;
-#endif
+
 			return true;
 		}
 
@@ -195,14 +170,8 @@ class ReactiveNav2DNode
 		 * \return false on any error.
 		 */
 		bool changeSpeeds(
-#if MRPT_VERSION >= 0x150
-			const mrpt::kinematics::CVehicleVelCmd& vel_cmd
-#else
-			float v, float w
-#endif
-			) override
+			const mrpt::kinematics::CVehicleVelCmd& vel_cmd) override
 		{
-#if MRPT_VERSION >= 0x150
 			using namespace mrpt::kinematics;
 			const CVehicleVelCmd_DiffDriven* vel_cmd_diff_driven =
 				dynamic_cast<const CVehicleVelCmd_DiffDriven*>(&vel_cmd);
@@ -210,7 +179,6 @@ class ReactiveNav2DNode
 
 			const double v = vel_cmd_diff_driven->lin_vel;
 			const double w = vel_cmd_diff_driven->ang_vel;
-#endif
 			ROS_DEBUG(
 				"changeSpeeds: v=%7.4f m/s  w=%8.3f deg/s", v,
 				w * 180.0f / M_PI);
@@ -221,7 +189,6 @@ class ReactiveNav2DNode
 			return true;
 		}
 
-#if MRPT_VERSION >= 0x150
 		bool stop(bool isEmergency) override
 		{
 			mrpt::kinematics::CVehicleVelCmd_DiffDriven vel_cmd;
@@ -229,7 +196,6 @@ class ReactiveNav2DNode
 			vel_cmd.ang_vel = 0;
 			return changeSpeeds(vel_cmd);
 		}
-#endif
 
 		/** Start the watchdog timer of the robot platform, if any.
 		 * \param T_ms Period, in ms.
@@ -241,16 +207,10 @@ class ReactiveNav2DNode
 		/** Return the current set of obstacle points.
 		  * \return false on any error. */
 		bool senseObstacles(
-#if MRPT_VERSION >= 0x150
-			CSimplePointsMap& obstacles, mrpt::system::TTimeStamp& timestamp
-#else
-			CSimplePointsMap& obstacles
-#endif
-			) override
+			CSimplePointsMap& obstacles,
+			mrpt::system::TTimeStamp& timestamp) override
 		{
-#if MRPT_VERSION >= 0x150
 			timestamp = mrpt::system::now();
-#endif
 			std::lock_guard<std::mutex> csl(m_parent.m_last_obstacles_cs);
 			obstacles = m_parent.m_last_obstacles;
 
@@ -258,7 +218,6 @@ class ReactiveNav2DNode
 			return true;
 		}
 
-#if MRPT_VERSION >= 0x150
 		mrpt::kinematics::CVehicleVelCmd::Ptr getEmergencyStopCmd() override
 		{
 			return getStopCmd();
@@ -271,7 +230,6 @@ class ReactiveNav2DNode
 			ret->setToStop();
 			return ret;
 		}
-#endif
 
 		virtual void sendNavigationStartEvent() {}
 		virtual void sendNavigationEndEvent() {}
@@ -333,13 +291,7 @@ class ReactiveNav2DNode
 		try
 		{
 			mrpt::utils::CConfigFile cfgFil(cfg_file_reactive);
-#if MRPT_VERSION >= 0x150
 			m_reactive_nav_engine.loadConfigFile(cfgFil);
-#else
-			mrpt::utils::CConfigFileMemory dummyRobotCfg;
-			dummyRobotCfg.write("ROBOT_NAME", "Name", "ReactiveParams");
-			m_reactive_nav_engine.loadConfigFile(cfgFil, dummyRobotCfg);
-#endif
 		}
 		catch (std::exception& e)
 		{
@@ -401,7 +353,7 @@ class ReactiveNav2DNode
 		ROS_INFO(
 			"[navigateTo] Starting navigation to %s",
 			target.asString().c_str());
-#if MRPT_VERSION >= 0x150
+
 		CAbstractPTGBasedReactive::TNavigationParamsPTG navParams;
 		CAbstractNavigator::TargetInfo target_info;
 		target_info.target_coords.x = target.x;
@@ -410,21 +362,6 @@ class ReactiveNav2DNode
 		target_info.targetIsRelative = false;
 
 		navParams.multiple_targets.push_back(target_info);
-#elif MRPT_VERSION >= 0x130
-		CAbstractPTGBasedReactive::TNavigationParamsPTG navParams;
-		navParams.target.x = target.x;
-		navParams.target.y = target.y;
-		navParams.targetAllowedDistance = m_target_allowed_distance;
-		navParams.targetIsRelative = false;
-
-#else
-		CAbstractReactiveNavigationSystem::TNavigationParams navParams;
-
-		navParams.target.target_coords.x = target.x;
-		navParams.target.target_coords.y = target.y;
-		navParams.target.targetAllowedDistance = m_target_allowed_distance;
-		navParams.target.targetIsRelative = false;
-#endif
 
 		// Optional: restrict the PTGs to use
 		// navParams.restrict_PTG_indices.push_back(1);

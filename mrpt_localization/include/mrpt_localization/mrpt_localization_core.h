@@ -45,7 +45,6 @@
 #include <mrpt_bridge/mrpt_log_macros.h>
 
 #include <mrpt/version.h>
-#if MRPT_VERSION >= 0x130
 #include <mrpt/obs/CActionRobotMovement2D.h>
 #include <mrpt/obs/CActionCollection.h>
 #include <mrpt/obs/CObservationOdometry.h>
@@ -53,14 +52,6 @@
 #include <mrpt/maps/CMultiMetricMap.h>
 using namespace mrpt::maps;
 using namespace mrpt::obs;
-#else
-#include <mrpt/slam/CActionRobotMovement2D.h>
-#include <mrpt/slam/CActionCollection.h>
-#include <mrpt/slam/CObservationOdometry.h>
-#include <mrpt/slam/CSensoryFrame.h>
-#include <mrpt/slam/CMultiMetricMap.h>
-using namespace mrpt::slam;
-#endif
 
 class PFLocalizationCore
 {
@@ -112,13 +103,13 @@ class PFLocalizationCore
 	mrpt::system::TTimeStamp time_last_update_;  ///< time of the last update
 	mrpt::utils::CTicTac tictac_;  ///< timer to measure performance
 	size_t update_counter_;  ///< internal counter to count the number of filter
-							 ///updates
+	/// updates
 	PFStates state_;  ///< filter states to perform things like init on the
-					  ///correct time
+	/// correct time
 	mrpt::poses::CPose2D
 		odom_last_observation_;  ///< pose at the last observation
 	bool init_PDF_mode;  ///< Initial PDF mode: 0 for free space cells, 1 for
-						 ///any cell
+	/// any cell
 	float init_PDF_min_x;  ///< Initial PDF boundaries
 	float init_PDF_max_x;
 	float init_PDF_min_y;

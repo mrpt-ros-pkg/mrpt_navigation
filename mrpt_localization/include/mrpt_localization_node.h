@@ -50,14 +50,8 @@
 
 #include <mrpt/math.h>
 #include <mrpt/version.h>
-#if MRPT_VERSION >= 0x130
 #include <mrpt/obs/CObservationOdometry.h>
 using mrpt::obs::CObservationOdometry;
-#else
-#include <mrpt/slam/CObservationOdometry.h>
-using mrpt::slam::CObservationOdometry;
-using mrpt::slam::CObservationOdometryPtr;
-#endif
 
 #include "mrpt_localization/MotionConfig.h"
 #include "mrpt_localization/mrpt_localization.h"
@@ -84,11 +78,11 @@ class PFLocalizationNode : public PFLocalization
 		void update(const unsigned long& loop_count);
 		double rate;
 		double transform_tolerance;  ///< projection into the future added to
-									 ///the published tf to extend its validity
+		/// the published tf to extend its validity
 		double no_update_tolerance;  ///< maximum time without updating we keep
-									 ///using filter time instead of Time::now
+		/// using filter time instead of Time::now
 		double no_inputs_tolerance;  ///< maximum time without any observation
-									 ///we wait before start complaining
+		/// we wait before start complaining
 		int parameter_update_skip;
 		int particlecloud_update_skip;
 		int map_update_skip;

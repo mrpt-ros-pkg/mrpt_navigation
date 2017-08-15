@@ -115,27 +115,29 @@ void PFLocalizationNode::Parameters::callbackParameters(
 	{
 		motion_model_options->modelSelection =
 			CActionRobotMovement2D::mmGaussian;
-#if MRPT_VERSION >= 0x150
-#define gausianModel gaussianModel  // a typo was fixed in 1.5.0
-#endif
-		motion_model_options->gausianModel.a1 = config.gaussian_alpha_1;
-		motion_model_options->gausianModel.a2 = config.gaussian_alpha_2;
-		motion_model_options->gausianModel.a3 = config.gaussian_alpha_3;
-		motion_model_options->gausianModel.a4 = config.gaussian_alpha_4;
-		motion_model_options->gausianModel.minStdXY = config.gaussian_alpha_xy;
-		motion_model_options->gausianModel.minStdPHI =
+
+		motion_model_options->gaussianModel.a1 = config.gaussian_alpha_1;
+		motion_model_options->gaussianModel.a2 = config.gaussian_alpha_2;
+		motion_model_options->gaussianModel.a3 = config.gaussian_alpha_3;
+		motion_model_options->gaussianModel.a4 = config.gaussian_alpha_4;
+		motion_model_options->gaussianModel.minStdXY = config.gaussian_alpha_xy;
+		motion_model_options->gaussianModel.minStdPHI =
 			config.gaussian_alpha_phi;
 		ROS_INFO("gaussianModel.type: gaussian");
-		ROS_INFO("gaussianModel.a1: %f", motion_model_options->gausianModel.a1);
-		ROS_INFO("gaussianModel.a2: %f", motion_model_options->gausianModel.a2);
-		ROS_INFO("gaussianModel.a3: %f", motion_model_options->gausianModel.a3);
-		ROS_INFO("gaussianModel.a4: %f", motion_model_options->gausianModel.a4);
+		ROS_INFO(
+			"gaussianModel.a1: %f", motion_model_options->gaussianModel.a1);
+		ROS_INFO(
+			"gaussianModel.a2: %f", motion_model_options->gaussianModel.a2);
+		ROS_INFO(
+			"gaussianModel.a3: %f", motion_model_options->gaussianModel.a3);
+		ROS_INFO(
+			"gaussianModel.a4: %f", motion_model_options->gaussianModel.a4);
 		ROS_INFO(
 			"gaussianModel.minStdXY: %f",
-			motion_model_options->gausianModel.minStdXY);
+			motion_model_options->gaussianModel.minStdXY);
 		ROS_INFO(
 			"gaussianModel.minStdPHI: %f",
-			motion_model_options->gausianModel.minStdPHI);
+			motion_model_options->gaussianModel.minStdPHI);
 	}
 	else
 	{
@@ -145,16 +147,16 @@ void PFLocalizationNode::Parameters::callbackParameters(
 	ROS_INFO(
 		"use_motion_model_default_options: %s",
 		use_motion_model_default_options ? "true" : "false");
-	motion_model_default_options->gausianModel.minStdXY =
+	motion_model_default_options->gaussianModel.minStdXY =
 		config.default_noise_xy;
 	ROS_INFO(
 		"default_noise_xy: %f",
-		motion_model_default_options->gausianModel.minStdXY);
-	motion_model_default_options->gausianModel.minStdPHI =
+		motion_model_default_options->gaussianModel.minStdXY);
+	motion_model_default_options->gaussianModel.minStdPHI =
 		config.default_noise_phi;
 	ROS_INFO(
 		"default_noise_phi: %f",
-		motion_model_default_options->gausianModel.minStdPHI);
+		motion_model_default_options->gaussianModel.minStdPHI);
 	update_while_stopped = config.update_while_stopped;
 	ROS_INFO(
 		"update_while_stopped: %s", update_while_stopped ? "true" : "false");

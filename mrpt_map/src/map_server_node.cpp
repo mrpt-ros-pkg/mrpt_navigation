@@ -38,17 +38,10 @@
 #include <mrpt/utils/CConfigFile.h>
 
 #include <mrpt/version.h>
-#if MRPT_VERSION >= 0x130
 #include <mrpt/maps/COccupancyGridMap2D.h>
 #include <mrpt/maps/CMultiMetricMap.h>
 using mrpt::maps::COccupancyGridMap2D;
 using mrpt::maps::CMultiMetricMap;
-#else
-#include <mrpt/slam/COccupancyGridMap2D.h>
-#include <mrpt/slam/CMultiMetricMap.h>
-using mrpt::slam::COccupancyGridMap2D;
-using mrpt::slam::CMultiMetricMap;
-#endif
 
 MapServer::MapServer(ros::NodeHandle& n)
 	: n_(n), n_param_("~"), loop_count_(0), frequency_(0), debug_(true)
