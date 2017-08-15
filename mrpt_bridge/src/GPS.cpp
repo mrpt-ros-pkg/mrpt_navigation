@@ -7,8 +7,6 @@
 
 namespace mrpt_bridge
 {
-
-
     /************************************************************************
     *						ros2mrpt    							        *
     ************************************************************************/
@@ -39,7 +37,6 @@ namespace mrpt_bridge
 
         }
         obj.setMsg(gga);
-
     }
 
     /************************************************************************
@@ -86,12 +83,8 @@ namespace mrpt_bridge
             msg.status.service = 1;
 
         }
-
         /// position_covariance is not available in mrpt
         /// position_covariance type is not available in mrpt
-
-
-
     }
 }
 

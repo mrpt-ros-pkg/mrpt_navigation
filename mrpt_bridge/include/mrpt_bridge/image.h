@@ -16,10 +16,8 @@ namespace mrpt_bridge
 {
     namespace image
     {
-        bool mrpt2ros(
-                const CObservationImage &obj,
-                sensor_msgs::Image &msg
-        );
+        bool ros2mrpt(const sensor_msgs::Image &msg,  CObservationImage &obj);
+        bool mrpt2ros(const CObservationImage &obj,const std_msgs::Header &msg_header, sensor_msgs::Image &msg);
     }
 }
 

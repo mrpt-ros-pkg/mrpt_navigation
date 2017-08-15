@@ -11,6 +11,9 @@
 
 using namespace mrpt::obs;
 
+/// ROS message:    http://docs.ros.org/api/sensor_msgs/html/msg/NavSatFix.html
+/// MRPT message:   https://github.com/MRPT/mrpt/blob/master/libs/obs/include/mrpt/obs/CObservationGPS.h
+
 namespace mrpt_bridge
 {
     namespace GPS
@@ -23,7 +26,7 @@ namespace mrpt_bridge
                       CObservationGPS &obj);
 
 
-        /** Convert mrpt::obs::CObservation -> sensor_msgs/NavSatFix
+        /** Convert mrpt::obs::CObservationGPS -> sensor_msgs/NavSatFix
           *  The user must supply the "msg_header" field to be copied into the output message object, since that part does not appear in MRPT classes.
           *
           *  Since COnservationGPS does not contain "position_covariance" and "position_covariance_type"

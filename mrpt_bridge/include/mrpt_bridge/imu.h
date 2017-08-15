@@ -15,6 +15,9 @@
 using namespace mrpt::obs;
 
 
+/// ROS message:    http://docs.ros.org/api/sensor_msgs/html/msg/Imu.html
+/// MRPT message:   https://github.com/MRPT/mrpt/blob/master/libs/obs/include/mrpt/obs/CObservationIMU.h
+
 namespace mrpt_bridge
 {
     namespace imu
@@ -87,9 +90,20 @@ namespace mrpt_bridge
             // Always leave this last value to reflect the number of enum values
                     COUNT_IMU_DATA_FIELDS
         };
-        bool mrpt2ros(const CObservationIMU &obj, const std_msgs::Header &msg_header, sensor_msgs::Imu &msg);
 
+        /** Convert sensor_msgs/Imu -> mrpt::obs::CObservationIMU
+          * // STILL NEED TO WRITE CODE FOR COVARIANCE
+          * \return true on sucessful conversion, false on any error.
+          */
         bool ros2mrpt(const sensor_msgs::Imu &msg, CObservationIMU obj);
+
+        /** Convert mrpt::obs::CObservationIMU -> sensor_msgs/Imu
+          *  The user must supply the "msg_header" field to be copied into the output message object, since that part does not appear in MRPT classes.
+          *
+          *  Since COnservationIMU does not contain covariance terms NEED TO fix those.
+          * \return true on sucessful conversion, false on any error.
+          */
+        bool mrpt2ros(const CObservationIMU &obj, const std_msgs::Header &msg_header, sensor_msgs::Imu &msg);
 
     }
 }

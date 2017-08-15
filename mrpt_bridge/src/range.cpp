@@ -4,12 +4,11 @@
 
 #include "mrpt_bridge/range.h"
 
-/// sensor_msgs::Range ROS message : http://docs.ros.org/api/sensor_msgs/html/msg/Range.html
-
-/// mrpt::obs::CObservationRange message: https://github.com/MRPT/mrpt/blob/master/libs/obs/include/mrpt/obs/CObservationRange.h
-
 namespace mrpt_bridge
 {
+    /************************************************************************
+    *						ros2mrpt    							        *
+    ************************************************************************/
     bool range::ros2mrpt(const sensor_msgs::Range &msg,
                   CObservationRange &obj)
     {
@@ -21,7 +20,9 @@ namespace mrpt_bridge
         obj.sensedData.at(0).sensedDistance = msg.range;
     }
 
-
+    /************************************************************************
+    *						mrpt2ros    							        *
+    ************************************************************************/
     bool range::mrpt2ros(const CObservationRange &obj,
                   const std_msgs::Header &msg_header,
                   sensor_msgs::Range &msg)
@@ -43,15 +44,10 @@ namespace mrpt_bridge
         }
         msg.range = msg.range / i;
 
-
-
         /// currently the following are not available in MRPT for corresponding range ROS message
         /// NO corresponding value for MRPT radiation_type at http://mrpt.ual.es/reference/devel/_c_observation_range_8h_source.html
         //msg.radiation_type
-
-
     }
-
 }
 
 /// Range ROS message

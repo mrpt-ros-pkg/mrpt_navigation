@@ -8,6 +8,30 @@ using namespace std;
 
 namespace mrpt_bridge
 {
+    /************************************************************************
+    *						ros2mrpt    							        *
+    ************************************************************************/
+    bool imu::ros2mrpt(const sensor_msgs::Imu &msg, CObservationIMU obj)
+    {
+        obj.rawMeasurements.at(IMU_ORI_QUAT_X)  = msg.orientation.x;
+        obj.rawMeasurements.at(IMU_ORI_QUAT_Y)  = msg.orientation.y;
+        obj.rawMeasurements.at(IMU_ORI_QUAT_Z)  = msg.orientation.z;
+        obj.rawMeasurements.at(IMU_ORI_QUAT_W)  = msg.orientation.w;
+
+        obj.rawMeasurements.at(IMU_X_ACC_GLOBAL) = msg.linear_acceleration.x;
+        obj.rawMeasurements.at(IMU_Y_ACC_GLOBAL) = msg.linear_acceleration.y;
+        obj.rawMeasurements.at(IMU_Z_ACC_GLOBAL) = msg.linear_acceleration.z;
+
+        obj.rawMeasurements.at(IMU_X_VEL)   = msg.angular_velocity.x;
+        obj.rawMeasurements.at(IMU_Y_VEL)   = msg.angular_velocity.y;
+        obj.rawMeasurements.at(IMU_Z_VEL)   = msg.angular_velocity.z;
+
+        // NEED TO WRITE CODE FOR COVARIANCE
+    }
+
+    /************************************************************************
+    *						mrpt2ros    							        *
+    ************************************************************************/
     bool imu::mrpt2ros(const CObservationIMU &obj, const std_msgs::Header &msg_header, sensor_msgs::Imu &msg)
     {
         msg.header = msg_header;
@@ -43,21 +67,6 @@ namespace mrpt_bridge
          */
     }
 
-    bool imu::ros2mrpt(const sensor_msgs::Imu &msg, CObservationIMU obj)
-    {
-        obj.rawMeasurements.at(IMU_ORI_QUAT_X)  = msg.orientation.x;
-        obj.rawMeasurements.at(IMU_ORI_QUAT_Y)  = msg.orientation.y;
-        obj.rawMeasurements.at(IMU_ORI_QUAT_Z)  = msg.orientation.z;
-        obj.rawMeasurements.at(IMU_ORI_QUAT_W)  = msg.orientation.w;
-
-        obj.rawMeasurements.at(IMU_X_ACC_GLOBAL) = msg.linear_acceleration.x;
-        obj.rawMeasurements.at(IMU_Y_ACC_GLOBAL) = msg.linear_acceleration.y;
-        obj.rawMeasurements.at(IMU_Z_ACC_GLOBAL) = msg.linear_acceleration.z;
-
-        obj.rawMeasurements.at(IMU_X_VEL)   = msg.angular_velocity.x;
-        obj.rawMeasurements.at(IMU_Y_VEL)   = msg.angular_velocity.y;
-        obj.rawMeasurements.at(IMU_Z_VEL)   = msg.angular_velocity.z;
-    }
 }
 
 

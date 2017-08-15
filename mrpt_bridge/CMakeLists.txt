@@ -8,7 +8,7 @@ add_definitions(-std=c++11) # Use C++11
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
 	geometry_msgs message_generation mrpt_msgs nav_msgs
-	pcl_conversions roscpp sensor_msgs std_msgs  tf )
+	pcl_conversions roscpp sensor_msgs std_msgs  tf cv_bridge )
 
 ## System dependencies are found with CMake's conventions
 find_package(PCL 1.3 REQUIRED COMPONENTS common io)
@@ -51,7 +51,11 @@ add_library(${PROJECT_NAME}
 	src/point_cloud.cpp
 	src/point_cloud2.cpp
 	src/pose.cpp
-		src/imu.cpp include/mrpt_bridge/imu.h src/image.cpp include/mrpt_bridge/image.h src/GPS.cpp include/mrpt_bridge/GPS.h src/range.cpp include/mrpt_bridge/range.h)
+
+	src/imu.cpp include/mrpt_bridge/imu.h
+	src/image.cpp include/mrpt_bridge/image.h
+	src/GPS.cpp include/mrpt_bridge/GPS.h
+	src/range.cpp include/mrpt_bridge/range.h)
 
 ## Declare a cpp executable
 
