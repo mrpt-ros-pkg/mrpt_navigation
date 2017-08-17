@@ -16,6 +16,18 @@ add_definitions(${PCL_DEFINITIONS})
 
 find_package(MRPT REQUIRED base obs graphs maps slam)
 
+if (CMAKE_COMPILER_IS_GNUCXX)
+	# High level of warnings.
+	# The -Wno-long-long is required in 64bit systems when including sytem headers.
+	# The -Wno-variadic-macros was needed for Eigen3, StdVector.h
+	add_compile_options(-Wall -Wno-long-long -Wno-variadic-macros)
+	# Workaround: Eigen <3.4 produces *tons* of warnings in GCC >=6. See http://eigen.tuxfamily.org/bz/show_bug.cgi?id=1221
+	if (NOT ${CMAKE_CXX_COMPILER_VERSION} LESS "6.0")
+		add_compile_options(-Wno-ignored-attributes -Wno-int-in-bool-context)
+	endif()
+endif()
+
+
 ###################################
 ## catkin specific configuration ##
 ###################################

@@ -7,14 +7,18 @@ project(mrpt_map)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS roscpp tf std_msgs nav_msgs sensor_msgs mrpt_bridge)
 
-## System dependencies are found with CMake's conventions
-# find_package(Boost REQUIRED COMPONENTS system)
-
 find_package(MRPT REQUIRED base obs gui slam)
-#include_directories(${MRPT_INCLUDE_DIRS})
-#MESSAGE( STATUS "MRPT_INCLUDE_DIRS: " ${MRPT_INCLUDE_DIRS})
-#link_directories(${MRPT_LIBRARY_DIRS})
-#MESSAGE( STATUS "MRPT_LIBRARY_DIRS: " ${MRPT_LIBS})
+
+if (CMAKE_COMPILER_IS_GNUCXX)
+	# High level of warnings.
+	# The -Wno-long-long is required in 64bit systems when including sytem headers.
+	# The -Wno-variadic-macros was needed for Eigen3, StdVector.h
+	add_compile_options(-Wall -Wno-long-long -Wno-variadic-macros)
+	# Workaround: Eigen <3.4 produces *tons* of warnings in GCC >=6. See http://eigen.tuxfamily.org/bz/show_bug.cgi?id=1221
+	if (NOT ${CMAKE_CXX_COMPILER_VERSION} LESS "6.0")
+		add_compile_options(-Wno-ignored-attributes -Wno-int-in-bool-context)
+	endif()
+endif()
 
 ###################################
 ## catkin specific configuration ##
@@ -55,7 +59,7 @@ target_link_libraries(map_server_node
 # See http://ros.org/doc/api/catkin/html/adv_user_guide/variables.html
 
 # Mark executables and/or libraries for installation
-install(TARGETS map_server_node 
+install(TARGETS map_server_node
   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
@@ -63,7 +67,7 @@ install(TARGETS map_server_node
 
 # Mark other files for installation (e.g. launch and bag files, etc.)
 install(DIRECTORY
-  launch 
+  launch
   tutorial
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
 )
