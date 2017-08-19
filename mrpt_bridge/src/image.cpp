@@ -20,7 +20,7 @@ using namespace cv_bridge;
 
 namespace mrpt_bridge
 {
-    namespace imu
+    namespace image
     {
         bool ros2mrpt(const sensor_msgs::Image &msg,  CObservationImage &obj)
         {
@@ -28,6 +28,9 @@ namespace mrpt_bridge
 
         }
 
+        /************************************************************************
+        *						mrpt2ros    							        *
+        ************************************************************************/
         bool mrpt2ros(const CObservationImage &obj, const std_msgs::Header &msg_header, sensor_msgs::Image &msg)
         {
             CImage temp_img = obj.image;

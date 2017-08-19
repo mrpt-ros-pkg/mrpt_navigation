@@ -5,7 +5,7 @@
 #include <mrpt_msgs/ObservationRangeBeacon.h>
 #include "tf/transform_datatypes.h"
 #include "tf/LinearMath/Matrix3x3.h"
-#include "mrpt_bridge/beacon.h"
+#include "beacon.h"
 
 #include <mrpt/version.h>
 #if MRPT_VERSION>=0x130

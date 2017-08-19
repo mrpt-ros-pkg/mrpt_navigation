@@ -8,7 +8,7 @@
 #include <mrpt_bridge/map.h>
 #include "pose.h"
 #include "point_cloud2.h"
-#include "beacon.h"
+#include "../../src/beacon.h"
 #include "landmark.h"
 #include "utils.h"
 
