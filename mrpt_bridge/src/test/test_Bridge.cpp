@@ -6,11 +6,13 @@
 #include "mrpt_bridge/range.h"
 #include "mrpt_bridge/imu.h"
 #include "mrpt_bridge/image.h"
+#include "mrpt_bridge/stereo_image.h"
 
 #include "../GPS.cpp"
 #include "../range.cpp"
 #include "../imu.cpp"
 #include "../image.cpp"
+#include "../stereo_image.cpp"
 
 /// mrpt imports
 #include <mrpt/obs/CObservation.h>
@@ -62,17 +64,23 @@ int main(int argc, char **argv)
     ros::Publisher imu_pub          = n.advertise<sensor_msgs::Imu>("imu_publisher", 1000);
     ros::Publisher range_pub        = n.advertise<sensor_msgs::Range>("range_publisher", 1000);
     ros::Publisher navSatFix_pub    = n.advertise<sensor_msgs::NavSatFix>("navSatFix_publisher", 1000);
-    ros::Publisher image_pub    = n.advertise<sensor_msgs::Image>("image_publisher", 1000);
+    ros::Publisher image_pub        = n.advertise<sensor_msgs::Image>("image_publisher", 1000);
+    ros::Publisher image_pub_left   = n.advertise<sensor_msgs::Image>("left_image_publisher", 1000);
+    ros::Publisher image_pub_right  = n.advertise<sensor_msgs::Image>("right_image_publisher", 1000);
 
     sensor_msgs::Imu        ros_Imu;
     sensor_msgs::Range      ros_Range;
     sensor_msgs::NavSatFix  ros_GPS;
     sensor_msgs::Image      ros_Image;
+    sensor_msgs::Image      ros_Image_left;
+    sensor_msgs::Image      ros_Image_right;
 
     CObservationGPS     mrpt_GPS;
     CObservationIMU     mrpt_IMU;
     CObservationRange   mrpt_Range;
     CObservationImage   mrpt_Image;
+    CObservationImage   mrpt_Image_left;
+    CObservationImage   mrpt_Image_right;
 
     int i=0;
     std_msgs::Header header;
@@ -124,6 +132,55 @@ int main(int argc, char **argv)
     } // end of for
     sort(files_fullpath.begin(),files_fullpath.end());
 
+
+
+    ///Testing stereo_image mrpt-->ROS
+    /// Testing Image mrpt-->ros
+    CObservationImage image1, image2;
+    DIR *dir1, *dir2;
+    dirent *pdir1, *pdir2;
+    vector<string> files1, files2;
+    vector<string> files_fullpath1, files_fullpath2;
+
+    /// Need to change this path to be the path having the images by the user
+    string file_path_left = "/home/raghavender/catkin_ws/src/mrpt_navigation/mrpt_bridge/src/stereo_images/left";
+    string file_path_right = "/home/raghavender/catkin_ws/src/mrpt_navigation/mrpt_bridge/src/stereo_images/right";
+
+    dir1 = opendir(file_path_left.c_str());
+    while(pdir1 = readdir(dir1))
+    {
+        char *temp_filepath  = pdir1->d_name;
+        files1.push_back(pdir1->d_name);
+    }
+    for(int i=0,j=0 ; i<files1.size() ; i++)
+    {
+        if(files1.at(i).size() > 4) // this removes the . and .. in linux as all files will have size more than 4 .png .jpg etc.
+        {
+            files_fullpath1.push_back(file_path_left + "/" + files1.at(i));
+            //cout << files_fullpath.at(j) << endl;
+            j++;
+        }
+    } // end of for
+    sort(files_fullpath1.begin(),files_fullpath1.end());
+
+    ///right images
+    dir2 = opendir(file_path_right.c_str());
+    while(pdir2 = readdir(dir2))
+    {
+        char *temp_filepath  = pdir2->d_name;
+        files2.push_back(pdir2->d_name);
+    }
+    for(int i=0,j=0 ; i<files2.size() ; i++)
+    {
+        if(files2.at(i).size() > 4) // this removes the . and .. in linux as all files will have size more than 4 .png .jpg etc.
+        {
+            files_fullpath2.push_back(file_path_right + "/" + files2.at(i));
+            //cout << files_fullpath.at(j) << endl;
+            j++;
+        }
+    } // end of for
+    sort(files_fullpath2.begin(),files_fullpath2.end());
+
     ROS_INFO("Range Message Conversion STARTED..!!");
 
 
@@ -139,6 +196,15 @@ int main(int argc, char **argv)
         mrpt_Image.image.loadFromFile(files_fullpath.at(i%(files_fullpath.size()-1)));
         mrpt_bridge::image::mrpt2ros(mrpt_Image, header, ros_Image);
         image_pub.publish(ros_Image);
+
+        /// Publishing Stereo Images
+        mrpt_Image_left.image.loadFromFile(files_fullpath1.at(i%(files_fullpath1.size()-1)));
+        mrpt_bridge::image::mrpt2ros(mrpt_Image_left, header, ros_Image_left);
+        image_pub_left.publish(ros_Image_left);
+
+        mrpt_Image_right.image.loadFromFile(files_fullpath2.at(i%(files_fullpath2.size()-1)));
+        mrpt_bridge::image::mrpt2ros(mrpt_Image_left, header, ros_Image_right);
+        image_pub_right.publish(ros_Image_right);
 
 
         /// Publishing sensor_msgs::Imu ROS message

@@ -55,7 +55,8 @@ add_library(${PROJECT_NAME}
 	src/imu.cpp include/mrpt_bridge/imu.h
 	src/image.cpp src/image.cpp
 	src/GPS.cpp include/mrpt_bridge/GPS.h
-	src/range.cpp include/mrpt_bridge/range.h)
+	src/range.cpp include/mrpt_bridge/range.h
+	src/stereo_image.cpp include/mrpt_bridge/stereo_image.h)
 
 ## Declare a cpp executable
 
