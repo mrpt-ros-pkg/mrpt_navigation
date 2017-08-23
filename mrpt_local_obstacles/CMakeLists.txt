@@ -15,7 +15,7 @@ find_package(catkin REQUIRED COMPONENTS
 )
 
 ## System dependencies are found with CMake's conventions
-find_package(MRPT REQUIRED obs maps slam gui)
+find_package(MRPT 1.9 REQUIRED obs maps slam gui)
 
 if (CMAKE_COMPILER_IS_GNUCXX)
 	# High level of warnings.

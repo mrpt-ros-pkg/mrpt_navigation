@@ -7,7 +7,7 @@ project(mrpt_map)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS roscpp tf std_msgs nav_msgs sensor_msgs mrpt_bridge)
 
-find_package(MRPT REQUIRED base obs gui slam)
+find_package(MRPT 1.9 REQUIRED base obs gui slam)
 
 if (CMAKE_COMPILER_IS_GNUCXX)
 	# High level of warnings.

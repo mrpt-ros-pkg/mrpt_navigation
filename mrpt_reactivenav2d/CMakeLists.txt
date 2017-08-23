@@ -17,7 +17,7 @@ find_package(catkin REQUIRED COMPONENTS
 )
 
 ## System dependencies are found with CMake's conventions
-find_package(MRPT REQUIRED base nav kinematics)
+find_package(MRPT 1.9 REQUIRED base nav kinematics)
 MESSAGE( STATUS "MRPT_VERSION: ${MRPT_VERSION}")
 MESSAGE( STATUS "MRPT_INCLUDE_DIRS: ${MRPT_INCLUDE_DIRS}")
 
