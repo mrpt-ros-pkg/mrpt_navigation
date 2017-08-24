@@ -14,7 +14,7 @@ find_package(PCL 1.3 REQUIRED COMPONENTS common io)
 include_directories(${PCL_INCLUDE_DIRS})
 add_definitions(${PCL_DEFINITIONS})
 
-find_package(MRPT 1.9 REQUIRED base obs graphs maps slam)
+find_package(MRPT 1.5 REQUIRED base obs graphs maps slam)
 
 if (CMAKE_COMPILER_IS_GNUCXX)
 	# High level of warnings.

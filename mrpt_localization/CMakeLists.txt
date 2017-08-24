@@ -8,7 +8,7 @@ project(mrpt_localization)
 find_package(catkin REQUIRED COMPONENTS roscpp tf std_msgs nav_msgs sensor_msgs mrpt_msgs mrpt_bridge pose_cov_ops dynamic_reconfigure)
 
 ## System dependencies are found with CMake's conventions
-find_package(MRPT 1.9 REQUIRED base gui obs slam)
+find_package(MRPT 1.5 REQUIRED base gui obs slam)
 
 if (CMAKE_COMPILER_IS_GNUCXX)
 	# High level of warnings.
