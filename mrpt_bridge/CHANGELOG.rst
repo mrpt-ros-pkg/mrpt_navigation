@@ -2,6 +2,18 @@
 Changelog for package mrpt_bridge
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.1.19 (2017-08-25)
+-------------------
+* Added mrpt_ros bridge for the following messages
+* mrpt::obs::CObservationImage <--> sensor_msgs/Image
+* mrpt::obs::CObservationIMU <--> sensor_msgs/IMU
+* mrpt::obs::CObservationGPS <--> sensor_msgs/NavSatFix
+* mrpt::obs::CObservationRange <--> sensor_msgs/Range
+* mrpt::obs::CObservationStereoImages <--> 3xsensor_Image for left, right and disparity
+* also added the file test_Bridge to test the above conversions and publishing on respective ROS topics
+* Contributors: Raghavender Sahdev
+
+
 0.1.18 (2017-01-22)
 -------------------
 * Remove types_simple.h header to fix compilation

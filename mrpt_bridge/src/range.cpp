@@ -1,8 +1,21 @@
-//
-// Created by raghavender on 12/08/17.
-//
+/* +------------------------------------------------------------------------+
+   |                     Mobile Robot Programming Toolkit (MRPT)            |
+   |                          http://www.mrpt.org/                          |
+   |                                                                        |
+   | Copyright (c) 2005-2017, Individual contributors, see AUTHORS file     |
+   | See: http://www.mrpt.org/Authors - All rights reserved.                |
+   | Released under BSD License. See details in http://www.mrpt.org/License |
+   +------------------------------------------------------------------------+ */
 
+/*---------------------------------------------------------------
+	APPLICATION: mrpt_ros bridge
+	FILE: range.cpp
+	AUTHOR: Raghavender Sahdev <raghavendersahdev@gmail.com>
+  ---------------------------------------------------------------*/
 #include "mrpt_bridge/range.h"
+#include <iostream>
+using namespace std;
+
 
 namespace mrpt_bridge
 {
@@ -26,22 +39,26 @@ namespace mrpt_bridge
         ************************************************************************/
         bool mrpt2ros(const CObservationRange &obj,
                       const std_msgs::Header &msg_header,
-                      sensor_msgs::Range &msg) {
+                      sensor_msgs::Range *msg)
+        {
+            long num_range = obj.sensedData.size();
+
             // 1) sensor_msgs::Range:: header
-            msg.header = msg_header;
+            for(int i=0 ; i<num_range ; i++)
+                msg[i].header = msg_header;
 
             // 2) sensor_msg::Range parameters
-            msg.max_range       = obj.maxSensorDistance;
-            msg.min_range       = obj.minSensorDistance;
-            msg.field_of_view   = obj.sensorConeApperture;
+            for(int i=0 ; i<num_range ; i++)
+            {
+                msg[i].max_range = obj.maxSensorDistance;
+                msg[i].min_range = obj.minSensorDistance;
+                msg[i].field_of_view = obj.sensorConeApperture;
+            }
 
             /// following part needs to be double checked, it looks incorrect
             /// ROS has single number float for range, MRPT has a list of sensedDistances
-            int i;
-            for (i = 0; i < obj.sensedData.size(); i++) {
-                msg.range += obj.sensedData.at(i).sensedDistance;
-            }
-            msg.range = msg.range / i;
+            for (int i = 0; i < num_range; i++)
+                msg[i].range = obj.sensedData.at(i).sensedDistance;
 
             /// currently the following are not available in MRPT for corresponding range ROS message
             /// NO corresponding value for MRPT radiation_type at http://mrpt.ual.es/reference/devel/_c_observation_range_8h_source.html

@@ -1,6 +1,17 @@
-//
-// Created by raghavender on 12/08/17.
-//
+/* +------------------------------------------------------------------------+
+   |                     Mobile Robot Programming Toolkit (MRPT)            |
+   |                          http://www.mrpt.org/                          |
+   |                                                                        |
+   | Copyright (c) 2005-2017, Individual contributors, see AUTHORS file     |
+   | See: http://www.mrpt.org/Authors - All rights reserved.                |
+   | Released under BSD License. See details in http://www.mrpt.org/License |
+   +------------------------------------------------------------------------+ */
+
+/*---------------------------------------------------------------
+	APPLICATION: mrpt_ros bridge
+	FILE: range.h
+	AUTHOR: Raghavender Sahdev <raghavendersahdev@gmail.com>
+  ---------------------------------------------------------------*/
 
 #ifndef MRPT_BRIDGE_RANGE_H
 #define MRPT_BRIDGE_RANGE_H
@@ -33,7 +44,7 @@ namespace mrpt_bridge
           */
         bool mrpt2ros(const CObservationRange &obj,
                       const std_msgs::Header &msg_header,
-                      sensor_msgs::Range &msg);
+                      sensor_msgs::Range *msg);
     }
 }
 

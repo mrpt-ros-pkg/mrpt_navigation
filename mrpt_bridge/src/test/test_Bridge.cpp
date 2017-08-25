@@ -1,7 +1,17 @@
-//
-// Created by raghavender on 17/08/17.
-//
+/* +------------------------------------------------------------------------+
+   |                     Mobile Robot Programming Toolkit (MRPT)            |
+   |                          http://www.mrpt.org/                          |
+   |                                                                        |
+   | Copyright (c) 2005-2017, Individual contributors, see AUTHORS file     |
+   | See: http://www.mrpt.org/Authors - All rights reserved.                |
+   | Released under BSD License. See details in http://www.mrpt.org/License |
+   +------------------------------------------------------------------------+ */
 
+/*---------------------------------------------------------------
+	APPLICATION: mrpt_ros bridge
+	FILE: test_Bridge.cpp
+	AUTHOR: Raghavender Sahdev <raghavendersahdev@gmail.com>
+  ---------------------------------------------------------------*/
 #include "mrpt_bridge/GPS.h"
 #include "mrpt_bridge/range.h"
 #include "mrpt_bridge/imu.h"
@@ -15,37 +25,12 @@
 #include "../stereo_image.cpp"
 
 /// mrpt imports
-#include <mrpt/obs/CObservation.h>
-
 #include <mrpt/obs/CRawlog.h>
-#include <mrpt/obs.h>
-#include <mrpt/obs/CObservationImage.h>
-#include <mrpt/obs/CObservationStereoImages.h>
 #include <mrpt/system/filesystem.h>
-#include <mrpt/obs/CObservationRange.h>
 
 ///c++ standard stuff
-#include <stdio.h>
-#include <stdlib.h>
-#include <string>
-#include <sstream>
-#include <fstream>
-#include <iostream>
-#include <boost/bind.hpp>
-#include <cmath>
 #include <dirent.h>
 
-/// opencv includes
-#include "opencv2/core.hpp"
-#include <opencv2/highgui/highgui.hpp>
-#include <opencv2/calib3d/calib3d.hpp>
-#include <opencv2/imgproc/imgproc.hpp>
-
-/// ros includes
-#include "ros/ros.h"
-#include <sensor_msgs/NavSatFix.h>
-#include <sensor_msgs/Range.h>
-#include <sensor_msgs/Imu.h>
 
 
 using namespace sensor_msgs;
@@ -56,20 +41,35 @@ using namespace mrpt;
 using namespace std;
 using namespace cv;
 
+/**
+ * main method to test the MRPT_ROS bridge to test converisons between MRPT messages and ROS messages
+ * the results of the topics published values can be viewed in RViz
+ * @param argc
+ * @param argv
+ * @return
+ */
 int main(int argc, char **argv)
 {
     ros::init(argc, argv, "testing_MRPT_bridge");
     ros::NodeHandle n;
 
     ros::Publisher imu_pub          = n.advertise<sensor_msgs::Imu>("imu_publisher", 1000);
-    ros::Publisher range_pub        = n.advertise<sensor_msgs::Range>("range_publisher", 1000);
     ros::Publisher navSatFix_pub    = n.advertise<sensor_msgs::NavSatFix>("navSatFix_publisher", 1000);
     ros::Publisher image_pub        = n.advertise<sensor_msgs::Image>("image_publisher", 1000);
     ros::Publisher image_pub_left   = n.advertise<sensor_msgs::Image>("left_image_publisher", 1000);
     ros::Publisher image_pub_right  = n.advertise<sensor_msgs::Image>("right_image_publisher", 1000);
 
+    int num_ranges  = 10;
+    ros::Publisher range_pub[num_ranges];
+    for(int i=0 ; i<num_ranges ; i++)
+    {
+        stringstream ss;
+        ss << "range_publisher" << i;
+        string topic_name = ss.str();
+        range_pub[i] = n.advertise<sensor_msgs::Range>(topic_name, 1000);
+    }
     sensor_msgs::Imu        ros_Imu;
-    sensor_msgs::Range      ros_Range;
+    sensor_msgs::Range      *ros_Range;
     sensor_msgs::NavSatFix  ros_GPS;
     sensor_msgs::Image      ros_Image;
     sensor_msgs::Image      ros_Image_left;
@@ -90,6 +90,16 @@ int main(int argc, char **argv)
     mrpt_Range.maxSensorDistance      = 500;
     mrpt_Range.minSensorDistance      = 60;
     mrpt_Range.sensorConeApperture    = (float) M_PI/3;
+    //initializing the measurement of each range value message in MRPT
+    for(int i=0 ; i<num_ranges ; i++)
+    {
+        CObservationRange::TMeasurement measurement;
+        measurement.sensedDistance = i*1.0;
+        mrpt_Range.sensedData.push_back(measurement);
+    }
+    /// initializing num_ranges of the ros Range messages
+    ros_Range = new sensor_msgs::Range[num_ranges];
+
 
     /// Testing Imu mrpt--> ros
     mrpt_IMU.rawMeasurements.at(IMU_ORI_QUAT_X)  = 1;
@@ -157,7 +167,6 @@ int main(int argc, char **argv)
         if(files1.at(i).size() > 4) // this removes the . and .. in linux as all files will have size more than 4 .png .jpg etc.
         {
             files_fullpath1.push_back(file_path_left + "/" + files1.at(i));
-            //cout << files_fullpath.at(j) << endl;
             j++;
         }
     } // end of for
@@ -175,7 +184,6 @@ int main(int argc, char **argv)
         if(files2.at(i).size() > 4) // this removes the . and .. in linux as all files will have size more than 4 .png .jpg etc.
         {
             files_fullpath2.push_back(file_path_right + "/" + files2.at(i));
-            //cout << files_fullpath.at(j) << endl;
             j++;
         }
     } // end of for
@@ -211,7 +219,7 @@ int main(int argc, char **argv)
         mrpt_IMU.rawMeasurements.at(IMU_ORI_QUAT_X)  = i*0.1;
         mrpt_IMU.rawMeasurements.at(IMU_ORI_QUAT_Y)  = i*0.1;
         mrpt_IMU.rawMeasurements.at(IMU_ORI_QUAT_Z)  = i*0.1;
-        mrpt_IMU.rawMeasurements.at(IMU_ORI_QUAT_W)  = i*0.1;
+        mrpt_IMU.rawMeasurements.at(IMU_ORI_QUAT_W)  = i*-0.1;
         mrpt_IMU.rawMeasurements.at(IMU_X_ACC_GLOBAL) = i * 0.1;
         mrpt_IMU.rawMeasurements.at(IMU_Y_ACC_GLOBAL) = i*0.1;
         mrpt_IMU.rawMeasurements.at(IMU_Z_ACC_GLOBAL) = 9.8+ i*0.003;
@@ -234,11 +242,11 @@ int main(int argc, char **argv)
 
 
         /// Publishing sensor_msgs::Range ROS message
-        //mrpt_Range.sensedData.at(0).sensedDistance =  (float) i*0.1;
-        ros_Range.range = i*0.1;
         mrpt_bridge::range::mrpt2ros(mrpt_Range, header, ros_Range);
         ROS_INFO(" published %d",i);
-        range_pub.publish(ros_Range);
+        // publishing the ranges over num_ranges umber of topics
+        for(int i=0 ; i<num_ranges ; i++)
+            range_pub[i].publish(ros_Range[i]);
 
         ros::spinOnce();
         loop_rate.sleep();
