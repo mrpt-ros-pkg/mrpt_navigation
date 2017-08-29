@@ -1,7 +1,6 @@
-cmake_minimum_required(VERSION 2.8.3)
+cmake_minimum_required(VERSION 3.1)
+set (CMAKE_CXX_STANDARD 14)
 project(mrpt_bridge)
-
-add_definitions(-std=c++11) # Use C++11
 
 ## Find catkin macros and# libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
@@ -15,7 +14,18 @@ find_package(PCL 1.3 REQUIRED COMPONENTS common io)
 include_directories(${PCL_INCLUDE_DIRS})
 add_definitions(${PCL_DEFINITIONS})
 
-find_package(MRPT REQUIRED base obs graphs gui maps slam)
+find_package(MRPT 1.5 REQUIRED base obs graphs maps slam)
+
+if (CMAKE_COMPILER_IS_GNUCXX)
+	# High level of warnings.
+	# The -Wno-long-long is required in 64bit systems when including sytem headers.
+	# The -Wno-variadic-macros was needed for Eigen3, StdVector.h
+	add_compile_options(-Wall -Wno-long-long -Wno-variadic-macros)
+	# Workaround: Eigen <3.4 produces *tons* of warnings in GCC >=6. See http://eigen.tuxfamily.org/bz/show_bug.cgi?id=1221
+	if (NOT ${CMAKE_CXX_COMPILER_VERSION} LESS "6.0")
+		add_compile_options(-Wno-ignored-attributes -Wno-int-in-bool-context)
+	endif()
+endif()
 
 ###################################
 ## catkin specific configuration ##
