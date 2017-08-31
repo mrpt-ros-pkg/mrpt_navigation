@@ -43,6 +43,8 @@
 #include <mrpt/obs/CActionRobotMovement2D.h>
 #include <mrpt/obs/CObservationOdometry.h>
 #include <mrpt/obs/CObservation2DRangeScan.h>
+#include <mrpt/obs/CObservationBearingRange.h>
+
 using mrpt::obs::CRawlog;
 using mrpt::obs::CActionRobotMovement2D;
 
@@ -61,6 +63,9 @@ class RawlogRecord
 		std::string raw_log_folder;
 		std::string raw_log_name;
 		std::string raw_log_name_asf;
+        double bearing_range_std_range;
+        double bearing_range_std_yaw;
+        double bearing_range_std_pitch;
 		CActionRobotMovement2D::TMotionModelOptions motionModelOptions;
 	};
 	RawlogRecord(Parameters* parm);
@@ -74,7 +79,10 @@ class RawlogRecord
 	void updateRawLogName(const mrpt::system::TTimeStamp& t);
 	void observation(
 		mrpt::obs::CObservation2DRangeScan::Ptr laser,
-		mrpt::obs::CObservationOdometry::Ptr _odometry);
+		mrpt::obs::CObservationOdometry::Ptr _odometry);    
+    void observation(
+        mrpt::obs::CObservationBearingRange::Ptr markers,
+        mrpt::obs::CObservationOdometry::Ptr _odometry);
 	boost::interprocess::interprocess_mutex mutexRawLog;
 };
 

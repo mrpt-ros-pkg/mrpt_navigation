@@ -38,6 +38,7 @@
 #include <tf/transform_listener.h>
 #include <nav_msgs/Odometry.h>
 #include <sensor_msgs/LaserScan.h>
+#include <marker_msgs/MarkerDetection.h>
 #include <dynamic_reconfigure/server.h>
 #include "mrpt_rawlog/MotionConfig.h"
 #include "mrpt_rawlog_record/rawlog_record.h"
@@ -72,7 +73,8 @@ class RawlogRecordNode : public RawlogRecord
 	~RawlogRecordNode();
 	void init();
 	void loop();
-	void callbackLaser(const sensor_msgs::LaserScan&);
+	void callbackLaser(const sensor_msgs::LaserScan&);                                    /// callback function to catch motion commands
+    void callbackMarker ( const marker_msgs::MarkerDetection& );            
 
    private:  // functions
 	ParametersNode* param();
@@ -81,10 +83,13 @@ class RawlogRecordNode : public RawlogRecord
 	ros::Subscriber subLaser0_;
 	ros::Subscriber subLaser1_;
 	ros::Subscriber subLaser2_;
+	ros::Subscriber subMarker_;
 	tf::TransformListener listenerTF_;
 	std::map<std::string, mrpt::poses::CPose3D> laser_poses_;
+	std::map<std::string, mrpt::poses::CPose3D> markers_poses_;
 	ros::NodeHandle n_;
 	unsigned long loop_count_;
+	bool waitForOdom(mrpt::obs::CObservationOdometry::Ptr &odometry, const ros::Time& time);
 	bool waitForTransform(
 		mrpt::poses::CPose3D& des, const std::string& target_frame,
 		const std::string& source_frame, const ros::Time& time,

@@ -5,7 +5,7 @@ project(mrpt_rawlog)
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
-find_package(catkin REQUIRED COMPONENTS roscpp tf std_msgs nav_msgs sensor_msgs mrpt_msgs mrpt_bridge dynamic_reconfigure)
+find_package(catkin REQUIRED COMPONENTS roscpp tf std_msgs nav_msgs sensor_msgs mrpt_msgs mrpt_bridge dynamic_reconfigure marker_msgs)
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -33,7 +33,7 @@ generate_dynamic_reconfigure_options(
 catkin_package(
   INCLUDE_DIRS include
   LIBRARIES rawlog_record rawlog_play
-  CATKIN_DEPENDS roscpp tf std_msgs nav_msgs sensor_msgs mrpt_msgs mrpt_bridge dynamic_reconfigure
+  CATKIN_DEPENDS roscpp tf std_msgs nav_msgs sensor_msgs mrpt_msgs mrpt_bridge marker_msgs dynamic_reconfigure
 #   DEPENDS mrpt
 )
 

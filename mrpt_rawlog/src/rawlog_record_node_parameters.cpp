@@ -55,6 +55,14 @@ RawlogRecordNode::ParametersNode::ParametersNode() : Parameters(), node("~")
 	reconfigureFnc_ = boost::bind(
 		&RawlogRecordNode::ParametersNode::callbackParameters, this, _1, _2);
 	reconfigureServer_.setCallback(reconfigureFnc_);
+    
+    
+	node.param<double>("bearing_range_std_range", bearing_range_std_range, RAWLOG_RECORD_NODE_DEFAULT_BEARING_RANGE_STD_RANGE);
+	ROS_INFO("bearing_range_std_range: %f", bearing_range_std_range);
+	node.param<double>("bearing_range_std_yaw", bearing_range_std_yaw, RAWLOG_RECORD_NODE_DEFAULT_BEARING_RANGE_STD_YAW);
+	ROS_INFO("bearing_range_std_yaw: %f", bearing_range_std_yaw);
+	node.param<double>("bearing_range_std_pitch", bearing_range_std_pitch, RAWLOG_RECORD_NODE_DEFAULT_BEARING_RANGE_STD_PITCH);
+	ROS_INFO("bearing_range_std_pitch: %f", bearing_range_std_pitch);
 }
 
 void RawlogRecordNode::ParametersNode::update(const unsigned long& loop_count)

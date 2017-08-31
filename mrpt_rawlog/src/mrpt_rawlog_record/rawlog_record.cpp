@@ -113,3 +113,36 @@ void RawlogRecord::observation(
 
 	odomLastPose_ = odometry->odometry;
 }
+
+void RawlogRecord::observation(
+	mrpt::obs::CObservationBearingRange::Ptr markers,
+	mrpt::obs::CObservationOdometry::Ptr odometry)
+{
+	using namespace mrpt::obs;
+
+	pRawLog->addObservationMemoryReference(odometry);
+	pRawLog->addObservationMemoryReference(markers);
+
+	if (odomLastPose_.empty())
+	{
+		odomLastPose_ = odometry->odometry;
+	}
+
+	mrpt::poses::CPose2D incOdoPose = odometry->odometry - odomLastPose_;
+
+	CActionRobotMovement2D odom_move;
+	odom_move.timestamp = odometry->timestamp;
+	odom_move.computeFromOdometry(incOdoPose, param_->motionModelOptions);
+	CActionCollection::Ptr action =
+		mrpt::make_aligned_shared<CActionCollection>();
+	action->insert(odom_move);
+	pRawLogASF->addActionsMemoryReference(action);
+
+	CSensoryFrame::Ptr sf = mrpt::make_aligned_shared<CSensoryFrame>();
+	CObservation::Ptr obs = CObservation::Ptr(markers);
+	sf->insert(obs);
+	pRawLogASF->addObservationsMemoryReference(sf);
+
+	odomLastPose_ = odometry->odometry;
+}
+
