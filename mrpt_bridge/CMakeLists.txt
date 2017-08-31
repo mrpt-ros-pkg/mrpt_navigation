@@ -7,14 +7,25 @@ project(mrpt_bridge)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
 	geometry_msgs message_generation mrpt_msgs nav_msgs
-	pcl_conversions roscpp sensor_msgs std_msgs  tf )
+	pcl_conversions roscpp sensor_msgs std_msgs  tf cv_bridge )
 
 ## System dependencies are found with CMake's conventions
 find_package(PCL 1.3 REQUIRED COMPONENTS common io)
 include_directories(${PCL_INCLUDE_DIRS})
 add_definitions(${PCL_DEFINITIONS})
 
-find_package(MRPT REQUIRED base obs graphs maps slam)
+find_package(MRPT 1.5 REQUIRED base obs graphs maps slam)
+
+if (CMAKE_COMPILER_IS_GNUCXX)
+	# High level of warnings.
+	# The -Wno-long-long is required in 64bit systems when including sytem headers.
+	# The -Wno-variadic-macros was needed for Eigen3, StdVector.h
+	add_compile_options(-Wall -Wno-long-long -Wno-variadic-macros)
+	# Workaround: Eigen <3.4 produces *tons* of warnings in GCC >=6. See http://eigen.tuxfamily.org/bz/show_bug.cgi?id=1221
+	if (NOT ${CMAKE_CXX_COMPILER_VERSION} LESS "6.0")
+		add_compile_options(-Wno-ignored-attributes -Wno-int-in-bool-context)
+	endif()
+endif()
 
 ###################################
 ## catkin specific configuration ##
@@ -50,7 +61,12 @@ add_library(${PROJECT_NAME}
 	src/point_cloud.cpp
 	src/point_cloud2.cpp
 	src/pose.cpp
-  )
+
+	src/imu.cpp include/mrpt_bridge/imu.h
+	src/image.cpp src/image.cpp
+	src/GPS.cpp include/mrpt_bridge/GPS.h
+	src/range.cpp include/mrpt_bridge/range.h
+	src/stereo_image.cpp include/mrpt_bridge/stereo_image.h)
 
 ## Declare a cpp executable
 
@@ -66,6 +82,10 @@ target_link_libraries(${PROJECT_NAME}
    ${catkin_LIBRARIES}
    ${MRPT_LIBS}
 )
+
+add_executable(test_Bridge src/test/test_Bridge.cpp)
+target_link_libraries(test_Bridge ${catkin_LIBRARIES} ${MRPT_LINKER_LIBS}	 ${MRPT_LIBS})
+add_dependencies(test_Bridge mrpt_msgs_generate_messages_cpp ${MRPT_LIBS}	${catkin_EXPORTED_TARGETS})
 
 #############
 ## Install ##
@@ -84,7 +104,7 @@ install(TARGETS ${PROJECT_NAME}
 ## Mark cpp header files for installation
 install(DIRECTORY include/${PROJECT_NAME}/
   DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
-  FILES_MATCHING PATTERN "*.h"
+  FILES_MATCHING PATTERN "*.h *.hpp"
 )
 
 #############
