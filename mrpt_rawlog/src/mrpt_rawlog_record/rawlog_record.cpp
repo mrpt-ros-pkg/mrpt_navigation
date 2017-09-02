@@ -120,9 +120,8 @@ void RawlogRecord::observation(
 {
 	using namespace mrpt::obs;
 
+/*
 	pRawLog->addObservationMemoryReference(odometry);
-	pRawLog->addObservationMemoryReference(markers);
-
 	if (odomLastPose_.empty())
 	{
 		odomLastPose_ = odometry->odometry;
@@ -137,7 +136,8 @@ void RawlogRecord::observation(
 		mrpt::make_aligned_shared<CActionCollection>();
 	action->insert(odom_move);
 	pRawLogASF->addActionsMemoryReference(action);
-
+*/
+	pRawLog->addObservationMemoryReference(markers);
 	CSensoryFrame::Ptr sf = mrpt::make_aligned_shared<CSensoryFrame>();
 	CObservation::Ptr obs = CObservation::Ptr(markers);
 	sf->insert(obs);

@@ -157,6 +157,7 @@ void RawlogRecordNode::callbackLaser(const sensor_msgs::LaserScan& _msg)
 
         CObservationOdometry::Ptr odometry = mrpt::make_aligned_shared<CObservationOdometry>();
         if (this->waitForOdom(odometry, _msg.header.stamp))		{
+            odometry->timestamp = laser->timestamp;
             observation(laser, odometry);
         }
         else
@@ -214,6 +215,8 @@ void RawlogRecordNode::callbackMarker(const marker_msgs::MarkerDetection& _msg)
 
 
     CObservationBearingRange::Ptr markers = mrpt::make_aligned_shared<CObservationBearingRange>();
+    
+	mrpt_bridge::convert(_msg.header.stamp, markers->timestamp);
     markers->setSensorPose(sensor_pose);
     markers->minSensorDistance = _msg.distance_min;
     markers->maxSensorDistance = _msg.distance_max;
