@@ -75,21 +75,25 @@ class RawlogRecordNode : public RawlogRecord
 	void loop();
 	void callbackLaser(const sensor_msgs::LaserScan&);                                    /// callback function to catch motion commands
     void callbackMarker ( const marker_msgs::MarkerDetection& );            
+    void callbackOdometry(const nav_msgs::Odometry&);
 
    private:  // functions
 	ParametersNode* param();
 	void update();
-	void updateLaserPose(std::string frame_id);
-	ros::Subscriber subLaser0_;
-	ros::Subscriber subLaser1_;
-	ros::Subscriber subLaser2_;
+	bool getStaticTF(std::string source_frame, mrpt::poses::CPose3D& des);
+	ros::Subscriber subLaser_;
 	ros::Subscriber subMarker_;
+    ros::Subscriber subOdometry_; 
 	tf::TransformListener listenerTF_;
-	std::map<std::string, mrpt::poses::CPose3D> laser_poses_;
+    mrpt::obs::CObservationBearingRange last_bearing_range_;
+    mrpt::obs::CObservation2DRangeScan  last_2d_range_scan_;
+    mrpt::poses::CPose3D::Ptr last_odometery_;
+	std::map<std::string, mrpt::poses::CPose3D> static_tf_;
 	std::map<std::string, mrpt::poses::CPose3D> markers_poses_;
 	ros::NodeHandle n_;
-	unsigned long loop_count_;
-	bool waitForOdom(mrpt::obs::CObservationOdometry::Ptr &odometry, const ros::Time& time);
+    void addObservation(const ros::Time& time);
+	bool waitForOdomTF(mrpt::obs::CObservationOdometry::Ptr &odometry, const ros::Time& time);
+	bool getLastOdom(mrpt::obs::CObservationOdometry::Ptr &odometry);
 	bool waitForTransform(
 		mrpt::poses::CPose3D& des, const std::string& target_frame,
 		const std::string& source_frame, const ros::Time& time,

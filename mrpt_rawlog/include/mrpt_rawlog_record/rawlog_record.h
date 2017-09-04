@@ -63,6 +63,8 @@ class RawlogRecord
 		std::string raw_log_folder;
 		std::string raw_log_name;
 		std::string raw_log_name_asf;
+        bool record_laser;
+        bool record_bearing_range;
         double bearing_range_std_range;
         double bearing_range_std_yaw;
         double bearing_range_std_pitch;
@@ -77,12 +79,6 @@ class RawlogRecord
 	CRawlog* pRawLogASF;
 	mrpt::poses::CPose2D odomLastPose_;
 	void updateRawLogName(const mrpt::system::TTimeStamp& t);
-	void observation(
-		mrpt::obs::CObservation2DRangeScan::Ptr laser,
-		mrpt::obs::CObservationOdometry::Ptr _odometry);    
-    void observation(
-        mrpt::obs::CObservationBearingRange::Ptr markers,
-        mrpt::obs::CObservationOdometry::Ptr _odometry);
 	boost::interprocess::interprocess_mutex mutexRawLog;
 };
 

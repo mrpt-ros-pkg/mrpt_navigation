@@ -56,6 +56,10 @@ RawlogRecordNode::ParametersNode::ParametersNode() : Parameters(), node("~")
 		&RawlogRecordNode::ParametersNode::callbackParameters, this, _1, _2);
 	reconfigureServer_.setCallback(reconfigureFnc_);
     
+	node.param<bool>("record_laser", record_laser, true);
+	ROS_INFO("record_laser: %s", (record_laser?"ture":"flase"));
+	node.param<bool>("record_bearing_range", record_bearing_range, true);
+	ROS_INFO("record_bearing_range: %s", (record_bearing_range?"ture":"flase"));
     
 	node.param<double>("bearing_range_std_range", bearing_range_std_range, RAWLOG_RECORD_NODE_DEFAULT_BEARING_RANGE_STD_RANGE);
 	ROS_INFO("bearing_range_std_range: %f", bearing_range_std_range);

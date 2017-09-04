@@ -69,8 +69,6 @@ void RawlogRecord::updateRawLogName(const mrpt::system::TTimeStamp& t)
 {
 	uint64_t tmp = (t - ((uint64_t)116444736 * 1000000000));
 	time_t auxTime = tmp / (uint64_t)10000000;
-	unsigned int secFractions =
-		(unsigned int)(1000000 * (tmp % 10000000) / 10000000.0);
 	tm* ptm = localtime(&auxTime);
 	param_->raw_log_name = mrpt::format(
 		"%u-%02u-%02u--%02u-%02u-%02u--%s", 1900 + ptm->tm_year,
@@ -82,67 +80,4 @@ void RawlogRecord::updateRawLogName(const mrpt::system::TTimeStamp& t)
 		(unsigned int)ptm->tm_sec, param_->raw_log_name_asf.c_str());
 }
 
-void RawlogRecord::observation(
-	mrpt::obs::CObservation2DRangeScan::Ptr laser,
-	mrpt::obs::CObservationOdometry::Ptr odometry)
-{
-	using namespace mrpt::obs;
-
-	pRawLog->addObservationMemoryReference(odometry);
-	pRawLog->addObservationMemoryReference(laser);
-
-	if (odomLastPose_.empty())
-	{
-		odomLastPose_ = odometry->odometry;
-	}
-
-	mrpt::poses::CPose2D incOdoPose = odometry->odometry - odomLastPose_;
-
-	CActionRobotMovement2D odom_move;
-	odom_move.timestamp = odometry->timestamp;
-	odom_move.computeFromOdometry(incOdoPose, param_->motionModelOptions);
-	CActionCollection::Ptr action =
-		mrpt::make_aligned_shared<CActionCollection>();
-	action->insert(odom_move);
-	pRawLogASF->addActionsMemoryReference(action);
-
-	CSensoryFrame::Ptr sf = mrpt::make_aligned_shared<CSensoryFrame>();
-	CObservation::Ptr obs = CObservation::Ptr(laser);
-	sf->insert(obs);
-	pRawLogASF->addObservationsMemoryReference(sf);
-
-	odomLastPose_ = odometry->odometry;
-}
-
-void RawlogRecord::observation(
-	mrpt::obs::CObservationBearingRange::Ptr markers,
-	mrpt::obs::CObservationOdometry::Ptr odometry)
-{
-	using namespace mrpt::obs;
-
-/*
-	pRawLog->addObservationMemoryReference(odometry);
-	if (odomLastPose_.empty())
-	{
-		odomLastPose_ = odometry->odometry;
-	}
-
-	mrpt::poses::CPose2D incOdoPose = odometry->odometry - odomLastPose_;
-
-	CActionRobotMovement2D odom_move;
-	odom_move.timestamp = odometry->timestamp;
-	odom_move.computeFromOdometry(incOdoPose, param_->motionModelOptions);
-	CActionCollection::Ptr action =
-		mrpt::make_aligned_shared<CActionCollection>();
-	action->insert(odom_move);
-	pRawLogASF->addActionsMemoryReference(action);
-*/
-	pRawLog->addObservationMemoryReference(markers);
-	CSensoryFrame::Ptr sf = mrpt::make_aligned_shared<CSensoryFrame>();
-	CObservation::Ptr obs = CObservation::Ptr(markers);
-	sf->insert(obs);
-	pRawLogASF->addObservationsMemoryReference(sf);
-
-	odomLastPose_ = odometry->odometry;
-}
 

@@ -7,7 +7,7 @@ project(mrpt_bridge)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
 	geometry_msgs message_generation mrpt_msgs nav_msgs
-	pcl_conversions roscpp sensor_msgs std_msgs  tf cv_bridge )
+	pcl_conversions roscpp sensor_msgs std_msgs  tf cv_bridge marker_msgs )
 
 ## System dependencies are found with CMake's conventions
 find_package(PCL 1.3 REQUIRED COMPONENTS common io)
@@ -56,6 +56,7 @@ add_library(${PROJECT_NAME}
 	src/beacon.cpp
 	src/landmark.cpp
 	src/laser_scan.cpp
+	src/marker_msgs.cpp
 	src/map.cpp
 	src/network_of_poses.cpp
 	src/point_cloud.cpp
