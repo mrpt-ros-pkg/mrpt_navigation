@@ -17,8 +17,11 @@
 
 	<!-- Node: Pure Reactive Navigator -->
 	<node pkg="mrpt_reactivenav" type="mrpt_reactivenav_node" name="mrpt_reactivenav_node" output="screen">
+		<!-- Set type of reactive navigator (2D or 3D) -->
+		<param name="nav_type" value="2D"/> 
+
 		<!-- *Important*: This external config file holds the most important navigation settings -->
-		<param name="cfg_file_reactive" value="$(find mrpt_reactivenav)/tutorial/reactive2d_config.ini"/> 
+		<param name="cfg_file_reactive" value="$(find mrpt_reactivenav)/tutorial/reactive_config.ini"/> 
 
 		<!-- This is to allow the reactive responsive to RVIZ GUI commands -->
 		<remap from="reactive_nav_goal" to="/move_base_simple/goal" />
