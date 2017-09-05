@@ -57,7 +57,7 @@ using namespace mrpt::nav;
 using mrpt::maps::CSimplePointsMap;
 
 // The ROS node
-class ReactiveNav2DNode
+class ReactiveNavNode
 {
 private:
 	struct TAuxInitializer {
@@ -102,9 +102,9 @@ private:
         struct MyReactiveInterface :
         public mrpt::nav::CRobot2NavInterface
 	{
-		ReactiveNav2DNode & m_parent;
+                ReactiveNavNode & m_parent;
 
-		MyReactiveInterface(ReactiveNav2DNode &parent) : m_parent(parent) {}
+                MyReactiveInterface(ReactiveNavNode &parent) : m_parent(parent) {}
 
 		/** Get the current pose and speeds of the robot.
 		 *   \param curPose Current robot pose.
@@ -242,7 +242,7 @@ private:
 
 public:
 	/**  Constructor: Inits ROS system */
-	ReactiveNav2DNode(int argc, char **argv) :
+        ReactiveNavNode(int argc, char **argv) :
 		m_auxinit   (argc,argv),
 		m_nh        (),
 		m_localn    ("~"),
@@ -306,7 +306,7 @@ public:
 		// Init this subscriber first so we know asap the desired robot shape, if provided via a topic:
 		if (!m_sub_topic_robot_shape.empty())
 		{
-			m_sub_robot_shape  = m_nh.subscribe<geometry_msgs::Polygon>( m_sub_topic_robot_shape,1, &ReactiveNav2DNode::onRosSetRobotShape, this );
+                        m_sub_robot_shape  = m_nh.subscribe<geometry_msgs::Polygon>( m_sub_topic_robot_shape,1, &ReactiveNavNode::onRosSetRobotShape, this );
 			ROS_INFO("Params say robot shape will arrive via topic '%s'... waiting 3 seconds for it.",m_sub_topic_robot_shape.c_str());
 			ros::Duration(3.0).sleep();
 			for (size_t i=0;i<100;i++) ros::spinOnce();
@@ -320,12 +320,12 @@ public:
 		// Init ROS subs:
 		// -----------------------
 		// "/reactive_nav_goal", "/move_base_simple/goal" ( geometry_msgs/PoseStamped )
-		m_sub_nav_goal     = m_nh.subscribe<geometry_msgs::PoseStamped>(m_pub_topic_reactive_nav_goal,1, &ReactiveNav2DNode::onRosGoalReceived, this );
-		m_sub_local_obs    = m_nh.subscribe<sensor_msgs::PointCloud>(m_sub_topic_local_obstacles,1, &ReactiveNav2DNode::onRosLocalObstacles, this );
+                m_sub_nav_goal     = m_nh.subscribe<geometry_msgs::PoseStamped>(m_pub_topic_reactive_nav_goal,1, &ReactiveNavNode::onRosGoalReceived, this );
+                m_sub_local_obs    = m_nh.subscribe<sensor_msgs::PointCloud>(m_sub_topic_local_obstacles,1, &ReactiveNavNode::onRosLocalObstacles, this );
 
 		// Init timers:
 		// ----------------------------------------------------
-		m_timer_run_nav = m_nh.createTimer( ros::Duration(m_nav_period), &ReactiveNav2DNode::onDoNavigation, this );
+                m_timer_run_nav = m_nh.createTimer( ros::Duration(m_nav_period), &ReactiveNavNode::onDoNavigation, this );
 
 	} // end ctor
 
@@ -359,12 +359,12 @@ public:
             if (!m_1st_time_init)
             {
                     m_1st_time_init = true;
-                    ROS_INFO("[ReactiveNav2DNode] Initializing reactive navigation engine...");
+                    ROS_INFO("[ReactiveNavNode] Initializing reactive navigation engine...");
                     {
                             std::lock_guard<std::mutex> csl(m_reactive_nav_engine_cs);
                             m_reactive_nav_engine->initialize();
                     }
-                    ROS_INFO("[ReactiveNav2DNode] Reactive navigation engine init done!");
+                    ROS_INFO("[ReactiveNavNode] Reactive navigation engine init done!");
             }
 
             mrpt::utils::CTimeLoggerEntry tle(m_profiler,"onDoNavigation");
@@ -408,7 +408,6 @@ public:
 		ROS_INFO_STREAM("[onRosSetRobotShape] Robot shape received via topic: " <<  *newShape );
 
                 CReactiveNavigationSystem* rns2D = dynamic_cast<CReactiveNavigationSystem*>(m_reactive_nav_engine.get());
-                // CReactiveNavigationSystem3D* rns3D = dynamic_pointer_cast<CReactiveNavigationSystem3D*>(m_reactive_nav_engine.get());
 
                 if( rns2D )
                 {
@@ -426,7 +425,32 @@ public:
                     }
                 }
 	}
+        /** /
+         *
+        void onRosSetRobotShape3D(const mrpt_msgs::TRobotShape & newShape )
+        {
+                ROS_INFO_STREAM("[onRosSetRobotShape3D] Robot shape received via topic: " <<  *newShape );
 
+                CReactiveNavigationSystem3D* rns3D = dynamic_pointer_cast<CReactiveNavigationSystem3D*>(m_reactive_nav_engine.get());
+
+                if( rns3D )
+                {
+                    TRobotShape rShape;
+                    // fill the TRobotShape
+                    poly.resize(newShape->points.size());
+                    for (size_t i=0;i<newShape->points.size();i++)
+                    {
+                            poly[i].x = newShape->points[i].x;
+                            poly[i].y = newShape->points[i].y;
+                    }
+
+                    {
+                        std::lock_guard<std::mutex> csl(m_reactive_nav_engine_cs);
+                        rns2D->changeRobotShape(poly);
+                    }
+                }
+        }
+        /**/
 
 
 }; // end class
@@ -434,7 +458,7 @@ public:
 
 int main(int argc, char **argv)
 {
-	ReactiveNav2DNode  the_node(argc, argv);
+        ReactiveNavNode  the_node(argc, argv);
 	ros::spin();
 	return 0;
 }
