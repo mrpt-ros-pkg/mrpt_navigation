@@ -40,7 +40,7 @@
 #include <sensor_msgs/LaserScan.h>
 #include <marker_msgs/MarkerDetection.h>
 #include <dynamic_reconfigure/server.h>
-#include "mrpt_rawlog/MotionConfig.h"
+#include "mrpt_rawlog/RawLogRecordConfig.h"
 #include "mrpt_rawlog_record/rawlog_record.h"
 
 /// ROS Node
@@ -56,10 +56,10 @@ class RawlogRecordNode : public RawlogRecord
 		ParametersNode();
 		ros::NodeHandle node;
 		void callbackParameters(
-			mrpt_rawlog::MotionConfig& config, uint32_t level);
-		dynamic_reconfigure::Server<mrpt_rawlog::MotionConfig>
+			mrpt_rawlog::RawLogRecordConfig& config, uint32_t level);
+		dynamic_reconfigure::Server<mrpt_rawlog::RawLogRecordConfig>
 			reconfigureServer_;
-		dynamic_reconfigure::Server<mrpt_rawlog::MotionConfig>::CallbackType
+		dynamic_reconfigure::Server<mrpt_rawlog::RawLogRecordConfig>::CallbackType
 			reconfigureFnc_;
 		void update(const unsigned long& loop_count);
 		double rate;
@@ -67,6 +67,7 @@ class RawlogRecordNode : public RawlogRecord
 		std::string tf_prefix;
 		std::string odom_frame_id;
 		std::string base_frame_id;
+        double sensor_frame_sync_threshold;
 	};
 
 	RawlogRecordNode(ros::NodeHandle& n);
@@ -85,20 +86,20 @@ class RawlogRecordNode : public RawlogRecord
 	ros::Subscriber subMarker_;
     ros::Subscriber subOdometry_; 
 	tf::TransformListener listenerTF_;
-    mrpt::obs::CObservationBearingRange last_bearing_range_;
-    mrpt::obs::CObservation2DRangeScan  last_2d_range_scan_;
-    mrpt::poses::CPose3D::Ptr last_odometery_;
+    mrpt::obs::CObservationBearingRange::Ptr last_bearing_range_;
+    mrpt::obs::CObservation2DRangeScan::Ptr  last_range_scan_;
+    mrpt::obs::CObservationOdometry::Ptr last_odometry_;
 	std::map<std::string, mrpt::poses::CPose3D> static_tf_;
-	std::map<std::string, mrpt::poses::CPose3D> markers_poses_;
 	ros::NodeHandle n_;
     void addObservation(const ros::Time& time);
 	bool waitForOdomTF(mrpt::obs::CObservationOdometry::Ptr &odometry, const ros::Time& time);
-	bool getLastOdom(mrpt::obs::CObservationOdometry::Ptr &odometry);
 	bool waitForTransform(
 		mrpt::poses::CPose3D& des, const std::string& target_frame,
 		const std::string& source_frame, const ros::Time& time,
 		const ros::Duration& timeout,
 		const ros::Duration& polling_sleep_duration = ros::Duration(0.01));
+    
+    void convert(const nav_msgs::Odometry& src, mrpt::obs::CObservationOdometry &des);
 };
 
 #endif  // MRPT_RAWLOG_RECORD_NODE_H

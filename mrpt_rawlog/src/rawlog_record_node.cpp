@@ -131,114 +131,115 @@ bool RawlogRecordNode::waitForOdomTF(mrpt::obs::CObservationOdometry::Ptr &odome
         return false;
     }
 }
-bool RawlogRecordNode::getLastOdom(mrpt::obs::CObservationOdometry::Ptr &odometry) {
 
-    if(last_odometery_) {
-        std::string odom_frame_id = tf::resolve(param()->tf_prefix, param()->odom_frame_id);
-        odometry->sensorLabel = odom_frame_id;
-        odometry->hasEncodersInfo = false;
-        odometry->hasVelocities = false;
-        odometry->odometry.x() = last_odometery_->x();
-        odometry->odometry.y() = last_odometery_->y();
-        odometry->odometry.phi() = last_odometery_->yaw();
-        return true;
-    } else {
-        return false;
-    }
+void RawlogRecordNode::convert(const nav_msgs::Odometry& src, mrpt::obs::CObservationOdometry &des) {
+    mrpt_bridge::convert(src.header.stamp, des.timestamp);
+    mrpt_bridge::convert(src.pose.pose, des.odometry);
+    std::string odom_frame_id = tf::resolve(param()->tf_prefix, param()->odom_frame_id);
+    des.sensorLabel = odom_frame_id;
+    des.hasEncodersInfo = false;
+    des.hasVelocities = false;
+
 }
-
 
 void RawlogRecordNode::callbackOdometry(const nav_msgs::Odometry& _msg)
 {
     //ROS_INFO("callbackOdometry");
-    if(!last_odometery_) {
-        last_odometery_ = mrpt::make_aligned_shared<mrpt::poses::CPose3D>();
+    if(!last_odometry_) {
+        last_odometry_ = mrpt::make_aligned_shared<CObservationOdometry>();
     }
-    mrpt_bridge::convert(_msg.pose.pose, *last_odometery_);
+    convert(_msg, *last_odometry_);
+    addObservation(_msg.header.stamp);
+
 }
 
 void RawlogRecordNode::callbackLaser(const sensor_msgs::LaserScan& _msg)
 {
     //ROS_INFO("callbackLaser");
-    CObservation2DRangeScan::Ptr laser = mrpt::make_aligned_shared<CObservation2DRangeScan>();
+    if(!last_range_scan_) {
+        last_range_scan_ = mrpt::make_aligned_shared<CObservation2DRangeScan>();
+    }
     mrpt::poses::CPose3D sensor_pose_on_robot;
 
     if (getStaticTF(_msg.header.frame_id, sensor_pose_on_robot)) {
-        mrpt_bridge::convert(_msg, sensor_pose_on_robot, last_2d_range_scan_);
+        mrpt_bridge::convert(_msg, sensor_pose_on_robot, *last_range_scan_);
 
-        double time_diff = mrpt::system::timeDifference(last_2d_range_scan_.timestamp, last_bearing_range_.timestamp);
-        //ROS_INFO("time_diff : %f", time_diff);
-        if(fabs(time_diff) < 0.01) {
-            addObservation(_msg.header.stamp);
-        }
+        addObservation(_msg.header.stamp);
+
     }
 }
 
 void RawlogRecordNode::callbackMarker(const marker_msgs::MarkerDetection& _msg)
 {
     //ROS_INFO("callbackMarker");
-    CObservationBearingRange::Ptr bearing_range = mrpt::make_aligned_shared<CObservationBearingRange>();
+    if(!last_bearing_range_) {
+        last_bearing_range_ = mrpt::make_aligned_shared<CObservationBearingRange>();
+    }
     mrpt::poses::CPose3D sensor_pose_on_robot;
 
     if (getStaticTF(_msg.header.frame_id, sensor_pose_on_robot)) {
-        mrpt_bridge::convert(_msg, sensor_pose_on_robot, last_bearing_range_);
-        last_bearing_range_.sensor_std_range  = param_->bearing_range_std_range;
-        last_bearing_range_.sensor_std_yaw    = param_->bearing_range_std_yaw;
-        last_bearing_range_.sensor_std_pitch  = param_->bearing_range_std_pitch;
+        mrpt_bridge::convert(_msg, sensor_pose_on_robot, *last_bearing_range_);
+        last_bearing_range_->sensor_std_range  = param_->bearing_range_std_range;
+        last_bearing_range_->sensor_std_yaw    = param_->bearing_range_std_yaw;
+        last_bearing_range_->sensor_std_pitch  = param_->bearing_range_std_pitch;
 
-        double time_diff = mrpt::system::timeDifference(last_2d_range_scan_.timestamp, last_bearing_range_.timestamp);
-        //ROS_INFO("time_diff : %f", time_diff);
-        if(fabs(time_diff) < 0.01) {
-            addObservation(_msg.header.stamp);
-        }
+        addObservation(_msg.header.stamp);
     }
 }
 
 void RawlogRecordNode::addObservation(const ros::Time& time) {
-
-    //ROS_INFO("addObservation");
+    
+    if(!last_odometry_) return;
     CObservationOdometry::Ptr odometry = mrpt::make_aligned_shared<CObservationOdometry>();
-    //if (this->waitForOdomTF(odometry, time)) {
-    if (this->getLastOdom(odometry)) {
-        mrpt_bridge::convert(time, odometry->timestamp);
-        pRawLog->addObservationMemoryReference(odometry);
+    *odometry = *last_odometry_;
 
-        CObservationBearingRange::Ptr bearing_range = mrpt::make_aligned_shared<CObservationBearingRange>();
-        *bearing_range = last_bearing_range_;
-        pRawLog->addObservationMemoryReference(bearing_range);
 
-        CObservation2DRangeScan::Ptr range_scan = mrpt::make_aligned_shared<CObservation2DRangeScan>();
-        *range_scan = last_2d_range_scan_;
-        pRawLog->addObservationMemoryReference(range_scan);
-
-        if (odomLastPose_.empty())
-        {
-            odomLastPose_ = odometry->odometry;
-        }
-
-        mrpt::poses::CPose2D incOdoPose = odometry->odometry - odomLastPose_;
-
-        CActionRobotMovement2D odom_move;
-        odom_move.timestamp = odometry->timestamp;
-        odom_move.computeFromOdometry(incOdoPose, param_->motionModelOptions);
-        CActionCollection::Ptr action = mrpt::make_aligned_shared<CActionCollection>();
-        action->insert(odom_move);
-        pRawLogASF->addActionsMemoryReference(action);
-
-        CSensoryFrame::Ptr sf = mrpt::make_aligned_shared<CSensoryFrame>();
-        CObservation::Ptr obs_2d_range_scan = CObservation::Ptr(range_scan);
-        CObservation::Ptr obs_bearing_range = CObservation::Ptr(bearing_range);
-        sf->insert(obs_2d_range_scan);
-        sf->insert(obs_bearing_range);
-        pRawLogASF->addObservationsMemoryReference(sf);
-
-        odomLastPose_ = odometry->odometry;
-
+    if(!last_range_scan_) return;
+    if( fabs(mrpt::system::timeDifference(last_odometry_->timestamp, last_range_scan_->timestamp)) > param()->sensor_frame_sync_threshold) {
+        return;
     }
-    else
-    {
-        ROS_INFO("Failed to get odom for laser observation!");
+    CObservation2DRangeScan::Ptr range_scan = mrpt::make_aligned_shared<CObservation2DRangeScan>();
+    *range_scan = *last_range_scan_;
+    
+    
+    
+    if(!last_bearing_range_) return;
+    if( fabs(mrpt::system::timeDifference(last_odometry_->timestamp, last_bearing_range_->timestamp)) > param()->sensor_frame_sync_threshold) {
+        return;
     }
+    CObservationBearingRange::Ptr bearing_range = mrpt::make_aligned_shared<CObservationBearingRange>();
+    *bearing_range = *last_bearing_range_;
+
+
+
+    pRawLog->addObservationMemoryReference(odometry);
+    pRawLog->addObservationMemoryReference(range_scan);
+    pRawLog->addObservationMemoryReference(bearing_range);
+
+    static std::shared_ptr<mrpt::poses::CPose2D> lastOdomPose;
+    if(!lastOdomPose){
+        lastOdomPose = std::make_shared<mrpt::poses::CPose2D>();
+        *lastOdomPose = odometry->odometry;
+    }
+
+    mrpt::poses::CPose2D incOdoPose = odometry->odometry - *lastOdomPose;
+
+    CActionRobotMovement2D odom_move;
+    odom_move.timestamp = odometry->timestamp;
+    odom_move.computeFromOdometry(incOdoPose, param_->motionModelOptions);
+    CActionCollection::Ptr action = mrpt::make_aligned_shared<CActionCollection>();
+    action->insert(odom_move);
+    pRawLogASF->addActionsMemoryReference(action);
+
+    CSensoryFrame::Ptr sf = mrpt::make_aligned_shared<CSensoryFrame>();
+    CObservation::Ptr obs_2d_range_scan = CObservation::Ptr(range_scan);
+    CObservation::Ptr obs_bearing_range = CObservation::Ptr(bearing_range);
+    sf->insert(obs_2d_range_scan);
+    sf->insert(obs_bearing_range);
+    pRawLogASF->addObservationsMemoryReference(sf);
+
+    *lastOdomPose = odometry->odometry;
+
 }
 
 bool RawlogRecordNode::getStaticTF(std::string source_frame, mrpt::poses::CPose3D &des)
@@ -249,7 +250,7 @@ bool RawlogRecordNode::getStaticTF(std::string source_frame, mrpt::poses::CPose3
     mrpt::poses::CPose3D pose;
     tf::StampedTransform transform;
 
-    if (static_tf_.find(key) == markers_poses_.end()) {
+    if (static_tf_.find(key) == static_tf_.end()) {
 
         try
         {
@@ -260,8 +261,6 @@ bool RawlogRecordNode::getStaticTF(std::string source_frame, mrpt::poses::CPose3
 
             listenerTF_.lookupTransform(
                 target_frame_id, source_frame_id, ros::Time(0), transform);
-            ROS_INFO("Requesting tf target_frame_id='%s' source_frame_id='%s'",
-                     target_frame_id.c_str(), source_frame_id.c_str());
             tf::Vector3 translation = transform.getOrigin();
             tf::Quaternion quat = transform.getRotation();
             pose.x() = translation.x();
@@ -273,6 +272,8 @@ bool RawlogRecordNode::getStaticTF(std::string source_frame, mrpt::poses::CPose3
                 for (int r = 0; r < 3; r++) Rdes(r, c) = Rsrc.getRow(r)[c];
             pose.setRotationMatrix(Rdes);
             static_tf_[key] = pose;
+            ROS_INFO("Static tf '%s' with '%s'", 
+                     key.c_str(), pose.asString().c_str());
         }
         catch (tf::TransformException ex)
         {

@@ -40,7 +40,7 @@
 #include <nav_msgs/Odometry.h>
 #include <sensor_msgs/LaserScan.h>
 #include <dynamic_reconfigure/server.h>
-#include "mrpt_rawlog/MotionConfig.h"
+#include "mrpt_rawlog/RawLogRecordConfig.h"
 #include "mrpt_rawlog_play/rawlog_play.h"
 #include <mrpt_msgs/ObservationRangeBeacon.h>
 #include <mrpt_msgs/ObservationRangeBearing.h>
@@ -55,10 +55,10 @@ class RawlogPlayNode : public RawlogPlay
 		ParametersNode();
 		ros::NodeHandle node;
 		void callbackParameters(
-			mrpt_rawlog::MotionConfig& config, uint32_t level);
-		dynamic_reconfigure::Server<mrpt_rawlog::MotionConfig>
+			mrpt_rawlog::RawLogRecordConfig& config, uint32_t level);
+		dynamic_reconfigure::Server<mrpt_rawlog::RawLogRecordConfig>
 			reconfigureServer_;
-		dynamic_reconfigure::Server<mrpt_rawlog::MotionConfig>::CallbackType
+		dynamic_reconfigure::Server<mrpt_rawlog::RawLogRecordConfig>::CallbackType
 			reconfigureFnc_;
 		void update(const unsigned long& loop_count);
 		double rate;

@@ -63,17 +63,17 @@ void RawlogPlayNode::ParametersNode::update(const unsigned long& loop_count)
 }
 
 void RawlogPlayNode::ParametersNode::callbackParameters(
-	mrpt_rawlog::MotionConfig& config, uint32_t level)
+	mrpt_rawlog::RawLogRecordConfig& config, uint32_t level)
 {
 	if (config.motion_noise_type == MOTION_MODEL_GAUSSIAN)
 	{
 		motionModelOptions.modelSelection = CActionRobotMovement2D::mmGaussian;
-		motionModelOptions.gaussianModel.a1 = config.gaussian_alpha_1;
-		motionModelOptions.gaussianModel.a2 = config.gaussian_alpha_2;
-		motionModelOptions.gaussianModel.a3 = config.gaussian_alpha_3;
-		motionModelOptions.gaussianModel.a4 = config.gaussian_alpha_4;
-		motionModelOptions.gaussianModel.minStdXY = config.gaussian_alpha_xy;
-		motionModelOptions.gaussianModel.minStdPHI = config.gaussian_alpha_phi;
+		motionModelOptions.gaussianModel.a1 = config.motion_gaussian_alpha_1;
+		motionModelOptions.gaussianModel.a2 = config.motion_gaussian_alpha_2;
+		motionModelOptions.gaussianModel.a3 = config.motion_gaussian_alpha_3;
+		motionModelOptions.gaussianModel.a4 = config.motion_gaussian_alpha_4;
+		motionModelOptions.gaussianModel.minStdXY = config.motion_gaussian_alpha_xy;
+		motionModelOptions.gaussianModel.minStdPHI = config.motion_gaussian_alpha_phi;
 		ROS_INFO("gaussianModel.a1: %f", motionModelOptions.gaussianModel.a1);
 		ROS_INFO("gaussianModel.a2: %f", motionModelOptions.gaussianModel.a2);
 		ROS_INFO("gaussianModel.a3: %f", motionModelOptions.gaussianModel.a3);

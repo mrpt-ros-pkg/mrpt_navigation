@@ -77,7 +77,6 @@ class RawlogRecord
 	Parameters* param_;
 	CRawlog* pRawLog;
 	CRawlog* pRawLogASF;
-	mrpt::poses::CPose2D odomLastPose_;
 	void updateRawLogName(const mrpt::system::TTimeStamp& t);
 	boost::interprocess::interprocess_mutex mutexRawLog;
 };

@@ -23,7 +23,7 @@ endif()
 
 # add dynamic reconfigure api
 generate_dynamic_reconfigure_options(
-  cfg/Motion.cfg
+  cfg/RawLogRecord.cfg
 )
 
 ###################################
