@@ -89,10 +89,10 @@ class RawlogRecordNode : public RawlogRecord
     mrpt::obs::CObservationBearingRange::Ptr last_bearing_range_;
     mrpt::obs::CObservation2DRangeScan::Ptr  last_range_scan_;
     mrpt::obs::CObservationOdometry::Ptr last_odometry_;
+    unsigned int sync_attempts_sensor_frame_;
 	std::map<std::string, mrpt::poses::CPose3D> static_tf_;
 	ros::NodeHandle n_;
     void addObservation(const ros::Time& time);
-	bool waitForOdomTF(mrpt::obs::CObservationOdometry::Ptr &odometry, const ros::Time& time);
 	bool waitForTransform(
 		mrpt::poses::CPose3D& des, const std::string& target_frame,
 		const std::string& source_frame, const ros::Time& time,

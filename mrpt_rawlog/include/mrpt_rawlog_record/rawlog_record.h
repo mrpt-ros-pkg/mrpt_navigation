@@ -63,7 +63,7 @@ class RawlogRecord
 		std::string raw_log_folder;
 		std::string raw_log_name;
 		std::string raw_log_name_asf;
-        bool record_laser;
+        bool record_range_scan;
         bool record_bearing_range;
         double bearing_range_std_range;
         double bearing_range_std_yaw;
