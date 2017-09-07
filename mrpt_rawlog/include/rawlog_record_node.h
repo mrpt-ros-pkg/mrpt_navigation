@@ -87,6 +87,7 @@ class RawlogRecordNode : public RawlogRecord
     ros::Subscriber subOdometry_; 
 	tf::TransformListener listenerTF_;
     mrpt::obs::CObservationBearingRange::Ptr last_bearing_range_;
+    mrpt::obs::CObservationBeaconRanges::Ptr last_beacon_range_;
     mrpt::obs::CObservation2DRangeScan::Ptr  last_range_scan_;
     mrpt::obs::CObservationOdometry::Ptr last_odometry_;
     unsigned int sync_attempts_sensor_frame_;

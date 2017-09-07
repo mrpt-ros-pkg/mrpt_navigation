@@ -156,6 +156,9 @@ void RawlogRecordNode::callbackMarker(const marker_msgs::MarkerDetection& _msg)
     if(!last_bearing_range_) {
         last_bearing_range_ = mrpt::make_aligned_shared<CObservationBearingRange>();
     }
+    if(!last_beacon_range_) {
+        last_beacon_range_ = mrpt::make_aligned_shared<CObservationBeaconRanges>();
+    }
     mrpt::poses::CPose3D sensor_pose_on_robot;
 
     if (getStaticTF(_msg.header.frame_id, sensor_pose_on_robot)) {
@@ -163,9 +166,12 @@ void RawlogRecordNode::callbackMarker(const marker_msgs::MarkerDetection& _msg)
         last_bearing_range_->sensor_std_range  = param_->bearing_range_std_range;
         last_bearing_range_->sensor_std_yaw    = param_->bearing_range_std_yaw;
         last_bearing_range_->sensor_std_pitch  = param_->bearing_range_std_pitch;
-
+        
+        mrpt_bridge::convert(_msg, sensor_pose_on_robot, *last_beacon_range_);
+        last_beacon_range_->stdError = param_->bearing_range_std_range;
         addObservation(_msg.header.stamp);
     }
+    
 }
 
 void RawlogRecordNode::addObservation(const ros::Time& time) {
@@ -181,6 +187,7 @@ void RawlogRecordNode::addObservation(const ros::Time& time) {
 
     CObservation2DRangeScan::Ptr range_scan;
     CObservationBearingRange::Ptr bearing_range;
+    CObservationBeaconRanges::Ptr beacon_range;
 
     if (param_->record_range_scan) {
         if(!last_range_scan_) return;
@@ -200,6 +207,15 @@ void RawlogRecordNode::addObservation(const ros::Time& time) {
         bearing_range = mrpt::make_aligned_shared<CObservationBearingRange>();
         *bearing_range = *last_bearing_range_;
         pRawLog->addObservationMemoryReference(bearing_range);
+    }
+    if (param_->record_beacon_range) {
+        if(!last_beacon_range_) return;
+        if( fabs(mrpt::system::timeDifference(last_odometry_->timestamp, last_beacon_range_->timestamp)) > param()->sensor_frame_sync_threshold) {
+            return;
+        }
+        beacon_range = mrpt::make_aligned_shared<CObservationBeaconRanges>();
+        *beacon_range = *last_beacon_range_;
+        pRawLog->addObservationMemoryReference(beacon_range);
     }
 
 
@@ -226,6 +242,10 @@ void RawlogRecordNode::addObservation(const ros::Time& time) {
 
     if (param_->record_bearing_range) {
         CObservation::Ptr obs_bearing_range = CObservation::Ptr(bearing_range);
+        sf->insert(obs_bearing_range);
+    }
+    if (param_->record_beacon_range) {
+        CObservation::Ptr obs_bearing_range = CObservation::Ptr(beacon_range);
         sf->insert(obs_bearing_range);
     }
     pRawLogASF->addObservationsMemoryReference(sf);

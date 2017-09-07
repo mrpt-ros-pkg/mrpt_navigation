@@ -13,6 +13,7 @@
 #include <mrpt/obs/CObservationRange.h>
 #include <mrpt/obs/CObservation2DRangeScan.h>
 #include <mrpt/obs/CObservationBearingRange.h>
+#include <mrpt/obs/CObservationBeaconRanges.h>
 
 
 namespace std
@@ -56,6 +57,7 @@ namespace mrpt_bridge
 {
     
     bool convert(const marker_msgs::MarkerDetection& _msg, const mrpt::poses::CPose3D& _pose, mrpt::obs::CObservationBearingRange& _obj);
+    bool convert(const marker_msgs::MarkerDetection& _msg, const mrpt::poses::CPose3D& _pose, mrpt::obs::CObservationBeaconRanges& _obj);
 }
 
 #endif //MRPT_BRIDGE_MARKER_MSGS_H

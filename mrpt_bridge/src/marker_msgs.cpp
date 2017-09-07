@@ -25,9 +25,6 @@ bool convert(const marker_msgs::MarkerDetection& src, const mrpt::poses::CPose3D
     des.setSensorPose(pose);
     des.minSensorDistance = src.distance_min;
     des.maxSensorDistance = src.distance_max;
-    //des.sensor_std_range  = param_->bearing_range_std_range;
-    //des.sensor_std_yaw    = param_->bearing_range_std_yaw;
-    //des.sensor_std_pitch  = param_->bearing_range_std_pitch;
 
     des.sensedData.resize(src.markers.size());
     for(size_t i = 0; i < src.markers.size(); i++) {
@@ -40,6 +37,27 @@ bool convert(const marker_msgs::MarkerDetection& src, const mrpt::poses::CPose3D
             measurment.landmarkID = marker.ids[0];
         } else {
             measurment.landmarkID = -1;
+        }
+    }
+	return true;
+};
+bool convert(const marker_msgs::MarkerDetection& src, const mrpt::poses::CPose3D& pose, mrpt::obs::CObservationBeaconRanges& des) {
+
+    convert(src.header.stamp, des.timestamp);
+    des.setSensorPose(pose);
+    des.minSensorDistance = src.distance_min;
+    des.maxSensorDistance = src.distance_max;
+
+    des.sensedData.resize(src.markers.size());
+    for(size_t i = 0; i < src.markers.size(); i++) {
+        const marker_msgs::Marker &marker = src.markers[i];
+        mrpt::obs::CObservationBeaconRanges::TMeasurement &measurment = des.sensedData[i];
+        measurment.sensedDistance = sqrt(marker.pose.position.x * marker.pose.position.x + marker.pose.position.y * marker.pose.position.y);
+        measurment.sensorLocationOnRobot.m_coords = pose.m_coords;
+        if(marker.ids.size() > 0) {
+            measurment.beaconID = marker.ids[0];
+        } else {
+            measurment.beaconID = -1;
         }
     }
 	return true;

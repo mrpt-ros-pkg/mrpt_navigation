@@ -44,6 +44,7 @@
 #include <mrpt/obs/CObservationOdometry.h>
 #include <mrpt/obs/CObservation2DRangeScan.h>
 #include <mrpt/obs/CObservationBearingRange.h>
+#include <mrpt/obs/CObservationBeaconRanges.h>
 
 using mrpt::obs::CRawlog;
 using mrpt::obs::CActionRobotMovement2D;
@@ -65,6 +66,7 @@ class RawlogRecord
 		std::string raw_log_name_asf;
         bool record_range_scan;
         bool record_bearing_range;
+        bool record_beacon_range;
         double bearing_range_std_range;
         double bearing_range_std_yaw;
         double bearing_range_std_pitch;

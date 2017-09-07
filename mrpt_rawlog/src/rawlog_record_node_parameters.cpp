@@ -60,6 +60,8 @@ RawlogRecordNode::ParametersNode::ParametersNode() : Parameters(), node("~")
 	ROS_INFO("record_range_scan: %s", (record_range_scan?"ture":"flase"));
 	node.param<bool>("record_bearing_range", record_bearing_range, false);
 	ROS_INFO("record_bearing_range: %s", (record_bearing_range?"ture":"flase"));
+	node.param<bool>("record_beacon_range", record_beacon_range, false);
+	ROS_INFO("record_beacon_range: %s", (record_beacon_range?"ture":"flase"));
     
 }
 
