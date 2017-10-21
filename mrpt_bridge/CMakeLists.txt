@@ -86,7 +86,7 @@ target_link_libraries(${PROJECT_NAME}
 
 add_executable(test_Bridge src/test/test_Bridge.cpp)
 target_link_libraries(test_Bridge ${catkin_LIBRARIES} ${MRPT_LINKER_LIBS}	 ${MRPT_LIBS})
-add_dependencies(test_Bridge mrpt_msgs_generate_messages_cpp ${MRPT_LIBS}	${catkin_EXPORTED_TARGETS})
+add_dependencies(test_Bridge mrpt_msgs_generate_messages_cpp ${catkin_EXPORTED_TARGETS})
 
 #############
 ## Install ##
