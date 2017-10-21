@@ -44,7 +44,7 @@ using mrpt::maps::COccupancyGridMap2D;
 using mrpt::maps::CMultiMetricMap;
 
 MapServer::MapServer(ros::NodeHandle& n)
-	: n_(n), n_param_("~"), loop_count_(0), frequency_(0), debug_(true)
+	: n_(n)
 {
 }
 

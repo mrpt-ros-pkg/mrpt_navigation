@@ -54,10 +54,10 @@ class MapServer
 
    private:
 	ros::NodeHandle n_;
-	ros::NodeHandle n_param_;
-	double frequency_;
-	unsigned long loop_count_;
-	bool debug_;
+	ros::NodeHandle n_param_ {"~"};
+	double frequency_ {0};
+	unsigned long loop_count_{0};
+	bool debug_ {true};
 	ros::Publisher pub_map_ros_;
 	ros::Publisher pub_metadata_;
 	ros::ServiceServer service_map_;

@@ -47,6 +47,10 @@
 #include <mrpt/opengl/CEllipsoid.h>
 #include <mrpt/opengl/CPointCloud.h>
 
+#include <thread>
+#include <chrono>
+
+
 using namespace mrpt;
 using namespace mrpt::slam;
 using namespace mrpt::opengl;
@@ -361,6 +365,6 @@ void PFLocalization::show3DDebug(CSensoryFrame::Ptr _observations)
 		// Update:
 		win3D_->forceRepaint();
 
-		sleep(SHOW_PROGRESS_3D_REAL_TIME_DELAY_MS_);
+		std::this_thread::sleep_for(std::chrono::milliseconds(SHOW_PROGRESS_3D_REAL_TIME_DELAY_MS_));
 	}
 }
