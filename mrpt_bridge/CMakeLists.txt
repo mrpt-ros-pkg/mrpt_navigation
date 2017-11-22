@@ -105,7 +105,7 @@ install(TARGETS ${PROJECT_NAME}
 ## Mark cpp header files for installation
 install(DIRECTORY include/${PROJECT_NAME}/
   DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
-  FILES_MATCHING PATTERN "*.h *.hpp"
+  FILES_MATCHING PATTERN "*.h" PATTERN "*.hpp"
 )
 
 #############
