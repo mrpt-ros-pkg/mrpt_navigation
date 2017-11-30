@@ -38,6 +38,7 @@ namespace mrpt_bridge
         obj.rawMeasurements.at(IMU_Z_VEL)   = msg.angular_velocity.z;
 
         // NEED TO WRITE CODE FOR COVARIANCE
+        return true;
     }
 
     /************************************************************************
@@ -63,19 +64,8 @@ namespace mrpt_bridge
         msg.angular_velocity.y      = measurements.at(IMU_Y_VEL);
         msg.angular_velocity.z      = measurements.at(IMU_Z_VEL);
 
-        /// following covariance assignments might be wrong, covariances need to be double checked as per ROS message
-        msg.angular_velocity_covariance[0,0] = measurements.at(IMU_X_VEL);
-        msg.angular_velocity_covariance[1,1] = measurements.at(IMU_Y_VEL);
-        msg.angular_velocity_covariance[2,2] = measurements.at(IMU_Z_VEL);
-
-        msg.linear_acceleration_covariance[0,0] = measurements.at(IMU_X_ACC_GLOBAL);
-        msg.linear_acceleration_covariance[1,1] = measurements.at(IMU_Y_ACC_GLOBAL);
-        msg.linear_acceleration_covariance[2,2] = measurements.at(IMU_Z_ACC_GLOBAL);
-
-        /*msg.orientation_covariance[0,0]         = measurements.at(IMU_ORI_QUAT_X);
-        msg.orientation_covariance[1,1]         = measurements.at(IMU_ORI_QUAT_Y);
-        msg.orientation_covariance[2,2]         = measurements.at(IMU_ORI_QUAT_Z);
-         */
+        // msg.angular_velocity_covariance
+        return true;
     }
 
 }

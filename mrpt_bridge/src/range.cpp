@@ -32,6 +32,7 @@ namespace mrpt_bridge
 
             /// again this is amibiguous as can't be certain of number of measurement from corresponding ROS message
             obj.sensedData.at(0).sensedDistance = msg.range;
+            return true;
         }
 
         /************************************************************************
@@ -63,6 +64,7 @@ namespace mrpt_bridge
             /// currently the following are not available in MRPT for corresponding range ROS message
             /// NO corresponding value for MRPT radiation_type at http://mrpt.ual.es/reference/devel/_c_observation_range_8h_source.html
             //msg.radiation_type
+            return true;
         }
     }
 }

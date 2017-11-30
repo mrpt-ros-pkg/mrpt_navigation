@@ -165,7 +165,12 @@ const bool MapHdl::loadMap(
 	_metric_map.setListOfMaps(&mapInitializers);
 	if (_debug) mapInitializers.dumpToConsole();
 
-	mrpt::random::randomGenerator.randomize();
+#if MRPT_VERSION>=0x199
+	auto &r = mrpt::random::getRandomGenerator();
+#else
+	auto &r = mrpt::random::randomGenerator;
+#endif
+	r.randomize();
 
 	if (_debug)
 		printf(

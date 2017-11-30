@@ -48,6 +48,7 @@ namespace mrpt_bridge
 
         }
         obj.setMsg(gga);
+        return true;
     }
 
     /************************************************************************
@@ -96,6 +97,7 @@ namespace mrpt_bridge
         }
         /// position_covariance is not available in mrpt
         /// position_covariance type is not available in mrpt
+        return true;
     }
 }
 
