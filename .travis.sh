@@ -4,7 +4,7 @@ set -x
 set -e
 
 apt-get update
-#apt-get install -y sudo software-properties-common git wget sed gcc g++
+apt-get install -y sudo #git wget sed gcc g++
 
 echo "Testing branch $TRAVIS_BRANCH of $REPOSITORY_NAME"
 sudo sh -c 'echo "deb http://packages.ros.org/ros-shadow-fixed/ubuntu `lsb_release -cs` main" > /etc/apt/sources.list.d/ros-latest.list'
