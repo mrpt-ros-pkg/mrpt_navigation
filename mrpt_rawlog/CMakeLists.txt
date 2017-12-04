@@ -5,7 +5,7 @@ project(mrpt_rawlog)
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
-find_package(catkin REQUIRED COMPONENTS roscpp tf std_msgs nav_msgs sensor_msgs mrpt_msgs mrpt_bridge dynamic_reconfigure marker_msgs)
+find_package(catkin REQUIRED COMPONENTS roscpp tf std_msgs nav_msgs sensor_msgs mrpt_msgs mrpt_bridge dynamic_reconfigure marker_msgs rosbag)
 
 find_package(MRPT 1.5 REQUIRED base gui obs)
 
