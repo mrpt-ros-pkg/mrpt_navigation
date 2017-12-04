@@ -4,23 +4,22 @@ set -x
 set -e
 
 apt-get update
-apt-get install -y sudo software-properties-common wget #git  sed gcc g++
+apt-get install -y sudo software-properties-common wget # minimum deps for the commands below
 
 echo "Testing branch $TRAVIS_BRANCH of $REPOSITORY_NAME"
 sudo sh -c 'echo "deb http://packages.ros.org/ros-shadow-fixed/ubuntu `lsb_release -cs` main" > /etc/apt/sources.list.d/ros-latest.list'
 wget http://packages.ros.org/ros.key -O - | sudo apt-key add -
 sudo add-apt-repository $MRPT_PPA -y
 sudo apt-get update -qq
-sudo apt-get install -qq -y python-rosdep #python-catkin-pkg python-rosdep python-wstool python-catkin-tools ros-$ROS_DISTRO-catkin
+sudo apt-get install -qq -y python-rosdep
 sudo rosdep init
 rosdep update; while [ $? != 0 ]; do sleep 1; rosdep update; done
 
 # Use rosdep to install all dependencies (including ROS itself)
 rosdep install --from-paths ./ -i -y --rosdistro $CI_ROS_DISTRO
-#rosdep install -q -n --from-paths src --ignore-src --rosdistro $ROS_DISTRO -y
 
 # ROS env vars:
-source /opt/ros/$ROS_DISTRO/setup.bash
+source /opt/ros/$CI_ROS_DISTRO/setup.bash
 
 # Setup catkin Workspace:
 mkdir -p ~/catkin_ws/src
