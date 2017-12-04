@@ -26,6 +26,7 @@
   <build_depend>message_generation</build_depend>
   <build_depend>marker_msgs</build_depend>
   <build_depend>cv_bridge</build_depend>
+  <build_depend>stereo_msgs</build_depend>
   <build_depend>pcl_conversions</build_depend> <!-- Only during BUILD: for unit tests -->
   <build_depend>libpcl-all-dev</build_depend> <!-- Only during BUILD: for unit tests -->
 
@@ -46,6 +47,7 @@
   <run_depend>nav_msgs</run_depend>
   <run_depend>message_runtime</run_depend>
   <run_depend>marker_msgs</run_depend>
+  <run_depend>stereo_msgs</run_depend>
 
   <build_depend>mrpt</build_depend> <!-- Depend on mrpt system pkgs -->
   <run_depend>mrpt</run_depend> <!-- Depend on mrpt system pkgs -->
