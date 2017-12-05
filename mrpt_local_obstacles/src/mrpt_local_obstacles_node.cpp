@@ -161,8 +161,7 @@ class LocalObstaclesNode
 		mrpt_bridge::convert(sensorOnRobot, sensorOnRobot_mrpt);
 		// In MRPT, CObservation2DRangeScan holds both: sensor data + relative
 		// pose:
-		CObservation2DRangeScan::Ptr obsScan =
-			mrpt::make_aligned_shared<CObservation2DRangeScan>();
+		auto obsScan = CObservation2DRangeScan::Create();
 		mrpt_bridge::convert(*scan, sensorOnRobot_mrpt, *obsScan);
 
 		ROS_DEBUG(
@@ -319,18 +318,15 @@ class LocalObstaclesNode
 					"LocalObstaclesNode", 800, 600);
 				mrpt::opengl::COpenGLScene::Ptr& scene =
 					m_gui_win->get3DSceneAndLock();
-				scene->insert(
-					mrpt::make_aligned_shared<mrpt::opengl::CGridPlaneXY>());
+				scene->insert(mrpt::opengl::CGridPlaneXY::Create());
 				scene->insert(
 					mrpt::opengl::stock_objects::CornerXYZSimple(1.0, 4.0));
 
-				mrpt::opengl::CSetOfObjects::Ptr gl_obs =
-					mrpt::make_aligned_shared<mrpt::opengl::CSetOfObjects>();
+				auto gl_obs = mrpt::opengl::CSetOfObjects::Create();
 				gl_obs->setName("obstacles");
 				scene->insert(gl_obs);
 
-				mrpt::opengl::CPointCloud::Ptr gl_pts =
-					mrpt::make_aligned_shared<mrpt::opengl::CPointCloud>();
+				auto gl_pts = mrpt::opengl::CPointCloud::Create();
 				gl_pts->setName("points");
 				gl_pts->setPointSize(2.0);
 				gl_pts->setColor_u8(mrpt::utils::TColor(0x0000ff));

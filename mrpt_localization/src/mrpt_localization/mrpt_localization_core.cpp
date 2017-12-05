@@ -99,8 +99,7 @@ void PFLocalizationCore::updateFilter(
 void PFLocalizationCore::observation(
 	CSensoryFrame::Ptr _sf, CObservationOdometry::Ptr _odometry)
 {
-	CActionCollection::Ptr action =
-		mrpt::make_aligned_shared<CActionCollection>();
+	auto action = CActionCollection::Create();
 	CActionRobotMovement2D odom_move;
 	odom_move.timestamp = _sf->getObservationByIndex(0)->timestamp;
 	if (_odometry)

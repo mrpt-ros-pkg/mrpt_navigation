@@ -127,18 +127,17 @@ void RawlogRecordNode::callbackOdometry(const nav_msgs::Odometry& _msg)
 {
     //ROS_INFO("callbackOdometry");
     if(!last_odometry_) {
-        last_odometry_ = mrpt::make_aligned_shared<CObservationOdometry>();
+        last_odometry_ = CObservationOdometry::Create();
     }
     convert(_msg, *last_odometry_);
     addObservation(_msg.header.stamp);
-
 }
 
 void RawlogRecordNode::callbackLaser(const sensor_msgs::LaserScan& _msg)
 {
     //ROS_INFO("callbackLaser");
     if(!last_range_scan_) {
-        last_range_scan_ = mrpt::make_aligned_shared<CObservation2DRangeScan>();
+        last_range_scan_ = CObservation2DRangeScan::Create();
     }
     mrpt::poses::CPose3D sensor_pose_on_robot;
 
@@ -154,10 +153,10 @@ void RawlogRecordNode::callbackMarker(const marker_msgs::MarkerDetection& _msg)
 {
     //ROS_INFO("callbackMarker");
     if(!last_bearing_range_) {
-        last_bearing_range_ = mrpt::make_aligned_shared<CObservationBearingRange>();
+        last_bearing_range_ = CObservationBearingRange::Create();
     }
     if(!last_beacon_range_) {
-        last_beacon_range_ = mrpt::make_aligned_shared<CObservationBeaconRanges>();
+        last_beacon_range_ = CObservationBeaconRanges::Create();
     }
     mrpt::poses::CPose3D sensor_pose_on_robot;
 
@@ -166,12 +165,12 @@ void RawlogRecordNode::callbackMarker(const marker_msgs::MarkerDetection& _msg)
         last_bearing_range_->sensor_std_range  = param_->bearing_range_std_range;
         last_bearing_range_->sensor_std_yaw    = param_->bearing_range_std_yaw;
         last_bearing_range_->sensor_std_pitch  = param_->bearing_range_std_pitch;
-        
+
         mrpt_bridge::convert(_msg, sensor_pose_on_robot, *last_beacon_range_);
         last_beacon_range_->stdError = param_->bearing_range_std_range;
         addObservation(_msg.header.stamp);
     }
-    
+
 }
 
 void RawlogRecordNode::addObservation(const ros::Time& time) {
@@ -181,7 +180,7 @@ void RawlogRecordNode::addObservation(const ros::Time& time) {
     if(sync_attempts_sensor_frame_ > 10) ROS_INFO("Problem to syn data for sensor frame!");
 
     if(!last_odometry_) return;
-    CObservationOdometry::Ptr odometry = mrpt::make_aligned_shared<CObservationOdometry>();
+    auto odometry = CObservationOdometry::Create();
     *odometry = *last_odometry_;
     pRawLog->addObservationMemoryReference(odometry);
 
@@ -194,7 +193,7 @@ void RawlogRecordNode::addObservation(const ros::Time& time) {
         if( fabs(mrpt::system::timeDifference(last_odometry_->timestamp, last_range_scan_->timestamp)) > param()->sensor_frame_sync_threshold) {
             return;
         }
-        range_scan = mrpt::make_aligned_shared<CObservation2DRangeScan>();
+        range_scan = CObservation2DRangeScan::Create();
         *range_scan = *last_range_scan_;
         pRawLog->addObservationMemoryReference(range_scan);
     }
@@ -204,7 +203,7 @@ void RawlogRecordNode::addObservation(const ros::Time& time) {
         if( fabs(mrpt::system::timeDifference(last_odometry_->timestamp, last_bearing_range_->timestamp)) > param()->sensor_frame_sync_threshold) {
             return;
         }
-        bearing_range = mrpt::make_aligned_shared<CObservationBearingRange>();
+        bearing_range = CObservationBearingRange::Create();
         *bearing_range = *last_bearing_range_;
         pRawLog->addObservationMemoryReference(bearing_range);
     }
@@ -213,7 +212,7 @@ void RawlogRecordNode::addObservation(const ros::Time& time) {
         if( fabs(mrpt::system::timeDifference(last_odometry_->timestamp, last_beacon_range_->timestamp)) > param()->sensor_frame_sync_threshold) {
             return;
         }
-        beacon_range = mrpt::make_aligned_shared<CObservationBeaconRanges>();
+        beacon_range = CObservationBeaconRanges::Create();
         *beacon_range = *last_beacon_range_;
         pRawLog->addObservationMemoryReference(beacon_range);
     }
@@ -230,11 +229,11 @@ void RawlogRecordNode::addObservation(const ros::Time& time) {
     CActionRobotMovement2D odom_move;
     odom_move.timestamp = odometry->timestamp;
     odom_move.computeFromOdometry(incOdoPose, param_->motionModelOptions);
-    CActionCollection::Ptr action = mrpt::make_aligned_shared<CActionCollection>();
+    auto action = CActionCollection::Create();
     action->insert(odom_move);
     pRawLogASF->addActionsMemoryReference(action);
 
-    CSensoryFrame::Ptr sf = mrpt::make_aligned_shared<CSensoryFrame>();
+    auto sf = CSensoryFrame::Create();
     if (param_->record_range_scan) {
         CObservation::Ptr obs_range_scan = CObservation::Ptr(range_scan);
         sf->insert(obs_range_scan);
@@ -253,7 +252,7 @@ void RawlogRecordNode::addObservation(const ros::Time& time) {
     *lastOdomPose = odometry->odometry;
 
     sync_attempts_sensor_frame_ = 0;
-    
+
 }
 
 bool RawlogRecordNode::getStaticTF(std::string source_frame, mrpt::poses::CPose3D &des)

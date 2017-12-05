@@ -184,8 +184,7 @@ void PFLocalizationNode::callbackLaser(const sensor_msgs::LaserScan& _msg)
 	time_last_input_ = ros::Time::now();
 
 	// ROS_INFO("callbackLaser");
-	CObservation2DRangeScan::Ptr laser =
-		mrpt::make_aligned_shared<CObservation2DRangeScan>();
+	auto laser = CObservation2DRangeScan::Create();
 
 	// printf("callbackLaser %s\n", _msg.header.frame_id.c_str());
 	if (laser_poses_.find(_msg.header.frame_id) == laser_poses_.end())
@@ -200,7 +199,7 @@ void PFLocalizationNode::callbackLaser(const sensor_msgs::LaserScan& _msg)
 		// pose.x(), pose.y(), pose.z(), pose.roll(), pose.pitch(), pose.yaw());
 		mrpt_bridge::convert(_msg, laser_poses_[_msg.header.frame_id], *laser);
 
-		CSensoryFrame::Ptr sf = mrpt::make_aligned_shared<CSensoryFrame>();
+		auto sf = CSensoryFrame::Create();
 		CObservationOdometry::Ptr odometry;
 		odometryForCallback(odometry, _msg.header);
 
@@ -220,8 +219,7 @@ void PFLocalizationNode::callbackBeacon(
 	time_last_input_ = ros::Time::now();
 
 	// ROS_INFO("callbackBeacon");
-	CObservationBeaconRanges::Ptr beacon =
-		mrpt::make_aligned_shared<CObservationBeaconRanges>();
+	auto beacon = CObservationBeaconRanges::Create();
 	// printf("callbackBeacon %s\n", _msg.header.frame_id.c_str());
 	if (beacon_poses_.find(_msg.header.frame_id) == beacon_poses_.end())
 	{
@@ -236,7 +234,7 @@ void PFLocalizationNode::callbackBeacon(
 		mrpt_bridge::convert(
 			_msg, beacon_poses_[_msg.header.frame_id], *beacon);
 
-		CSensoryFrame::Ptr sf = mrpt::make_aligned_shared<CSensoryFrame>();
+		auto sf = CSensoryFrame::Create();
 		CObservationOdometry::Ptr odometry;
 		odometryForCallback(odometry, _msg.header);
 
@@ -297,7 +295,7 @@ void PFLocalizationNode::callbackRobotPose(
 	pose_cov_ops::compose(map_to_obs_pose, _msg.pose, obs_pose_world.pose);
 
 	// Ensure the covariance matrix can be inverted (no zeros in the diagonal)
-	for (int i = 0; i < obs_pose_world.pose.covariance.size(); ++i)
+	for (unsigned int i = 0; i < obs_pose_world.pose.covariance.size(); ++i)
 	{
 		if (i / 6 == i % 6 && obs_pose_world.pose.covariance[i] <= 0.0)
 			obs_pose_world.pose.covariance[i] =
@@ -305,14 +303,13 @@ void PFLocalizationNode::callbackRobotPose(
 	}
 
 	// Covert the received pose into an observation the filter can integrate
-	CObservationRobotPose::Ptr feature =
-		mrpt::make_aligned_shared<CObservationRobotPose>();
+	auto feature = CObservationRobotPose::Create();
 
 	feature->sensorLabel = _msg.header.frame_id;
 	mrpt_bridge::convert(_msg.header.stamp, feature->timestamp);
 	mrpt_bridge::convert(obs_pose_world.pose, feature->pose);
 
-	CSensoryFrame::Ptr sf = mrpt::make_aligned_shared<CSensoryFrame>();
+	auto sf = CSensoryFrame::Create();
 	CObservationOdometry::Ptr odometry;
 	odometryForCallback(odometry, _msg.header);
 
@@ -334,7 +331,7 @@ void PFLocalizationNode::odometryForCallback(
 			poseOdom, odom_frame_id, base_frame_id, _msg_header.stamp,
 			ros::Duration(1.0)))
 	{
-		_odometry = mrpt::make_aligned_shared<CObservationOdometry>();
+		_odometry = CObservationOdometry::Create();
 		_odometry->sensorLabel = odom_frame_id;
 		_odometry->hasEncodersInfo = false;
 		_odometry->hasVelocities = false;
@@ -418,7 +415,6 @@ void PFLocalizationNode::updateSensorPose(std::string _frame_id)
 		pose.x() = translation.x();
 		pose.y() = translation.y();
 		pose.z() = translation.z();
-		double roll, pitch, yaw;
 		tf::Matrix3x3 Rsrc(quat);
 		mrpt::math::CMatrixDouble33 Rdes;
 		for (int c = 0; c < 3; c++)

@@ -228,7 +228,7 @@ void PFLocalization::init3DDebug()
 			"Initial PDF: %f particles/m2\n",
 			initial_particle_count_ / grid_info.effectiveMappedArea);
 
-		CSetOfObjects::Ptr plane = mrpt::make_aligned_shared<CSetOfObjects>();
+		auto plane = CSetOfObjects::Create();
 		metric_map_.getAs3DObject(plane);
 		scene_.insert(plane);
 
@@ -302,7 +302,7 @@ void PFLocalization::show3DDebug(CSensoryFrame::Ptr _observations)
 			CRenderizable::Ptr ellip = ptr_scene->getByName("parts_cov");
 			if (!ellip)
 			{
-				ellip = mrpt::make_aligned_shared<CEllipsoid>();
+				ellip = CEllipsoid::Create();
 				ellip->setName("parts_cov");
 				ellip->setColor(1, 0, 0, 0.6);
 
@@ -321,7 +321,7 @@ void PFLocalization::show3DDebug(CSensoryFrame::Ptr _observations)
 			CRenderizable::Ptr scan_pts = ptr_scene->getByName("scan");
 			if (!scan_pts)
 			{
-				scan_pts = mrpt::make_aligned_shared<CPointCloud>();
+				scan_pts = CPointCloud::Create();
 				scan_pts->setName("scan");
 				scan_pts->setColor(1, 0, 0, 0.9);
 				getAs<CPointCloud>(scan_pts)->enableColorFromZ(false);

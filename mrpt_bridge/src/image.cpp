@@ -36,7 +36,11 @@ namespace mrpt_bridge
         bool ros2mrpt(const sensor_msgs::Image &msg,  CObservationImage &obj)
         {
             CvImage *frame1 = cv_bridge::toCvCopy(msg, "bgr8").get(); //CvShare(msg,"bgr8").image;
+            if (!frame1) return false;
+            IplImage ipl = frame1->image;
+            obj.image.loadFromIplImage(&ipl);
 
+            return true;
         }
 
         /************************************************************************

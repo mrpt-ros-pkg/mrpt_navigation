@@ -100,11 +100,11 @@ bool convert(const nav_msgs::OccupancyGrid& src, COccupancyGridMap2D& des)
 	// des.getYMin(), des.getYMax(), des.getResolution());
 
 	/// I hope the data is allways aligned
-	for (int h = 0; h < src.info.height; h++)
+	for (unsigned int h = 0; h < src.info.height; h++)
 	{
 		COccupancyGridMap2D::cellType* pDes = des.getRow(h);
 		const int8_t* pSrc = &src.data[h * src.info.width];
-		for (int w = 0; w < src.info.width; w++)
+		for (unsigned int w = 0; w < src.info.width; w++)
 		{
 			*pDes++ = MapHdl::instance()->cellRos2Mrpt(*pSrc++);
 		}
@@ -138,11 +138,11 @@ bool convert(const COccupancyGridMap2D& src, nav_msgs::OccupancyGrid& des)
 
 	/// I hope the data is allways aligned
 	des.data.resize(des.info.width * des.info.height);
-	for (int h = 0; h < des.info.height; h++)
+	for (unsigned int h = 0; h < des.info.height; h++)
 	{
 		const COccupancyGridMap2D::cellType* pSrc = src.getRow(h);
 		int8_t* pDes = &des.data[h * des.info.width];
-		for (int w = 0; w < des.info.width; w++)
+		for (unsigned int w = 0; w < des.info.width; w++)
 		{
 			*pDes++ = MapHdl::instance()->cellMrpt2Ros(*pSrc++);
 		}
@@ -194,7 +194,7 @@ const bool MapHdl::loadMap(
 		if (!mapExt.compare("simplemap"))
 		{
 			// It's a ".simplemap":
-			if (_debug) ("Loading '.simplemap' file...");
+			if (_debug) printf("Loading '.simplemap' file...");
 			mrpt::utils::CFileGZInputStream(_map_file) >> simpleMap;
 			printf("Ok\n");
 
