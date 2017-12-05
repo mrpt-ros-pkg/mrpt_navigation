@@ -7,7 +7,7 @@ project(mrpt_bridge)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
 	geometry_msgs message_generation mrpt_msgs nav_msgs
-	pcl_conversions roscpp sensor_msgs std_msgs tf cv_bridge marker_msgs )
+	pcl_conversions roscpp sensor_msgs std_msgs tf cv_bridge marker_msgs stereo_msgs)
 
 ## System dependencies are found with CMake's conventions
 find_package(PCL 1.3 REQUIRED COMPONENTS common io)
@@ -39,7 +39,7 @@ endif()
 catkin_package(
   INCLUDE_DIRS include
   LIBRARIES ${PROJECT_NAME}
-  CATKIN_DEPENDS geometry_msgs message_runtime mrpt_msgs nav_msgs sensor_msgs std_msgs marker_msgs
+  CATKIN_DEPENDS geometry_msgs message_runtime mrpt_msgs nav_msgs sensor_msgs std_msgs marker_msgs stereo_msgs
 #  DEPENDS pcl mrpt  # opencv
 )
 
