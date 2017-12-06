@@ -253,7 +253,7 @@ void PFLocalization::show3DDebug(CSensoryFrame::Ptr _observations)
 	// Create 3D window if requested:
 	if (SHOW_PROGRESS_3D_REAL_TIME_)
 	{
-		TTimeStamp cur_obs_timestamp;
+		TTimeStamp cur_obs_timestamp = INVALID_TIMESTAMP;
 		if (_observations->size() > 0)
 			cur_obs_timestamp =
 				_observations->getObservationByIndex(0)->timestamp;
@@ -269,7 +269,11 @@ void PFLocalization::show3DDebug(CSensoryFrame::Ptr _observations)
 			10, 10,
 			mrpt::format(
 				"timestamp: %s",
-				mrpt::system::dateTimeLocalToString(cur_obs_timestamp).c_str()),
+				cur_obs_timestamp!=INVALID_TIMESTAMP ?
+				mrpt::system::dateTimeLocalToString(cur_obs_timestamp).c_str()
+				:
+				"(none)"
+				),
 			mrpt::utils::TColorf(.8f, .8f, .8f), "mono", 15, mrpt::opengl::NICE,
 			6001);
 
