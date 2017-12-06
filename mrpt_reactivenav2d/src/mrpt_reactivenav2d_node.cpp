@@ -58,6 +58,8 @@ using mrpt::maps::CSimplePointsMap;
 
 #include <mrpt/kinematics/CVehicleVelCmd_DiffDriven.h>
 
+#include <mutex>
+
 // The ROS node
 class ReactiveNav2DNode
 {

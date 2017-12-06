@@ -335,22 +335,18 @@ class LocalObstaclesNode
 				m_gui_win->unlockAccess3DScene();
 			}
 
-			mrpt::opengl::COpenGLScene::Ptr& scene =
-				m_gui_win->get3DSceneAndLock();
-			mrpt::opengl::CSetOfObjects::Ptr gl_obs =
-				std::dynamic_pointer_cast<mrpt::opengl::CSetOfObjects>(
+			auto& scene = m_gui_win->get3DSceneAndLock();
+			auto gl_obs = mrpt::ptr_cast<mrpt::opengl::CSetOfObjects>::from(
 					scene->getByName("obstacles"));
 			ROS_ASSERT(!!gl_obs);
 			gl_obs->clear();
 
-			mrpt::opengl::CPointCloud::Ptr gl_pts =
-				std::dynamic_pointer_cast<mrpt::opengl::CPointCloud>(
+			auto gl_pts = mrpt::ptr_cast<mrpt::opengl::CPointCloud>::from(
 					scene->getByName("points"));
 
-			for (TListObservations::const_iterator it = obs.begin();
-				 it != obs.end(); ++it)
+			for (const auto &o :obs)
 			{
-				const TInfoPerTimeStep& ipt = it->second;
+				const TInfoPerTimeStep& ipt = o.second;
 				// Relative pose in the past:
 				mrpt::poses::CPose3D relPose(mrpt::poses::UNINITIALIZED_POSE);
 				relPose.inverseComposeFrom(ipt.robot_pose, curRobotPose);
