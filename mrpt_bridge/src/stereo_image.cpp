@@ -19,17 +19,22 @@
 
 #include "ros/ros.h"
 #include "mrpt_bridge/image.h"
-#include <mrpt/utils.h>
 #include <opencv/highgui.h>
 #include <cv_bridge/cv_bridge.h>
 
 #include <sensor_msgs/Image.h>
 #include <sensor_msgs/image_encodings.h>
 
+#include <mrpt/version.h>
+#if MRPT_VERSION>=0x199
+using namespace mrpt::img;
+#else
+using namespace mrpt::utils;
+#endif
+
 using namespace ros;
 using namespace sensor_msgs;
 using namespace cv;
-using namespace mrpt::utils;
 using namespace cv_bridge;
 
 

@@ -53,12 +53,24 @@ using namespace mrpt::maps;
 using namespace mrpt::obs;
 
 #include <mrpt/system/string_utils.h>
-#include <mrpt/utils/CTimeLogger.h>
-#include <mrpt/utils/CConfigFile.h>
 #include <mrpt/gui/CDisplayWindow3D.h>
 #include <mrpt/opengl/CGridPlaneXY.h>
 #include <mrpt/opengl/CPointCloud.h>
 #include <mrpt/opengl/stock_objects.h>
+
+#include <mrpt/version.h>
+#if MRPT_VERSION>=0x199
+#include <mrpt/system/CTimeLogger.h>
+#include <mrpt/config/CConfigFile.h>
+using namespace mrpt::system;
+using namespace mrpt::config;
+using namespace mrpt::img;
+#else
+#include <mrpt/utils/CTimeLogger.h>
+#include <mrpt/utils/CConfigFile.h>
+using namespace mrpt::utils;
+#endif
+
 
 // The ROS node
 class LocalObstaclesNode
@@ -72,7 +84,7 @@ class LocalObstaclesNode
 		}
 	};
 
-	mrpt::utils::CTimeLogger m_profiler;
+	CTimeLogger m_profiler;
 
 	TAuxInitializer m_auxinit;  //!< Just to make sure ROS is init first
 	ros::NodeHandle m_nh;  //!< The node handle
@@ -138,13 +150,13 @@ class LocalObstaclesNode
 	  */
 	void onNewSensor_Laser2D(const sensor_msgs::LaserScanConstPtr& scan)
 	{
-		mrpt::utils::CTimeLoggerEntry tle(m_profiler, "onNewSensor_Laser2D");
+		CTimeLoggerEntry tle(m_profiler, "onNewSensor_Laser2D");
 
 		// Get the relative position of the sensor wrt the robot:
 		tf::StampedTransform sensorOnRobot;
 		try
 		{
-			mrpt::utils::CTimeLoggerEntry tle2(
+			CTimeLoggerEntry tle2(
 				m_profiler, "onNewSensor_Laser2D.lookupTransform_sensor");
 			m_tf_listener.lookupTransform(
 				m_frameid_robot, scan->header.frame_id, ros::Time(0),
@@ -177,7 +189,7 @@ class LocalObstaclesNode
 		mrpt::poses::CPose3D robotPose;
 		try
 		{
-			mrpt::utils::CTimeLoggerEntry tle3(
+			CTimeLoggerEntry tle3(
 				m_profiler, "onNewSensor_Laser2D.lookupTransform_robot");
 			tf::StampedTransform tx;
 
@@ -220,12 +232,12 @@ class LocalObstaclesNode
 	/** Callback: On recalc local map & publish it */
 	void onDoPublish(const ros::TimerEvent&)
 	{
-		mrpt::utils::CTimeLoggerEntry tle(m_profiler, "onDoPublish");
+		CTimeLoggerEntry tle(m_profiler, "onDoPublish");
 
 		// Purge old observations & latch a local copy:
 		TListObservations obs;
 		{
-			mrpt::utils::CTimeLoggerEntry tle(
+			CTimeLoggerEntry tle(
 				m_profiler, "onDoPublish.removingOld");
 			m_hist_obs_mtx.lock();
 
@@ -257,7 +269,7 @@ class LocalObstaclesNode
 		m_localmap_pts.clear();
 		mrpt::poses::CPose3D curRobotPose;
 		{
-			mrpt::utils::CTimeLoggerEntry tle2(
+			CTimeLoggerEntry tle2(
 				m_profiler, "onDoPublish.buildLocalMap");
 
 			// Get the latest robot pose in the reference frame (typ: /odom ->
@@ -329,7 +341,7 @@ class LocalObstaclesNode
 				auto gl_pts = mrpt::opengl::CPointCloud::Create();
 				gl_pts->setName("points");
 				gl_pts->setPointSize(2.0);
-				gl_pts->setColor_u8(mrpt::utils::TColor(0x0000ff));
+				gl_pts->setColor_u8(TColor(0x0000ff));
 				scene->insert(gl_pts);
 
 				m_gui_win->unlockAccess3DScene();

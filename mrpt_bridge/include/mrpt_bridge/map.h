@@ -36,6 +36,9 @@ class CMultiMetricMap;
 using mrpt::maps::COccupancyGridMap2D;
 using mrpt::maps::CMultiMetricMap;
 
+#include <mrpt/version.h>
+
+#if MRPT_VERSION<0x199
 namespace mrpt
 {
 namespace utils
@@ -43,6 +46,17 @@ namespace utils
 class CConfigFile;
 }
 }
+using mrpt::utils::CConfigFile;
+#else
+namespace mrpt
+{
+namespace config
+{
+class CConfigFile;
+}
+}
+using mrpt::config::CConfigFile;
+#endif
 
 namespace mrpt_bridge
 {
@@ -98,7 +112,7 @@ class MapHdl
 	  */
 	static const bool loadMap(
 		CMultiMetricMap& _metric_map,
-		const mrpt::utils::CConfigFile& _config_file,
+		const CConfigFile& _config_file,
 		const std::string& _map_file = "map.simplemap",
 		const std::string& _section_name = "metricMap", bool _debug = false);
 };

@@ -17,6 +17,15 @@
 
 #include <iostream>  // for debugging reasons
 
+#include <mrpt/version.h>
+#if MRPT_VERSION<0x199
+using namespace mrpt::utils;
+#else
+#include <mrpt/graphs/TNodeID.h>
+using mrpt::graphs::TNodeID;
+#endif
+
+
 namespace mrpt_bridge
 {
 ///////////////////////////////////////////////////////////////////////////////////////////
@@ -190,7 +199,6 @@ void convert(
 	mrpt::graphs::CNetworkOfPoses2DInf& mrpt_graph)
 {
 	MRPT_START;
-	using namespace mrpt::utils;
 	using namespace mrpt::poses;
 	using namespace mrpt_msgs;
 	using namespace std;
@@ -218,7 +226,7 @@ void convert(
 		 constr_cit != ros_graph.constraints.end(); ++constr_cit)
 	{
 		// constraint ends
-		TPairNodeIDs constr_ends(
+		auto constr_ends(
 			make_pair(
 				static_cast<TNodeID>(constr_cit->nodeID_from),
 				static_cast<TNodeID>(constr_cit->nodeID_to)));
@@ -250,7 +258,6 @@ void convert(
 	mrpt::graphs::CNetworkOfPoses2DInf_NA& mrpt_graph)
 {
 	MRPT_START;
-	using namespace mrpt::utils;
 	using namespace mrpt::poses;
 	using namespace mrpt_msgs;
 	using namespace std;
@@ -286,7 +293,7 @@ void convert(
 		 constr_cit != ros_graph.constraints.end(); ++constr_cit)
 	{
 		// constraint ends
-		TPairNodeIDs constr_ends(
+		auto constr_ends(
 			make_pair(
 				static_cast<TNodeID>(constr_cit->nodeID_from),
 				static_cast<TNodeID>(constr_cit->nodeID_to)));

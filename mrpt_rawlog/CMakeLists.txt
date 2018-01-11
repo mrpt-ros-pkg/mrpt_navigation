@@ -7,7 +7,14 @@ project(mrpt_rawlog)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS roscpp tf std_msgs nav_msgs sensor_msgs mrpt_msgs mrpt_bridge dynamic_reconfigure marker_msgs rosbag)
 
-find_package(MRPT 1.5 REQUIRED base gui obs)
+find_package(MRPT 1.5 REQUIRED)
+message(STATUS "MRPT_VERSION: ${MRPT_VERSION}")
+if (MRPT_VERSION VERSION_LESS 1.9.9)
+	find_package(MRPT REQUIRED base gui obs)
+else()
+	find_package(MRPT REQUIRED gui obs)
+endif()
+
 
 if (CMAKE_COMPILER_IS_GNUCXX)
 	# High level of warnings.

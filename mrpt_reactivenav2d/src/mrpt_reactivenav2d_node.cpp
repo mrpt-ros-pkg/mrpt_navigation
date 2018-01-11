@@ -47,9 +47,20 @@
 using namespace mrpt::nav;
 using mrpt::maps::CSimplePointsMap;
 
+#include <mrpt/version.h>
+#if MRPT_VERSION>=0x199
+#include <mrpt/system/CTimeLogger.h>
+#include <mrpt/config/CConfigFileMemory.h>
+#include <mrpt/config/CConfigFile.h>
+using namespace mrpt::system;
+using namespace mrpt::config;
+#else
 #include <mrpt/utils/CTimeLogger.h>
 #include <mrpt/utils/CConfigFileMemory.h>
 #include <mrpt/utils/CConfigFile.h>
+using namespace mrpt::utils;
+#endif
+
 #include <mrpt/system/filesystem.h>
 
 #include <mrpt_bridge/pose.h>
@@ -72,7 +83,7 @@ class ReactiveNav2DNode
 		}
 	};
 
-	mrpt::utils::CTimeLogger m_profiler;
+	CTimeLogger m_profiler;
 	TAuxInitializer m_auxinit;  //!< Just to make sure ROS is init first
 	ros::NodeHandle m_nh;  //!< The node handle
 	ros::NodeHandle m_localn;  //!< "~"
@@ -118,19 +129,18 @@ class ReactiveNav2DNode
 		 * \return false on any error.
 		 */
 		bool getCurrentPoseAndSpeeds(
-
 			mrpt::math::TPose2D& curPose, mrpt::math::TTwist2D& curVel,
 			mrpt::system::TTimeStamp& timestamp,
 			mrpt::math::TPose2D& curOdometry, std::string& frame_id) override
 		{
 			double curV, curW;
 
-			mrpt::utils::CTimeLoggerEntry tle(
+			CTimeLoggerEntry tle(
 				m_parent.m_profiler, "getCurrentPoseAndSpeeds");
 			tf::StampedTransform txRobotPose;
 			try
 			{
-				mrpt::utils::CTimeLoggerEntry tle2(
+				CTimeLoggerEntry tle2(
 					m_parent.m_profiler,
 					"getCurrentPoseAndSpeeds.lookupTransform_sensor");
 				m_parent.m_tf_listener.lookupTransform(
@@ -292,7 +302,7 @@ class ReactiveNav2DNode
 		// ----------------------------------------------------
 		try
 		{
-			mrpt::utils::CConfigFile cfgFil(cfg_file_reactive);
+			CConfigFile cfgFil(cfg_file_reactive);
 			m_reactive_nav_engine.loadConfigFile(cfgFil);
 		}
 		catch (std::exception& e)
@@ -393,7 +403,7 @@ class ReactiveNav2DNode
 				"[ReactiveNav2DNode] Reactive navigation engine init done!");
 		}
 
-		mrpt::utils::CTimeLoggerEntry tle(m_profiler, "onDoNavigation");
+		CTimeLoggerEntry tle(m_profiler, "onDoNavigation");
 
 		m_reactive_nav_engine.navigationStep();
 	}

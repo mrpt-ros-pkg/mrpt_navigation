@@ -17,9 +17,14 @@ find_package(catkin REQUIRED COMPONENTS
 )
 
 ## System dependencies are found with CMake's conventions
-find_package(MRPT 1.5 REQUIRED base nav kinematics)
-MESSAGE( STATUS "MRPT_VERSION: ${MRPT_VERSION}")
-MESSAGE( STATUS "MRPT_INCLUDE_DIRS: ${MRPT_INCLUDE_DIRS}")
+find_package(MRPT 1.5 REQUIRED)
+message(STATUS "MRPT_VERSION: ${MRPT_VERSION}")
+if (MRPT_VERSION VERSION_LESS 1.9.9)
+	find_package(MRPT REQUIRED base nav kinematics)
+else()
+	find_package(MRPT REQUIRED nav kinematics)
+endif()
+
 
 if (CMAKE_COMPILER_IS_GNUCXX)
 	# High level of warnings.

@@ -44,7 +44,7 @@ bool convert(
 		_obj.setSensorPose(_pose);
 	}
 
-	ASSERT_(_msg.sensed_data.size() >= 1)
+	ASSERT_(_msg.sensed_data.size() >= 1);
 	const size_t N = _msg.sensed_data.size();
 
 	_obj.sensedData.resize(N);

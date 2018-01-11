@@ -27,12 +27,19 @@ MRPT C++ classes.
 #include <mrpt/poses/CPose3DPDFGaussianInf.h>
 #include <mrpt/math/CQuaternion.h>
 #include <mrpt/math/lightweight_geom_data.h>
-#include <mrpt/utils/mrpt_macros.h>
 #include <geometry_msgs/PoseWithCovariance.h>
 #include <geometry_msgs/Pose.h>
 #include <geometry_msgs/Quaternion.h>
 #include <mrpt/math/CMatrixFixedNumeric.h>
 #include <tf/tf.h>
+
+#include <mrpt/version.h>
+#if MRPT_VERSION<0x199
+#include <mrpt/utils/mrpt_macros.h>
+#else
+#include <mrpt/core/exceptions.h>
+#endif
+
 #include "mrpt_bridge/pose.h"
 
 mrpt::math::CMatrixDouble33& mrpt_bridge::convert(

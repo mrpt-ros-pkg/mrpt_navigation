@@ -34,13 +34,6 @@
 #include <mrpt_localization/mrpt_localization.h>
 #include <mrpt_localization/mrpt_localization_defaults.h>
 
-// JLB: I really can't explain this, but if this header is not included here
-// (though unneeded!)
-// the behavior of the particle filter does not converge as expected (WTF!!!)
-// (Verified with MRPT 1.0.2 & 1.3.0)
-#define MRPT_NO_WARN_BIG_HDR
-#include <mrpt/base.h>
-
 #include <mrpt_bridge/map.h>
 
 #include <mrpt/system/filesystem.h>
@@ -57,7 +50,6 @@ using namespace mrpt::opengl;
 using namespace mrpt::gui;
 using namespace mrpt::math;
 using namespace mrpt::system;
-using namespace mrpt::utils;
 using namespace mrpt::bayes;
 using namespace mrpt::poses;
 using namespace std;
@@ -65,6 +57,13 @@ using namespace std;
 #include <mrpt/version.h>
 using namespace mrpt::maps;
 using namespace mrpt::obs;
+
+#if MRPT_VERSION>=0x199
+using namespace mrpt::img;
+using namespace mrpt::config;
+#else
+using namespace mrpt::utils;
+#endif
 
 PFLocalization::~PFLocalization() {}
 PFLocalization::PFLocalization(Parameters* param)
@@ -77,11 +76,11 @@ void PFLocalization::init()
 	log_info("ini_file ready %s", param_->ini_file.c_str());
 	ASSERT_FILE_EXISTS_(param_->ini_file);
 	log_info("ASSERT_FILE_EXISTS_ %s", param_->ini_file.c_str());
-	mrpt::utils::CConfigFile ini_file;
+	CConfigFile ini_file;
 	ini_file.setFileName(param_->ini_file);
 	log_info("CConfigFile %s", param_->ini_file.c_str());
 
-	vector_int particles_count;  // Number of initial particles (if size>1, run
+	std::vector<int> particles_count;  // Number of initial particles (if size>1, run
 	// the experiments N times)
 
 	// Load configuration:
@@ -91,7 +90,7 @@ void PFLocalization::init()
 
 	// Mandatory entries:
 	ini_file.read_vector(
-		iniSectionName, "particles_count", vector_int(1, 0), particles_count,
+		iniSectionName, "particles_count", std::vector<int>(1, 0), particles_count,
 		/*Fail if not found*/ true);
 
 	if (param_->map_file.empty())
@@ -274,21 +273,21 @@ void PFLocalization::show3DDebug(CSensoryFrame::Ptr _observations)
 				:
 				"(none)"
 				),
-			mrpt::utils::TColorf(.8f, .8f, .8f), "mono", 15, mrpt::opengl::NICE,
+			TColorf(.8f, .8f, .8f), "mono", 15, mrpt::opengl::NICE,
 			6001);
 
 		win3D_->addTextMessage(
 			10, 33,
 			mrpt::format(
 				"#particles= %7u", static_cast<unsigned int>(pdf_.size())),
-			mrpt::utils::TColorf(.8f, .8f, .8f), "mono", 15, mrpt::opengl::NICE,
+			TColorf(.8f, .8f, .8f), "mono", 15, mrpt::opengl::NICE,
 			6002);
 
 		win3D_->addTextMessage(
 			10, 55,
 			mrpt::format(
 				"mean pose (x y phi_deg)= %s", meanPose.asString().c_str()),
-			mrpt::utils::TColorf(.8f, .8f, .8f), "mono", 15, mrpt::opengl::NICE,
+			TColorf(.8f, .8f, .8f), "mono", 15, mrpt::opengl::NICE,
 			6003);
 
 		// The particles:
@@ -306,18 +305,19 @@ void PFLocalization::show3DDebug(CSensoryFrame::Ptr _observations)
 			CRenderizable::Ptr ellip = ptr_scene->getByName("parts_cov");
 			if (!ellip)
 			{
-				ellip = CEllipsoid::Create();
+				auto o = CEllipsoid::Create();
+				ellip = o;
 				ellip->setName("parts_cov");
 				ellip->setColor(1, 0, 0, 0.6);
 
-				getAs<CEllipsoid>(ellip)->setLineWidth(2);
-				getAs<CEllipsoid>(ellip)->setQuantiles(3);
-				getAs<CEllipsoid>(ellip)->set2DsegmentsCount(60);
+				o->setLineWidth(2);
+				o->setQuantiles(3);
+				o->set2DsegmentsCount(60);
 				ptr_scene->insert(ellip);
 			}
 			ellip->setLocation(meanPose.x(), meanPose.y(), 0.05);
 
-			getAs<CEllipsoid>(ellip)->setCovMatrix(cov, 2);
+			dynamic_cast<CEllipsoid*>(ellip.get())->setCovMatrix(cov, 2);
 		}
 
 		// The laser scan:
@@ -325,11 +325,12 @@ void PFLocalization::show3DDebug(CSensoryFrame::Ptr _observations)
 			CRenderizable::Ptr scan_pts = ptr_scene->getByName("scan");
 			if (!scan_pts)
 			{
-				scan_pts = CPointCloud::Create();
+				auto o = CPointCloud::Create();
+				scan_pts = o;
 				scan_pts->setName("scan");
 				scan_pts->setColor(1, 0, 0, 0.9);
-				getAs<CPointCloud>(scan_pts)->enableColorFromZ(false);
-				getAs<CPointCloud>(scan_pts)->setPointSize(4);
+				o->enableColorFromZ(false);
+				o->setPointSize(4);
 				ptr_scene->insert(scan_pts);
 			}
 
@@ -341,8 +342,8 @@ void PFLocalization::show3DDebug(CSensoryFrame::Ptr _observations)
 			map.clear();
 			_observations->insertObservationsInto(&map);
 
-			getAs<CPointCloud>(scan_pts)->loadFromPointsMap(&last_map);
-			getAs<CPointCloud>(scan_pts)->setPose(robot_pose_3D);
+			dynamic_cast<CPointCloud*>(scan_pts.get())->loadFromPointsMap(&last_map);
+			dynamic_cast<CPointCloud*>(scan_pts.get())->setPose(robot_pose_3D);
 			last_map = map;
 		}
 

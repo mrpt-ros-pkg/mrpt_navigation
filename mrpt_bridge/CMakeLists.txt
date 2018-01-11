@@ -7,14 +7,20 @@ project(mrpt_bridge)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
 	geometry_msgs message_generation mrpt_msgs nav_msgs
-	pcl_conversions roscpp sensor_msgs std_msgs tf cv_bridge marker_msgs stereo_msgs)
+	pcl_conversions roscpp sensor_msgs std_msgs  tf cv_bridge marker_msgs )
 
 ## System dependencies are found with CMake's conventions
 find_package(PCL 1.3 REQUIRED COMPONENTS common io)
 include_directories(${PCL_INCLUDE_DIRS})
 add_definitions(${PCL_DEFINITIONS})
 
-find_package(MRPT 1.5 REQUIRED base obs graphs maps slam)
+find_package(MRPT 1.5 REQUIRED)
+message(STATUS "MRPT_VERSION: ${MRPT_VERSION}")
+if (MRPT_VERSION VERSION_LESS 1.9.9)
+	find_package(MRPT REQUIRED obs graphs maps slam)
+else()
+	find_package(MRPT REQUIRED obs graphs maps slam)
+endif()
 
 if (CMAKE_COMPILER_IS_GNUCXX)
 	# High level of warnings.
@@ -26,10 +32,6 @@ if (CMAKE_COMPILER_IS_GNUCXX)
 		add_compile_options(-Wno-ignored-attributes -Wno-int-in-bool-context)
 	endif()
 endif()
-
-IF(CMAKE_COMPILER_IS_GNUCXX AND NOT CMAKE_BUILD_TYPE MATCHES "Debug")
-  add_compile_options(-O3)
-ENDIF()
 
 ###################################
 ## catkin specific configuration ##
@@ -43,7 +45,7 @@ ENDIF()
 catkin_package(
   INCLUDE_DIRS include
   LIBRARIES ${PROJECT_NAME}
-  CATKIN_DEPENDS geometry_msgs message_runtime mrpt_msgs nav_msgs sensor_msgs std_msgs marker_msgs stereo_msgs
+  CATKIN_DEPENDS geometry_msgs message_runtime mrpt_msgs nav_msgs sensor_msgs std_msgs
 #  DEPENDS pcl mrpt  # opencv
 )
 
@@ -66,6 +68,7 @@ add_library(${PROJECT_NAME}
 	src/point_cloud.cpp
 	src/point_cloud2.cpp
 	src/pose.cpp
+
 	src/imu.cpp include/mrpt_bridge/imu.h
 	src/image.cpp src/image.cpp
 	src/GPS.cpp include/mrpt_bridge/GPS.h

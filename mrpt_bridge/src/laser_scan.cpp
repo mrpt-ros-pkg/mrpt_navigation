@@ -60,7 +60,7 @@ bool convert(const CObservation2DRangeScan& _obj, sensor_msgs::LaserScan& _msg)
 	const size_t nRays = _obj.scan.size();
 	if (!nRays) return false;
 
-	ASSERT_EQUAL_(_obj.scan.size(), _obj.validRange.size())
+	ASSERT_EQUAL_(_obj.scan.size(), _obj.validRange.size());
 
 	_msg.angle_min = -0.5f * _obj.aperture;
 	_msg.angle_max = 0.5f * _obj.aperture;

@@ -9,20 +9,26 @@
 
 #include <ros/console.h>
 #include <mrpt/system/datetime.h>
+#include <mrpt/poses/CPose3D.h>
 #include <mrpt/version.h>
-#include <mrpt/utils/COutputLogger.h>
 #include <log4cxx/logger.h>
+
+#if MRPT_VERSION>=0x199
+#include <mrpt/system/COutputLogger.h>
+using namespace mrpt::system;
+#else
+#include <mrpt/utils/COutputLogger.h>
+using namespace mrpt::utils;
+#endif
 
 namespace mrpt_bridge
 {
 /**
 *@brief function that converts ROS verbosity level log4cxx::Level to MRPT
-* equivalent mrpt::utils::VerbosityLevel
+* equivalent MRPT's VerbosityLevel
 */
-inline mrpt::utils::VerbosityLevel rosLoggerLvlToMRPTLoggerLvl(
-	log4cxx::LevelPtr lvl)
+inline VerbosityLevel rosLoggerLvlToMRPTLoggerLvl(log4cxx::LevelPtr lvl)
 {
-	using namespace mrpt::utils;
 	using namespace log4cxx;
 
 	// determine on the corresponding VerbosityLevel
@@ -61,9 +67,8 @@ inline mrpt::utils::VerbosityLevel rosLoggerLvlToMRPTLoggerLvl(
 * instead of the package from which macro is actually called.
 */
 inline void mrptToROSLoggerCallback(
-	const std::string& msg, const mrpt::utils::VerbosityLevel level,
-	const std::string& loggerName, const mrpt::system::TTimeStamp timestamp,
-	void* userParam)
+	const std::string& msg, const VerbosityLevel level,
+	const std::string& loggerName, const mrpt::system::TTimeStamp timestamp)
 {
 	// Remove trailing \n if present
 	std::string tmsg = msg;
@@ -73,23 +78,40 @@ inline void mrptToROSLoggerCallback(
 		tmsg.erase(tmsg.end() - 1);
 	}
 
-	if (level == mrpt::utils::LVL_DEBUG)
+	if (level == LVL_DEBUG)
 	{
 		ROS_DEBUG("%s", tmsg.c_str());
 	}
-	else if (level == mrpt::utils::LVL_INFO)
+	else if (level == LVL_INFO)
 	{
 		ROS_INFO("%s", tmsg.c_str());
 	}
-	else if (level == mrpt::utils::LVL_WARN)
+	else if (level == LVL_WARN)
 	{
 		ROS_WARN("%s", tmsg.c_str());
 	}
-	else if (level == mrpt::utils::LVL_ERROR)
+	else if (level == LVL_ERROR)
 	{
 		ROS_ERROR("%s", tmsg.c_str());
 	}
 }
+inline void mrptToROSLoggerCallback_mrpt_15(
+	const std::string& msg, const VerbosityLevel level,
+	const std::string& loggerName, const mrpt::system::TTimeStamp timestamp,
+	void* userParam)
+{
+    mrptToROSLoggerCallback(msg,level,loggerName,timestamp);
+}
+
+inline mrpt::math::TPose3D p2t(const mrpt::poses::CPose3D &p)
+{
+#if MRPT_VERSION>=0x199
+	return p.asTPose();
+#else
+	return TPose3D(p);
+#endif
+}
+
 }  // namespace mrpt_bridge
 
 #endif  // MRPT_BRIDGE_UTILS_H

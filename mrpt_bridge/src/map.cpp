@@ -20,6 +20,10 @@ using mrpt::maps::CMultiMetricMap;
 using mrpt::maps::CSimpleMap;
 using mrpt::maps::CLogOddsGridMapLUT;
 
+#if MRPT_VERSION>=0x199
+#include <mrpt/serialization/CArchive.h>
+#endif
+
 #ifndef INT8_MAX  // avoid duplicated #define's
 #define INT8_MAX 0x7f
 #define INT8_MIN (-INT8_MAX - 1)
@@ -195,7 +199,12 @@ const bool MapHdl::loadMap(
 		{
 			// It's a ".simplemap":
 			if (_debug) printf("Loading '.simplemap' file...");
-			mrpt::utils::CFileGZInputStream(_map_file) >> simpleMap;
+			mrpt::utils::CFileGZInputStream f(_map_file);
+#if MRPT_VERSION>=0x199
+			mrpt::serialization::archiveFrom(f) >> simpleMap;
+#else
+			f >> simpleMap;
+#endif
 			printf("Ok\n");
 
 			ASSERTMSG_(
@@ -215,8 +224,12 @@ const bool MapHdl::loadMap(
 				_metric_map.m_gridMaps.size() == 1,
 				"Error: Trying to load a gridmap into a multi-metric map "
 				"requires 1 gridmap member.");
-			mrpt::utils::CFileGZInputStream(_map_file) >>
-				(*_metric_map.m_gridMaps[0]);
+			mrpt::utils::CFileGZInputStream fm(_map_file);
+#if MRPT_VERSION>=0x199
+			mrpt::serialization::archiveFrom(fm) >> (*_metric_map.m_gridMaps[0]);
+#else
+			fm >> (*_metric_map.m_gridMaps[0]);
+#endif
 			if (_debug) printf("Ok\n");
 		}
 		else

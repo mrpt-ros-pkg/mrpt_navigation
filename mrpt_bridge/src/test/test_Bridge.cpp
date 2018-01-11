@@ -32,11 +32,9 @@
 #include <dirent.h>
 
 
-
 using namespace sensor_msgs;
 using namespace mrpt::obs;
 using namespace mrpt::system;
-using namespace mrpt::utils;
 using namespace mrpt;
 using namespace std;
 using namespace cv;
