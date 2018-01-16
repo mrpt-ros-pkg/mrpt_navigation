@@ -6,8 +6,18 @@
 
 // Only include MRPT classes that are really used to avoid slow down compilation
 #include <mrpt/random.h>
+
+#if MRPT_VERSION >= 0x199
+#include <mrpt/config/CConfigFile.h>
+#include <mrpt/io/CFileGZInputStream.h>
+using namespace mrpt::config;
+using namespace mrpt::io;
+#else
 #include <mrpt/utils/CConfigFile.h>
 #include <mrpt/utils/CFileGZInputStream.h>
+using namespace mrpt::utils;
+#endif
+
 #include <mrpt/system/filesystem.h>  // for fileExists()
 #include <mrpt/system/string_utils.h>  // for lowerCase()
 
@@ -15,12 +25,12 @@
 #include <mrpt/maps/COccupancyGridMap2D.h>
 #include <mrpt/maps/CMultiMetricMap.h>
 #include <mrpt/maps/CSimpleMap.h>
-using mrpt::maps::COccupancyGridMap2D;
-using mrpt::maps::CMultiMetricMap;
-using mrpt::maps::CSimpleMap;
 using mrpt::maps::CLogOddsGridMapLUT;
+using mrpt::maps::CMultiMetricMap;
+using mrpt::maps::COccupancyGridMap2D;
+using mrpt::maps::CSimpleMap;
 
-#if MRPT_VERSION>=0x199
+#if MRPT_VERSION >= 0x199
 #include <mrpt/serialization/CArchive.h>
 #endif
 
@@ -155,7 +165,7 @@ bool convert(const COccupancyGridMap2D& src, nav_msgs::OccupancyGrid& des)
 }
 
 const bool MapHdl::loadMap(
-	CMultiMetricMap& _metric_map, const mrpt::utils::CConfigFile& _config_file,
+	CMultiMetricMap& _metric_map, const CConfigFile& _config_file,
 	const std::string& _map_file, const std::string& _section_name, bool _debug)
 {
 	using namespace mrpt::maps;
@@ -169,10 +179,10 @@ const bool MapHdl::loadMap(
 	_metric_map.setListOfMaps(&mapInitializers);
 	if (_debug) mapInitializers.dumpToConsole();
 
-#if MRPT_VERSION>=0x199
-	auto &r = mrpt::random::getRandomGenerator();
+#if MRPT_VERSION >= 0x199
+	auto& r = mrpt::random::getRandomGenerator();
 #else
-	auto &r = mrpt::random::randomGenerator;
+	auto& r = mrpt::random::randomGenerator;
 #endif
 	r.randomize();
 
@@ -191,16 +201,16 @@ const bool MapHdl::loadMap(
 		ASSERT_(mrpt::system::fileExists(_map_file));
 
 		// Detect file extension:
-		std::string mapExt = mrpt::system::lowerCase(
-			mrpt::system::extractFileExtension(
+		std::string mapExt =
+			mrpt::system::lowerCase(mrpt::system::extractFileExtension(
 				_map_file, true));  // Ignore possible .gz extensions
 
 		if (!mapExt.compare("simplemap"))
 		{
 			// It's a ".simplemap":
 			if (_debug) printf("Loading '.simplemap' file...");
-			mrpt::utils::CFileGZInputStream f(_map_file);
-#if MRPT_VERSION>=0x199
+			CFileGZInputStream f(_map_file);
+#if MRPT_VERSION >= 0x199
 			mrpt::serialization::archiveFrom(f) >> simpleMap;
 #else
 			f >> simpleMap;
@@ -224,9 +234,10 @@ const bool MapHdl::loadMap(
 				_metric_map.m_gridMaps.size() == 1,
 				"Error: Trying to load a gridmap into a multi-metric map "
 				"requires 1 gridmap member.");
-			mrpt::utils::CFileGZInputStream fm(_map_file);
-#if MRPT_VERSION>=0x199
-			mrpt::serialization::archiveFrom(fm) >> (*_metric_map.m_gridMaps[0]);
+			CFileGZInputStream fm(_map_file);
+#if MRPT_VERSION >= 0x199
+			mrpt::serialization::archiveFrom(fm) >>
+				(*_metric_map.m_gridMaps[0]);
 #else
 			fm >> (*_metric_map.m_gridMaps[0]);
 #endif
@@ -234,13 +245,12 @@ const bool MapHdl::loadMap(
 		}
 		else
 		{
-			THROW_EXCEPTION(
-				mrpt::format(
-					"Map file has unknown extension: '%s'", mapExt.c_str()));
+			THROW_EXCEPTION(mrpt::format(
+				"Map file has unknown extension: '%s'", mapExt.c_str()));
 			return false;
 		}
 	}
 	return true;
 }
 
-}  // end namespace
+}  // namespace mrpt_bridge

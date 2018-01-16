@@ -45,6 +45,16 @@
 #include <mrpt/obs/CObservationBeaconRanges.h>
 using namespace mrpt::obs;
 
+#include <mrpt/version.h>
+//
+#if MRPT_VERSION >= 0x199
+#include <mrpt/system/COutputLogger.h>
+using namespace mrpt::system;
+#else
+#include <mrpt/utils/COutputLogger.h>
+using namespace mrpt::utils;
+#endif
+
 #include <mrpt/obs/CObservationRobotPose.h>
 
 #include "mrpt_localization_node.h"
@@ -652,9 +662,8 @@ void PFLocalizationNode::useROSLogLevel()
 	ros::console::get_loggers(loggers);
 	if (loggers.find("ros.roscpp") != loggers.end())
 		pdf_.setVerbosityLevel(
-			static_cast<mrpt::utils::VerbosityLevel>(loggers["ros.roscpp"]));
+			static_cast<VerbosityLevel>(loggers["ros.roscpp"]));
 	if (loggers.find("ros.mrpt_localization") != loggers.end())
 		pdf_.setVerbosityLevel(
-			static_cast<mrpt::utils::VerbosityLevel>(
-				loggers["ros.mrpt_localization"]));
+			static_cast<VerbosityLevel>(loggers["ros.mrpt_localization"]));
 }

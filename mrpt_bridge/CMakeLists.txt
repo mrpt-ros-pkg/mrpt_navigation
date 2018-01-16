@@ -14,13 +14,8 @@ find_package(PCL 1.3 REQUIRED COMPONENTS common io)
 include_directories(${PCL_INCLUDE_DIRS})
 add_definitions(${PCL_DEFINITIONS})
 
-find_package(MRPT 1.5 REQUIRED)
+find_package(MRPT 1.5 REQUIRED obs graphs maps slam)
 message(STATUS "MRPT_VERSION: ${MRPT_VERSION}")
-if (MRPT_VERSION VERSION_LESS 1.9.9)
-	find_package(MRPT REQUIRED obs graphs maps slam)
-else()
-	find_package(MRPT REQUIRED obs graphs maps slam)
-endif()
 
 if (CMAKE_COMPILER_IS_GNUCXX)
 	# High level of warnings.

@@ -37,8 +37,18 @@
 #include <iostream>
 #include <stdint.h>
 #include <mrpt_localization/mrpt_localization_core.h>
-#include <mrpt/utils/CConfigFile.h>
 #include <mrpt/gui/CDisplayWindow3D.h>
+
+#if MRPT_VERSION >= 0x199
+#include <mrpt/config/CConfigFile.h>
+#include <mrpt/io/CFileGZInputStream.h>
+using namespace mrpt::config;
+using namespace mrpt::io;
+#else
+#include <mrpt/utils/CConfigFile.h>
+#include <mrpt/utils/CFileGZInputStream.h>
+using namespace mrpt::utils;
+#endif
 
 class PFLocalization : public PFLocalizationCore
 {
@@ -66,7 +76,7 @@ class PFLocalization : public PFLocalizationCore
 	void init();
 	void init3DDebug();
 	void show3DDebug(CSensoryFrame::Ptr _observations);
-	void configureFilter(const mrpt::utils::CConfigFile& _configFile);
+	void configureFilter(const CConfigFile& _configFile);
 	virtual bool waitForMap() { return false; }
 	mrpt::gui::CDisplayWindow3D::Ptr win3D_;
 	mrpt::opengl::COpenGLScene scene_;

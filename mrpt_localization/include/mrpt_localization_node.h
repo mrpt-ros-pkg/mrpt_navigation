@@ -48,7 +48,6 @@
 #include <nav_msgs/MapMetaData.h>
 #include <dynamic_reconfigure/server.h>
 
-#include <mrpt/math.h>
 #include <mrpt/version.h>
 #include <mrpt/obs/CObservationOdometry.h>
 using mrpt::obs::CObservationOdometry;

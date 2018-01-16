@@ -38,7 +38,14 @@
 #include <stdint.h>
 #include <boost/interprocess/sync/interprocess_mutex.hpp>
 
+#if MRPT_VERSION >= 0x199
+#include <mrpt/io/CFileGZInputStream.h>
+using namespace mrpt::io;
+#else
 #include <mrpt/utils/CFileGZInputStream.h>
+using namespace mrpt::utils;
+#endif
+
 #include <mrpt/poses/CPose3DPDFGaussian.h>
 
 #include <mrpt/version.h>
@@ -60,7 +67,7 @@ class RawlogPlay
 
    protected:
 	Parameters* param_;
-	mrpt::utils::CFileGZInputStream rawlog_stream_;
+	CFileGZInputStream rawlog_stream_;
 	mrpt::poses::CPose3DPDFGaussian robotPose;
 	size_t entry_;
 };

@@ -43,7 +43,6 @@
 #include <thread>
 #include <chrono>
 
-
 using namespace mrpt;
 using namespace mrpt::slam;
 using namespace mrpt::opengl;
@@ -58,7 +57,7 @@ using namespace std;
 using namespace mrpt::maps;
 using namespace mrpt::obs;
 
-#if MRPT_VERSION>=0x199
+#if MRPT_VERSION >= 0x199
 using namespace mrpt::img;
 using namespace mrpt::config;
 #else
@@ -80,7 +79,8 @@ void PFLocalization::init()
 	ini_file.setFileName(param_->ini_file);
 	log_info("CConfigFile %s", param_->ini_file.c_str());
 
-	std::vector<int> particles_count;  // Number of initial particles (if size>1, run
+	std::vector<int>
+		particles_count;  // Number of initial particles (if size>1, run
 	// the experiments N times)
 
 	// Load configuration:
@@ -90,7 +90,8 @@ void PFLocalization::init()
 
 	// Mandatory entries:
 	ini_file.read_vector(
-		iniSectionName, "particles_count", std::vector<int>(1, 0), particles_count,
+		iniSectionName, "particles_count", std::vector<int>(1, 0),
+		particles_count,
 		/*Fail if not found*/ true);
 
 	if (param_->map_file.empty())
@@ -168,8 +169,7 @@ void PFLocalization::init()
 	if (param_->gui_mrpt) init3DDebug();
 }
 
-void PFLocalization::configureFilter(
-	const mrpt::utils::CConfigFile& _configFile)
+void PFLocalization::configureFilter(const CConfigFile& _configFile)
 {
 	// PF-algorithm Options:
 	// ---------------------------
@@ -268,27 +268,23 @@ void PFLocalization::show3DDebug(CSensoryFrame::Ptr _observations)
 			10, 10,
 			mrpt::format(
 				"timestamp: %s",
-				cur_obs_timestamp!=INVALID_TIMESTAMP ?
-				mrpt::system::dateTimeLocalToString(cur_obs_timestamp).c_str()
-				:
-				"(none)"
-				),
-			TColorf(.8f, .8f, .8f), "mono", 15, mrpt::opengl::NICE,
-			6001);
+				cur_obs_timestamp != INVALID_TIMESTAMP
+					? mrpt::system::dateTimeLocalToString(cur_obs_timestamp)
+						  .c_str()
+					: "(none)"),
+			TColorf(.8f, .8f, .8f), "mono", 15, mrpt::opengl::NICE, 6001);
 
 		win3D_->addTextMessage(
 			10, 33,
 			mrpt::format(
 				"#particles= %7u", static_cast<unsigned int>(pdf_.size())),
-			TColorf(.8f, .8f, .8f), "mono", 15, mrpt::opengl::NICE,
-			6002);
+			TColorf(.8f, .8f, .8f), "mono", 15, mrpt::opengl::NICE, 6002);
 
 		win3D_->addTextMessage(
 			10, 55,
 			mrpt::format(
 				"mean pose (x y phi_deg)= %s", meanPose.asString().c_str()),
-			TColorf(.8f, .8f, .8f), "mono", 15, mrpt::opengl::NICE,
-			6003);
+			TColorf(.8f, .8f, .8f), "mono", 15, mrpt::opengl::NICE, 6003);
 
 		// The particles:
 		{
@@ -342,7 +338,8 @@ void PFLocalization::show3DDebug(CSensoryFrame::Ptr _observations)
 			map.clear();
 			_observations->insertObservationsInto(&map);
 
-			dynamic_cast<CPointCloud*>(scan_pts.get())->loadFromPointsMap(&last_map);
+			dynamic_cast<CPointCloud*>(scan_pts.get())
+				->loadFromPointsMap(&last_map);
 			dynamic_cast<CPointCloud*>(scan_pts.get())->setPose(robot_pose_3D);
 			last_map = map;
 		}
@@ -370,6 +367,7 @@ void PFLocalization::show3DDebug(CSensoryFrame::Ptr _observations)
 		// Update:
 		win3D_->forceRepaint();
 
-		std::this_thread::sleep_for(std::chrono::milliseconds(SHOW_PROGRESS_3D_REAL_TIME_DELAY_MS_));
+		std::this_thread::sleep_for(
+			std::chrono::milliseconds(SHOW_PROGRESS_3D_REAL_TIME_DELAY_MS_));
 	}
 }

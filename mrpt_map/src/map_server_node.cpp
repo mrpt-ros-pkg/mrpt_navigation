@@ -35,18 +35,21 @@
 #include <mrpt_bridge/map.h>
 
 #include <mrpt/system/filesystem.h>  // ASSERT_FILE_EXISTS_()
-#include <mrpt/utils/CConfigFile.h>
-
 #include <mrpt/version.h>
+#if MRPT_VERSION >= 0x199
+#include <mrpt/config/CConfigFile.h>
+using namespace mrpt::config;
+#else
+#include <mrpt/utils/CConfigFile.h>
+using namespace mrpt::utils;
+#endif
+
 #include <mrpt/maps/COccupancyGridMap2D.h>
 #include <mrpt/maps/CMultiMetricMap.h>
-using mrpt::maps::COccupancyGridMap2D;
 using mrpt::maps::CMultiMetricMap;
+using mrpt::maps::COccupancyGridMap2D;
 
-MapServer::MapServer(ros::NodeHandle& n)
-	: n_(n)
-{
-}
+MapServer::MapServer(ros::NodeHandle& n) : n_(n) {}
 
 MapServer::~MapServer() {}
 void MapServer::init()
@@ -80,7 +83,7 @@ void MapServer::init()
 		ROS_ERROR("map_file: %s does not exit", map_file.c_str());
 	}
 	ASSERT_FILE_EXISTS_(ini_file);
-	mrpt::utils::CConfigFile config_file;
+	CConfigFile config_file;
 	config_file.setFileName(ini_file);
 	metric_map_ = boost::shared_ptr<CMultiMetricMap>(new CMultiMetricMap);
 	mrpt_bridge::MapHdl::loadMap(

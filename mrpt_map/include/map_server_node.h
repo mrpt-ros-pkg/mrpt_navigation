@@ -39,8 +39,15 @@
 #include "nav_msgs/GetMap.h"
 #include "boost/smart_ptr.hpp"
 
-#include <mrpt/utils/CConfigFile.h>
 #include <mrpt/version.h>
+#if MRPT_VERSION >= 0x199
+#include <mrpt/config/CConfigFile.h>
+using namespace mrpt::config;
+#else
+#include <mrpt/utils/CConfigFile.h>
+using namespace mrpt::utils;
+#endif
+
 #include <mrpt/maps/CMultiMetricMap.h>
 using mrpt::maps::CMultiMetricMap;
 
@@ -54,10 +61,10 @@ class MapServer
 
    private:
 	ros::NodeHandle n_;
-	ros::NodeHandle n_param_ {"~"};
-	double frequency_ {0};
+	ros::NodeHandle n_param_{"~"};
+	double frequency_{0};
 	unsigned long loop_count_{0};
-	bool debug_ {true};
+	bool debug_{true};
 	ros::Publisher pub_map_ros_;
 	ros::Publisher pub_metadata_;
 	ros::ServiceServer service_map_;

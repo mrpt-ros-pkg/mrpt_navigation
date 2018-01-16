@@ -48,7 +48,7 @@ using namespace mrpt::nav;
 using mrpt::maps::CSimplePointsMap;
 
 #include <mrpt/version.h>
-#if MRPT_VERSION>=0x199
+#if MRPT_VERSION >= 0x199
 #include <mrpt/system/CTimeLogger.h>
 #include <mrpt/config/CConfigFileMemory.h>
 #include <mrpt/config/CConfigFile.h>
@@ -157,10 +157,13 @@ class ReactiveNav2DNode
 			mrpt_bridge::convert(txRobotPose, curRobotPose);
 
 			mrpt_bridge::convert(txRobotPose.stamp_, timestamp);
-			curPose = mrpt::math::TPose2D(
-				mrpt::poses::CPose2D(curRobotPose));  // Explicit 3d->2d to
-			// confirm we know we're
-			// losing information
+			// Explicit 3d->2d to confirm we know we're losing information
+			curPose =
+#if MRPT_VERSION >= 0x199
+				mrpt::poses::CPose2D(curRobotPose).asTPose();
+#else
+				mrpt::math::TPose2D(mrpt::poses::CPose2D(curRobotPose));
+#endif
 			curOdometry = curPose;
 
 			curV = curW = 0;
@@ -217,7 +220,7 @@ class ReactiveNav2DNode
 		 * \return false on any error. */
 		virtual bool stopWatchdog() override { return true; }
 		/** Return the current set of obstacle points.
-		  * \return false on any error. */
+		 * \return false on any error. */
 		bool senseObstacles(
 			CSimplePointsMap& obstacles,
 			mrpt::system::TTimeStamp& timestamp) override
@@ -433,10 +436,8 @@ class ReactiveNav2DNode
 			}
 		}
 
-		this->navigateTo(
-			mrpt::math::TPose2D(
-				trg.pose.position.x, trg.pose.position.y,
-				trg.pose.orientation.z));
+		this->navigateTo(mrpt::math::TPose2D(
+			trg.pose.position.x, trg.pose.position.y, trg.pose.orientation.z));
 	}
 
 	void onRosLocalObstacles(const sensor_msgs::PointCloudConstPtr& obs)
