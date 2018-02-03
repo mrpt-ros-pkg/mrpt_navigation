@@ -38,6 +38,7 @@
 #include <stdint.h>
 #include <boost/interprocess/sync/interprocess_mutex.hpp>
 
+#include <mrpt/version.h>
 #if MRPT_VERSION >= 0x199
 #include <mrpt/io/CFileGZInputStream.h>
 using namespace mrpt::io;
