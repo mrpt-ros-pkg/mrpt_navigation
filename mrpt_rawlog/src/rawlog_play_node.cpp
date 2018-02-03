@@ -89,6 +89,68 @@ void RawlogPlayNode::init()
 	robotPose = mrpt::poses::CPose3DPDFGaussian();
 }
 
+void RawlogPlayNode::publishSingleObservation(
+	const mrpt::obs::CObservation::Ptr& o)
+{
+	mrpt::poses::CPose3D pose_sensor;
+	o->getSensorPose(pose_sensor);
+
+	geometry_msgs::Pose msg_pose_sensor;
+	tf::Transform transform;
+
+	if (IS_CLASS(o, CObservation2DRangeScan))
+	{  // laser observation detected
+		auto laser = mrpt::ptr_cast<CObservation2DRangeScan>::from(o);
+		mrpt_bridge::convert(*laser, msg_laser_, msg_pose_sensor);
+		if (msg_laser_.header.frame_id.empty())
+			msg_laser_.header.frame_id = "laser_link";
+		std::string childframe =
+			tf::resolve(param()->tf_prefix, msg_laser_.header.frame_id);
+		msg_laser_.header.stamp = ros::Time::now();
+		mrpt_bridge::convert(pose_sensor, transform);
+		tf_broadcaster_.sendTransform(tf::StampedTransform(
+			transform, msg_laser_.header.stamp + ros::Duration(0.05),
+			base_frame_, childframe));
+		pub_laser_.publish(msg_laser_);
+	}
+	else if (IS_CLASS(o, CObservationBeaconRanges))
+	{
+		auto beacon = mrpt::ptr_cast<CObservationBeaconRanges>::from(o);
+		mrpt_bridge::convert(*beacon, msg_beacon_, msg_pose_sensor);
+		if (msg_beacon_.header.frame_id.empty())
+			msg_beacon_.header.frame_id = "beacon_link";
+		std::string childframe =
+			tf::resolve(param()->tf_prefix, msg_beacon_.header.frame_id);
+		msg_beacon_.header.stamp = ros::Time::now();
+		mrpt_bridge::convert(pose_sensor, transform);
+		tf_broadcaster_.sendTransform(tf::StampedTransform(
+			transform, msg_beacon_.header.stamp + ros::Duration(0.05),
+			base_frame_, childframe));
+		pub_beacon_.publish(msg_beacon_);
+	}
+	else if (IS_CLASS(o, CObservationBearingRange))
+	{
+		auto landmark = mrpt::ptr_cast<CObservationBearingRange>::from(o);
+		mrpt_bridge::convert(*landmark, msg_landmark_, msg_pose_sensor);
+		if (msg_landmark_.header.frame_id.empty())
+			msg_landmark_.header.frame_id = "landmark_link";
+		std::string childframe =
+			tf::resolve(param()->tf_prefix, msg_landmark_.header.frame_id);
+		msg_landmark_.header.stamp = ros::Time::now();
+		mrpt_bridge::convert(pose_sensor, transform);
+		tf_broadcaster_.sendTransform(tf::StampedTransform(
+			transform, msg_landmark_.header.stamp + ros::Duration(0.05),
+			base_frame_, childframe));
+		pub_landmark_.publish(msg_landmark_);
+	}
+	else
+	{
+		ROS_WARN(
+			"Observation mapping to ROS not implemented: %s",
+			o->GetRuntimeClass()->className);
+	}
+}  // end publishSingleObservation()
+
 bool RawlogPlayNode::nextEntry()
 {
 	CActionCollection::Ptr action;
@@ -107,75 +169,13 @@ bool RawlogPlayNode::nextEntry()
 		ROS_INFO("end of stream!");
 		return true;
 	}
-	mrpt::poses::CPose3D pose_sensor;
-	geometry_msgs::Pose msg_pose_sensor;
 	tf::Transform transform;
 
-	// loop over laser overservations
-	for (size_t i = 0; i < observations->size(); i++)
-	{
-		CObservation2DRangeScan::Ptr laser =
-			observations->getObservationByClass<CObservation2DRangeScan>(i);
-		CObservationBeaconRanges::Ptr beacon =
-			observations->getObservationByClass<CObservationBeaconRanges>(i);
-		CObservationBearingRange::Ptr landmark =
-			observations->getObservationByClass<CObservationBearingRange>(i);
-		if (laser)
-		{  // laser observation detected
-			mrpt_bridge::convert(*laser, msg_laser_, msg_pose_sensor);
-			laser->getSensorPose(pose_sensor);
-			if (msg_laser_.header.frame_id.empty())
-				msg_laser_.header.frame_id = "laser_link";
-			std::string childframe =
-				tf::resolve(param()->tf_prefix, msg_laser_.header.frame_id);
-			msg_laser_.header.stamp = ros::Time::now();
-			mrpt_bridge::convert(pose_sensor, transform);
-			tf_broadcaster_.sendTransform(tf::StampedTransform(
-				transform, msg_laser_.header.stamp + ros::Duration(0.05),
-				base_frame_, childframe));
-			pub_laser_.publish(msg_laser_);
-			laser =
-				observations->getObservationByClass<CObservation2DRangeScan>();
-		}
-		else if (beacon)
-		{
-			mrpt_bridge::convert(*beacon, msg_beacon_, msg_pose_sensor);
-			beacon->getSensorPose(pose_sensor);
-			if (msg_beacon_.header.frame_id.empty())
-				msg_beacon_.header.frame_id = "beacon_link";
-			std::string childframe =
-				tf::resolve(param()->tf_prefix, msg_beacon_.header.frame_id);
-			msg_beacon_.header.stamp = ros::Time::now();
-			mrpt_bridge::convert(pose_sensor, transform);
-			tf_broadcaster_.sendTransform(tf::StampedTransform(
-				transform, msg_beacon_.header.stamp + ros::Duration(0.05),
-				base_frame_, childframe));
-			pub_beacon_.publish(msg_beacon_);
-			beacon =
-				observations->getObservationByClass<CObservationBeaconRanges>();
-		}
-		else if (landmark)
-		{
-			mrpt_bridge::convert(*landmark, msg_landmark_, msg_pose_sensor);
-			landmark->getSensorPose(pose_sensor);
-			if (msg_landmark_.header.frame_id.empty())
-				msg_landmark_.header.frame_id = "landmark_link";
-			std::string childframe =
-				tf::resolve(param()->tf_prefix, msg_landmark_.header.frame_id);
-			msg_landmark_.header.stamp = ros::Time::now();
-			mrpt_bridge::convert(pose_sensor, transform);
-			tf_broadcaster_.sendTransform(tf::StampedTransform(
-				transform, msg_landmark_.header.stamp + ros::Duration(0.05),
-				base_frame_, childframe));
-			pub_landmark_.publish(msg_landmark_);
-			landmark =
-				observations->getObservationByClass<CObservationBearingRange>();
-		}
-		else
-		{
-			break;
-		}
-	}
+	// Process single obs, if present:
+	if (obs) publishSingleObservation(obs);
+	// and process all obs into a CSensoryFrame, if present:
+	for (const auto& o : *observations) publishSingleObservation(o);
+
 	mrpt::poses::CPose3DPDFGaussian out_pose_increment;
 	action->getFirstMovementEstimation(out_pose_increment);
 	robotPose -= out_pose_increment;

@@ -44,6 +44,8 @@
 #include "mrpt_rawlog_play/rawlog_play.h"
 #include <mrpt_msgs/ObservationRangeBeacon.h>
 #include <mrpt_msgs/ObservationRangeBearing.h>
+#include <mrpt/obs/CObservation.h>
+
 /// ROS Node
 class RawlogPlayNode : public RawlogPlay
 {
@@ -58,8 +60,8 @@ class RawlogPlayNode : public RawlogPlay
 			mrpt_rawlog::RawLogRecordConfig& config, uint32_t level);
 		dynamic_reconfigure::Server<mrpt_rawlog::RawLogRecordConfig>
 			reconfigureServer_;
-		dynamic_reconfigure::Server<mrpt_rawlog::RawLogRecordConfig>::CallbackType
-			reconfigureFnc_;
+		dynamic_reconfigure::Server<
+			mrpt_rawlog::RawLogRecordConfig>::CallbackType reconfigureFnc_;
 		void update(const unsigned long& loop_count);
 		double rate;
 		std::string base_frame;
@@ -76,6 +78,7 @@ class RawlogPlayNode : public RawlogPlay
    private:  // functions
 	ParametersNode* param();
 	bool nextEntry();
+	void publishSingleObservation(const mrpt::obs::CObservation::Ptr& o);
 
    private:  // variables
 	ros::NodeHandle n_;
