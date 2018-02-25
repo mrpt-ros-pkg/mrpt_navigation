@@ -124,12 +124,9 @@ int main(int argc, char **argv)
     string file_path1 = "/home/raghavender/catkin_ws/src/mrpt_navigation/mrpt_bridge/src/images";
 
     dir = opendir(file_path1.c_str());
-    while(pdir = readdir(dir))
-    {
-        char *temp_filepath  = pdir->d_name;
+    while((pdir = readdir(dir)))
         files.push_back(pdir->d_name);
-    }
-    for(int i=0,j=0 ; i<files.size() ; i++)
+    for(unsigned int i=0,j=0 ; i<files.size() ; i++)
     {
         if(files.at(i).size() > 4) // this removes the . and .. in linux as all files will have size more than 4 .png .jpg etc.
         {
@@ -155,12 +152,9 @@ int main(int argc, char **argv)
     string file_path_right = "/home/raghavender/catkin_ws/src/mrpt_navigation/mrpt_bridge/src/stereo_images/right";
 
     dir1 = opendir(file_path_left.c_str());
-    while(pdir1 = readdir(dir1))
-    {
-        char *temp_filepath  = pdir1->d_name;
+    while((pdir1 = readdir(dir1)))
         files1.push_back(pdir1->d_name);
-    }
-    for(int i=0,j=0 ; i<files1.size() ; i++)
+    for(unsigned int i=0,j=0 ; i<files1.size() ; i++)
     {
         if(files1.at(i).size() > 4) // this removes the . and .. in linux as all files will have size more than 4 .png .jpg etc.
         {
@@ -172,12 +166,9 @@ int main(int argc, char **argv)
 
     ///right images
     dir2 = opendir(file_path_right.c_str());
-    while(pdir2 = readdir(dir2))
-    {
-        char *temp_filepath  = pdir2->d_name;
+    while((pdir2 = readdir(dir2)))
         files2.push_back(pdir2->d_name);
-    }
-    for(int i=0,j=0 ; i<files2.size() ; i++)
+    for(unsigned int i=0,j=0 ; i<files2.size() ; i++)
     {
         if(files2.at(i).size() > 4) // this removes the . and .. in linux as all files will have size more than 4 .png .jpg etc.
         {
