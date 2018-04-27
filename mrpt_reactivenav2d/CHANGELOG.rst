@@ -2,6 +2,31 @@
 Changelog for package mrpt_reactivenav2d
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.1.20 (2018-04-26)
+-------------------
+* fix build against mrpt 2.0
+* partial fix build w mrpt 2.0
+* optimized build (-O3)
+* fix build errors against mrpt 1.5.5
+* Merge branch 'master' of github.com:tuw-robotics/mrpt_navigation
+* Merge branch 'master' into master
+* CMake finds MRPT >=1.5 in ROS master branch
+* Merge branch 'master' into compat-mrpt-1.5
+* CMake finds MRPT >=1.9
+* avoid Eigen warnings with GCC-7
+* Removed unnecessry MRPT_VERSION checks
+* Fixes for clang format
+* Removed c++11 declarations in cmake
+* Fixed error in demo launch file
+* Adapted CMakeLists to new mrpt
+* Ported to a new version of MRPT
+* Issue `#75 <https://github.com/mrpt-ros-pkg/mrpt_navigation/issues/75>`_: fix mrpt_reactivenav2d compilation errors
+* Issue `#75 <https://github.com/mrpt-ros-pkg/mrpt_navigation/issues/75>`_: fix mrpt_reactivenav2d compilation errors
+* deprecated mrpt 2.0 module names
+* Update launch file to work with MRPT 1.5.0
+* fix build with MRPT 1.5.0
+* Contributors: Borys Tymchenko, Jose Luis Blanco, Jose Luis Blanco Claraco, Jose Luis Blanco-Claraco, Markus Bader, corot
+
 0.1.18 (2017-01-22)
 -------------------
 

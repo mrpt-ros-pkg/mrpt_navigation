@@ -2,6 +2,54 @@
 Changelog for package mrpt_localization
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.1.20 (2018-04-26)
+-------------------
+* fix build against mrpt 2.0
+* partial fix build w mrpt 2.0
+* fix build in mrpt 2.0
+* optimized build (-O3)
+* Fix travis (`#94 <https://github.com/mrpt-ros-pkg/mrpt_navigation/issues/94>`_)
+  * add dep stereo_msgs
+  * add dep stereo_msgs
+  * fix minor warnigngs and errors
+* fix use c++14
+* Merge branch 'master' of github.com:tuw-robotics/mrpt_navigation
+* Merge branch 'master' into master
+* CMake finds MRPT >=1.5 in ROS master branch
+* Merge branch 'master' into compat-mrpt-1.5
+* CMake finds MRPT >=1.9
+* avoid Eigen warnings with GCC-7
+* Removed unnecessry MRPT_VERSION checks
+* Fixes for clang format
+* Removed c++11 declarations in cmake
+* Adapted CMakeLists to new mrpt
+* Ported to a new version of MRPT
+* Merge pull request `#74 <https://github.com/mrpt-ros-pkg/mrpt_navigation/issues/74>`_ from bergercookie/devel
+  Use C++11 in mrpt_bridge, mrpt_localization
+* Merge pull request `#77 <https://github.com/mrpt-ros-pkg/mrpt_navigation/issues/77>`_ from corot/master
+  Allow using maps from topic
+* Allow using maps from topic
+* Use C++11 in mrpt_bridge, mrpt_localization
+* Merge pull request `#72 <https://github.com/mrpt-ros-pkg/mrpt_navigation/issues/72>`_ from bergercookie/devel
+  Add more conversion methods for CNetworkOfPoses classes
+* Correct include guard
+* Fix debug messages: (`#65 <https://github.com/mrpt-ros-pkg/mrpt_navigation/issues/65>`_)
+  * replace printf with log_info
+  * read and use debug param
+  * dumping to console only once
+  Also publish pose even if not updating the filter (sorry for mixing commits)
+* Fix debug messages:
+  * replace printf with log_info
+  * read and use debug param
+  * dumping to console only once
+  Also publish pose even if not updating the filter (sorry for mixing commits)
+* put right the covariance matrix initialization (`#63 <https://github.com/mrpt-ros-pkg/mrpt_navigation/issues/63>`_)
+* Merge pull request `#61 <https://github.com/mrpt-ros-pkg/mrpt_navigation/issues/61>`_ from corot/master
+  Prevent extrapolation into the past when publishing the tf
+* Fix a bug in the way I handle filter state
+* Prevent extrapolation into the past when publishing the tf and handle update/not update more nicelly. Also, ROS-format variables
+* Contributors: Ashish Raste, Borys Tymchenko, Jorge Santos, Jorge Santos Simón, Jose Luis Blanco Claraco, Jose Luis Blanco-Claraco, Markus Bader, Nikos Koukis, corot
+
 0.1.18 (2017-01-22)
 -------------------
 
