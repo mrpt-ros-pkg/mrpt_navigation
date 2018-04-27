@@ -15,8 +15,8 @@ Changelog for package mrpt_msgs
 * Add more msgs for use in mrpt_graphslam_2d
 * Contributors: Borys Tymchenko, Jose Luis Blanco-Claraco, Nikos Koukis
 
-Forthcoming
------------
+0.1.21 (2018-04-27)
+-------------------
 * Upgrade version 0.1.20 (`#99 <https://github.com/mrpt-ros-pkg/mrpt_navigation/issues/99>`_)
 * Merge branch 'master' into master
 * Merge branch 'master' into compat-mrpt-1.5

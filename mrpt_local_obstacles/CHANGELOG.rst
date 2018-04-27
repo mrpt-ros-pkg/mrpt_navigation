@@ -24,8 +24,8 @@ Changelog for package mrpt_local_obstacles
 * Ported to a new version of MRPT
 * Contributors: Borys Tymchenko, Jose Luis Blanco Claraco, Jose Luis Blanco-Claraco, Markus Bader
 
-Forthcoming
------------
+0.1.21 (2018-04-27)
+-------------------
 * Upgrade version 0.1.20 (`#99 <https://github.com/mrpt-ros-pkg/mrpt_navigation/issues/99>`_)
 * fix build against mrpt 2.0
 * partial fix build w mrpt 2.0

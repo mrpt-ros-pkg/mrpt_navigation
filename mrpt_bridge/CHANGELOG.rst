@@ -76,8 +76,8 @@ Changelog for package mrpt_bridge
 * also added the file test_Bridge to test the above conversions and publishing on respective ROS topics
 * Contributors: Raghavender Sahdev
 
-Forthcoming
------------
+0.1.21 (2018-04-27)
+-------------------
 * Upgrade version 0.1.20 (`#99 <https://github.com/mrpt-ros-pkg/mrpt_navigation/issues/99>`_)
 * fix warnings
 * fix build against mrpt 2.0
