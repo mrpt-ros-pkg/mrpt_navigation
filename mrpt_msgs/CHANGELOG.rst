@@ -15,6 +15,20 @@ Changelog for package mrpt_msgs
 * Add more msgs for use in mrpt_graphslam_2d
 * Contributors: Borys Tymchenko, Jose Luis Blanco-Claraco, Nikos Koukis
 
+Forthcoming
+-----------
+* Upgrade version 0.1.20 (`#99 <https://github.com/mrpt-ros-pkg/mrpt_navigation/issues/99>`_)
+* Merge branch 'master' into master
+* Merge branch 'master' into compat-mrpt-1.5
+* Adapted CMakeLists to new mrpt
+* Merge pull request `#72 <https://github.com/mrpt-ros-pkg/mrpt_navigation/issues/72>`_ from bergercookie/devel
+  Add more conversion methods for CNetworkOfPoses classes
+* update the definition of topic_namespace
+* Work towards mr-slam
+* Implement converion method for CNetworkOfPoses2DInf_NA specialization class
+* Add more msgs for use in mrpt_graphslam_2d
+* Contributors: Borys Tymchenko, Hunter Laux, Jose Luis Blanco-Claraco, Nikos Koukis
+
 0.1.18 (2017-01-22)
 -------------------
 

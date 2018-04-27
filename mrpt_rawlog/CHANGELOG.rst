@@ -35,6 +35,40 @@ Changelog for package mrpt_rawlog
 * [mrpt_rawlog] Fix missing rosbag dependency in package.xml.
 * Contributors: Borys Tymchenko, Jose Luis Blanco Claraco, Jose Luis Blanco-Claraco, Logrus, Markus Bader, Vladislav Tananaev
 
+Forthcoming
+-----------
+* Upgrade version 0.1.20 (`#99 <https://github.com/mrpt-ros-pkg/mrpt_navigation/issues/99>`_)
+* rawlog_play: clean up; support obs-only rawlog
+* fix missing mrpt/config hdr
+* fix build against mrpt 2.0
+* partial fix build w mrpt 2.0
+* optimized build (-O3)
+* Fix travis (`#94 <https://github.com/mrpt-ros-pkg/mrpt_navigation/issues/94>`_)
+  * add dep stereo_msgs
+  * add dep stereo_msgs
+  * fix minor warnigngs and errors
+* Use docker to run modern ROS distros in travis (`#93 <https://github.com/mrpt-ros-pkg/mrpt_navigation/issues/93>`_)
+* marker messages are also logged as beacons if needed
+* mrpt_rawlog recorder update
+* static tf in rawlog record fixed
+* marker msgs added
+* timestamp problem solved
+* Merge branch 'master' of github.com:tuw-robotics/mrpt_navigation
+* bearing readings added
+* Merge branch 'master' into master
+* CMake finds MRPT >=1.5 in ROS master branch
+* Merge branch 'master' into compat-mrpt-1.5
+* CMake finds MRPT >=1.9
+* avoid Eigen warnings with GCC-7
+* Removed unnecessry MRPT_VERSION checks
+* Fixes for clang format
+* Adapted CMakeLists to new mrpt
+* Ported to a new version of MRPT
+* Fix paths in demo_play_ekf(_2d).launch files.
+* [mrpt_rawlog] Fix missing rosbag dependency in package.xml. (`#66 <https://github.com/mrpt-ros-pkg/mrpt_navigation/issues/66>`_)
+* [mrpt_rawlog] Fix missing rosbag dependency in package.xml.
+* Contributors: Borys Tymchenko, Hunter Laux, Jose Luis Blanco Claraco, Jose Luis Blanco-Claraco, Logrus, Markus Bader, Vladislav Tananaev
+
 0.1.18 (2017-01-22)
 -------------------
 

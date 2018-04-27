@@ -5,6 +5,11 @@ Changelog for package mrpt_navigation
 0.1.20 (2018-04-26)
 -------------------
 
+Forthcoming
+-----------
+* Upgrade version 0.1.20 (`#99 <https://github.com/mrpt-ros-pkg/mrpt_navigation/issues/99>`_)
+* Contributors: Hunter Laux
+
 0.1.18 (2017-01-22)
 -------------------
 
