@@ -7,10 +7,11 @@ notifications:
 env:
   matrix:
     - CI_ROS_DISTRO=kinetic MRPT_BRANCH="2.0" MRPT_PPA="ppa:joseluisblancoc/mrpt"
+    - CI_ROS_DISTRO=melodic MRPT_BRANCH="2.0" MRPT_PPA="ppa:joseluisblancoc/mrpt"
     - CI_ROS_DISTRO=kinetic MRPT_BRANCH="1.5" MRPT_PPA="ppa:joseluisblancoc/mrpt-1.5"
 #    - ROS_DISTRO=kinetic BUILDER='catkin_make_isolated'   BUILDER='catkin_make'
 before_script:
-  - case $CI_ROS_DISTRO in "kinetic") export DISTRO=xenial;; "lunar") export DISTRO=xenial;; esac;
+  - case $CI_ROS_DISTRO in "kinetic") export DISTRO=xenial;; "melodic") export DISTRO=bionic;; esac;
   - export DOCKER_IMAGE=ubuntu:$DISTRO
   - export CI_SOURCE_PATH=$(pwd)
   - export REPOSITORY_NAME=${PWD##*/}
