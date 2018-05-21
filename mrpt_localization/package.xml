@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<package>
+<package format="2">
   <name>mrpt_localization</name>
   <version>0.1.21</version>
   <description>Package for robot 2D self-localization using dynamic or static (MRPT or ROS) maps.
@@ -19,26 +19,16 @@
 
   <buildtool_depend>catkin</buildtool_depend>
 
-  <build_depend>roscpp</build_depend>
-  <build_depend>tf</build_depend>
-  <build_depend>std_msgs</build_depend>
-  <build_depend>sensor_msgs</build_depend>
-  <build_depend>nav_msgs</build_depend>
-  <build_depend>mrpt_msgs</build_depend>
-  <build_depend>mrpt_bridge</build_depend>
-  <build_depend>pose_cov_ops</build_depend>
-  <build_depend>dynamic_reconfigure</build_depend>
-  <build_depend>mrpt</build_depend> <!-- Depend on mrpt system pkgs -->
+  <depend>mrpt1</depend>
+  <depend>roscpp</depend>
+  <depend>tf</depend>
+  <depend>std_msgs</depend>
+  <depend>sensor_msgs</depend>
+  <depend>nav_msgs</depend>
+  <depend>mrpt_msgs</depend>
+  <depend>mrpt_bridge</depend>
+  <depend>pose_cov_ops</depend>
+  <depend>dynamic_reconfigure</depend>
 
-  <run_depend>roscpp</run_depend>
-  <run_depend>tf</run_depend>
-  <run_depend>std_msgs</run_depend>
-  <run_depend>sensor_msgs</run_depend>
-  <run_depend>nav_msgs</run_depend>
-  <run_depend>mrpt_msgs</run_depend>
-  <run_depend>mrpt_bridge</run_depend>
-  <run_depend>pose_cov_ops</run_depend>
-  <run_depend>dynamic_reconfigure</run_depend>
-  <run_depend>mrpt</run_depend> <!-- Depend on mrpt system pkgs -->
 
 </package>

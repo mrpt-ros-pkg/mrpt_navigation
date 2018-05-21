@@ -1,4 +1,5 @@
-<package>
+<?xml version="1.0"?>
+<package format="2">
   <name>mrpt_navigation</name>
   <version>0.1.21</version>
   <description>
@@ -14,12 +15,12 @@
 
   <buildtool_depend>catkin</buildtool_depend>
 
-  <run_depend>mrpt_local_obstacles</run_depend>
-  <run_depend>mrpt_localization</run_depend>
-  <run_depend>mrpt_map</run_depend>
-  <run_depend>mrpt_rawlog</run_depend>
-  <run_depend>mrpt_reactivenav2d</run_depend>
-  <run_depend>mrpt_tutorials</run_depend>
+  <exec_depend>mrpt_local_obstacles</exec_depend>
+  <exec_depend>mrpt_localization</exec_depend>
+  <exec_depend>mrpt_map</exec_depend>
+  <exec_depend>mrpt_rawlog</exec_depend>
+  <exec_depend>mrpt_reactivenav2d</exec_depend>
+  <exec_depend>mrpt_tutorials</exec_depend>
 
   <export>
     <metapackage/>
