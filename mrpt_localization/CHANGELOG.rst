@@ -50,8 +50,8 @@ Changelog for package mrpt_localization
 * Prevent extrapolation into the past when publishing the tf and handle update/not update more nicelly. Also, ROS-format variables
 * Contributors: Ashish Raste, Borys Tymchenko, Jorge Santos, Jorge Santos Simón, Jose Luis Blanco Claraco, Jose Luis Blanco-Claraco, Markus Bader, Nikos Koukis, corot
 
-Forthcoming
------------
+0.1.22 (2018-05-22)
+-------------------
 * fix all catkin_lint errors
 * remove exec +x flag to cfg files
 * Contributors: Jose Luis Blanco-Claraco

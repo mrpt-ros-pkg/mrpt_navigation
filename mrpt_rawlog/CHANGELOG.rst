@@ -35,8 +35,8 @@ Changelog for package mrpt_rawlog
 * [mrpt_rawlog] Fix missing rosbag dependency in package.xml.
 * Contributors: Borys Tymchenko, Jose Luis Blanco Claraco, Jose Luis Blanco-Claraco, Logrus, Markus Bader, Vladislav Tananaev
 
-Forthcoming
------------
+0.1.22 (2018-05-22)
+-------------------
 * fix all catkin_lint errors
 * Contributors: Jose Luis Blanco-Claraco
 

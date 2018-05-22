@@ -27,8 +27,8 @@ Changelog for package mrpt_reactivenav2d
 * fix build with MRPT 1.5.0
 * Contributors: Borys Tymchenko, Jose Luis Blanco, Jose Luis Blanco Claraco, Jose Luis Blanco-Claraco, Markus Bader, corot
 
-Forthcoming
------------
+0.1.22 (2018-05-22)
+-------------------
 * fix all catkin_lint errors
 * Contributors: Jose Luis Blanco-Claraco
 

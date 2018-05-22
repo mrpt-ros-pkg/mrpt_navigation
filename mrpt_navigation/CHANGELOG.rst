@@ -2,8 +2,8 @@
 Changelog for package mrpt_navigation
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+0.1.22 (2018-05-22)
+-------------------
 * fix all catkin_lint errors
 * remove pkgs from metapkg list
 * Contributors: Jose Luis Blanco-Claraco
