@@ -2,6 +2,9 @@
 Changelog for package mrpt_rawlog
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+
 0.1.20 (2018-04-26)
 -------------------
 * rawlog_play: clean up; support obs-only rawlog
@@ -34,6 +37,7 @@ Changelog for package mrpt_rawlog
 * [mrpt_rawlog] Fix missing rosbag dependency in package.xml. (`#66 <https://github.com/mrpt-ros-pkg/mrpt_navigation/issues/66>`_)
 * [mrpt_rawlog] Fix missing rosbag dependency in package.xml.
 * Contributors: Borys Tymchenko, Jose Luis Blanco Claraco, Jose Luis Blanco-Claraco, Logrus, Markus Bader, Vladislav Tananaev
+
 
 0.1.22 (2018-05-22)
 -------------------

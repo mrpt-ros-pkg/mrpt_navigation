@@ -2,6 +2,10 @@
 Changelog for package mrpt_navigation
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* mrpt_bridge is out of this metapackage
+
 0.1.22 (2018-05-22)
 -------------------
 * fix all catkin_lint errors

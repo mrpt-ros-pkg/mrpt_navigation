@@ -2,6 +2,9 @@
 Changelog for package mrpt_map
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+
 0.1.20 (2018-04-26)
 -------------------
 * fix build against mrpt 2.0
@@ -18,6 +21,7 @@ Changelog for package mrpt_map
 * Fixes for clang format
 * Adapted CMakeLists to new mrpt
 * Contributors: Borys Tymchenko, Jose Luis Blanco Claraco, Jose Luis Blanco-Claraco, Markus Bader
+
 
 0.1.22 (2018-05-22)
 -------------------

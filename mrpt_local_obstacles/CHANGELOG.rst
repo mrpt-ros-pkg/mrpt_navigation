@@ -2,6 +2,9 @@
 Changelog for package mrpt_local_obstacles
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+
 0.1.22 (2018-05-22)
 -------------------
 * fix all catkin_lint errors
