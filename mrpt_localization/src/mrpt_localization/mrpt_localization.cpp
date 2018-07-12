@@ -312,8 +312,11 @@ void PFLocalization::show3DDebug(CSensoryFrame::Ptr _observations)
 				ptr_scene->insert(ellip);
 			}
 			ellip->setLocation(meanPose.x(), meanPose.y(), 0.05);
-
-			dynamic_cast<CEllipsoid*>(ellip.get())->setCovMatrix(cov, 2);
+#if MRPT_VERSION >= 0x199
+            dynamic_cast<CEllipsoid*>(ellip.get())->setCovMatrix(cov, 2);
+#else
+            /// ToDo
+#endif
 		}
 
 		// The laser scan:
