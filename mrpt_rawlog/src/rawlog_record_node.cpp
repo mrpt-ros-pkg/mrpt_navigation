@@ -67,7 +67,7 @@ RawlogRecordNode::ParametersNode* RawlogRecordNode::param()
 
 void RawlogRecordNode::init()
 {
-    updateRawLogName(mrpt::system::getCurrentLocalTime());
+    updateRawLogName(mrpt::system::now());
     ROS_INFO("rawlog file: %s", param_->raw_log_name.c_str());
     if (param_->record_range_scan) {
         subLaser_ = n_.subscribe("scan", 1, &RawlogRecordNode::callbackLaser, this);

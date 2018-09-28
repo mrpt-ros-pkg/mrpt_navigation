@@ -516,7 +516,11 @@ void PFLocalizationNode::publishParticles()
 		poseArray.poses.resize(pdf_.particlesCount());
 		for (size_t i = 0; i < pdf_.particlesCount(); i++)
 		{
-			mrpt::math::TPose2D p = pdf_.getParticlePose(i);
+#if MRPT_VERSION >= 0x199
+			mrpt::poses::CPose2D p(pdf_.getParticlePose(i));
+#else
+			mrpt::poses::CPose2D p = pdf_.getParticlePose(i);
+#endif
 			mrpt_bridge::convert(p, poseArray.poses[i]);
 		}
 		mrpt::poses::CPose2D p;

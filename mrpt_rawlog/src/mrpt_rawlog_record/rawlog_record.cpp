@@ -67,8 +67,7 @@ RawlogRecord::RawlogRecord(Parameters* param) : param_(param)
 }
 void RawlogRecord::updateRawLogName(const mrpt::system::TTimeStamp& t)
 {
-	uint64_t tmp = (t - ((uint64_t)116444736 * 1000000000));
-	time_t auxTime = tmp / (uint64_t)10000000;
+	time_t auxTime = mrpt::system::timestampTotime_t(t);
 	tm* ptm = localtime(&auxTime);
 	param_->raw_log_name = mrpt::format(
 		"%u-%02u-%02u--%02u-%02u-%02u--%s", 1900 + ptm->tm_year,
