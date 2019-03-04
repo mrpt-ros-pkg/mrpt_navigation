@@ -35,6 +35,8 @@
 
 #include <mrpt_rawlog_record/rawlog_record.h>
 #include <mrpt_rawlog_record/rawlog_record_defaults.h>
+#include <mrpt/system/string_utils.h>
+#include <mrpt/system/filesystem.h>
 
 RawlogRecord::~RawlogRecord()
 {
@@ -67,17 +69,10 @@ RawlogRecord::RawlogRecord(Parameters* param) : param_(param)
 }
 void RawlogRecord::updateRawLogName(const mrpt::system::TTimeStamp& t)
 {
-	uint64_t tmp = (t - ((uint64_t)116444736 * 1000000000));
-	time_t auxTime = tmp / (uint64_t)10000000;
-	tm* ptm = localtime(&auxTime);
-	param_->raw_log_name = mrpt::format(
-		"%u-%02u-%02u--%02u-%02u-%02u--%s", 1900 + ptm->tm_year,
-		ptm->tm_mon + 1, ptm->tm_mday, ptm->tm_hour, ptm->tm_min,
-		(unsigned int)ptm->tm_sec, param_->raw_log_name.c_str());
-	param_->raw_log_name_asf = mrpt::format(
-		"%u-%02u-%02u--%02u-%02u-%02u--%s", 1900 + ptm->tm_year,
-		ptm->tm_mon + 1, ptm->tm_mday, ptm->tm_hour, ptm->tm_min,
-		(unsigned int)ptm->tm_sec, param_->raw_log_name_asf.c_str());
+	const auto prefix = mrpt::system::fileNameStripInvalidChars(mrpt::system::dateTimeLocalToString(t));
+
+	param_->raw_log_name = prefix + param_->raw_log_name;
+	param_->raw_log_name_asf = prefix + param_->raw_log_name_asf;
 }
 
 
