@@ -35,6 +35,7 @@
 #include "rawlog_record_node_defaults.h"
 
 #include <mrpt/version.h>
+#include <mrpt/system/filesystem.h>
 
 RawlogRecordNode::ParametersNode::ParametersNode() : Parameters(), node("~")
 {
@@ -51,18 +52,20 @@ RawlogRecordNode::ParametersNode::ParametersNode() : Parameters(), node("~")
 	node.param<std::string>("base_frame_id", base_frame_id, "base_link");
 	ROS_INFO("base_frame_id: %s", base_frame_id.c_str());
 	node.getParam("raw_log_folder", raw_log_folder);
+	raw_log_folder = mrpt::system::fileNameStripInvalidChars(raw_log_folder);
 	ROS_INFO("raw_log_folder: %s", raw_log_folder.c_str());
 	reconfigureFnc_ = boost::bind(
 		&RawlogRecordNode::ParametersNode::callbackParameters, this, _1, _2);
 	reconfigureServer_.setCallback(reconfigureFnc_);
-    
+
 	node.param<bool>("record_range_scan", record_range_scan, true);
-	ROS_INFO("record_range_scan: %s", (record_range_scan?"ture":"flase"));
+	ROS_INFO("record_range_scan: %s", (record_range_scan ? "true" : "false"));
 	node.param<bool>("record_bearing_range", record_bearing_range, false);
-	ROS_INFO("record_bearing_range: %s", (record_bearing_range?"ture":"flase"));
+	ROS_INFO(
+	    "record_bearing_range: %s", (record_bearing_range ? "true" : "false"));
 	node.param<bool>("record_beacon_range", record_beacon_range, false);
-	ROS_INFO("record_beacon_range: %s", (record_beacon_range?"ture":"flase"));
-    
+	ROS_INFO(
+	    "record_beacon_range: %s", (record_beacon_range ? "true" : "false"));
 }
 
 void RawlogRecordNode::ParametersNode::update(const unsigned long& loop_count)
@@ -85,8 +88,10 @@ void RawlogRecordNode::ParametersNode::callbackParameters(
 		motionModelOptions.gaussianModel.a2 = config.motion_gaussian_alpha_2;
 		motionModelOptions.gaussianModel.a3 = config.motion_gaussian_alpha_3;
 		motionModelOptions.gaussianModel.a4 = config.motion_gaussian_alpha_4;
-		motionModelOptions.gaussianModel.minStdXY = config.motion_gaussian_alpha_xy;
-		motionModelOptions.gaussianModel.minStdPHI = config.motion_gaussian_alpha_phi;
+		motionModelOptions.gaussianModel.minStdXY =
+		    config.motion_gaussian_alpha_xy;
+		motionModelOptions.gaussianModel.minStdPHI =
+		    config.motion_gaussian_alpha_phi;
 		ROS_INFO("gaussianModel.a1: %f", motionModelOptions.gaussianModel.a1);
 		ROS_INFO("gaussianModel.a2: %f", motionModelOptions.gaussianModel.a2);
 		ROS_INFO("gaussianModel.a3: %f", motionModelOptions.gaussianModel.a3);
@@ -97,16 +102,16 @@ void RawlogRecordNode::ParametersNode::callbackParameters(
 		ROS_INFO(
 			"gaussianModel.minStdPHI: %f",
 			motionModelOptions.gaussianModel.minStdPHI);
-        
-        
-        bearing_range_std_range = config.bearing_range_std_range;
-        bearing_range_std_yaw = config.bearing_range_std_yaw;
-        bearing_range_std_pitch = config.bearing_range_std_pitch;
-        ROS_INFO("bearing_range_std_range: %f", bearing_range_std_range);
-        ROS_INFO("bearing_range_std_yaw: %f", bearing_range_std_yaw);
-        ROS_INFO("bearing_range_std_pitch: %f", bearing_range_std_pitch);
-        
-        sensor_frame_sync_threshold = config.sensor_frame_sync_threshold;
-        ROS_INFO("sensor_frame_sync_threshold: %f", sensor_frame_sync_threshold);
+
+		bearing_range_std_range = config.bearing_range_std_range;
+		bearing_range_std_yaw = config.bearing_range_std_yaw;
+		bearing_range_std_pitch = config.bearing_range_std_pitch;
+		ROS_INFO("bearing_range_std_range: %f", bearing_range_std_range);
+		ROS_INFO("bearing_range_std_yaw: %f", bearing_range_std_yaw);
+		ROS_INFO("bearing_range_std_pitch: %f", bearing_range_std_pitch);
+
+		sensor_frame_sync_threshold = config.sensor_frame_sync_threshold;
+		ROS_INFO(
+		    "sensor_frame_sync_threshold: %f", sensor_frame_sync_threshold);
 	}
 }

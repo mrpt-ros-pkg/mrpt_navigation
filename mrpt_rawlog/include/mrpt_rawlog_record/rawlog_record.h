@@ -46,11 +46,13 @@
 #include <mrpt/obs/CObservationBearingRange.h>
 #include <mrpt/obs/CObservationBeaconRanges.h>
 
-using mrpt::obs::CRawlog;
 using mrpt::obs::CActionRobotMovement2D;
+using mrpt::obs::CRawlog;
 
 #include <mrpt/poses/CPose2D.h>
 #include <mrpt_bridge/mrpt_log_macros.h>
+
+#include <mrpt_rawlog_record/rawlog_record_defaults.h>
 
 class RawlogRecord
 {
@@ -59,26 +61,27 @@ class RawlogRecord
    public:
 	struct Parameters
 	{
-		Parameters();
-		bool debug;
-		std::string raw_log_folder;
-		std::string raw_log_name;
-		std::string raw_log_name_asf;
-        bool record_range_scan;
-        bool record_bearing_range;
-        bool record_beacon_range;
-        double bearing_range_std_range;
-        double bearing_range_std_yaw;
-        double bearing_range_std_pitch;
+		Parameters() = default;
+
+		bool debug{RAWLOG_RECORD_DEFAULT_DEBUG};
+		std::string raw_log_folder{RAWLOG_RECORD_DEFAULT_RAW_FOLDER};
+		std::string raw_log_name{RAWLOG_RECORD_DEFAULT_RAW_LOG_NAME};
+		std::string raw_log_name_asf{RAWLOG_RECORD_DEFAULT_RAW_LOG_NAME_ASF};
+		bool record_range_scan{true};
+		bool record_bearing_range{false};
+		bool record_beacon_range{false};
+		double bearing_range_std_range{0.1};
+		double bearing_range_std_yaw{0.01};
+		double bearing_range_std_pitch{0.01};
 		CActionRobotMovement2D::TMotionModelOptions motionModelOptions;
 	};
 	RawlogRecord(Parameters* parm);
 	~RawlogRecord();
 
    protected:
-	Parameters* param_;
-	CRawlog* pRawLog;
-	CRawlog* pRawLogASF;
+	Parameters param_;
+	CRawlog pRawLog;
+	CRawlog pRawLogASF;
 	void updateRawLogName(const mrpt::system::TTimeStamp& t);
 	boost::interprocess::interprocess_mutex mutexRawLog;
 };

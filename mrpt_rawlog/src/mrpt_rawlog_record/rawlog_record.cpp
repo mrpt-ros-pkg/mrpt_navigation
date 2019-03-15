@@ -40,39 +40,41 @@
 
 RawlogRecord::~RawlogRecord()
 {
-	log_info("write data");
 	MRPT_TODO("RawlogRecord writes the rawlog only on exit (Ctrl-C)");
-	log_info("pRawLog    entries %i", pRawLog->size());
-	log_info("pRawLogASF entries %i", pRawLogASF->size());
-	if (pRawLog->size() > 0)
+
+	log_info("writing dataset to disk...");
+	log_info("pRawLog    entries %i", pRawLog.size());
+	log_info("pRawLogASF entries %i", pRawLogASF.size());
+	if (pRawLog.size() > 0)
 	{
-		std::string filename =
-			param_->raw_log_folder + "/" + param_->raw_log_name;
+		const std::string filename =
+		    param_.raw_log_folder + "/" + param_.raw_log_name;
 		log_info("write %s", filename.c_str());
-		pRawLog->saveToRawLogFile(filename);
+		if (!pRawLog.saveToRawLogFile(filename))
+		{
+			log_error("Error writing to %s", filename.c_str());
+		}
 	}
-	if (pRawLogASF->size() > 0)
+	if (pRawLogASF.size() > 0)
 	{
-		std::string filename =
-			param_->raw_log_folder + "/" + param_->raw_log_name_asf;
+		const std::string filename =
+		    param_.raw_log_folder + "/" + param_.raw_log_name_asf;
 		log_info("write %s", filename.c_str());
-		pRawLogASF->saveToRawLogFile(filename);
+		if (!pRawLogASF.saveToRawLogFile(filename))
+		{
+			log_error("Error writing to %s", filename.c_str());
+		}
 	}
-	delete pRawLog;
-	delete pRawLogASF;
 }
 
-RawlogRecord::RawlogRecord(Parameters* param) : param_(param)
-{
-	pRawLog = new CRawlog;
-	pRawLogASF = new CRawlog;
-}
+RawlogRecord::RawlogRecord(Parameters* param) : param_(*param) {}
+
 void RawlogRecord::updateRawLogName(const mrpt::system::TTimeStamp& t)
 {
-	const auto prefix = mrpt::system::fileNameStripInvalidChars(mrpt::system::dateTimeLocalToString(t));
+	const auto prefix = mrpt::system::dateTimeLocalToString(t);
 
-	param_->raw_log_name = prefix + param_->raw_log_name;
-	param_->raw_log_name_asf = prefix + param_->raw_log_name_asf;
+	param_.raw_log_name =
+	    mrpt::system::fileNameStripInvalidChars(prefix + param_.raw_log_name);
+	param_.raw_log_name_asf = mrpt::system::fileNameStripInvalidChars(
+	    prefix + param_.raw_log_name_asf);
 }
-
-

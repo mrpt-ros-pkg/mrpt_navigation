@@ -57,7 +57,6 @@ include_directories(include ${catkin_INCLUDE_DIRS})
 ## Declare a cpp library
 add_library(rawlog_record
    src/mrpt_rawlog_record/rawlog_record.cpp
-   src/mrpt_rawlog_record/rawlog_record_parameters.cpp
 )
 target_link_libraries(rawlog_record
   ${catkin_LIBRARIES}
