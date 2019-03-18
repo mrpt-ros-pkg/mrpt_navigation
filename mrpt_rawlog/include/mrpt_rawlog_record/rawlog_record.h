@@ -75,11 +75,12 @@ class RawlogRecord
 		double bearing_range_std_pitch{0.01};
 		CActionRobotMovement2D::TMotionModelOptions motionModelOptions;
 	};
-	RawlogRecord(Parameters* parm);
+	RawlogRecord() = default;
 	~RawlogRecord();
 
    protected:
-	Parameters param_;
+	Parameters base_param_;
+
 	CRawlog pRawLog;
 	CRawlog pRawLogASF;
 	void updateRawLogName(const mrpt::system::TTimeStamp& t);

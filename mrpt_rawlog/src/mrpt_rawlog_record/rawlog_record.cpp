@@ -48,7 +48,7 @@ RawlogRecord::~RawlogRecord()
 	if (pRawLog.size() > 0)
 	{
 		const std::string filename =
-		    param_.raw_log_folder + "/" + param_.raw_log_name;
+		    base_param_.raw_log_folder + "/" + base_param_.raw_log_name;
 		log_info("write %s", filename.c_str());
 		if (!pRawLog.saveToRawLogFile(filename))
 		{
@@ -58,7 +58,7 @@ RawlogRecord::~RawlogRecord()
 	if (pRawLogASF.size() > 0)
 	{
 		const std::string filename =
-		    param_.raw_log_folder + "/" + param_.raw_log_name_asf;
+		    base_param_.raw_log_folder + "/" + base_param_.raw_log_name_asf;
 		log_info("write %s", filename.c_str());
 		if (!pRawLogASF.saveToRawLogFile(filename))
 		{
@@ -67,14 +67,12 @@ RawlogRecord::~RawlogRecord()
 	}
 }
 
-RawlogRecord::RawlogRecord(Parameters* param) : param_(*param) {}
-
 void RawlogRecord::updateRawLogName(const mrpt::system::TTimeStamp& t)
 {
 	const auto prefix = mrpt::system::dateTimeLocalToString(t);
 
-	param_.raw_log_name =
-	    mrpt::system::fileNameStripInvalidChars(prefix + param_.raw_log_name);
-	param_.raw_log_name_asf = mrpt::system::fileNameStripInvalidChars(
-	    prefix + param_.raw_log_name_asf);
+	base_param_.raw_log_name = mrpt::system::fileNameStripInvalidChars(
+	    prefix + base_param_.raw_log_name);
+	base_param_.raw_log_name_asf = mrpt::system::fileNameStripInvalidChars(
+	    prefix + base_param_.raw_log_name_asf);
 }

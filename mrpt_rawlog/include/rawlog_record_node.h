@@ -49,12 +49,13 @@ class RawlogRecordNode : public RawlogRecord
 	MRPT_ROS_LOG_MACROS;
 
    public:
-	struct ParametersNode : public Parameters
+	struct ParametersNode
 	{
 		static const int MOTION_MODEL_GAUSSIAN = 0;
 		static const int MOTION_MODEL_THRUN = 1;
-		ParametersNode();
+		ParametersNode(RawlogRecord::Parameters& base_params);
 		ros::NodeHandle node;
+		RawlogRecord::Parameters& base_param_;
 		void callbackParameters(
 			mrpt_rawlog::RawLogRecordConfig& config, uint32_t level);
 		dynamic_reconfigure::Server<mrpt_rawlog::RawLogRecordConfig>
@@ -81,7 +82,7 @@ class RawlogRecordNode : public RawlogRecord
 	void callbackOdometry(const nav_msgs::Odometry&);
 
    private:  // functions
-	const ParametersNode& param();
+	ParametersNode param_{RawlogRecord::base_param_};
 	void update();
 	bool getStaticTF(std::string source_frame, mrpt::poses::CPose3D& des);
 	ros::Subscriber subLaser_;
