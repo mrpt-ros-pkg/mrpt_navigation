@@ -1,5 +1,4 @@
 cmake_minimum_required(VERSION 3.1)
-set (CMAKE_CXX_STANDARD 14)
 project(mrpt_local_obstacles)
 
 ## Find catkin macros and libraries
@@ -17,6 +16,9 @@ find_package(catkin REQUIRED COMPONENTS
 ## System dependencies are found with CMake's conventions
 find_package(MRPT 1.5 REQUIRED obs maps slam gui)
 message(STATUS "MRPT_VERSION: ${MRPT_VERSION}")
+if(MRPT_VERSION VERSION_LESS "1.9.9")
+  set (CMAKE_CXX_STANDARD 14)
+endif()
 
 if (CMAKE_COMPILER_IS_GNUCXX)
 	# High level of warnings.
@@ -65,7 +67,7 @@ add_executable(${PROJECT_NAME}_node
 # Specify libraries to link a library or executable target against
 target_link_libraries(${PROJECT_NAME}_node
   ${catkin_LIBRARIES}
-  ${MRPT_LIBS}
+  ${MRPT_LIBRARIES}
 )
 
 #############

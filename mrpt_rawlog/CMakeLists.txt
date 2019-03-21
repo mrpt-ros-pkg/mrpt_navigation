@@ -1,5 +1,4 @@
 cmake_minimum_required(VERSION 3.1)
-set (CMAKE_CXX_STANDARD 14)
 project(mrpt_rawlog)
 
 ## Find catkin macros and libraries
@@ -9,6 +8,9 @@ find_package(catkin REQUIRED COMPONENTS roscpp tf std_msgs nav_msgs sensor_msgs 
 
 find_package(MRPT 1.5 REQUIRED gui obs)
 message(STATUS "MRPT_VERSION: ${MRPT_VERSION}")
+if(MRPT_VERSION VERSION_LESS "1.9.9")
+	set (CMAKE_CXX_STANDARD 14)
+endif()
 
 if (CMAKE_COMPILER_IS_GNUCXX)
 	# High level of warnings.
@@ -60,7 +62,7 @@ add_library(rawlog_record
 )
 target_link_libraries(rawlog_record
   ${catkin_LIBRARIES}
-  ${MRPT_LIBS}
+  ${MRPT_LIBRARIES}
 )
 
 add_library(rawlog_play
@@ -69,7 +71,7 @@ add_library(rawlog_play
 )
 target_link_libraries(rawlog_play
    ${catkin_LIBRARIES}
-   ${MRPT_LIBS}
+   ${MRPT_LIBRARIES}
 )
 
 ## Declare a cpp executable
@@ -99,13 +101,13 @@ add_dependencies(rawlog_play_node
 ## Specify libraries to link a library or executable target against
 target_link_libraries(rawlog_record_node
    ${catkin_LIBRARIES}
-   ${MRPT_LIBS}
+   ${MRPT_LIBRARIES}
    rawlog_record
 )
 
 target_link_libraries(rawlog_play_node
    ${catkin_LIBRARIES}
-   ${MRPT_LIBS}
+   ${MRPT_LIBRARIES}
    rawlog_play
 )
 

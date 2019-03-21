@@ -1,5 +1,4 @@
 cmake_minimum_required(VERSION 3.1)
-set (CMAKE_CXX_STANDARD 14)
 project(mrpt_localization)
 
 ## Find catkin macros and libraries
@@ -10,6 +9,9 @@ find_package(catkin REQUIRED COMPONENTS roscpp tf std_msgs nav_msgs sensor_msgs 
 ## System dependencies are found with CMake's conventions
 find_package(MRPT 1.5 REQUIRED gui obs slam)
 message(STATUS "MRPT_VERSION: ${MRPT_VERSION}")
+if (MRPT_VERSION VERSION_LESS "1.9.9")
+	set (CMAKE_CXX_STANDARD 14)
+endif()
 
 if (CMAKE_COMPILER_IS_GNUCXX)
 	# High level of warnings.
@@ -83,16 +85,16 @@ add_dependencies(${PROJECT_NAME}
 
 ## Specify libraries to link a library or executable target against
 target_link_libraries(${PROJECT_NAME}_core
-  ${MRPT_LIBS}
+  ${MRPT_LIBRARIES}
 )
 
 target_link_libraries(${PROJECT_NAME}
-  ${MRPT_LIBS}
+  ${MRPT_LIBRARIES}
   ${PROJECT_NAME}_core
 )
 
 target_link_libraries(${PROJECT_NAME}_node
-  ${MRPT_LIBS}
+  ${MRPT_LIBRARIES}
    ${catkin_LIBRARIES}
    ${PROJECT_NAME}
 )
