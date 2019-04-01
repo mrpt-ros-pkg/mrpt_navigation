@@ -95,7 +95,11 @@ void MapServer::init()
 			grid.getSizeX(), grid.getSizeY(), grid.getResolution(),
 			grid.getXMin(), grid.getYMin(), grid.getXMax(), grid.getYMax());
 
+#if MRPT_VERSION >= 0x199
 	mrpt_bridge::convert(*metric_map_->mapByClass<COccupancyGridMap2D>(), resp_ros_.map);
+#else
+	mrpt_bridge::convert(*metric_map_->m_gridMaps[0], resp_ros_.map);
+#endif
 	if (debug_)
 		printf(
 			"msg:         %i x %i @ %4.3fm/p, %4.3f, %4.3f, %4.3f, %4.3f\n",
