@@ -35,6 +35,10 @@
 #include <mrpt_localization/mrpt_localization_defaults.h>
 
 #include <mrpt_bridge/map.h>
+#include <mrpt/maps/COccupancyGridMap2D.h>
+#include <mrpt/maps/CSimplePointsMap.h>
+using mrpt::maps::COccupancyGridMap2D;
+using mrpt::maps::CSimplePointsMap;
 
 #include <mrpt/system/filesystem.h>
 #include <mrpt/opengl/CEllipsoid.h>
@@ -210,10 +214,17 @@ void PFLocalization::init3DDebug()
 		// only the particles, etc..
 		COccupancyGridMap2D::TEntropyInfo grid_info;
 		// The gridmap:
+#if MRPT_VERSION >= 0x199
+		if (metric_map_.countMapsByClass<COccupancyGridMap2D>())
+		{
+			metric_map_.mapByClass<COccupancyGridMap2D>()->computeEntropy(grid_info);
+		}
+#else
 		if (metric_map_.m_gridMaps.size())
 		{
 			metric_map_.m_gridMaps[0]->computeEntropy(grid_info);
 		}
+#endif
 		else
 		{
 			grid_info.effectiveMappedArea = (init_PDF_max_x - init_PDF_min_x) *

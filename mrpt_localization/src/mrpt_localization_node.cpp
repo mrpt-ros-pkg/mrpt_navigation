@@ -59,6 +59,10 @@ using namespace mrpt::utils;
 
 #include "mrpt_localization_node.h"
 
+#include <mrpt/maps/COccupancyGridMap2D.h>
+using mrpt::maps::COccupancyGridMap2D;
+
+
 int main(int argc, char** argv)
 {
 	ros::init(argc, argv, "localization");
@@ -125,10 +129,17 @@ void PFLocalizationNode::init()
 
 	if (!param()->map_file.empty())
 	{
+#if MRPT_VERSION >= 0x199
+		if (metric_map_.countMapsByClass<COccupancyGridMap2D>())
+		{
+			mrpt_bridge::convert(*metric_map_.mapByClass<COccupancyGridMap2D>(), resp_.map);
+		}
+#else
 		if (metric_map_.m_gridMaps.size())
 		{
 			mrpt_bridge::convert(*metric_map_.m_gridMaps[0], resp_.map);
 		}
+#endif
 		pub_map_ = nh_.advertise<nav_msgs::OccupancyGrid>("map", 1, true);
 		pub_metadata_ =
 			nh_.advertise<nav_msgs::MapMetaData>("map_metadata", 1, true);
@@ -148,8 +159,13 @@ void PFLocalizationNode::loop()
 	for (ros::Rate rate(param()->rate); ros::ok(); loop_count_++)
 	{
 		param()->update(loop_count_);
+
 		if ((loop_count_ % param()->map_update_skip == 0) &&
+#if MRPT_VERSION >= 0x199
+			(metric_map_.countMapsByClass<COccupancyGridMap2D>()))
+#else
 			(metric_map_.m_gridMaps.size()))
+#endif
 			publishMap();
 		if (loop_count_ % param()->particlecloud_update_skip == 0)
 			publishParticles();
@@ -476,8 +492,13 @@ void PFLocalizationNode::callbackOdometry(const nav_msgs::Odometry& _msg)
 
 void PFLocalizationNode::updateMap(const nav_msgs::OccupancyGrid& _msg)
 {
+#if MRPT_VERSION >= 0x199
+	ASSERT_(metric_map_.countMapsByClass<COccupancyGridMap2D>());
+	mrpt_bridge::convert(_msg, *metric_map_.mapByClass<COccupancyGridMap2D>());
+#else
 	ASSERT_(metric_map_.m_gridMaps.size() == 1);
 	mrpt_bridge::convert(_msg, *metric_map_.m_gridMaps[0]);
+#endif
 }
 
 bool PFLocalizationNode::mapCallback(
