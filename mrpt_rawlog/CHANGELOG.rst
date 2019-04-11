@@ -2,6 +2,14 @@
 Changelog for package mrpt_rawlog
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Fix build against mrpt-1.5
+* Fix build against MRPT 1.9.9
+* fix regression introduced in last refactor of mrpt_rawlog
+* rawlog_record: Explain error if cannot write .rawlog
+* Contributors: Jose Luis Blanco Claraco, Julian Lopez Velasquez
+
 0.1.23 (2018-06-14)
 -------------------
 
@@ -171,4 +179,3 @@ Changelog for package mrpt_rawlog
 * Removed obsolete rawlog_play & fix build of other nodes.
 * Update all wiki URLs
 * Fix build with mrpt 1.2.x
-

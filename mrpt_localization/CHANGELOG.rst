@@ -2,6 +2,11 @@
 Changelog for package mrpt_localization
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Fix build against MRPT 1.9.9
+* Contributors: Inounx, Jose Luis Blanco-Claraco, Julian Lopez Velasquez, Markus Bader
+
 0.1.23 (2018-06-14)
 -------------------
 
@@ -214,4 +219,3 @@ Changelog for package mrpt_localization
 * Fixes broken dependencies
 * config and demos tested
 * localization working like amcl
-

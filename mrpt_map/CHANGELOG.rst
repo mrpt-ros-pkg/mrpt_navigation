@@ -2,6 +2,12 @@
 Changelog for package mrpt_map
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* fix build against mrpt-1.5
+* Fix build against MRPT 1.9.9
+* Contributors: Inounx, Jose Luis Blanco-Claraco, Julian Lopez Velasquez
+
 0.1.23 (2018-06-14)
 -------------------
 
@@ -126,4 +132,3 @@ Changelog for package mrpt_map
 * rawlog player
 * map publisher added but not yet working
 * Contributors: Jose Luis Blanco, Jose-Luis Blanco-Claraco, Markus Bader
-
