@@ -2,8 +2,8 @@
 Changelog for package mrpt_rawlog
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+0.1.24 (2019-04-12)
+-------------------
 * Fix build against mrpt-1.5
 * Fix build against MRPT 1.9.9
 * fix regression introduced in last refactor of mrpt_rawlog
