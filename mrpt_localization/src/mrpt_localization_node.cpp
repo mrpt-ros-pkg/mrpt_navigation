@@ -62,7 +62,6 @@ using namespace mrpt::utils;
 #include <mrpt/maps/COccupancyGridMap2D.h>
 using mrpt::maps::COccupancyGridMap2D;
 
-
 int main(int argc, char** argv)
 {
 	ros::init(argc, argv, "localization");
@@ -132,7 +131,8 @@ void PFLocalizationNode::init()
 #if MRPT_VERSION >= 0x199
 		if (metric_map_.countMapsByClass<COccupancyGridMap2D>())
 		{
-			mrpt_bridge::convert(*metric_map_.mapByClass<COccupancyGridMap2D>(), resp_.map);
+			mrpt_bridge::convert(
+				*metric_map_.mapByClass<COccupancyGridMap2D>(), resp_.map);
 		}
 #else
 		if (metric_map_.m_gridMaps.size())
@@ -636,11 +636,14 @@ void PFLocalizationNode::publishTF()
  **/
 void PFLocalizationNode::publishPose()
 {
-	mrpt::math::CMatrixDouble33
-		cov;  // cov for x, y, phi (meter, meter, radian)
+	// cov for x, y, phi (meter, meter, radian)
+#if MRPT_VERSION >= 0x199
+	const auto [cov, mean] = initial_pose_.getCovarianceAndMean();
+#else
+	mrpt::math::CMatrixDouble33 cov;
 	mrpt::poses::CPose2D mean;
-
-	pdf_.getCovarianceAndMean(cov, mean);
+	initial_pose_.getCovarianceAndMean(cov, mean);
+#endif
 
 	geometry_msgs::PoseWithCovarianceStamped p;
 

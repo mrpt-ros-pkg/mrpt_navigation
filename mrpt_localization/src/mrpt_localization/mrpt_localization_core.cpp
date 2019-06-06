@@ -32,6 +32,7 @@
  ***********************************************************************************/
 
 #include <mrpt_localization/mrpt_localization_core.h>
+#include <mrpt/version.h>
 
 #include <mrpt/maps/COccupancyGridMap2D.h>
 using mrpt::maps::COccupancyGridMap2D;
@@ -65,9 +66,14 @@ void PFLocalizationCore::init()
 
 void PFLocalizationCore::initializeFilter()
 {
+#if MRPT_VERSION >= 0x199
+	const auto [cov, mean_point] = initial_pose_.getCovarianceAndMean();
+#else
 	mrpt::math::CMatrixDouble33 cov;
 	mrpt::poses::CPose2D mean_point;
 	initial_pose_.getCovarianceAndMean(cov, mean_point);
+#endif
+
 	log_info(
 		"InitializeFilter: %4.3fm, %4.3fm, %4.3frad ", mean_point.x(),
 		mean_point.y(), mean_point.phi());
@@ -79,11 +85,12 @@ void PFLocalizationCore::initializeFilter()
 	float max_phi = mean_point.phi() + cov(2, 2);
 
 #if MRPT_VERSION >= 0x199
-	if(metric_map_.countMapsByClass<COccupancyGridMap2D>() && !init_PDF_mode)
+	if (metric_map_.countMapsByClass<COccupancyGridMap2D>() && !init_PDF_mode)
 	{
 		pdf_.resetUniformFreeSpace(
-			metric_map_.mapByClass<COccupancyGridMap2D>().get(), 0.7f, initial_particle_count_,
-			min_x, max_x, min_y, max_y, min_phi, max_phi);
+			metric_map_.mapByClass<COccupancyGridMap2D>().get(), 0.7f,
+			initial_particle_count_, min_x, max_x, min_y, max_y, min_phi,
+			max_phi);
 	}
 	else if (metric_map_.countMapsByClass<CLandmarksMap>() || init_PDF_mode)
 #else

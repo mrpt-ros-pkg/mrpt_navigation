@@ -217,7 +217,8 @@ void PFLocalization::init3DDebug()
 #if MRPT_VERSION >= 0x199
 		if (metric_map_.countMapsByClass<COccupancyGridMap2D>())
 		{
-			metric_map_.mapByClass<COccupancyGridMap2D>()->computeEntropy(grid_info);
+			metric_map_.mapByClass<COccupancyGridMap2D>()->computeEntropy(
+				grid_info);
 		}
 #else
 		if (metric_map_.m_gridMaps.size())
@@ -268,9 +269,13 @@ void PFLocalization::show3DDebug(CSensoryFrame::Ptr _observations)
 			cur_obs_timestamp =
 				_observations->getObservationByIndex(0)->timestamp;
 
+#if MRPT_VERSION >= 0x199
+		const auto [cov, meanPose] = pdf_.getCovarianceAndMean();
+#else
 		CPose2D meanPose;
 		CMatrixDouble33 cov;
 		pdf_.getCovarianceAndMean(cov, meanPose);
+#endif
 
 		COpenGLScene::Ptr ptr_scene = win3D_->get3DSceneAndLock();
 
@@ -324,9 +329,9 @@ void PFLocalization::show3DDebug(CSensoryFrame::Ptr _observations)
 			}
 			ellip->setLocation(meanPose.x(), meanPose.y(), 0.05);
 #if MRPT_VERSION >= 0x199
-            dynamic_cast<CEllipsoid*>(ellip.get())->setCovMatrix(cov, 2);
+			dynamic_cast<CEllipsoid*>(ellip.get())->setCovMatrix(cov, 2);
 #else
-            /// ToDo
+			/// ToDo
 #endif
 		}
 
