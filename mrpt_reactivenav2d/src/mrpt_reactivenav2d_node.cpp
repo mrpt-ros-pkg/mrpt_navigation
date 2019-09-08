@@ -370,13 +370,19 @@ class ReactiveNav2DNode
 			target.asString().c_str());
 
 		CAbstractPTGBasedReactive::TNavigationParamsPTG navParams;
+
 		CAbstractNavigator::TargetInfo target_info;
 		target_info.target_coords.x = target.x;
 		target_info.target_coords.y = target.y;
 		target_info.targetAllowedDistance = m_target_allowed_distance;
 		target_info.targetIsRelative = false;
 
-		navParams.multiple_targets.push_back(target_info);
+		// API for multiple waypoints:
+		//...
+		// navParams.multiple_targets.push_back(target_info);
+
+		// API for single targets:
+		navParams.target = target_info;
 
 		// Optional: restrict the PTGs to use
 		// navParams.restrict_PTG_indices.push_back(1);
