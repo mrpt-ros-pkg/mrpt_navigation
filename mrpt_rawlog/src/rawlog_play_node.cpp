@@ -98,9 +98,9 @@ void RawlogPlayNode::publishSingleObservation(
 	geometry_msgs::Pose msg_pose_sensor;
 	tf::Transform transform;
 
-	if (IS_CLASS(o, CObservation2DRangeScan))
+	if (auto laser = std::dynamic_pointer_cast<CObservation2DRangeScan>(o);
+	    laser)
 	{  // laser observation detected
-		auto laser = mrpt::ptr_cast<CObservation2DRangeScan>::from(o);
 		mrpt_bridge::convert(*laser, msg_laser_, msg_pose_sensor);
 		if (msg_laser_.header.frame_id.empty())
 			msg_laser_.header.frame_id = "laser_link";
@@ -113,9 +113,10 @@ void RawlogPlayNode::publishSingleObservation(
 			base_frame_, childframe));
 		pub_laser_.publish(msg_laser_);
 	}
-	else if (IS_CLASS(o, CObservationBeaconRanges))
+	else if (auto beacon =
+	             std::dynamic_pointer_cast<CObservationBeaconRanges>(o);
+	         beacon)
 	{
-		auto beacon = mrpt::ptr_cast<CObservationBeaconRanges>::from(o);
 		mrpt_bridge::convert(*beacon, msg_beacon_, msg_pose_sensor);
 		if (msg_beacon_.header.frame_id.empty())
 			msg_beacon_.header.frame_id = "beacon_link";
@@ -128,9 +129,10 @@ void RawlogPlayNode::publishSingleObservation(
 			base_frame_, childframe));
 		pub_beacon_.publish(msg_beacon_);
 	}
-	else if (IS_CLASS(o, CObservationBearingRange))
+	else if (auto landmark =
+	             std::dynamic_pointer_cast<CObservationBearingRange>(o);
+	         landmark)
 	{
-		auto landmark = mrpt::ptr_cast<CObservationBearingRange>::from(o);
 		mrpt_bridge::convert(*landmark, msg_landmark_, msg_pose_sensor);
 		if (msg_landmark_.header.frame_id.empty())
 			msg_landmark_.header.frame_id = "landmark_link";
