@@ -9,7 +9,11 @@ find_package(catkin REQUIRED COMPONENTS roscpp tf std_msgs nav_msgs sensor_msgs 
 find_package(MRPT 1.5 REQUIRED gui obs)
 message(STATUS "MRPT_VERSION: ${MRPT_VERSION}")
 if(MRPT_VERSION VERSION_LESS "1.9.9")
-    set (CMAKE_CXX_STANDARD 17)
+  if(${CMAKE_VERSION} VERSION_LESS "3.8.0")
+	set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=gnu++1y")
+  else()
+	set (CMAKE_CXX_STANDARD 17)
+  endif()
 endif()
 
 if (CMAKE_COMPILER_IS_GNUCXX)
