@@ -2,6 +2,13 @@
 Changelog for package mrpt_rawlog
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* fix build in gcc 4.x
+* fix build against mrpt1 (Closes `#113 <https://github.com/mrpt-ros-pkg/mrpt_navigation/issues/113>`_)
+* fix build against current mrpt2
+* Contributors: Jose Luis Blanco Claraco, Jose Luis Blanco-Claraco
+
 0.1.24 (2019-04-12)
 -------------------
 * Fix build against mrpt-1.5

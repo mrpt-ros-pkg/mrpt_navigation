@@ -2,6 +2,9 @@
 Changelog for package mrpt_map
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+
 0.1.24 (2019-04-12)
 -------------------
 * fix build against mrpt-1.5

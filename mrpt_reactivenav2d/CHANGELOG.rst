@@ -2,6 +2,11 @@
 Changelog for package mrpt_reactivenav2d
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* fix nav to target clicking in RVIZ
+* Contributors: Jose Luis Blanco Claraco
+
 0.1.24 (2019-04-12)
 -------------------
 * Fix build against MRPT 1.9.9

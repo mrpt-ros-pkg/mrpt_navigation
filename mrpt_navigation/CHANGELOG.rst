@@ -2,6 +2,9 @@
 Changelog for package mrpt_navigation
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+
 0.1.24 (2019-04-12)
 -------------------
 
