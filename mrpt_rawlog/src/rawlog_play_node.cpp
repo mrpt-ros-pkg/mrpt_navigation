@@ -78,6 +78,8 @@ void RawlogPlayNode::init()
 	if (!mrpt::system::fileExists(param_->rawlog_file))
 	{
 		ROS_ERROR("raw_file: %s does not exit", param_->rawlog_file.c_str());
+		ros::shutdown();
+		return;
 	}
 	rawlog_stream_.open(param_->rawlog_file);
 	pub_laser_ = n_.advertise<sensor_msgs::LaserScan>("scan", 10);
@@ -98,8 +100,17 @@ void RawlogPlayNode::publishSingleObservation(
 	geometry_msgs::Pose msg_pose_sensor;
 	tf::Transform transform;
 
-	if (auto laser = mrpt::ptr_cast<CObservation2DRangeScan>::from(o); laser)
+#if MRPT_VERSION >= 0x199
+	// IS_CLASS accepts a reference in MRPT2
+	auto& oo = *o;
+#else
+	// IS_CLASS accepts a pointer in MRPT1
+	auto* oo = o.get();
+#endif
+
+	if (IS_CLASS(oo, CObservation2DRangeScan))
 	{  // laser observation detected
+		auto laser = mrpt::ptr_cast<CObservation2DRangeScan>::from(o);
 		mrpt_bridge::convert(*laser, msg_laser_, msg_pose_sensor);
 		if (msg_laser_.header.frame_id.empty())
 			msg_laser_.header.frame_id = "laser_link";
@@ -112,9 +123,9 @@ void RawlogPlayNode::publishSingleObservation(
 			base_frame_, childframe));
 		pub_laser_.publish(msg_laser_);
 	}
-	else if (auto beacon = mrpt::ptr_cast<CObservationBeaconRanges>::from(o);
-			 beacon)
+	else if (IS_CLASS(oo, CObservation2DRangeScan))
 	{
+		auto beacon = mrpt::ptr_cast<CObservationBeaconRanges>::from(o);
 		mrpt_bridge::convert(*beacon, msg_beacon_, msg_pose_sensor);
 		if (msg_beacon_.header.frame_id.empty())
 			msg_beacon_.header.frame_id = "beacon_link";
@@ -127,9 +138,9 @@ void RawlogPlayNode::publishSingleObservation(
 			base_frame_, childframe));
 		pub_beacon_.publish(msg_beacon_);
 	}
-	else if (auto landmark = mrpt::ptr_cast<CObservationBearingRange>::from(o);
-			 landmark)
+	else if (IS_CLASS(oo, CObservationBearingRange))
 	{
+		auto landmark = mrpt::ptr_cast<CObservationBearingRange>::from(o);
 		mrpt_bridge::convert(*landmark, msg_landmark_, msg_pose_sensor);
 		if (msg_landmark_.header.frame_id.empty())
 			msg_landmark_.header.frame_id = "landmark_link";
