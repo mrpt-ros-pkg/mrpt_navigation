@@ -2,8 +2,8 @@
 Changelog for package mrpt_rawlog
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+0.1.26 (2019-10-05)
+-------------------
 * mrpt_rawlog: abort if input file does not exist. Fix crash if built against mrpt1.
 * remove qtcreator temporary files
 * Contributors: Jose Luis Blanco Claraco
