@@ -178,7 +178,7 @@ class LocalObstaclesNode
 
 		ROS_DEBUG(
 			"[onNewSensor_Laser2D] %u rays, sensor pose on robot %s",
-			static_cast<unsigned int>(obsScan->scan.size()),
+			static_cast<unsigned int>(obsScan->getScanSize()),
 			sensorOnRobot_mrpt.asString().c_str());
 
 		// Get sensor timestamp:
