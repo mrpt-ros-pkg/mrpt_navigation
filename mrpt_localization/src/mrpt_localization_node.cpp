@@ -638,11 +638,11 @@ void PFLocalizationNode::publishPose()
 {
 	// cov for x, y, phi (meter, meter, radian)
 #if MRPT_VERSION >= 0x199
-	const auto [cov, mean] = initial_pose_.getCovarianceAndMean();
+	const auto [cov, mean] = pdf_.getCovarianceAndMean();
 #else
 	mrpt::math::CMatrixDouble33 cov;
 	mrpt::poses::CPose2D mean;
-	initial_pose_.getCovarianceAndMean(cov, mean);
+	pdf_.getCovarianceAndMean(cov, mean);
 #endif
 
 	geometry_msgs::PoseWithCovarianceStamped p;
