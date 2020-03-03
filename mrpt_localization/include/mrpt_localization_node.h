@@ -90,6 +90,7 @@ class PFLocalizationNode : public PFLocalization
 		std::string odom_frame_id;
 		std::string global_frame_id;
 		bool update_while_stopped;
+		bool update_sensor_pose;
 		bool pose_broadcast;
 		bool tf_broadcast;
 		bool use_map_topic;

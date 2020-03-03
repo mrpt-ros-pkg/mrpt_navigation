@@ -160,4 +160,7 @@ void PFLocalizationNode::Parameters::callbackParameters(
 	update_while_stopped = config.update_while_stopped;
 	ROS_INFO(
 		"update_while_stopped: %s", update_while_stopped ? "true" : "false");
+	update_sensor_pose = config.update_sensor_pose;
+	ROS_INFO(
+		"update_sensor_pose: %s", update_sensor_pose ? "true" : "false");
 }
