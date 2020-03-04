@@ -211,7 +211,7 @@ void PFLocalizationNode::callbackLaser(const sensor_msgs::LaserScan& _msg)
 
 	// ROS_INFO("callbackLaser");
 	auto laser = CObservation2DRangeScan::Create();
-
+    
 	// printf("callbackLaser %s\n", _msg.header.frame_id.c_str());
 	if (laser_poses_.find(_msg.header.frame_id) == laser_poses_.end())
 	{
@@ -220,6 +220,9 @@ void PFLocalizationNode::callbackLaser(const sensor_msgs::LaserScan& _msg)
 	else if (state_ != IDLE)  // updating filter; we must be moving or
 	// update_while_stopped set to true
 	{
+        if(param()->update_sensor_pose) {
+            updateSensorPose(_msg.header.frame_id);
+        }
 		// mrpt::poses::CPose3D pose = laser_poses_[_msg.header.frame_id];
 		// ROS_INFO("LASER POSE %4.3f, %4.3f, %4.3f, %4.3f, %4.3f, %4.3f",
 		// pose.x(), pose.y(), pose.z(), pose.roll(), pose.pitch(), pose.yaw());
@@ -254,6 +257,9 @@ void PFLocalizationNode::callbackBeacon(
 	else if (state_ != IDLE)  // updating filter; we must be moving or
 	// update_while_stopped set to true
 	{
+        if(param()->update_sensor_pose) {
+            updateSensorPose(_msg.header.frame_id);
+        }
 		// mrpt::poses::CPose3D pose = beacon_poses_[_msg.header.frame_id];
 		// ROS_INFO("BEACON POSE %4.3f, %4.3f, %4.3f, %4.3f, %4.3f, %4.3f",
 		// pose.x(), pose.y(), pose.z(), pose.roll(), pose.pitch(), pose.yaw());
