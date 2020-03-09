@@ -54,8 +54,6 @@ RawlogRecordNode::ParametersNode::ParametersNode(
 	node.param<std::string>("base_frame_id", base_frame_id, "base_link");
 	ROS_INFO("base_frame_id: %s", base_frame_id.c_str());
 	node.getParam("raw_log_folder", base_param_.raw_log_folder);
-	base_param_.raw_log_folder =
-	    mrpt::system::fileNameStripInvalidChars(base_param_.raw_log_folder);
 	ROS_INFO("raw_log_folder: %s", base_param_.raw_log_folder.c_str());
 	reconfigureFnc_ = boost::bind(
 		&RawlogRecordNode::ParametersNode::callbackParameters, this, _1, _2);
