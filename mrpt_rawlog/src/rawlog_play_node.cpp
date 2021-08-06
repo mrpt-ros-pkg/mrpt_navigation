@@ -123,7 +123,7 @@ void RawlogPlayNode::publishSingleObservation(
 			base_frame_, childframe));
 		pub_laser_.publish(msg_laser_);
 	}
-	else if (IS_CLASS(oo, CObservation2DRangeScan))
+	else if (IS_CLASS(oo, CObservationBeaconRanges))
 	{
 		auto beacon = mrpt::ptr_cast<CObservationBeaconRanges>::from(o);
 		mrpt_bridge::convert(*beacon, msg_beacon_, msg_pose_sensor);
