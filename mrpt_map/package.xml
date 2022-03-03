@@ -8,7 +8,7 @@
 
 
   <license>BSD</license>
-  <url>http://wiki.ros.org/mrpt_map</url>
+  <url>https://wiki.ros.org/mrpt_map</url>
 
   <buildtool_depend>catkin</buildtool_depend>
 

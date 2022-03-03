@@ -4,14 +4,14 @@
   <version>0.1.26</version>
   <description>
     Tools related to the Mobile Robot Programming Toolkit (MRPT).
-    Refer to http://wiki.ros.org/mrpt_navigation for further documentation.
+    Refer to https://wiki.ros.org/mrpt_navigation for further documentation.
   </description>
   <maintainer email="jlblanco@ual.es">Jose-Luis Blanco-Claraco</maintainer>
   <maintainer email="markus.bader@tuwien.ac.at">Markus Bader</maintainer>
   <author>Jose-Luis Blanco-Claraco</author>
   <author>Markus Bader</author>
   <license>BSD</license>
-  <url>http://wiki.ros.org/mrpt_navigation</url>
+  <url>https://wiki.ros.org/mrpt_navigation</url>
 
   <buildtool_depend>catkin</buildtool_depend>
 
