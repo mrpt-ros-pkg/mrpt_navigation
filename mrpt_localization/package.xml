@@ -19,7 +19,7 @@
 
   <buildtool_depend>catkin</buildtool_depend>
 
-  <depend>mrpt1</depend>
+  <depend>mrpt2</depend>
   <depend>roscpp</depend>
   <depend>tf</depend>
   <depend>std_msgs</depend>

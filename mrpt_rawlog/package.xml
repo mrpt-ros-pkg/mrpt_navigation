@@ -23,7 +23,7 @@
   <depend>dynamic_reconfigure</depend>
   <depend>rosbag</depend>
   <depend>marker_msgs</depend>
-  <depend>mrpt1</depend>
+  <depend>mrpt2</depend>
 
 
 </package>

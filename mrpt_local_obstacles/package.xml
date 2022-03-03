@@ -16,7 +16,7 @@
 
   <buildtool_depend>catkin</buildtool_depend>
 
-  <depend>mrpt1</depend>
+  <depend>mrpt2</depend>
   <depend>dynamic_reconfigure</depend>
   <depend>mrpt_bridge</depend>
   <depend>roscpp</depend>

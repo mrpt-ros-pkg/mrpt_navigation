@@ -15,7 +15,7 @@
 
   <buildtool_depend>catkin</buildtool_depend>
 
-  <depend>mrpt1</depend>
+  <depend>mrpt2</depend>
   <depend>actionlib</depend>
   <depend>actionlib_msgs</depend>
   <depend>dynamic_reconfigure</depend>

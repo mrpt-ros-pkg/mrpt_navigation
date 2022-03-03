@@ -18,6 +18,6 @@
   <depend>sensor_msgs</depend>
   <depend>nav_msgs</depend>
   <depend>mrpt_bridge</depend>
-  <depend>mrpt1</depend>
+  <depend>mrpt2</depend>
 
 </package>
