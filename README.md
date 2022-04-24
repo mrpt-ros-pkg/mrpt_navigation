@@ -1,14 +1,10 @@
-
-
- * Travis CI: [![Build Status](https://travis-ci.org/mrpt-ros-pkg/mrpt_navigation.svg?branch=master)](https://travis-ci.org/mrpt-ros-pkg/mrpt_navigation)
- * ROS build farm:
-   * git master:
-     * ROS Kinetic @ u16.04 Xenial [![Build Status](http://build.ros.org/job/Kdev__mrpt_navigation__ubuntu_xenial_amd64/badge/icon)](http://build.ros.org/job/Kdev__mrpt_navigation__ubuntu_xenial_amd64/)
-     * ROS Melodic @ u18.04 Bionic [![Build Status](http://build.ros.org/job/Mdev__mrpt_navigation__ubuntu_bionic_amd64/badge/icon)](http://build.ros.org/job/Mdev__mrpt_navigation__ubuntu_bionic_amd64/)
-   * Last released version:
-     * ROS Melodic @ u18.04 Bionic: [![Build Status](http://build.ros.org/job/Mbin_uB64__mrpt_navigation__ubuntu_bionic_amd64__binary/badge/icon)](http://build.ros.org/job/Mbin_uB64__mrpt_navigation__ubuntu_bionic_amd64__binary/)
-     * ROS Kinetic @ u16.04 Xenial: [![Build Status](http://build.ros.org/job/Kbin_uX64__mrpt_navigation__ubuntu_xenial_amd64__binary/badge/icon)](http://build.ros.org/job/Kbin_uX64__mrpt_navigation__ubuntu_xenial_amd64__binary/)
-
+[![Build Status](https://travis-ci.org/mrpt-ros-pkg/mrpt_navigation.svg?branch=master)](https://travis-ci.org/mrpt-ros-pkg/mrpt_navigation)
+ 
+| Develop branch | Releases |
+| --- | --- |
+| ROS1 Melodic (u18.04) [![Build Status](http://build.ros.org/job/Mdev__mrpt_navigation__ubuntu_bionic_amd64/badge/icon)](http://build.ros.org/job/Mdev__mrpt_navigation__ubuntu_bionic_amd64/) |  ROS1 Melodic (u18.04)  [![Build Status](http://build.ros.org/job/Mbin_uB64__mrpt_navigation__ubuntu_bionic_amd64__binary/badge/icon)](http://build.ros.org/job/Mbin_uB64__mrpt_navigation__ubuntu_bionic_amd64__binary/) |
+| ROS1 Noetic (u20.04) xxx |  ROS1 Noetic (u20.04) xxx |
+| ROS2 Rolling (u22.04) xxx |  ROS2 Rolling (u22.04) xxx |
 
 mrpt_navigation
 ===============
