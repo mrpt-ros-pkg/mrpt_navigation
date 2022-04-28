@@ -40,22 +40,12 @@
 #include <mrpt_bridge/time.h>
 #include <mrpt_bridge/map.h>
 #include <mrpt_bridge/beacon.h>
-
-#include <mrpt/version.h>
 #include <mrpt/obs/CObservationBeaconRanges.h>
-using namespace mrpt::obs;
-
-#include <mrpt/version.h>
-//
-#if MRPT_VERSION >= 0x199
 #include <mrpt/system/COutputLogger.h>
-using namespace mrpt::system;
-#else
-#include <mrpt/utils/COutputLogger.h>
-using namespace mrpt::utils;
-#endif
-
 #include <mrpt/obs/CObservationRobotPose.h>
+
+using namespace mrpt::obs;
+using namespace mrpt::system;
 
 #include "mrpt_localization_node.h"
 
@@ -128,18 +118,11 @@ void PFLocalizationNode::init()
 
 	if (!param()->map_file.empty())
 	{
-#if MRPT_VERSION >= 0x199
-		if (metric_map_.countMapsByClass<COccupancyGridMap2D>())
+		if (metric_map_->countMapsByClass<COccupancyGridMap2D>())
 		{
 			mrpt_bridge::convert(
-				*metric_map_.mapByClass<COccupancyGridMap2D>(), resp_.map);
+				*metric_map_->mapByClass<COccupancyGridMap2D>(), resp_.map);
 		}
-#else
-		if (metric_map_.m_gridMaps.size())
-		{
-			mrpt_bridge::convert(*metric_map_.m_gridMaps[0], resp_.map);
-		}
-#endif
 		pub_map_ = nh_.advertise<nav_msgs::OccupancyGrid>("map", 1, true);
 		pub_metadata_ =
 			nh_.advertise<nav_msgs::MapMetaData>("map_metadata", 1, true);
@@ -161,11 +144,7 @@ void PFLocalizationNode::loop()
 		param()->update(loop_count_);
 
 		if ((loop_count_ % param()->map_update_skip == 0) &&
-#if MRPT_VERSION >= 0x199
-			(metric_map_.countMapsByClass<COccupancyGridMap2D>()))
-#else
-			(metric_map_.m_gridMaps.size()))
-#endif
+			(metric_map_->countMapsByClass<COccupancyGridMap2D>()))
 			publishMap();
 		if (loop_count_ % param()->particlecloud_update_skip == 0)
 			publishParticles();
@@ -211,7 +190,7 @@ void PFLocalizationNode::callbackLaser(const sensor_msgs::LaserScan& _msg)
 
 	// ROS_INFO("callbackLaser");
 	auto laser = CObservation2DRangeScan::Create();
-    
+
 	// printf("callbackLaser %s\n", _msg.header.frame_id.c_str());
 	if (laser_poses_.find(_msg.header.frame_id) == laser_poses_.end())
 	{
@@ -220,9 +199,10 @@ void PFLocalizationNode::callbackLaser(const sensor_msgs::LaserScan& _msg)
 	else if (state_ != IDLE)  // updating filter; we must be moving or
 	// update_while_stopped set to true
 	{
-        if(param()->update_sensor_pose) {
-            updateSensorPose(_msg.header.frame_id);
-        }
+		if (param()->update_sensor_pose)
+		{
+			updateSensorPose(_msg.header.frame_id);
+		}
 		// mrpt::poses::CPose3D pose = laser_poses_[_msg.header.frame_id];
 		// ROS_INFO("LASER POSE %4.3f, %4.3f, %4.3f, %4.3f, %4.3f, %4.3f",
 		// pose.x(), pose.y(), pose.z(), pose.roll(), pose.pitch(), pose.yaw());
@@ -257,9 +237,10 @@ void PFLocalizationNode::callbackBeacon(
 	else if (state_ != IDLE)  // updating filter; we must be moving or
 	// update_while_stopped set to true
 	{
-        if(param()->update_sensor_pose) {
-            updateSensorPose(_msg.header.frame_id);
-        }
+		if (param()->update_sensor_pose)
+		{
+			updateSensorPose(_msg.header.frame_id);
+		}
 		// mrpt::poses::CPose3D pose = beacon_poses_[_msg.header.frame_id];
 		// ROS_INFO("BEACON POSE %4.3f, %4.3f, %4.3f, %4.3f, %4.3f, %4.3f",
 		// pose.x(), pose.y(), pose.z(), pose.roll(), pose.pitch(), pose.yaw());
@@ -498,13 +479,8 @@ void PFLocalizationNode::callbackOdometry(const nav_msgs::Odometry& _msg)
 
 void PFLocalizationNode::updateMap(const nav_msgs::OccupancyGrid& _msg)
 {
-#if MRPT_VERSION >= 0x199
-	ASSERT_(metric_map_.countMapsByClass<COccupancyGridMap2D>());
-	mrpt_bridge::convert(_msg, *metric_map_.mapByClass<COccupancyGridMap2D>());
-#else
-	ASSERT_(metric_map_.m_gridMaps.size() == 1);
-	mrpt_bridge::convert(_msg, *metric_map_.m_gridMaps[0]);
-#endif
+	ASSERT_(metric_map_->countMapsByClass<COccupancyGridMap2D>());
+	mrpt_bridge::convert(_msg, *metric_map_->mapByClass<COccupancyGridMap2D>());
 }
 
 bool PFLocalizationNode::mapCallback(
@@ -643,13 +619,7 @@ void PFLocalizationNode::publishTF()
 void PFLocalizationNode::publishPose()
 {
 	// cov for x, y, phi (meter, meter, radian)
-#if MRPT_VERSION >= 0x199
 	const auto [cov, mean] = pdf_.getCovarianceAndMean();
-#else
-	mrpt::math::CMatrixDouble33 cov;
-	mrpt::poses::CPose2D mean;
-	pdf_.getCovarianceAndMean(cov, mean);
-#endif
 
 	geometry_msgs::PoseWithCovarianceStamped p;
 
@@ -657,7 +627,7 @@ void PFLocalizationNode::publishPose()
 	p.header.frame_id =
 		tf::resolve(param()->tf_prefix, param()->global_frame_id);
 	if (loop_count_ < 10 || state_ == IDLE)
-		p.header.stamp = ros::Time::now();  // on first iterations timestamp
+		p.header.stamp = ros::Time::now();	// on first iterations timestamp
 	// differs a lot from ROS time
 	else
 		mrpt_bridge::convert(time_last_update_, p.header.stamp);

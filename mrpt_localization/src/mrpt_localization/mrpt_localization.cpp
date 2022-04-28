@@ -41,7 +41,7 @@ using mrpt::maps::COccupancyGridMap2D;
 using mrpt::maps::CSimplePointsMap;
 
 #include <mrpt/system/filesystem.h>
-#include <mrpt/opengl/CEllipsoid.h>
+#include <mrpt/opengl/CEllipsoid2D.h>
 #include <mrpt/opengl/CPointCloud.h>
 
 #include <thread>
@@ -162,7 +162,7 @@ void PFLocalization::init()
 	// Metric map options:
 
 	if (!mrpt_bridge::MapHdl::loadMap(
-			metric_map_, ini_file, param_->map_file, "metricMap",
+			*metric_map_, ini_file, param_->map_file, "metricMap",
 			param_->debug))
 	{
 		waitForMap();
@@ -192,7 +192,7 @@ void PFLocalization::configureFilter(const CConfigFile& _configFile)
 	// PDF Options:
 	pdf_.options = pdfPredictionOptions;
 
-	pdf_.options.metricMap = &metric_map_;
+	pdf_.options.metricMap = metric_map_;
 
 	// Create the PF object:
 	pf_.m_options = pfOptions;
@@ -214,18 +214,11 @@ void PFLocalization::init3DDebug()
 		// only the particles, etc..
 		COccupancyGridMap2D::TEntropyInfo grid_info;
 		// The gridmap:
-#if MRPT_VERSION >= 0x199
-		if (metric_map_.countMapsByClass<COccupancyGridMap2D>())
+		if (metric_map_->countMapsByClass<COccupancyGridMap2D>())
 		{
-			metric_map_.mapByClass<COccupancyGridMap2D>()->computeEntropy(
+			metric_map_->mapByClass<COccupancyGridMap2D>()->computeEntropy(
 				grid_info);
 		}
-#else
-		if (metric_map_.m_gridMaps.size())
-		{
-			metric_map_.m_gridMaps[0]->computeEntropy(grid_info);
-		}
-#endif
 		else
 		{
 			grid_info.effectiveMappedArea = (init_PDF_max_x - init_PDF_min_x) *
@@ -239,8 +232,7 @@ void PFLocalization::init3DDebug()
 			"Initial PDF: %f particles/m2\n",
 			initial_particle_count_ / grid_info.effectiveMappedArea);
 
-		auto plane = CSetOfObjects::Create();
-		metric_map_.getAs3DObject(plane);
+		auto plane = metric_map_->getVisualization();
 		scene_.insert(plane);
 
 		if (SHOW_PROGRESS_3D_REAL_TIME_)
@@ -280,6 +272,12 @@ void PFLocalization::show3DDebug(CSensoryFrame::Ptr _observations)
 		COpenGLScene::Ptr ptr_scene = win3D_->get3DSceneAndLock();
 
 		win3D_->setCameraPointingToPoint(meanPose.x(), meanPose.y(), 0);
+
+		mrpt::opengl::TFontParams fp;
+		fp.color = TColorf(.8f, .8f, .8f);
+		fp.vfont_name = "mono";
+		fp.vfont_scale = 15;
+
 		win3D_->addTextMessage(
 			10, 10,
 			mrpt::format(
@@ -288,19 +286,19 @@ void PFLocalization::show3DDebug(CSensoryFrame::Ptr _observations)
 					? mrpt::system::dateTimeLocalToString(cur_obs_timestamp)
 						  .c_str()
 					: "(none)"),
-			TColorf(.8f, .8f, .8f), "mono", 15, mrpt::opengl::NICE, 6001);
+			6001, fp);
 
 		win3D_->addTextMessage(
 			10, 33,
 			mrpt::format(
 				"#particles= %7u", static_cast<unsigned int>(pdf_.size())),
-			TColorf(.8f, .8f, .8f), "mono", 15, mrpt::opengl::NICE, 6002);
+			6002, fp);
 
 		win3D_->addTextMessage(
 			10, 55,
 			mrpt::format(
 				"mean pose (x y phi_deg)= %s", meanPose.asString().c_str()),
-			TColorf(.8f, .8f, .8f), "mono", 15, mrpt::opengl::NICE, 6003);
+			6003, fp);
 
 		// The particles:
 		{
@@ -317,7 +315,7 @@ void PFLocalization::show3DDebug(CSensoryFrame::Ptr _observations)
 			CRenderizable::Ptr ellip = ptr_scene->getByName("parts_cov");
 			if (!ellip)
 			{
-				auto o = CEllipsoid::Create();
+				auto o = CEllipsoid2D::Create();
 				ellip = o;
 				ellip->setName("parts_cov");
 				ellip->setColor(1, 0, 0, 0.6);
@@ -328,11 +326,8 @@ void PFLocalization::show3DDebug(CSensoryFrame::Ptr _observations)
 				ptr_scene->insert(ellip);
 			}
 			ellip->setLocation(meanPose.x(), meanPose.y(), 0.05);
-#if MRPT_VERSION >= 0x199
-			dynamic_cast<CEllipsoid*>(ellip.get())->setCovMatrix(cov, 2);
-#else
-			/// ToDo
-#endif
+			dynamic_cast<CEllipsoid2D*>(ellip.get())
+				->setCovMatrix(cov.blockCopy<2, 2>());
 		}
 
 		// The laser scan:
@@ -355,7 +350,7 @@ void PFLocalization::show3DDebug(CSensoryFrame::Ptr _observations)
 			CPose3D robot_pose_3D(meanPose);
 
 			map.clear();
-			_observations->insertObservationsInto(&map);
+			_observations->insertObservationsInto(map);
 
 			dynamic_cast<CPointCloud*>(scan_pts.get())
 				->loadFromPointsMap(&last_map);

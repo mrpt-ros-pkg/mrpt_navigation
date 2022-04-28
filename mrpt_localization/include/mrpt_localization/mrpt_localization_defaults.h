@@ -31,13 +31,9 @@
  **                       *
  ***********************************************************************************/
 
-#ifndef MRPT_LOCALIZATION_DEFAULTS_H
-#define MRPT_LOCALIZATION_DEFAULTS_H
-
+#pragma once
 #define MRPT_LOCALIZATION_DEFAULT_DEBUG true
 #define MRPT_LOCALIZATION_DEFAULT_GUI_MRPT true
 #define MRPT_LOCALIZATION_DEFAULT_INI_FILE "pf-localization.ini"
 #define MRPT_LOCALIZATION_DEFAULT_MAP_FILE ""
 #define MRPT_LOCALIZATION_DEFAULT_SENSOR_SOURCES "scan,scan1,scan2"
-
-#endif  // MRPT_LOCALIZATION_DEFAULTS_H

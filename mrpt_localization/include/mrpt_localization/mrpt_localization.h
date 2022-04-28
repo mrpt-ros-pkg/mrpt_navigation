@@ -31,8 +31,7 @@
  **                       *
  ***********************************************************************************/
 
-#ifndef MRPT_LOCALIZATION_H
-#define MRPT_LOCALIZATION_H
+#pragma once
 
 #include <iostream>
 #include <stdint.h>
@@ -60,7 +59,7 @@ class PFLocalization : public PFLocalizationCore
 		bool gui_mrpt;
 		std::string ini_file;
 		std::string map_file;
-		std::string sensor_sources;  //!< A list of topics (e.g. laser scanners)
+		std::string sensor_sources;	 //!< A list of topics (e.g. laser scanners)
 		//! to subscribe to for sensory data. Split
 		//! with "," (e.g. "laser1,laser2")
 		bool* use_motion_model_default_options;
@@ -86,5 +85,3 @@ class PFLocalization : public PFLocalizationCore
 	bool SHOW_PROGRESS_3D_REAL_TIME_;
 	int SHOW_PROGRESS_3D_REAL_TIME_DELAY_MS_;
 };
-
-#endif  // MRPT_LOCALIZATION_H

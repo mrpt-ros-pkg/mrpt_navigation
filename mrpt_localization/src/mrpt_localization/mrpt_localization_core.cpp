@@ -45,7 +45,6 @@ using namespace mrpt::slam;
 using namespace mrpt::opengl;
 using namespace mrpt::math;
 using namespace mrpt::system;
-using namespace mrpt::utils;
 using namespace std;
 
 PFLocalizationCore::~PFLocalizationCore() {}
@@ -84,24 +83,14 @@ void PFLocalizationCore::initializeFilter()
 	float min_phi = mean_point.phi() - cov(2, 2);
 	float max_phi = mean_point.phi() + cov(2, 2);
 
-#if MRPT_VERSION >= 0x199
-	if (metric_map_.countMapsByClass<COccupancyGridMap2D>() && !init_PDF_mode)
+	if (metric_map_->countMapsByClass<COccupancyGridMap2D>() && !init_PDF_mode)
 	{
 		pdf_.resetUniformFreeSpace(
-			metric_map_.mapByClass<COccupancyGridMap2D>().get(), 0.7f,
+			metric_map_->mapByClass<COccupancyGridMap2D>().get(), 0.7f,
 			initial_particle_count_, min_x, max_x, min_y, max_y, min_phi,
 			max_phi);
 	}
-	else if (metric_map_.countMapsByClass<CLandmarksMap>() || init_PDF_mode)
-#else
-	if (metric_map_.m_gridMaps.size() && !init_PDF_mode)
-	{
-		pdf_.resetUniformFreeSpace(
-			metric_map_.m_gridMaps[0].get(), 0.7f, initial_particle_count_,
-			min_x, max_x, min_y, max_y, min_phi, max_phi);
-	}
-	else if (metric_map_.m_landmarksMap || init_PDF_mode)
-#endif
+	else if (metric_map_->countMapsByClass<CLandmarksMap>() || init_PDF_mode)
 	{
 		pdf_.resetUniform(
 			min_x, max_x, min_y, max_y, min_phi, max_phi,
