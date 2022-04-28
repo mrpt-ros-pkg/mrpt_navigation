@@ -59,7 +59,7 @@ using namespace mrpt::obs;
 #include <mrpt/opengl/stock_objects.h>
 
 #include <mrpt/version.h>
-#if MRPT_VERSION>=0x199
+#if MRPT_VERSION >= 0x199
 #include <mrpt/system/CTimeLogger.h>
 #include <mrpt/config/CConfigFile.h>
 using namespace mrpt::system;
@@ -70,7 +70,6 @@ using namespace mrpt::img;
 #include <mrpt/utils/CConfigFile.h>
 using namespace mrpt::utils;
 #endif
-
 
 // The ROS node
 class LocalObstaclesNode
@@ -86,7 +85,7 @@ class LocalObstaclesNode
 
 	CTimeLogger m_profiler;
 
-	TAuxInitializer m_auxinit;  //!< Just to make sure ROS is init first
+	TAuxInitializer m_auxinit;	//!< Just to make sure ROS is init first
 	ros::NodeHandle m_nh;  //!< The node handle
 	ros::NodeHandle m_localn;  //!< "~"
 	bool m_show_gui;
@@ -94,7 +93,7 @@ class LocalObstaclesNode
 	std::string m_frameid_robot;  //!< typ: "base_link"
 	std::string
 		m_topic_local_map_pointcloud;  //!< Default: "local_map_pointcloud"
-	std::string m_source_topics_2dscan;  //!< Default: "scan,laser1"
+	std::string m_source_topics_2dscan;	 //!< Default: "scan,laser1"
 	double m_time_window;  //!< In secs (default: 0.2). This can't be smaller
 	//! than m_publish_period
 	double m_publish_period;  //!< In secs (default: 0.05). This can't be larger
@@ -123,7 +122,7 @@ class LocalObstaclesNode
 	 *  @{ */
 	ros::Publisher m_pub_local_map_pointcloud;
 	std::vector<ros::Subscriber>
-		m_subs_2dlaser;  //!< Subscriber to 2D laser scans
+		m_subs_2dlaser;	 //!< Subscriber to 2D laser scans
 	tf::TransformListener m_tf_listener;  //!< Use to retrieve TF data
 	/**  @} */
 
@@ -147,7 +146,7 @@ class LocalObstaclesNode
 	}
 
 	/** Callback: On new sensor data
-	  */
+	 */
 	void onNewSensor_Laser2D(const sensor_msgs::LaserScanConstPtr& scan)
 	{
 		CTimeLoggerEntry tle(m_profiler, "onNewSensor_Laser2D");
@@ -237,8 +236,7 @@ class LocalObstaclesNode
 		// Purge old observations & latch a local copy:
 		TListObservations obs;
 		{
-			CTimeLoggerEntry tle(
-				m_profiler, "onDoPublish.removingOld");
+			CTimeLoggerEntry tle(m_profiler, "onDoPublish.removingOld");
 			m_hist_obs_mtx.lock();
 
 			// Purge old obs:
@@ -269,8 +267,7 @@ class LocalObstaclesNode
 		m_localmap_pts.clear();
 		mrpt::poses::CPose3D curRobotPose;
 		{
-			CTimeLoggerEntry tle2(
-				m_profiler, "onDoPublish.buildLocalMap");
+			CTimeLoggerEntry tle2(m_profiler, "onDoPublish.buildLocalMap");
 
 			// Get the latest robot pose in the reference frame (typ: /odom ->
 			// /base_link)
@@ -304,7 +301,7 @@ class LocalObstaclesNode
 				relPose.inverseComposeFrom(ipt.robot_pose, curRobotPose);
 
 				// Insert obs:
-				m_localmap_pts.insertObservationPtr(ipt.observation, &relPose);
+				m_localmap_pts.insertObservationPtr(ipt.observation, relPose);
 
 			}  // end for
 		}
@@ -349,14 +346,14 @@ class LocalObstaclesNode
 
 			auto& scene = m_gui_win->get3DSceneAndLock();
 			auto gl_obs = mrpt::ptr_cast<mrpt::opengl::CSetOfObjects>::from(
-					scene->getByName("obstacles"));
+				scene->getByName("obstacles"));
 			ROS_ASSERT(!!gl_obs);
 			gl_obs->clear();
 
 			auto gl_pts = mrpt::ptr_cast<mrpt::opengl::CPointCloud>::from(
-					scene->getByName("points"));
+				scene->getByName("points"));
 
-			for (const auto &o :obs)
+			for (const auto& o : obs)
 			{
 				const TInfoPerTimeStep& ipt = o.second;
 				// Relative pose in the past:
@@ -438,7 +435,7 @@ class LocalObstaclesNode
 
 	}  // end ctor
 
-};  // end class
+};	// end class
 
 int main(int argc, char** argv)
 {
