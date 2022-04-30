@@ -161,6 +161,8 @@ void PFLocalization::init()
 	configureFilter(ini_file);
 	// Metric map options:
 
+	ASSERT_(metric_map_);
+
 	if (!mrpt_bridge::MapHdl::loadMap(
 			*metric_map_, ini_file, param_->map_file, "metricMap",
 			param_->debug))

@@ -90,7 +90,7 @@ class PFLocalizationCore
 		motion_model_default_options_;	///< used if there are is not odom
 	CActionRobotMovement2D::TMotionModelOptions
 		motion_model_options_;	///< used with odom value motion noise
-	CMultiMetricMap::Ptr metric_map_;  ///< map
+	CMultiMetricMap::Ptr metric_map_ = CMultiMetricMap::Create();  ///< map
 	mrpt::bayes::CParticleFilter
 		pf_;  ///< common interface for particle filters
 	mrpt::bayes::CParticleFilter::TParticleFilterStats
