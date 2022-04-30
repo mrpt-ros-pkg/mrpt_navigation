@@ -2,8 +2,8 @@
 Changelog for package mrpt_rawlog
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.0.0 (2022-04-30)
+------------------
 * Update URLs to https
 * Update build dep to mrpt2
 * Merge pull request `#126 <https://github.com/mrpt-ros-pkg/mrpt_navigation/issues/126>`_ from lukschwalb/master

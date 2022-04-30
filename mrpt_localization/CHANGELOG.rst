@@ -2,8 +2,8 @@
 Changelog for package mrpt_localization
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.0.0 (2022-04-30)
+------------------
 * Update URLs to https
 * Update build dep to mrpt2
 * Merge pull request `#118 <https://github.com/mrpt-ros-pkg/mrpt_navigation/issues/118>`_ from mx-robotics/ag-remove_laser_tf_cache
