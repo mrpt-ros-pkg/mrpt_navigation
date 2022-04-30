@@ -2,6 +2,12 @@
 Changelog for package mrpt_map
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Update URLs to https
+* Update build dep to mrpt2
+* Contributors: Jose Luis Blanco Claraco
+
 0.1.26 (2019-10-05)
 -------------------
 

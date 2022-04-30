@@ -5,3 +5,4 @@
 *.rawlog
 LOG_*
 CMakeLists.txt.user
+.vscode/settings.json

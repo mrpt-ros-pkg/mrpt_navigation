@@ -2,6 +2,17 @@
 Changelog for package mrpt_rawlog
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Update URLs to https
+* Update build dep to mrpt2
+* Merge pull request `#126 <https://github.com/mrpt-ros-pkg/mrpt_navigation/issues/126>`_ from lukschwalb/master
+  Fix incorrect class check
+* Fix incorrect class name
+* Merge pull request `#119 <https://github.com/mrpt-ros-pkg/mrpt_navigation/issues/119>`_ from mx-robotics/develop
+  rawlog_record: fnc call fileNameStripInvalidChars removed
+* Contributors: Jose Luis Blanco Claraco, Markus Bader, Schwalb, Luk
+
 0.1.26 (2019-10-05)
 -------------------
 * mrpt_rawlog: abort if input file does not exist. Fix crash if built against mrpt1.

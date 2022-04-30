@@ -2,6 +2,16 @@
 Changelog for package mrpt_localization
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Update URLs to https
+* Update build dep to mrpt2
+* Merge pull request `#118 <https://github.com/mrpt-ros-pkg/mrpt_navigation/issues/118>`_ from mx-robotics/ag-remove_laser_tf_cache
+  continuous laser pose update from tf tree fag added
+* added ROS parameter continuous sensor pose update
+* Fix incorrect publication of estimated pose (Closes: `#117 <https://github.com/mrpt-ros-pkg/mrpt_navigation/issues/117>`_)
+* Contributors: Jose Luis Blanco Claraco, Markus Bader
+
 0.1.26 (2019-10-05)
 -------------------
 
