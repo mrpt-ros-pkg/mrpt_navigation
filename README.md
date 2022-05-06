@@ -1,5 +1,3 @@
-[![Build Status](https://travis-ci.org/mrpt-ros-pkg/mrpt_navigation.svg?branch=master)](https://travis-ci.org/mrpt-ros-pkg/mrpt_navigation)
- 
 | Distro | Develop branch | Releases |
 | --- | --- | --- |
 | ROS1 Melodic (u18.04) | [![Build Status](http://build.ros.org/job/Mdev__mrpt_navigation__ubuntu_bionic_amd64/badge/icon)](http://build.ros.org/job/Mdev__mrpt_navigation__ubuntu_bionic_amd64/) |  [![Build Status](http://build.ros.org/job/Mbin_uB64__mrpt_navigation__ubuntu_bionic_amd64__binary/badge/icon)](http://build.ros.org/job/Mbin_uB64__mrpt_navigation__ubuntu_bionic_amd64__binary/) |
