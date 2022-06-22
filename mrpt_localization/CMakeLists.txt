@@ -7,11 +7,9 @@ project(mrpt_localization)
 find_package(catkin REQUIRED COMPONENTS roscpp tf std_msgs nav_msgs sensor_msgs mrpt_msgs pose_cov_ops dynamic_reconfigure)
 
 ## System dependencies are found with CMake's conventions
-find_package(MRPT 1.5 REQUIRED gui obs slam)
+find_package(mrpt-gui REQUIRED)
+find_package(mrpt-slam REQUIRED)
 message(STATUS "MRPT_VERSION: ${MRPT_VERSION}")
-if (MRPT_VERSION VERSION_LESS "1.9.9")
-	set (CMAKE_CXX_STANDARD 14)
-endif()
 
 if (CMAKE_COMPILER_IS_GNUCXX)
 	# High level of warnings.
@@ -85,17 +83,17 @@ add_dependencies(${PROJECT_NAME}
 
 ## Specify libraries to link a library or executable target against
 target_link_libraries(${PROJECT_NAME}_core
-  ${MRPT_LIBRARIES}
+  PUBLIC
+  mrpt::gui
+  mrpt::slam
+  mrpt_msgs
 )
 
 target_link_libraries(${PROJECT_NAME}
-  ${MRPT_LIBRARIES}
   ${PROJECT_NAME}_core
 )
 
 target_link_libraries(${PROJECT_NAME}_node
-  ${MRPT_LIBRARIES}
-   ${catkin_LIBRARIES}
    ${PROJECT_NAME}
 )
 
