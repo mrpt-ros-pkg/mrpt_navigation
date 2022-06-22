@@ -4,7 +4,7 @@ project(mrpt_map)
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
-find_package(catkin REQUIRED COMPONENTS roscpp tf std_msgs nav_msgs sensor_msgs mrpt_bridge)
+find_package(catkin REQUIRED COMPONENTS roscpp tf std_msgs nav_msgs sensor_msgs)
 
 find_package(MRPT 1.5 REQUIRED gui obs slam)
 message(STATUS "MRPT_VERSION: ${MRPT_VERSION}")
@@ -36,7 +36,7 @@ ENDIF()
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
-  CATKIN_DEPENDS roscpp tf std_msgs nav_msgs sensor_msgs mrpt_bridge
+  CATKIN_DEPENDS roscpp tf std_msgs nav_msgs sensor_msgs
 #  DEPENDS mrpt
 )
 

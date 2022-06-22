@@ -32,9 +32,9 @@
 
 #include <map_server_node.h>
 
-#include <mrpt_bridge/map.h>
+#include <mrpt/ros1bridge/map.h>
 
-#include <mrpt/system/filesystem.h>  // ASSERT_FILE_EXISTS_()
+#include <mrpt/system/filesystem.h>	 // ASSERT_FILE_EXISTS_()
 #include <mrpt/version.h>
 #if MRPT_VERSION >= 0x199
 #include <mrpt/config/CConfigFile.h>

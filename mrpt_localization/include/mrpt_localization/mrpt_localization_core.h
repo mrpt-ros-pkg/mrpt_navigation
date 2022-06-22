@@ -41,7 +41,7 @@
 #include <mrpt/poses/CPosePDFGaussian.h>
 #include <mrpt/system/CTicTac.h>
 #include <mrpt/slam/CMonteCarloLocalization2D.h>
-#include <mrpt_bridge/mrpt_log_macros.h>
+#include <mrpt/ros1bridge/mrpt_log_macros.h>
 
 #include <mrpt/version.h>
 #include <mrpt/obs/CActionRobotMovement2D.h>

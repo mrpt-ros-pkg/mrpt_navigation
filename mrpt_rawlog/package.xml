@@ -19,7 +19,6 @@
   <depend>sensor_msgs</depend>
   <depend>nav_msgs</depend>
   <depend>mrpt_msgs</depend>
-  <depend>mrpt_bridge</depend>
   <depend>dynamic_reconfigure</depend>
   <depend>rosbag</depend>
   <depend>marker_msgs</depend>

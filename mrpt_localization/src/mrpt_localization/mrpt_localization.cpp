@@ -34,7 +34,7 @@
 #include <mrpt_localization/mrpt_localization.h>
 #include <mrpt_localization/mrpt_localization_defaults.h>
 
-#include <mrpt_bridge/map.h>
+#include <mrpt/ros1bridge/map.h>
 #include <mrpt/maps/COccupancyGridMap2D.h>
 #include <mrpt/maps/CSimplePointsMap.h>
 using mrpt::maps::COccupancyGridMap2D;

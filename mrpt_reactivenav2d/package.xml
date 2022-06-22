@@ -20,7 +20,6 @@
   <depend>actionlib_msgs</depend>
   <depend>dynamic_reconfigure</depend>
   <depend>geometry_msgs</depend>
-  <depend>mrpt_bridge</depend>
   <depend>roscpp</depend>
   <depend>tf</depend>
   <depend>visualization_msgs</depend>

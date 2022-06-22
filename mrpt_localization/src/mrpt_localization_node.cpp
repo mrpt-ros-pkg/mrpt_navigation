@@ -35,11 +35,11 @@
 #include <geometry_msgs/PoseArray.h>
 #include <pose_cov_ops/pose_cov_ops.h>
 
-#include <mrpt_bridge/pose.h>
-#include <mrpt_bridge/laser_scan.h>
-#include <mrpt_bridge/time.h>
-#include <mrpt_bridge/map.h>
-#include <mrpt_bridge/beacon.h>
+#include <mrpt/ros1bridge/pose.h>
+#include <mrpt/ros1bridge/laser_scan.h>
+#include <mrpt/ros1bridge/time.h>
+#include <mrpt/ros1bridge/map.h>
+#include <mrpt/ros1bridge/beacon.h>
 #include <mrpt/obs/CObservationBeaconRanges.h>
 #include <mrpt/system/COutputLogger.h>
 #include <mrpt/obs/CObservationRobotPose.h>

@@ -33,11 +33,11 @@
 
 #include "rawlog_play_node.h"
 #include <boost/interprocess/sync/scoped_lock.hpp>
-#include <mrpt_bridge/pose.h>
-#include <mrpt_bridge/laser_scan.h>
-#include <mrpt_bridge/time.h>
-#include <mrpt_bridge/beacon.h>
-#include <mrpt_bridge/landmark.h>
+#include <mrpt/ros1bridge/pose.h>
+#include <mrpt/ros1bridge/laser_scan.h>
+#include <mrpt/ros1bridge/time.h>
+#include <mrpt/ros1bridge/beacon.h>
+#include <mrpt/ros1bridge/landmark.h>
 #include <mrpt/system/filesystem.h>
 
 #include <mrpt/version.h>

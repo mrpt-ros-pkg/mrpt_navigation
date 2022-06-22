@@ -34,10 +34,10 @@
 #include "rawlog_record_node.h"
 #include <boost/interprocess/sync/scoped_lock.hpp>
 
-#include <mrpt_bridge/pose.h>
-#include <mrpt_bridge/laser_scan.h>
-#include <mrpt_bridge/marker_msgs.h>
-#include <mrpt_bridge/time.h>
+#include <mrpt/ros1bridge/pose.h>
+#include <mrpt/ros1bridge/laser_scan.h>
+#include <mrpt/ros1bridge/marker_msgs.h>
+#include <mrpt/ros1bridge/time.h>
 
 #include <mrpt/version.h>
 using namespace mrpt::maps;

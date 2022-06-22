@@ -4,7 +4,7 @@ project(mrpt_rawlog)
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
-find_package(catkin REQUIRED COMPONENTS roscpp tf std_msgs nav_msgs sensor_msgs mrpt_msgs mrpt_bridge dynamic_reconfigure marker_msgs rosbag)
+find_package(catkin REQUIRED COMPONENTS roscpp tf std_msgs nav_msgs sensor_msgs mrpt_msgs dynamic_reconfigure marker_msgs rosbag)
 
 find_package(MRPT 1.5 REQUIRED gui obs)
 message(STATUS "MRPT_VERSION: ${MRPT_VERSION}")
@@ -48,7 +48,7 @@ generate_dynamic_reconfigure_options(
 catkin_package(
 #  INCLUDE_DIRS include
   LIBRARIES rawlog_record rawlog_play
-  CATKIN_DEPENDS roscpp tf std_msgs nav_msgs sensor_msgs mrpt_msgs mrpt_bridge marker_msgs dynamic_reconfigure
+  CATKIN_DEPENDS roscpp tf std_msgs nav_msgs sensor_msgs mrpt_msgs marker_msgs dynamic_reconfigure
 #   DEPENDS mrpt
 )
 

@@ -63,9 +63,9 @@ using namespace mrpt::utils;
 
 #include <mrpt/system/filesystem.h>
 
-#include <mrpt_bridge/pose.h>
-#include <mrpt_bridge/point_cloud.h>
-#include <mrpt_bridge/time.h>
+#include <mrpt/ros1bridge/pose.h>
+#include <mrpt/ros1bridge/point_cloud.h>
+#include <mrpt/ros1bridge/time.h>
 
 #include <mrpt/kinematics/CVehicleVelCmd_DiffDriven.h>
 
@@ -84,7 +84,7 @@ class ReactiveNav2DNode
 	};
 
 	CTimeLogger m_profiler;
-	TAuxInitializer m_auxinit;  //!< Just to make sure ROS is init first
+	TAuxInitializer m_auxinit;	//!< Just to make sure ROS is init first
 	ros::NodeHandle m_nh;  //!< The node handle
 	ros::NodeHandle m_localn;  //!< "~"
 
@@ -474,7 +474,7 @@ class ReactiveNav2DNode
 		}
 	}
 
-};  // end class
+};	// end class
 
 int main(int argc, char** argv)
 {

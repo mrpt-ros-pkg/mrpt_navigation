@@ -50,7 +50,7 @@ using mrpt::obs::CActionRobotMovement2D;
 using mrpt::obs::CRawlog;
 
 #include <mrpt/poses/CPose2D.h>
-#include <mrpt_bridge/mrpt_log_macros.h>
+#include <mrpt/ros1bridge/mrpt_log_macros.h>
 
 #include <mrpt_rawlog_record/rawlog_record_defaults.h>
 
@@ -87,4 +87,4 @@ class RawlogRecord
 	boost::interprocess::interprocess_mutex mutexRawLog;
 };
 
-#endif  // MRPT_RAWLOG_RECORD_H
+#endif	// MRPT_RAWLOG_RECORD_H

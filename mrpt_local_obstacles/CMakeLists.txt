@@ -6,19 +6,18 @@ project(mrpt_local_obstacles)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
   dynamic_reconfigure
-  mrpt_bridge
   roscpp
   sensor_msgs
-  tf
+  tf2
   visualization_msgs
+  tf2_geometry_msgs
 )
 
 ## System dependencies are found with CMake's conventions
-find_package(MRPT 1.5 REQUIRED obs maps slam gui)
-message(STATUS "MRPT_VERSION: ${MRPT_VERSION}")
-if(MRPT_VERSION VERSION_LESS "1.9.9")
-  set (CMAKE_CXX_STANDARD 14)
-endif()
+find_package(mrpt-maps REQUIRED)
+find_package(mrpt-obs REQUIRED)
+find_package(mrpt-gui REQUIRED)
+find_package(mrpt-ros1bridge REQUIRED)
 
 if (CMAKE_COMPILER_IS_GNUCXX)
 	# High level of warnings.
@@ -45,7 +44,7 @@ ENDIF()
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
   LIBRARIES ${PROJECT_NAME}
-  CATKIN_DEPENDS dynamic_reconfigure mrpt_bridge roscpp sensor_msgs tf visualization_msgs
+  CATKIN_DEPENDS dynamic_reconfigure roscpp sensor_msgs tf2 tf2_geometry_msgs visualization_msgs
   # DEPENDS mrpt
 )
 
@@ -67,7 +66,10 @@ add_executable(${PROJECT_NAME}_node
 # Specify libraries to link a library or executable target against
 target_link_libraries(${PROJECT_NAME}_node
   ${catkin_LIBRARIES}
-  ${MRPT_LIBRARIES}
+  mrpt::maps
+  mrpt::obs
+  mrpt::gui
+  mrpt::ros1bridge
 )
 
 #############

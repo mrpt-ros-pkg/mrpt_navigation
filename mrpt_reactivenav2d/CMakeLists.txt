@@ -9,7 +9,6 @@ find_package(catkin REQUIRED COMPONENTS
   actionlib_msgs
   dynamic_reconfigure
   geometry_msgs
-  mrpt_bridge
   roscpp
   tf
   visualization_msgs
@@ -48,7 +47,7 @@ ENDIF()
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES mrpt_reactivenav2d
-  CATKIN_DEPENDS actionlib actionlib_msgs dynamic_reconfigure geometry_msgs mrpt_bridge roscpp tf visualization_msgs
+  CATKIN_DEPENDS actionlib actionlib_msgs dynamic_reconfigure geometry_msgs roscpp tf visualization_msgs
 #  DEPENDS mrpt
 )
 

@@ -30,46 +30,34 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. *
  ***********************************************************************************/
 
-#include <ros/ros.h>
-
-#include <sensor_msgs/LaserScan.h>
-#include <sensor_msgs/PointCloud.h>
-#include <nav_msgs/Odometry.h>
-
-#include <tf/transform_listener.h>
-
-#include <mrpt_bridge/pose.h>
-#include <mrpt_bridge/laser_scan.h>
-#include <mrpt_bridge/point_cloud.h>
-
-#include <map>
-
-#include <mrpt/version.h>
-#include <mrpt/obs/CSensoryFrame.h>
-#include <mrpt/maps/CSimplePointsMap.h>
-#include <mrpt/maps/COccupancyGridMap2D.h>
-#include <mrpt/obs/CObservation2DRangeScan.h>
-using namespace mrpt::maps;
-using namespace mrpt::obs;
-
-#include <mrpt/system/string_utils.h>
+#include <mrpt/config/CConfigFile.h>
 #include <mrpt/gui/CDisplayWindow3D.h>
+#include <mrpt/maps/COccupancyGridMap2D.h>
+#include <mrpt/maps/CSimplePointsMap.h>
+#include <mrpt/obs/CObservation2DRangeScan.h>
+#include <mrpt/obs/CSensoryFrame.h>
 #include <mrpt/opengl/CGridPlaneXY.h>
 #include <mrpt/opengl/CPointCloud.h>
 #include <mrpt/opengl/stock_objects.h>
-
-#include <mrpt/version.h>
-#if MRPT_VERSION >= 0x199
+#include <mrpt/ros1bridge/laser_scan.h>
+#include <mrpt/ros1bridge/point_cloud.h>
+#include <mrpt/ros1bridge/pose.h>
 #include <mrpt/system/CTimeLogger.h>
-#include <mrpt/config/CConfigFile.h>
+#include <mrpt/system/string_utils.h>
+#include <nav_msgs/Odometry.h>
+#include <ros/ros.h>
+#include <sensor_msgs/LaserScan.h>
+#include <sensor_msgs/PointCloud.h>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
+#include <tf2_ros/transform_listener.h>
+
+#include <map>
+
 using namespace mrpt::system;
 using namespace mrpt::config;
 using namespace mrpt::img;
-#else
-#include <mrpt/utils/CTimeLogger.h>
-#include <mrpt/utils/CConfigFile.h>
-using namespace mrpt::utils;
-#endif
+using namespace mrpt::maps;
+using namespace mrpt::obs;
 
 // The ROS node
 class LocalObstaclesNode
@@ -121,9 +109,13 @@ class LocalObstaclesNode
 	/** @name ROS pubs/subs
 	 *  @{ */
 	ros::Publisher m_pub_local_map_pointcloud;
-	std::vector<ros::Subscriber>
-		m_subs_2dlaser;	 //!< Subscriber to 2D laser scans
-	tf::TransformListener m_tf_listener;  //!< Use to retrieve TF data
+
+	//!< Subscriber to 2D laser scans
+	std::vector<ros::Subscriber> m_subs_2dlaser;
+
+	tf2_ros::Buffer m_tf_buffer;
+	tf2_ros::TransformListener m_tf_listener{m_tf_buffer};
+
 	/**  @} */
 
 	/**
@@ -151,29 +143,36 @@ class LocalObstaclesNode
 	{
 		CTimeLoggerEntry tle(m_profiler, "onNewSensor_Laser2D");
 
+		ros::Duration timeout(1.0);
+
 		// Get the relative position of the sensor wrt the robot:
-		tf::StampedTransform sensorOnRobot;
+		geometry_msgs::TransformStamped sensorOnRobot;
 		try
 		{
 			CTimeLoggerEntry tle2(
 				m_profiler, "onNewSensor_Laser2D.lookupTransform_sensor");
-			m_tf_listener.lookupTransform(
-				m_frameid_robot, scan->header.frame_id, ros::Time(0),
-				sensorOnRobot);
+
+			sensorOnRobot = m_tf_buffer.lookupTransform(
+				m_frameid_robot, scan->header.frame_id, scan->header.stamp,
+				timeout);
 		}
-		catch (tf::TransformException& ex)
+		catch (const tf2::TransformException& ex)
 		{
 			ROS_ERROR("%s", ex.what());
 			return;
 		}
 
 		// Convert data to MRPT format:
-		mrpt::poses::CPose3D sensorOnRobot_mrpt;
-		mrpt_bridge::convert(sensorOnRobot, sensorOnRobot_mrpt);
-		// In MRPT, CObservation2DRangeScan holds both: sensor data + relative
-		// pose:
+		const mrpt::poses::CPose3D sensorOnRobot_mrpt = [&]() {
+			tf2::Transform tx;
+			tf2::fromMsg(sensorOnRobot.transform, tx);
+			return mrpt::ros1bridge::fromROS(tx);
+		}();
+
+		// In MRPT, CObservation2DRangeScan holds both: sensor data +
+		// relative pose:
 		auto obsScan = CObservation2DRangeScan::Create();
-		mrpt_bridge::convert(*scan, sensorOnRobot_mrpt, *obsScan);
+		mrpt::ros1bridge::fromROS(*scan, sensorOnRobot_mrpt, *obsScan);
 
 		ROS_DEBUG(
 			"[onNewSensor_Laser2D] %u rays, sensor pose on robot %s",
@@ -190,27 +189,31 @@ class LocalObstaclesNode
 		{
 			CTimeLoggerEntry tle3(
 				m_profiler, "onNewSensor_Laser2D.lookupTransform_robot");
-			tf::StampedTransform tx;
 
+			geometry_msgs::TransformStamped robotTfStamp;
 			try
 			{
-				m_tf_listener.lookupTransform(
+				robotTfStamp = m_tf_buffer.lookupTransform(
 					m_frameid_reference, m_frameid_robot, scan->header.stamp,
-					tx);
+					timeout);
 			}
-			catch (tf::ExtrapolationException&)
+			catch (const tf2::ExtrapolationException& ex)
 			{
-				// if we need a "too much " recent robot pose,be happy with the
-				// latest one:
-				m_tf_listener.lookupTransform(
-					m_frameid_reference, m_frameid_robot, ros::Time(0), tx);
+				ROS_ERROR("%s", ex.what());
+				return;
 			}
-			mrpt_bridge::convert(tx, robotPose);
+
+			robotPose = [&]() {
+				tf2::Transform tx;
+				tf2::fromMsg(robotTfStamp.transform, tx);
+				return mrpt::ros1bridge::fromROS(tx);
+			}();
+
 			ROS_DEBUG(
 				"[onNewSensor_Laser2D] robot pose %s",
 				robotPose.asString().c_str());
 		}
-		catch (tf::TransformException& ex)
+		catch (const tf2::TransformException& ex)
 		{
 			ROS_ERROR("%s", ex.what());
 			return;
@@ -272,22 +275,29 @@ class LocalObstaclesNode
 			// Get the latest robot pose in the reference frame (typ: /odom ->
 			// /base_link)
 			// so we can build the local map RELATIVE to it:
+			ros::Duration timeout(1.0);
+
 			try
 			{
-				tf::StampedTransform tx;
-				m_tf_listener.lookupTransform(
-					m_frameid_reference, m_frameid_robot, ros::Time(0), tx);
-				mrpt_bridge::convert(tx, curRobotPose);
-				ROS_DEBUG(
-					"[onDoPublish] Building local map relative to latest robot "
-					"pose: %s",
-					curRobotPose.asString().c_str());
+				geometry_msgs::TransformStamped tx;
+				tx = m_tf_buffer.lookupTransform(
+					m_frameid_reference, m_frameid_robot, ros::Time(0),
+					timeout);
+
+				tf2::Transform tfx;
+				tf2::fromMsg(tx.transform, tfx);
+				curRobotPose = mrpt::ros1bridge::fromROS(tfx);
 			}
-			catch (tf::TransformException& ex)
+			catch (const tf2::ExtrapolationException& ex)
 			{
 				ROS_ERROR("%s", ex.what());
 				return;
 			}
+
+			ROS_DEBUG(
+				"[onDoPublish] Building local map relative to latest robot "
+				"pose: %s",
+				curRobotPose.asString().c_str());
 
 			// For each observation: compute relative robot pose & insert obs
 			// into map:
@@ -313,8 +323,8 @@ class LocalObstaclesNode
 				sensor_msgs::PointCloudPtr(new sensor_msgs::PointCloud);
 			msg_pts->header.frame_id = m_frameid_robot;
 			msg_pts->header.stamp = ros::Time(obs.rbegin()->first);
-			mrpt_bridge::point_cloud::mrpt2ros(
-				m_localmap_pts, msg_pts->header, *msg_pts);
+
+			mrpt::ros1bridge::toROS(m_localmap_pts, msg_pts->header, *msg_pts);
 			m_pub_local_map_pointcloud.publish(msg_pts);
 		}
 
@@ -434,7 +444,6 @@ class LocalObstaclesNode
 			this);
 
 	}  // end ctor
-
 };	// end class
 
 int main(int argc, char** argv)
