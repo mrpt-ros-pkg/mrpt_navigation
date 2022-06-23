@@ -33,15 +33,12 @@
 
 #include <mrpt/maps/COccupancyGridMap2D.h>
 #include <mrpt/maps/CSimplePointsMap.h>
-#include <mrpt/ros1bridge/include/mrpt/ros1bridge/map.h>
-#include <mrpt_localization/mrpt_localization.h>
-#include <mrpt_localization/mrpt_localization_defaults.h>
-using mrpt::maps::COccupancyGridMap2D;
-using mrpt::maps::CSimplePointsMap;
-
 #include <mrpt/opengl/CEllipsoid2D.h>
 #include <mrpt/opengl/CPointCloud.h>
+#include <mrpt/ros1bridge/map.h>
 #include <mrpt/system/filesystem.h>
+#include <mrpt_localization/mrpt_localization.h>
+#include <mrpt_localization/mrpt_localization_defaults.h>
 #include <ros/console.h>
 
 #include <chrono>
@@ -60,6 +57,9 @@ using namespace mrpt::maps;
 using namespace mrpt::obs;
 using namespace mrpt::img;
 using namespace mrpt::config;
+
+using mrpt::maps::COccupancyGridMap2D;
+using mrpt::maps::CSimplePointsMap;
 
 PFLocalization::~PFLocalization() {}
 PFLocalization::PFLocalization(Parameters* param)

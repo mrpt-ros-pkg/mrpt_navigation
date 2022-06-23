@@ -31,36 +31,36 @@
  **                       *
  ***********************************************************************************/
 
-#ifndef MRPT_LOCALIZATION_NODE_H
-#define MRPT_LOCALIZATION_NODE_H
+#pragma once
 
-#include <cstring>  // size_t
-
-#include <ros/ros.h>
-#include <tf/transform_listener.h>
-#include <tf/transform_broadcaster.h>
-#include <std_msgs/Header.h>
-#include <nav_msgs/Odometry.h>
-#include <nav_msgs/GetMap.h>
-#include <sensor_msgs/LaserScan.h>
-#include <geometry_msgs/PoseWithCovarianceStamped.h>
-#include <nav_msgs/OccupancyGrid.h>
-#include <nav_msgs/MapMetaData.h>
 #include <dynamic_reconfigure/server.h>
-
-#include <mrpt/version.h>
+#include <geometry_msgs/PoseWithCovarianceStamped.h>
 #include <mrpt/obs/CObservationOdometry.h>
-using mrpt::obs::CObservationOdometry;
+#include <mrpt/version.h>
+#include <nav_msgs/GetMap.h>
+#include <nav_msgs/MapMetaData.h>
+#include <nav_msgs/OccupancyGrid.h>
+#include <nav_msgs/Odometry.h>
+#include <ros/ros.h>
+#include <sensor_msgs/LaserScan.h>
+#include <std_msgs/Header.h>
 
+#include <cstring>	// size_t
+
+#include "geometry_msgs/TransformStamped.h"
 #include "mrpt_localization/MotionConfig.h"
 #include "mrpt_localization/mrpt_localization.h"
 #include "mrpt_msgs/ObservationRangeBeacon.h"
+#include "tf2_geometry_msgs/tf2_geometry_msgs.h"
+#include "tf2_ros/buffer.h"
+#include "tf2_ros/transform_broadcaster.h"
+#include "tf2_ros/transform_listener.h"
+
+using mrpt::obs::CObservationOdometry;
 
 /// ROS Node
 class PFLocalizationNode : public PFLocalization
 {
-	MRPT_ROS_LOG_MACROS;
-
    public:
 	struct Parameters : public PFLocalization::Parameters
 	{
@@ -76,16 +76,15 @@ class PFLocalizationNode : public PFLocalization
 			mrpt_localization::MotionConfig>::CallbackType reconfigure_cb_;
 		void update(const unsigned long& loop_count);
 		double rate;
-		double transform_tolerance;  ///< projection into the future added to
+		double transform_tolerance;	 ///< projection into the future added to
 		/// the published tf to extend its validity
-		double no_update_tolerance;  ///< maximum time without updating we keep
+		double no_update_tolerance;	 ///< maximum time without updating we keep
 		/// using filter time instead of Time::now
-		double no_inputs_tolerance;  ///< maximum time without any observation
+		double no_inputs_tolerance;	 ///< maximum time without any observation
 		/// we wait before start complaining
 		int parameter_update_skip;
 		int particlecloud_update_skip;
 		int map_update_skip;
-		std::string tf_prefix;
 		std::string base_frame_id;
 		std::string odom_frame_id;
 		std::string global_frame_id;
@@ -129,8 +128,12 @@ class PFLocalizationNode : public PFLocalization
 	ros::Publisher pub_metadata_;
 	ros::Publisher pub_pose_;
 	ros::ServiceServer service_map_;
-	tf::TransformListener tf_listener_;
-	tf::TransformBroadcaster tf_broadcaster_;
+
+	tf2_ros::Buffer tf_buffer_;
+	tf2_ros::TransformListener tf_listener_{tf_buffer_};
+
+	tf2_ros::TransformBroadcaster tf_broadcaster_;
+
 	std::map<std::string, mrpt::poses::CPose3D> laser_poses_;
 	std::map<std::string, mrpt::poses::CPose3D> beacon_poses_;
 
@@ -152,5 +155,3 @@ class PFLocalizationNode : public PFLocalization
 	void publishMap();
 	virtual bool waitForMap();
 };
-
-#endif  // MRPT_LOCALIZATION_NODE_H

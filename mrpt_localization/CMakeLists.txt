@@ -4,12 +4,27 @@ project(mrpt_localization)
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
-find_package(catkin REQUIRED COMPONENTS roscpp tf std_msgs nav_msgs sensor_msgs mrpt_msgs pose_cov_ops dynamic_reconfigure)
+find_package(catkin REQUIRED COMPONENTS
+  roscpp
+  tf2
+  std_msgs
+  nav_msgs
+  sensor_msgs
+  mrpt_msgs
+  mrpt_msgs_bridge
+  pose_cov_ops
+  dynamic_reconfigure
+  )
 
 ## System dependencies are found with CMake's conventions
 find_package(mrpt-gui REQUIRED)
 find_package(mrpt-slam REQUIRED)
+find_package(mrpt-ros1bridge REQUIRED)
 message(STATUS "MRPT_VERSION: ${MRPT_VERSION}")
+
+find_package(pose_cov_ops REQUIRED)
+# TODO: Apparently catkin is not exporting this PUBLIC flag from the pose_cov_ops library (!!!)
+add_definitions(-DPACKAGE_ROS_VERSION=1)
 
 if (CMAKE_COMPILER_IS_GNUCXX)
 	# High level of warnings.
@@ -44,7 +59,7 @@ generate_dynamic_reconfigure_options(
 catkin_package(
   INCLUDE_DIRS include
   LIBRARIES ${PROJECT_NAME} ${PROJECT_NAME}_core
-  CATKIN_DEPENDS roscpp tf std_msgs nav_msgs sensor_msgs mrpt_msgs pose_cov_ops dynamic_reconfigure
+  CATKIN_DEPENDS roscpp tf std_msgs nav_msgs sensor_msgs mrpt_msgs mrpt_msgs_bridge pose_cov_ops dynamic_reconfigure
 #  DEPENDS mrpt
 )
 
@@ -86,6 +101,7 @@ target_link_libraries(${PROJECT_NAME}_core
   PUBLIC
   mrpt::gui
   mrpt::slam
+  mrpt::ros1bridge
 )
 
 target_link_libraries(${PROJECT_NAME}
@@ -93,7 +109,9 @@ target_link_libraries(${PROJECT_NAME}
 )
 
 target_link_libraries(${PROJECT_NAME}_node
+  PRIVATE
    ${PROJECT_NAME}
+   pose_cov_ops
 )
 
 #############

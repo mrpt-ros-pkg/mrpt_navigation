@@ -60,8 +60,6 @@ PFLocalizationNode::Parameters::Parameters(PFLocalizationNode* p)
 	ROS_INFO("map_file: %s", map_file.c_str());
 	node.getParam("sensor_sources", sensor_sources);
 	ROS_INFO("sensor_sources: %s", sensor_sources.c_str());
-	node.param<std::string>("tf_prefix", tf_prefix, "");
-	ROS_INFO("tf_prefix: %s", tf_prefix.c_str());
 	node.param<std::string>("global_frame_id", global_frame_id, "map");
 	ROS_INFO("global_frame_id: %s", global_frame_id.c_str());
 	node.param<std::string>("odom_frame_id", odom_frame_id, "odom");
@@ -161,6 +159,5 @@ void PFLocalizationNode::Parameters::callbackParameters(
 	ROS_INFO(
 		"update_while_stopped: %s", update_while_stopped ? "true" : "false");
 	update_sensor_pose = config.update_sensor_pose;
-	ROS_INFO(
-		"update_sensor_pose: %s", update_sensor_pose ? "true" : "false");
+	ROS_INFO("update_sensor_pose: %s", update_sensor_pose ? "true" : "false");
 }
