@@ -31,25 +31,15 @@
  **                       *
  ***********************************************************************************/
 
-#ifndef MRPT_MAP_SERVER_NODE_H
-#define MRPT_MAP_SERVER_NODE_H
+#pragma once
 
-#include "ros/ros.h"
-#include "nav_msgs/MapMetaData.h"
-#include "nav_msgs/GetMap.h"
-#include "boost/smart_ptr.hpp"
-
-#include <mrpt/version.h>
-#if MRPT_VERSION >= 0x199
 #include <mrpt/config/CConfigFile.h>
-using namespace mrpt::config;
-#else
-#include <mrpt/utils/CConfigFile.h>
-using namespace mrpt::utils;
-#endif
-
 #include <mrpt/maps/CMultiMetricMap.h>
-using mrpt::maps::CMultiMetricMap;
+#include <mrpt/version.h>
+
+#include "nav_msgs/GetMap.h"
+#include "nav_msgs/MapMetaData.h"
+#include "ros/ros.h"
 
 class MapServer
 {
@@ -69,10 +59,11 @@ class MapServer
 	ros::Publisher pub_metadata_;
 	ros::ServiceServer service_map_;
 	nav_msgs::GetMap::Response resp_ros_;
-	boost::shared_ptr<CMultiMetricMap> metric_map_;
+
+	mrpt::maps::CMultiMetricMap::Ptr metric_map_;
+
 	void publishMap();
+
 	bool mapCallback(
 		nav_msgs::GetMap::Request& req, nav_msgs::GetMap::Response& res);
 };
-
-#endif  // MRPT_MAP_SERVER_NODE_H

@@ -4,13 +4,16 @@ project(mrpt_map)
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
-find_package(catkin REQUIRED COMPONENTS roscpp tf std_msgs nav_msgs sensor_msgs)
+find_package(catkin REQUIRED 
+	COMPONENTS
+		roscpp
+		nav_msgs
+	)
 
-find_package(MRPT 1.5 REQUIRED gui obs slam)
+find_package(mrpt-maps REQUIRED)
+find_package(mrpt-ros1bridge REQUIRED)
+
 message(STATUS "MRPT_VERSION: ${MRPT_VERSION}")
-if(MRPT_VERSION VERSION_LESS "1.9.9")
-	set (CMAKE_CXX_STANDARD 14)
-endif()
 
 if (CMAKE_COMPILER_IS_GNUCXX)
 	# High level of warnings.
@@ -36,7 +39,9 @@ ENDIF()
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
-  CATKIN_DEPENDS roscpp tf std_msgs nav_msgs sensor_msgs
+  CATKIN_DEPENDS 
+		roscpp
+		nav_msgs
 #  DEPENDS mrpt
 )
 
@@ -53,7 +58,8 @@ add_executable(map_server_node src/map_server_node.cpp)
 
 ## Specify libraries to link a library or executable target against
 target_link_libraries(map_server_node
-  ${MRPT_LIBRARIES}
+  mrpt::maps
+  mrpt::ros1bridge
   ${catkin_LIBRARIES}
 )
 
