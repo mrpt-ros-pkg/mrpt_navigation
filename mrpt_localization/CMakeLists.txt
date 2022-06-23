@@ -7,6 +7,8 @@ project(mrpt_localization)
 find_package(catkin REQUIRED COMPONENTS
   roscpp
   tf2
+  tf2_ros
+  tf2_geometry_msgs
   std_msgs
   nav_msgs
   sensor_msgs
@@ -59,7 +61,18 @@ generate_dynamic_reconfigure_options(
 catkin_package(
   INCLUDE_DIRS include
   LIBRARIES ${PROJECT_NAME} ${PROJECT_NAME}_core
-  CATKIN_DEPENDS roscpp tf std_msgs nav_msgs sensor_msgs mrpt_msgs mrpt_msgs_bridge pose_cov_ops dynamic_reconfigure
+  CATKIN_DEPENDS
+    roscpp
+    tf2
+    tf2_ros
+    tf2_geometry_msgs
+    std_msgs
+    nav_msgs
+    sensor_msgs
+    mrpt_msgs
+    mrpt_msgs_bridge
+    pose_cov_ops
+    dynamic_reconfigure
 #  DEPENDS mrpt
 )
 
@@ -99,6 +112,7 @@ add_dependencies(${PROJECT_NAME}
 ## Specify libraries to link a library or executable target against
 target_link_libraries(${PROJECT_NAME}_core
   PUBLIC
+  ${catkin_LIBRARIES}
   mrpt::gui
   mrpt::slam
   mrpt::ros1bridge
@@ -106,12 +120,13 @@ target_link_libraries(${PROJECT_NAME}_core
 
 target_link_libraries(${PROJECT_NAME}
   ${PROJECT_NAME}_core
+  ${catkin_LIBRARIES}
 )
 
 target_link_libraries(${PROJECT_NAME}_node
   PRIVATE
-   ${PROJECT_NAME}
-   pose_cov_ops
+  ${PROJECT_NAME}
+  ${catkin_LIBRARIES}
 )
 
 #############

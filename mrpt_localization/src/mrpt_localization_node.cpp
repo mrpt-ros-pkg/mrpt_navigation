@@ -300,7 +300,7 @@ void PFLocalizationNode::callbackRobotPose(
 	// the global frame -> observation frame tf as a Pose msg, as required by
 	// pose_cov_ops::compose
 	geometry_msgs::Pose map_to_obs_pose;
-	tf2::convert(map_to_obs_tf, map_to_obs_pose);
+	tf2::toMsg(map_to_obs_tf, map_to_obs_pose);
 
 	geometry_msgs::PoseWithCovarianceStamped obs_pose_world;
 	obs_pose_world.header.stamp = _msg.header.stamp;
@@ -553,16 +553,17 @@ void PFLocalizationNode::publishTF()
 	static std::string odom_frame_id = param()->odom_frame_id;
 	static std::string global_frame_id = param()->global_frame_id;
 
-	mrpt::poses::CPose2D robot_pose;
-	pdf_.getMean(robot_pose);
+	const mrpt::poses::CPose2D robotPoseFromPF = [this]() {
+		return pdf_.getMeanVal();
+	}();
 
-	tf2::StampedTransform base_on_map_tf, odom_on_base_tf;
-	mrpt_bridge::convert(robot_pose, base_on_map_tf);
+	tf2::Transform baseOnMap_tf;
+	tf2::fromMsg(mrpt::ros1bridge::toROS_Pose(robotPoseFromPF), baseOnMap_tf);
 
 	ros::Time time_last_update(0.0);
 	if (state_ == RUN)
 	{
-		mrpt_bridge::convert(time_last_update_, time_last_update);
+		time_last_update = mrpt::ros1bridge::toROS(time_last_update_);
 
 		// Last update time can be too far in the past if we where not updating
 		// filter, due to robot stopped or no
@@ -597,24 +598,35 @@ void PFLocalizationNode::publishTF()
 		}
 	}
 
-	try
+	tf2::Transform odomOnBase_tf;
+
 	{
-		// Get base -> odom transform
-		tf_listener_.waitForTransform(
-			base_frame_id, odom_frame_id, time_last_update, ros::Duration(0.1));
-		tf_listener_.lookupTransform(
-			base_frame_id, odom_frame_id, time_last_update, odom_on_base_tf);
-	}
-	catch (tf::TransformException& e)
-	{
-		ROS_WARN_THROTTLE(
-			2.0, "Transform from base frame (%s) to odom frame (%s) failed: %s",
-			base_frame_id.c_str(), odom_frame_id.c_str(), e.what());
-		ROS_WARN_THROTTLE(
-			2.0,
-			"Ensure that your mobile base driver is broadcasting %s -> %s tf",
-			odom_frame_id.c_str(), base_frame_id.c_str());
-		return;
+		geometry_msgs::TransformStamped transform;
+		try
+		{
+			transform = tf_buffer_.lookupTransform(
+				base_frame_id, odom_frame_id, time_last_update,
+				ros::Duration(0.1));
+		}
+		catch (const tf2::TransformException& e)
+		{
+			ROS_WARN_THROTTLE(
+				2.0,
+				"Failed to get transform target_frame (%s) to source_frame "
+				"(%s): "
+				"%s",
+				base_frame_id.c_str(), odom_frame_id.c_str(), e.what());
+			ROS_WARN_THROTTLE(
+				2.0,
+				"Ensure that your mobile base driver is broadcasting %s -> %s "
+				"tf",
+				odom_frame_id.c_str(), base_frame_id.c_str());
+
+			return;
+		}
+		tf2::Transform tx;
+		tf2::fromMsg(transform.transform, tx);
+		odomOnBase_tf = tx;
 	}
 
 	// We want to send a transform that is good up until a tolerance time so
@@ -622,10 +634,13 @@ void PFLocalizationNode::publishTF()
 	ros::Time transform_expiration =
 		(time_last_update.isZero() ? ros::Time::now() : time_last_update) +
 		ros::Duration(param()->transform_tolerance);
-	tf::StampedTransform tmp_tf_stamped(
-		base_on_map_tf * odom_on_base_tf, transform_expiration, global_frame_id,
+
+	tf2::Stamped<tf2::Transform> tmp_tf_stamped(
+		baseOnMap_tf * odomOnBase_tf,
+		transform_expiration,  // global_frame_id,
 		odom_frame_id);
-	tf_broadcaster_.sendTransform(tmp_tf_stamped);
+
+	tf_broadcaster_.sendTransform(tf2::toMsg(tmp_tf_stamped));
 }
 
 /**
@@ -641,13 +656,17 @@ void PFLocalizationNode::publishPose()
 	// Fill in the header
 	p.header.frame_id = param()->global_frame_id;
 	if (loop_count_ < 10 || state_ == IDLE)
-		p.header.stamp = ros::Time::now();	// on first iterations timestamp
-	// differs a lot from ROS time
+	{
+		// on first iterations timestamp differs a lot from ROS time
+		p.header.stamp = ros::Time::now();
+	}
 	else
-		mrpt_bridge::convert(time_last_update_, p.header.stamp);
+	{
+		p.header.stamp = mrpt::ros1bridge::toROS(time_last_update_);
+	}
 
 	// Copy in the pose
-	mrpt_bridge::convert(mean, p.pose.pose);
+	p.pose.pose = mrpt::ros1bridge::toROS_Pose(mean);
 
 	// Copy in the covariance, converting from 3-D to 6-D
 	for (int i = 0; i < 3; i++)
