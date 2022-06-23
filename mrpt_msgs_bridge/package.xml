@@ -1,0 +1,28 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>mrpt_msgs_bridge</name>
+  <version>1.0.0</version>
+  <description>C++ library to convert between custom mrpt_msgs messages and native MRPT classes</description>
+
+  <url type="website">https://www.mrpt.org/</url>
+  <maintainer email="joseluisblancoc@gmail.com">José Luis Blanco-Claraco</maintainer>
+  <author>José Luis Blanco-Claraco</author>
+  <license>BSD</license>
+  <url>https://wiki.ros.org/mrpt_msgs_bridge</url>
+
+  <build_depend>ros_environment</build_depend>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <depend>mrpt2</depend>
+  
+  <depend>geometry_msgs</depend>
+  <depend>mrpt_msgs</depend>
+  <depend>roscpp</depend>
+  <depend>tf2</depend>
+
+  <export>
+    <build_type condition="$ROS_VERSION == 1">catkin</build_type>
+  </export>
+
+</package>
