@@ -31,14 +31,10 @@
  **                       *
  ***********************************************************************************/
 
-#include <mrpt_localization/mrpt_localization_core.h>
-#include <mrpt/version.h>
-
-#include <mrpt/maps/COccupancyGridMap2D.h>
-using mrpt::maps::COccupancyGridMap2D;
-
 #include <mrpt/maps/CLandmarksMap.h>
-using mrpt::maps::CLandmarksMap;
+#include <mrpt/maps/COccupancyGridMap2D.h>
+#include <mrpt_localization/mrpt_localization_core.h>
+#include <ros/console.h>
 
 using namespace mrpt;
 using namespace mrpt::slam;
@@ -46,6 +42,9 @@ using namespace mrpt::opengl;
 using namespace mrpt::math;
 using namespace mrpt::system;
 using namespace std;
+
+using mrpt::maps::CLandmarksMap;
+using mrpt::maps::COccupancyGridMap2D;
 
 PFLocalizationCore::~PFLocalizationCore() {}
 PFLocalizationCore::PFLocalizationCore() : state_(NA) {}
@@ -65,15 +64,9 @@ void PFLocalizationCore::init()
 
 void PFLocalizationCore::initializeFilter()
 {
-#if MRPT_VERSION >= 0x199
 	const auto [cov, mean_point] = initial_pose_.getCovarianceAndMean();
-#else
-	mrpt::math::CMatrixDouble33 cov;
-	mrpt::poses::CPose2D mean_point;
-	initial_pose_.getCovarianceAndMean(cov, mean_point);
-#endif
 
-	log_info(
+	ROS_INFO(
 		"InitializeFilter: %4.3fm, %4.3fm, %4.3frad ", mean_point.x(),
 		mean_point.y(), mean_point.phi());
 	float min_x = mean_point.x() - cov(0, 0);
@@ -132,8 +125,9 @@ void PFLocalizationCore::observation(
 	{
 		if (use_motion_model_default_options_)
 		{
-			log_info(
-				"No odometry at update %4i -> using dummy", update_counter_);
+			ROS_INFO_STREAM(
+				"No odometry at update " << update_counter_
+										 << " -> using dummy");
 			odom_move.computeFromOdometry(
 				mrpt::poses::CPose2D(0, 0, 0), motion_model_default_options_);
 			action->insert(odom_move);
@@ -141,9 +135,9 @@ void PFLocalizationCore::observation(
 		}
 		else
 		{
-			log_info(
-				"No odometry at update %4i -> skipping observation",
-				update_counter_);
+			ROS_INFO_STREAM(
+				"No odometry at update " << update_counter_
+										 << " -> skipping observation");
 		}
 	}
 }

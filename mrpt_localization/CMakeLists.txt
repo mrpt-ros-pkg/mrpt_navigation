@@ -86,7 +86,6 @@ target_link_libraries(${PROJECT_NAME}_core
   PUBLIC
   mrpt::gui
   mrpt::slam
-  mrpt_msgs
 )
 
 target_link_libraries(${PROJECT_NAME}

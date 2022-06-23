@@ -33,29 +33,25 @@
 
 #pragma once
 
-#include <iostream>
-#include <stdint.h>
-
 #include <mrpt/bayes/CParticleFilter.h>
-#include <mrpt/poses/CPose2D.h>
-#include <mrpt/poses/CPosePDFGaussian.h>
-#include <mrpt/system/CTicTac.h>
-#include <mrpt/slam/CMonteCarloLocalization2D.h>
-#include <mrpt/ros1bridge/mrpt_log_macros.h>
-
-#include <mrpt/version.h>
-#include <mrpt/obs/CActionRobotMovement2D.h>
+#include <mrpt/maps/CMultiMetricMap.h>
 #include <mrpt/obs/CActionCollection.h>
+#include <mrpt/obs/CActionRobotMovement2D.h>
 #include <mrpt/obs/CObservationOdometry.h>
 #include <mrpt/obs/CSensoryFrame.h>
-#include <mrpt/maps/CMultiMetricMap.h>
+#include <mrpt/poses/CPose2D.h>
+#include <mrpt/poses/CPosePDFGaussian.h>
+#include <mrpt/slam/CMonteCarloLocalization2D.h>
+#include <mrpt/system/CTicTac.h>
+#include <mrpt/version.h>
+#include <stdint.h>
+
+#include <iostream>
 using namespace mrpt::maps;
 using namespace mrpt::obs;
 
 class PFLocalizationCore
 {
-	MRPT_VIRTUAL_LOG_MACROS
-
    public:
 	enum PFStates
 	{
