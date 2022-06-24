@@ -4,6 +4,8 @@
 | ROS1 Noetic (u20.04) | [![Build Status](https://build.ros.org/job/Ndev__mrpt_navigation__ubuntu_focal_amd64/1/badge/icon)](https://build.ros.org/job/Ndev__mrpt_navigation__ubuntu_focal_amd64/1/) |  [![Build Status](https://build.ros.org/job/Nbin_uF64__mrpt_navigation__ubuntu_focal_amd64__binary/badge/icon)](https://build.ros.org/job/Nbin_uF64__mrpt_navigation__ubuntu_focal_amd64__binary/) |
 | ROS2 Rolling (u22.04) xxx |  xxx |
 
+<img align="center" src="https://mrpt.github.io/imgs/mrpt_reactivenav_ros_demo_s40.gif">
+
 mrpt_navigation
 ===============
 
