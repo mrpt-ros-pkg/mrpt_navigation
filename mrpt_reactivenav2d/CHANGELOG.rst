@@ -2,6 +2,14 @@
 Changelog for package mrpt_reactivenav2d
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Correct demos
+* Fix all build errors
+* Removed now obsolete tf_prefix
+* Ported to tf2 and mrpt::ros1bridge
+* Contributors: Jose Luis Blanco-Claraco
+
 1.0.0 (2022-04-30)
 ------------------
 * Update URLs to https

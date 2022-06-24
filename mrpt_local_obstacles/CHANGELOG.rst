@@ -2,6 +2,11 @@
 Changelog for package mrpt_local_obstacles
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Ported to tf2 and mrpt::ros1bridge
+* Contributors: Jose Luis Blanco Claraco
+
 1.0.0 (2022-04-30)
 ------------------
 * Update URLs to https

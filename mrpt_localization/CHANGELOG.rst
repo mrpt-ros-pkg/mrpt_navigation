@@ -2,6 +2,13 @@
 Changelog for package mrpt_localization
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* fix all build errors; removed now obsolete tf_prefix
+* Ported to tf2 and mrpt::ros1bridge
+* modernize cmake
+* Contributors: Jose Luis Blanco-Claraco
+
 1.0.0 (2022-04-30)
 ------------------
 * Update URLs to https
