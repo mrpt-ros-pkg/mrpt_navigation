@@ -2,8 +2,8 @@
 Changelog for package mrpt_map
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.0.1 (2022-06-24)
+------------------
 * Fix build errors
 * Removed now obsolete tf_prefix
 * Ported to tf2 and mrpt::ros1bridge
