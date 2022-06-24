@@ -66,6 +66,7 @@ add_library(${PROJECT_NAME}
    src/beacon.cpp
    src/marker_msgs.cpp
    src/landmark.cpp
+   src/network_of_poses.cpp
 )
 
 ## Specify libraries to link a library or executable target against
