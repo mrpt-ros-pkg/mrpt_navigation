@@ -134,7 +134,7 @@ void RawlogPlayNode::publishSingleObservation(
 			msg_beacon_.header.frame_id = "beacon_link";
 		msg_beacon_.header.stamp = ros::Time::now();
 
-		lambdaSendTfSensorPose(msg_laser_.header);
+		lambdaSendTfSensorPose(msg_beacon_.header);
 
 		pub_beacon_.publish(msg_beacon_);
 	}

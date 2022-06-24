@@ -259,7 +259,7 @@ class ReactiveNav2DNode
 		  m_pub_topic_reactive_nav_goal("reactive_nav_goal"),
 		  m_sub_topic_local_obstacles("local_map_pointcloud"),
 		  m_sub_topic_robot_shape(""),
-		  m_frameid_reference("/map"),
+		  m_frameid_reference("map"),
 		  m_frameid_robot("base_link"),
 		  m_save_nav_log(false),
 		  m_reactive_if(*this),
