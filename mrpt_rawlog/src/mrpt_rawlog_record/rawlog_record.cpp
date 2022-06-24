@@ -30,39 +30,44 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **                       *
  ***********************************************************************************/
-#include <stdio.h>
-#include <stdarg.h>
-
+#include <mrpt/system/filesystem.h>
+#include <mrpt/system/string_utils.h>
 #include <mrpt_rawlog_record/rawlog_record.h>
 #include <mrpt_rawlog_record/rawlog_record_defaults.h>
-#include <mrpt/system/string_utils.h>
-#include <mrpt/system/filesystem.h>
+#include <stdarg.h>
+#include <stdio.h>
+
+#include "ros/console.h"
 
 RawlogRecord::~RawlogRecord()
 {
 	MRPT_TODO("RawlogRecord writes the rawlog only on exit (Ctrl-C)");
 
-	log_info("writing dataset to disk...");
-	log_info("pRawLog    entries %i", pRawLog.size());
-	log_info("pRawLogASF entries %i", pRawLogASF.size());
+	ROS_INFO_STREAM("writing dataset to disk...");
+	ROS_INFO_STREAM("pRawLog    entries:" << pRawLog.size());
+	ROS_INFO_STREAM("pRawLogASF entries:" << pRawLogASF.size());
+
 	if (pRawLog.size() > 0)
 	{
 		const std::string filename =
-		    base_param_.raw_log_folder + "/" + base_param_.raw_log_name;
-		log_info("write %s", filename.c_str());
+			base_param_.raw_log_folder + "/" + base_param_.raw_log_name;
+		ROS_INFO_STREAM("Writing dataset rawlog to: " << filename);
+
 		if (!pRawLog.saveToRawLogFile(filename))
 		{
-			log_error("Error writing to %s", filename.c_str());
+			ROS_ERROR_STREAM("Error writing to " << filename);
 		}
 	}
 	if (pRawLogASF.size() > 0)
 	{
 		const std::string filename =
-		    base_param_.raw_log_folder + "/" + base_param_.raw_log_name_asf;
-		log_info("write %s", filename.c_str());
+			base_param_.raw_log_folder + "/" + base_param_.raw_log_name_asf;
+
+		ROS_INFO_STREAM("Writing dataset rawlog to: " << filename);
+
 		if (!pRawLogASF.saveToRawLogFile(filename))
 		{
-			log_error("Error writing to %s", filename.c_str());
+			ROS_ERROR_STREAM("Error writing to " << filename);
 		}
 	}
 }
@@ -72,7 +77,7 @@ void RawlogRecord::updateRawLogName(const mrpt::system::TTimeStamp& t)
 	const auto prefix = mrpt::system::dateTimeLocalToString(t);
 
 	base_param_.raw_log_name = mrpt::system::fileNameStripInvalidChars(
-	    prefix + base_param_.raw_log_name);
+		prefix + base_param_.raw_log_name);
 	base_param_.raw_log_name_asf = mrpt::system::fileNameStripInvalidChars(
-	    prefix + base_param_.raw_log_name_asf);
+		prefix + base_param_.raw_log_name_asf);
 }

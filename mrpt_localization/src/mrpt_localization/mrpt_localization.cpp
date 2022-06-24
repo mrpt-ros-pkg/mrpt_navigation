@@ -256,13 +256,7 @@ void PFLocalization::show3DDebug(CSensoryFrame::Ptr _observations)
 			cur_obs_timestamp =
 				_observations->getObservationByIndex(0)->timestamp;
 
-#if MRPT_VERSION >= 0x199
 		const auto [cov, meanPose] = pdf_.getCovarianceAndMean();
-#else
-		CPose2D meanPose;
-		CMatrixDouble33 cov;
-		pdf_.getCovarianceAndMean(cov, meanPose);
-#endif
 
 		COpenGLScene::Ptr ptr_scene = win3D_->get3DSceneAndLock();
 

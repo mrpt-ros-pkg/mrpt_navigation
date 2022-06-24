@@ -32,25 +32,23 @@
  ***********************************************************************************/
 
 #include "rawlog_play_node.h"
-#include <boost/interprocess/sync/scoped_lock.hpp>
-#include <mrpt/ros1bridge/pose.h>
-#include <mrpt/ros1bridge/laser_scan.h>
-#include <mrpt/ros1bridge/time.h>
-#include <mrpt/ros1bridge/beacon.h>
-#include <mrpt/ros1bridge/landmark.h>
-#include <mrpt/system/filesystem.h>
 
-#include <mrpt/version.h>
-#include <mrpt/obs/CSensoryFrame.h>
-#include <mrpt/obs/CRawlog.h>
 #include <mrpt/obs/CObservation2DRangeScan.h>
 #include <mrpt/obs/CObservationBeaconRanges.h>
 #include <mrpt/obs/CObservationBearingRange.h>
+#include <mrpt/obs/CRawlog.h>
+#include <mrpt/obs/CSensoryFrame.h>
+#include <mrpt/ros1bridge/laser_scan.h>
+#include <mrpt/ros1bridge/pose.h>
+#include <mrpt/ros1bridge/time.h>
+#include <mrpt/system/filesystem.h>
+#include <mrpt_msgs_bridge/beacon.h>
+#include <mrpt_msgs_bridge/landmark.h>
+
+#include <boost/interprocess/sync/scoped_lock.hpp>
 using namespace mrpt::obs;
 
-#if MRPT_VERSION >= 0x199
 #include <mrpt/serialization/CArchive.h>
-#endif
 
 int main(int argc, char** argv)
 {
@@ -70,7 +68,7 @@ RawlogPlayNode::RawlogPlayNode(ros::NodeHandle& n)
 
 RawlogPlayNode::ParametersNode* RawlogPlayNode::param()
 {
-	return (RawlogPlayNode::ParametersNode*)param_;
+	return static_cast<RawlogPlayNode::ParametersNode*>(param_);
 }
 
 void RawlogPlayNode::init()
@@ -86,8 +84,8 @@ void RawlogPlayNode::init()
 	pub_beacon_ = n_.advertise<mrpt_msgs::ObservationRangeBeacon>("beacon", 10);
 	pub_landmark_ =
 		n_.advertise<mrpt_msgs::ObservationRangeBearing>("landmark", 10);
-	odom_frame_ = tf::resolve(param()->tf_prefix, param()->odom_frame);
-	base_frame_ = tf::resolve(param()->tf_prefix, param()->base_frame);
+	odom_frame_ = param()->odom_frame;
+	base_frame_ = param()->base_frame;
 	robotPose = mrpt::poses::CPose3DPDFGaussian();
 }
 
@@ -97,60 +95,59 @@ void RawlogPlayNode::publishSingleObservation(
 	mrpt::poses::CPose3D pose_sensor;
 	o->getSensorPose(pose_sensor);
 
-	geometry_msgs::Pose msg_pose_sensor;
-	tf::Transform transform;
+	geometry_msgs::Pose msgSensorPose;	// not actually used after all.
 
-#if MRPT_VERSION >= 0x199
-	// IS_CLASS accepts a reference in MRPT2
-	auto& oo = *o;
-#else
-	// IS_CLASS accepts a pointer in MRPT1
-	auto* oo = o.get();
-#endif
+	// Aux lambda to publish TF transforms "base_link" ==> "sensor_frame"
+	// ------
+	auto lambdaSendTfSensorPose = [&](const std_msgs::Header& header) {
+		const tf2::Transform tfSensorPose =
+			mrpt::ros1bridge::toROS_tfTransform(pose_sensor);
 
-	if (IS_CLASS(oo, CObservation2DRangeScan))
+		geometry_msgs::TransformStamped tfGeom =
+			tf2::toMsg(tf2::Stamped<tf2::Transform>(
+				tfSensorPose, header.stamp + ros::Duration(0.05), base_frame_));
+		tfGeom.child_frame_id = header.frame_id;
+
+		tf_broadcaster_.sendTransform(tfGeom);
+	};
+	// ------
+
+	if (auto laser = std::dynamic_pointer_cast<CObservation2DRangeScan>(o);
+		laser)
 	{  // laser observation detected
-		auto laser = mrpt::ptr_cast<CObservation2DRangeScan>::from(o);
-		mrpt_bridge::convert(*laser, msg_laser_, msg_pose_sensor);
+		mrpt::ros1bridge::toROS(*laser, msg_laser_, msgSensorPose);
+
 		if (msg_laser_.header.frame_id.empty())
 			msg_laser_.header.frame_id = "laser_link";
-		std::string childframe =
-			tf::resolve(param()->tf_prefix, msg_laser_.header.frame_id);
 		msg_laser_.header.stamp = ros::Time::now();
-		mrpt_bridge::convert(pose_sensor, transform);
-		tf_broadcaster_.sendTransform(tf::StampedTransform(
-			transform, msg_laser_.header.stamp + ros::Duration(0.05),
-			base_frame_, childframe));
+
+		lambdaSendTfSensorPose(msg_laser_.header);
+
 		pub_laser_.publish(msg_laser_);
 	}
-	else if (IS_CLASS(oo, CObservationBeaconRanges))
+	else if (auto beacon =
+				 std::dynamic_pointer_cast<CObservationBeaconRanges>(o);
+			 beacon)
 	{
-		auto beacon = mrpt::ptr_cast<CObservationBeaconRanges>::from(o);
-		mrpt_bridge::convert(*beacon, msg_beacon_, msg_pose_sensor);
+		mrpt_msgs_bridge::toROS(*beacon, msg_beacon_, msgSensorPose);
 		if (msg_beacon_.header.frame_id.empty())
 			msg_beacon_.header.frame_id = "beacon_link";
-		std::string childframe =
-			tf::resolve(param()->tf_prefix, msg_beacon_.header.frame_id);
 		msg_beacon_.header.stamp = ros::Time::now();
-		mrpt_bridge::convert(pose_sensor, transform);
-		tf_broadcaster_.sendTransform(tf::StampedTransform(
-			transform, msg_beacon_.header.stamp + ros::Duration(0.05),
-			base_frame_, childframe));
+
+		lambdaSendTfSensorPose(msg_laser_.header);
+
 		pub_beacon_.publish(msg_beacon_);
 	}
-	else if (IS_CLASS(oo, CObservationBearingRange))
+	else if (auto landmark =
+				 std::dynamic_pointer_cast<CObservationBearingRange>(o);
+			 landmark)
 	{
-		auto landmark = mrpt::ptr_cast<CObservationBearingRange>::from(o);
-		mrpt_bridge::convert(*landmark, msg_landmark_, msg_pose_sensor);
+		mrpt_msgs_bridge::toROS(*landmark, msg_landmark_, msgSensorPose);
 		if (msg_landmark_.header.frame_id.empty())
 			msg_landmark_.header.frame_id = "landmark_link";
-		std::string childframe =
-			tf::resolve(param()->tf_prefix, msg_landmark_.header.frame_id);
 		msg_landmark_.header.stamp = ros::Time::now();
-		mrpt_bridge::convert(pose_sensor, transform);
-		tf_broadcaster_.sendTransform(tf::StampedTransform(
-			transform, msg_landmark_.header.stamp + ros::Duration(0.05),
-			base_frame_, childframe));
+
+		lambdaSendTfSensorPose(msg_landmark_.header);
 		pub_landmark_.publish(msg_landmark_);
 	}
 	else
@@ -167,11 +164,7 @@ bool RawlogPlayNode::nextEntry()
 	CSensoryFrame::Ptr observations;
 	CObservation::Ptr obs;
 
-#if MRPT_VERSION >= 0x199
 	auto rs = mrpt::serialization::archiveFrom(rawlog_stream_);
-#else
-	auto& rs = rawlog_stream_;
-#endif
 
 	if (!CRawlog::getActionObservationPairOrObservation(
 			rs, action, observations, obs, entry_))
@@ -179,7 +172,7 @@ bool RawlogPlayNode::nextEntry()
 		ROS_INFO("end of stream!");
 		return true;
 	}
-	tf::Transform transform;
+	tf2::Transform transform;
 
 	// Process single obs, if present:
 	if (obs) publishSingleObservation(obs);
@@ -190,7 +183,7 @@ bool RawlogPlayNode::nextEntry()
 	action->getFirstMovementEstimation(out_pose_increment);
 	robotPose -= out_pose_increment;
 
-	msg_odom_.header.frame_id = "odom";
+	msg_odom_.header.frame_id = odom_frame_;
 	msg_odom_.child_frame_id = base_frame_;
 	if (!msg_laser_.header.frame_id.empty())
 	{
@@ -207,14 +200,24 @@ bool RawlogPlayNode::nextEntry()
 		msg_odom_.header.stamp = msg_landmark_.header.stamp;
 		msg_odom_.header.seq = msg_landmark_.header.seq;
 	}
-	mrpt_bridge::convert(robotPose, msg_odom_.pose);
-	mrpt_bridge::convert(robotPose, transform);
+
+	msg_odom_.pose = mrpt::ros1bridge::toROS_Pose(robotPose);
+	transform = mrpt::ros1bridge::toROS_tfTransform(robotPose.mean);
 
 	msg_odom_.header.stamp = ros::Time::now();
 
-	tf_broadcaster_.sendTransform(tf::StampedTransform(
-		transform.inverse(), msg_odom_.header.stamp + ros::Duration(0.05),
-		odom_frame_, base_frame_));
+	MRPT_TODO("Publish /odom topic too?");
+
+	{
+		geometry_msgs::TransformStamped tfGeom =
+			tf2::toMsg(tf2::Stamped<tf2::Transform>(
+				transform.inverse(),
+				msg_odom_.header.stamp + ros::Duration(0.05), base_frame_));
+		tfGeom.child_frame_id = msg_odom_.header.frame_id;
+
+		tf_broadcaster_.sendTransform(tfGeom);
+	}
+
 	return false;
 }
 

@@ -10,16 +10,18 @@ find_package(catkin REQUIRED COMPONENTS
   dynamic_reconfigure
   geometry_msgs
   roscpp
-  tf
+  tf2
+  tf2_ros
+  tf2_geometry_msgs
   visualization_msgs
 )
 
 ## System dependencies are found with CMake's conventions
-find_package(MRPT 1.5 REQUIRED nav kinematics)
+find_package(mrpt-ros1bridge REQUIRED)
+find_package(mrpt-nav REQUIRED)
+find_package(mrpt-kinematics REQUIRED)
+
 message(STATUS "MRPT_VERSION: ${MRPT_VERSION}")
-if(MRPT_VERSION VERSION_LESS "1.9.9")
-  set (CMAKE_CXX_STANDARD 14)
-endif()
 
 if (CMAKE_COMPILER_IS_GNUCXX)
 	# High level of warnings.
@@ -47,7 +49,16 @@ ENDIF()
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES mrpt_reactivenav2d
-  CATKIN_DEPENDS actionlib actionlib_msgs dynamic_reconfigure geometry_msgs roscpp tf visualization_msgs
+  CATKIN_DEPENDS
+    actionlib
+    actionlib_msgs
+    dynamic_reconfigure
+    geometry_msgs
+    roscpp
+    tf2
+    tf2_ros
+    tf2_geometry_msgs
+      visualization_msgs
 #  DEPENDS mrpt
 )
 
@@ -77,7 +88,9 @@ add_executable(mrpt_reactivenav2d_node src/mrpt_reactivenav2d_node.cpp)
 ## Specify libraries to link a library or executable target against
 target_link_libraries(mrpt_reactivenav2d_node
   ${catkin_LIBRARIES}
-  ${MRPT_LIBRARIES}
+  mrpt::nav
+  mrpt::kinematics
+  mrpt::ros1bridge
 )
 
 #############

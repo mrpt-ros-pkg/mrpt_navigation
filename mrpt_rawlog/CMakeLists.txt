@@ -4,17 +4,26 @@ project(mrpt_rawlog)
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
-find_package(catkin REQUIRED COMPONENTS roscpp tf std_msgs nav_msgs sensor_msgs mrpt_msgs dynamic_reconfigure marker_msgs rosbag)
+find_package(catkin REQUIRED 
+   COMPONENTS
+   roscpp
+   tf2
+   tf2_ros
+   tf2_geometry_msgs
+   nav_msgs
+   sensor_msgs
+   mrpt_msgs
+   mrpt_msgs_bridge
+   dynamic_reconfigure
+   marker_msgs
+   rosbag
+   )
 
-find_package(MRPT 1.5 REQUIRED gui obs)
+find_package(mrpt-gui REQUIRED)
+find_package(mrpt-obs REQUIRED)
+find_package(mrpt-ros1bridge REQUIRED)
+
 message(STATUS "MRPT_VERSION: ${MRPT_VERSION}")
-if(MRPT_VERSION VERSION_LESS "1.9.9")
-  if(${CMAKE_VERSION} VERSION_LESS "3.8.0")
-	set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=gnu++1y")
-  else()
-	set (CMAKE_CXX_STANDARD 17)
-  endif()
-endif()
 
 if (CMAKE_COMPILER_IS_GNUCXX)
 	# High level of warnings.
@@ -48,7 +57,17 @@ generate_dynamic_reconfigure_options(
 catkin_package(
 #  INCLUDE_DIRS include
   LIBRARIES rawlog_record rawlog_play
-  CATKIN_DEPENDS roscpp tf std_msgs nav_msgs sensor_msgs mrpt_msgs marker_msgs dynamic_reconfigure
+  CATKIN_DEPENDS 
+   roscpp
+   tf2
+   tf2_ros
+   tf2_geometry_msgs
+   nav_msgs
+   sensor_msgs
+   mrpt_msgs
+   mrpt_msgs_bridge
+   marker_msgs
+   dynamic_reconfigure
 #   DEPENDS mrpt
 )
 
@@ -66,7 +85,9 @@ add_library(rawlog_record
 )
 target_link_libraries(rawlog_record
   ${catkin_LIBRARIES}
-  ${MRPT_LIBRARIES}
+   mrpt::obs
+   mrpt::gui
+   mrpt::ros1bridge
 )
 
 add_library(rawlog_play
@@ -75,7 +96,9 @@ add_library(rawlog_play
 )
 target_link_libraries(rawlog_play
    ${catkin_LIBRARIES}
-   ${MRPT_LIBRARIES}
+   mrpt::obs
+   mrpt::gui
+   mrpt::ros1bridge
 )
 
 ## Declare a cpp executable
@@ -105,13 +128,17 @@ add_dependencies(rawlog_play_node
 ## Specify libraries to link a library or executable target against
 target_link_libraries(rawlog_record_node
    ${catkin_LIBRARIES}
-   ${MRPT_LIBRARIES}
+   mrpt::obs
+   mrpt::gui
+   mrpt::ros1bridge
    rawlog_record
 )
 
 target_link_libraries(rawlog_play_node
    ${catkin_LIBRARIES}
-   ${MRPT_LIBRARIES}
+   mrpt::obs
+   mrpt::gui
+   mrpt::ros1bridge
    rawlog_play
 )
 

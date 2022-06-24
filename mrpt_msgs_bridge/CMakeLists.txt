@@ -5,7 +5,12 @@ project(mrpt_msgs_bridge)
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS 
-  geometry_msgs mrpt_msgs roscpp tf2)
+  geometry_msgs
+  marker_msgs
+  mrpt_msgs
+  roscpp
+  tf2
+  )
 
 ## System dependencies are found with CMake's conventions
 find_package(mrpt-obs REQUIRED)
@@ -39,7 +44,12 @@ ENDIF()
 catkin_package(
   INCLUDE_DIRS include
   LIBRARIES ${PROJECT_NAME}
-  CATKIN_DEPENDS geometry_msgs mrpt_msgs roscpp tf2
+  CATKIN_DEPENDS
+    geometry_msgs
+    marker_msgs
+    mrpt_msgs
+    roscpp
+    tf2
 #  DEPENDS mrpt
 )
 
@@ -54,6 +64,8 @@ include_directories(include ${catkin_INCLUDE_DIRS})
 # Declare a cpp library
 add_library(${PROJECT_NAME}
    src/beacon.cpp
+   src/marker_msgs.cpp
+   src/landmark.cpp
 )
 
 ## Specify libraries to link a library or executable target against

@@ -31,27 +31,15 @@
  **                       *
  ***********************************************************************************/
 
-#ifndef MRPT_RAWLOG_RECORD_H
-#define MRPT_RAWLOG_RECORD_H
+#pragma once
 
-#include <iostream>
-#include <stdint.h>
-#include <boost/interprocess/sync/interprocess_mutex.hpp>
-
-#include <mrpt/version.h>
-#if MRPT_VERSION >= 0x199
 #include <mrpt/io/CFileGZInputStream.h>
-using namespace mrpt::io;
-#else
-#include <mrpt/utils/CFileGZInputStream.h>
-using namespace mrpt::utils;
-#endif
-
+#include <mrpt/obs/CActionRobotMovement2D.h>
 #include <mrpt/poses/CPose3DPDFGaussian.h>
 
-#include <mrpt/version.h>
-#include <mrpt/obs/CActionRobotMovement2D.h>
-using namespace mrpt::obs;
+#include <boost/interprocess/sync/interprocess_mutex.hpp>
+#include <cstdint>
+#include <iostream>
 
 class RawlogPlay
 {
@@ -61,16 +49,16 @@ class RawlogPlay
 		Parameters();
 		bool debug;
 		std::string rawlog_file;
-		CActionRobotMovement2D::TMotionModelOptions motionModelOptions;
+		mrpt::obs::CActionRobotMovement2D::TMotionModelOptions
+			motionModelOptions;
 	};
+
 	RawlogPlay(Parameters* parm);
 	~RawlogPlay();
 
    protected:
 	Parameters* param_;
-	CFileGZInputStream rawlog_stream_;
+	mrpt::io::CFileGZInputStream rawlog_stream_;
 	mrpt::poses::CPose3DPDFGaussian robotPose;
-	size_t entry_;
+	size_t entry_ = 0;
 };
-
-#endif  // MRPT_RAWLOG_RECORD_H

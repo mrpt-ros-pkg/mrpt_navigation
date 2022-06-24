@@ -30,46 +30,33 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. *
  ***********************************************************************************/
 
+#include <geometry_msgs/Polygon.h>
+#include <geometry_msgs/PoseStamped.h>
+#include <mrpt/config/CConfigFile.h>
+#include <mrpt/config/CConfigFileMemory.h>
+#include <mrpt/kinematics/CVehicleVelCmd_DiffDriven.h>
+#include <mrpt/maps/CSimplePointsMap.h>
+#include <mrpt/nav/reactive/CReactiveNavigationSystem.h>
+#include <mrpt/ros1bridge/point_cloud.h>
+#include <mrpt/ros1bridge/pose.h>
+#include <mrpt/ros1bridge/time.h>
+#include <mrpt/system/CTimeLogger.h>
+#include <mrpt/system/filesystem.h>
+#include <nav_msgs/Odometry.h>
 #include <ros/ros.h>
-
 #include <sensor_msgs/LaserScan.h>
 #include <sensor_msgs/PointCloud.h>
-#include <geometry_msgs/PoseStamped.h>
-#include <geometry_msgs/Polygon.h>
-#include <nav_msgs/Odometry.h>
-#include <tf/transform_listener.h>
-
-#include <mrpt/version.h>
-
-// Use modern headers ------------
-#include <mrpt/nav/reactive/CReactiveNavigationSystem.h>
-#include <mrpt/maps/CSimplePointsMap.h>
-using namespace mrpt::nav;
-using mrpt::maps::CSimplePointsMap;
-
-#include <mrpt/version.h>
-#if MRPT_VERSION >= 0x199
-#include <mrpt/system/CTimeLogger.h>
-#include <mrpt/config/CConfigFileMemory.h>
-#include <mrpt/config/CConfigFile.h>
-using namespace mrpt::system;
-using namespace mrpt::config;
-#else
-#include <mrpt/utils/CTimeLogger.h>
-#include <mrpt/utils/CConfigFileMemory.h>
-#include <mrpt/utils/CConfigFile.h>
-using namespace mrpt::utils;
-#endif
-
-#include <mrpt/system/filesystem.h>
-
-#include <mrpt/ros1bridge/pose.h>
-#include <mrpt/ros1bridge/point_cloud.h>
-#include <mrpt/ros1bridge/time.h>
-
-#include <mrpt/kinematics/CVehicleVelCmd_DiffDriven.h>
 
 #include <mutex>
+
+#include "tf2_geometry_msgs/tf2_geometry_msgs.h"
+#include "tf2_ros/buffer.h"
+#include "tf2_ros/transform_listener.h"
+
+using namespace mrpt::nav;
+using mrpt::maps::CSimplePointsMap;
+using namespace mrpt::system;
+using namespace mrpt::config;
 
 // The ROS node
 class ReactiveNav2DNode
@@ -94,7 +81,9 @@ class ReactiveNav2DNode
 	ros::Subscriber m_sub_local_obs;
 	ros::Subscriber m_sub_robot_shape;
 	ros::Publisher m_pub_cmd_vel;
-	tf::TransformListener m_tf_listener;  //!< Use to retrieve TF data
+
+	tf2_ros::Buffer m_tf_buffer;
+	tf2_ros::TransformListener m_tf_listener{m_tf_buffer};
 	/** @} */
 
 	bool m_1st_time_init;  //!< Reactive initialization done?
@@ -115,13 +104,12 @@ class ReactiveNav2DNode
 	CSimplePointsMap m_last_obstacles;
 	std::mutex m_last_obstacles_cs;
 
-	struct MyReactiveInterface :
-
-		public mrpt::nav::CRobot2NavInterface
+	struct MyReactiveInterface : public mrpt::nav::CRobot2NavInterface
 	{
 		ReactiveNav2DNode& m_parent;
 
 		MyReactiveInterface(ReactiveNav2DNode& parent) : m_parent(parent) {}
+
 		/** Get the current pose and speeds of the robot.
 		 *   \param curPose Current robot pose.
 		 *   \param curV Current linear speed, in meters per second.
@@ -137,44 +125,46 @@ class ReactiveNav2DNode
 
 			CTimeLoggerEntry tle(
 				m_parent.m_profiler, "getCurrentPoseAndSpeeds");
-			tf::StampedTransform txRobotPose;
+
+			ros::Duration timeout(0.1);
+
+			geometry_msgs::TransformStamped tfGeom;
 			try
 			{
 				CTimeLoggerEntry tle2(
 					m_parent.m_profiler,
 					"getCurrentPoseAndSpeeds.lookupTransform_sensor");
-				m_parent.m_tf_listener.lookupTransform(
+
+				tfGeom = m_parent.m_tf_buffer.lookupTransform(
 					m_parent.m_frameid_reference, m_parent.m_frameid_robot,
-					ros::Time(0), txRobotPose);
+					ros::Time(0), timeout);
 			}
-			catch (tf::TransformException& ex)
+			catch (const tf2::TransformException& ex)
 			{
 				ROS_ERROR("%s", ex.what());
 				return false;
 			}
 
-			mrpt::poses::CPose3D curRobotPose;
-			mrpt_bridge::convert(txRobotPose, curRobotPose);
+			tf2::Transform txRobotPose;
+			tf2::fromMsg(tfGeom.transform, txRobotPose);
 
-			mrpt_bridge::convert(txRobotPose.stamp_, timestamp);
+			const mrpt::poses::CPose3D curRobotPose =
+				mrpt::ros1bridge::fromROS(txRobotPose);
+
+			timestamp = mrpt::ros1bridge::fromROS(tfGeom.header.stamp);
+
 			// Explicit 3d->2d to confirm we know we're losing information
-			curPose =
-#if MRPT_VERSION >= 0x199
-				mrpt::poses::CPose2D(curRobotPose).asTPose();
-#else
-				mrpt::math::TPose2D(mrpt::poses::CPose2D(curRobotPose));
-#endif
+			curPose = mrpt::poses::CPose2D(curRobotPose).asTPose();
 			curOdometry = curPose;
 
 			curV = curW = 0;
-			MRPT_TODO("Retrieve current speeds from odometry");
+			MRPT_TODO("Retrieve current speeds from /odom topic?");
 			ROS_DEBUG(
 				"[getCurrentPoseAndSpeeds] Latest pose: %s",
 				curPose.asString().c_str());
 
-			curVel.vx = curV * cos(curPose.phi);
-			curVel.vy = curV * sin(curPose.phi);
-			curVel.omega = curW;
+			// From local to global:
+			curVel = mrpt::math::TTwist2D(curV, .0, curW).rotated(curPose.phi);
 
 			return true;
 		}
@@ -246,10 +236,10 @@ class ReactiveNav2DNode
 			return ret;
 		}
 
-		virtual void sendNavigationStartEvent() {}
-		virtual void sendNavigationEndEvent() {}
-		virtual void sendNavigationEndDueToErrorEvent() {}
-		virtual void sendWaySeemsBlockedEvent() {}
+		void sendNavigationStartEvent() override {}
+		void sendNavigationEndEvent() override {}
+		void sendNavigationEndDueToErrorEvent() override {}
+		void sendWaySeemsBlockedEvent() override {}
 	};
 
 	MyReactiveInterface m_reactive_if;
@@ -420,6 +410,7 @@ class ReactiveNav2DNode
 	void onRosGoalReceived(const geometry_msgs::PoseStampedConstPtr& trg_ptr)
 	{
 		geometry_msgs::PoseStamped trg = *trg_ptr;
+
 		ROS_INFO(
 			"Nav target received via topic sub: (%.03f,%.03f, %.03fdeg) "
 			"[frame_id=%s]",
@@ -429,13 +420,17 @@ class ReactiveNav2DNode
 		// Convert to the "m_frameid_reference" frame of coordinates:
 		if (trg.header.frame_id != m_frameid_reference)
 		{
+			ros::Duration timeout(0.2);
 			try
 			{
-				geometry_msgs::PoseStamped trg2;
-				m_tf_listener.transformPose(m_frameid_reference, trg, trg2);
-				trg = trg2;
+				geometry_msgs::TransformStamped ref_to_trgFrame =
+					m_tf_buffer.lookupTransform(
+						trg.header.frame_id, m_frameid_reference, ros::Time(0),
+						timeout);
+
+				tf2::doTransform(trg, trg, ref_to_trgFrame);
 			}
-			catch (tf::TransformException& ex)
+			catch (const tf2::TransformException& ex)
 			{
 				ROS_ERROR("%s", ex.what());
 				return;
@@ -449,7 +444,7 @@ class ReactiveNav2DNode
 	void onRosLocalObstacles(const sensor_msgs::PointCloudConstPtr& obs)
 	{
 		std::lock_guard<std::mutex> csl(m_last_obstacles_cs);
-		mrpt_bridge::point_cloud::ros2mrpt(*obs, m_last_obstacles);
+		mrpt::ros1bridge::fromROS(*obs, m_last_obstacles);
 		// ROS_DEBUG("Local obstacles received: %u points", static_cast<unsigned
 		// int>(m_last_obstacles.size()) );
 	}

@@ -9,7 +9,9 @@
   <group ns="$(arg robot_name)">
     <node pkg="mrpt_localization" type="mrpt_localization_node" name="mrpt_localization_node" output="screen">
       <remap from="scan" to="$(arg scan)"/>
-      <param name="tf_prefix" value="$(arg robot_name)"/>   
+      <!-- DEPRECATED, REMOVED 
+        <param name="tf_prefix" value="$(arg robot_name)"/>   
+      -->
       <param name="ini_file" value="$(arg ini_file)"/> 
       <param name="map_file" value="$(arg map_file)"/>    
     </node>

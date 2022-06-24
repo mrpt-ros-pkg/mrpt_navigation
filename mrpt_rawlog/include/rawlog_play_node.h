@@ -34,17 +34,19 @@
 #ifndef MRPT_RAWLOG_PLAY_NODE_H
 #define MRPT_RAWLOG_PLAY_NODE_H
 
-#include "ros/ros.h"
-#include <tf/transform_broadcaster.h>
-#include <tf/transform_listener.h>
-#include <nav_msgs/Odometry.h>
-#include <sensor_msgs/LaserScan.h>
 #include <dynamic_reconfigure/server.h>
-#include "mrpt_rawlog/RawLogRecordConfig.h"
-#include "mrpt_rawlog_play/rawlog_play.h"
+#include <mrpt/obs/CObservation.h>
 #include <mrpt_msgs/ObservationRangeBeacon.h>
 #include <mrpt_msgs/ObservationRangeBearing.h>
-#include <mrpt/obs/CObservation.h>
+#include <nav_msgs/Odometry.h>
+#include <sensor_msgs/LaserScan.h>
+
+#include "geometry_msgs/TransformStamped.h"
+#include "mrpt_rawlog/RawLogRecordConfig.h"
+#include "mrpt_rawlog_play/rawlog_play.h"
+#include "ros/ros.h"
+#include "tf2_geometry_msgs/tf2_geometry_msgs.h"
+#include "tf2_ros/transform_broadcaster.h"
 
 /// ROS Node
 class RawlogPlayNode : public RawlogPlay
@@ -66,7 +68,6 @@ class RawlogPlayNode : public RawlogPlay
 		double rate;
 		std::string base_frame;
 		std::string odom_frame;
-		std::string tf_prefix;
 		int parameter_update_skip;
 	};
 
@@ -75,12 +76,12 @@ class RawlogPlayNode : public RawlogPlay
 	void init();
 	void loop();
 
-   private:  // functions
+   private:	 // functions
 	ParametersNode* param();
 	bool nextEntry();
 	void publishSingleObservation(const mrpt::obs::CObservation::Ptr& o);
 
-   private:  // variables
+   private:	 // variables
 	ros::NodeHandle n_;
 	unsigned long loop_count_;
 	sensor_msgs::LaserScan msg_laser_;
@@ -92,7 +93,7 @@ class RawlogPlayNode : public RawlogPlay
 	ros::Publisher pub_landmark_;
 	std::string odom_frame_;
 	std::string base_frame_;
-	tf::TransformBroadcaster tf_broadcaster_;
+	tf2_ros::TransformBroadcaster tf_broadcaster_;
 };
 
-#endif  // MRPT_RAWLOG_PLAY_NODE_H
+#endif	// MRPT_RAWLOG_PLAY_NODE_H

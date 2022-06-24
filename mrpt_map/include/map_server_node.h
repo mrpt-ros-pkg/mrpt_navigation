@@ -35,7 +35,6 @@
 
 #include <mrpt/config/CConfigFile.h>
 #include <mrpt/maps/CMultiMetricMap.h>
-#include <mrpt/version.h>
 
 #include "nav_msgs/GetMap.h"
 #include "nav_msgs/MapMetaData.h"

@@ -31,34 +31,31 @@
  **                       *
  ***********************************************************************************/
 
-#include <iostream>
-#include <stdint.h>
-#include <boost/interprocess/sync/interprocess_mutex.hpp>
+#pragma once
 
-#ifndef MRPT_RAWLOG_RECORD_H
-#define MRPT_RAWLOG_RECORD_H
-
-#include <mrpt/version.h>
-#include <mrpt/obs/CRawlog.h>
 #include <mrpt/obs/CActionRobotMovement2D.h>
-#include <mrpt/obs/CObservationOdometry.h>
 #include <mrpt/obs/CObservation2DRangeScan.h>
-#include <mrpt/obs/CObservationBearingRange.h>
 #include <mrpt/obs/CObservationBeaconRanges.h>
+#include <mrpt/obs/CObservationBearingRange.h>
+#include <mrpt/obs/CObservationOdometry.h>
+#include <mrpt/obs/CRawlog.h>
+#include <mrpt/poses/CPose2D.h>
+#include <mrpt/ros1bridge/logging.h>
+#include <mrpt_rawlog_record/rawlog_record_defaults.h>
+#include <stdint.h>
+
+#include <boost/interprocess/sync/interprocess_mutex.hpp>
+#include <iostream>
 
 using mrpt::obs::CActionRobotMovement2D;
 using mrpt::obs::CRawlog;
 
-#include <mrpt/poses/CPose2D.h>
-#include <mrpt/ros1bridge/mrpt_log_macros.h>
-
-#include <mrpt_rawlog_record/rawlog_record_defaults.h>
-
 class RawlogRecord
 {
-	MRPT_VIRTUAL_LOG_MACROS;
-
    public:
+	RawlogRecord() = default;
+	~RawlogRecord();
+
 	struct Parameters
 	{
 		Parameters() = default;
@@ -75,8 +72,6 @@ class RawlogRecord
 		double bearing_range_std_pitch{0.01};
 		CActionRobotMovement2D::TMotionModelOptions motionModelOptions;
 	};
-	RawlogRecord() = default;
-	~RawlogRecord();
 
    protected:
 	Parameters base_param_;
@@ -86,5 +81,3 @@ class RawlogRecord
 	void updateRawLogName(const mrpt::system::TTimeStamp& t);
 	boost::interprocess::interprocess_mutex mutexRawLog;
 };
-
-#endif	// MRPT_RAWLOG_RECORD_H

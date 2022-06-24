@@ -43,7 +43,6 @@
 #include <mrpt/poses/CPosePDFGaussian.h>
 #include <mrpt/slam/CMonteCarloLocalization2D.h>
 #include <mrpt/system/CTicTac.h>
-#include <mrpt/version.h>
 #include <stdint.h>
 
 #include <iostream>

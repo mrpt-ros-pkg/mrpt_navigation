@@ -36,7 +36,6 @@
 #include <dynamic_reconfigure/server.h>
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
 #include <mrpt/obs/CObservationOdometry.h>
-#include <mrpt/version.h>
 #include <nav_msgs/GetMap.h>
 #include <nav_msgs/MapMetaData.h>
 #include <nav_msgs/OccupancyGrid.h>

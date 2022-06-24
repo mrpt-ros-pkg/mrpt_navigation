@@ -31,15 +31,14 @@
  **                       *
  ***********************************************************************************/
 
+#include <mrpt/system/filesystem.h>
+
 #include "rawlog_record_node.h"
 #include "rawlog_record_node_defaults.h"
 
-#include <mrpt/version.h>
-#include <mrpt/system/filesystem.h>
-
 RawlogRecordNode::ParametersNode::ParametersNode(
-    RawlogRecord::Parameters& base_params)
-    : node("~"), base_param_(base_params)
+	RawlogRecord::Parameters& base_params)
+	: node("~"), base_param_(base_params)
 {
 	node.param<double>("rate", rate, RAWLOG_RECORD_NODE_DEFAULT_RATE);
 	ROS_INFO("rate: %f", rate);
@@ -47,8 +46,6 @@ RawlogRecordNode::ParametersNode::ParametersNode(
 		"parameter_update_skip", parameter_update_skip,
 		RAWLOG_RECORD_NODE_DEFAULT_PARAMETER_UPDATE_SKIP);
 	ROS_INFO("parameter_update_skip: %i", parameter_update_skip);
-	node.param<std::string>("tf_prefix", tf_prefix, "");
-	ROS_INFO("tf_prefix: %s", tf_prefix.c_str());
 	node.param<std::string>("odom_frame_id", odom_frame_id, "odom");
 	ROS_INFO("odom_frame_id: %s", odom_frame_id.c_str());
 	node.param<std::string>("base_frame_id", base_frame_id, "base_link");
@@ -61,18 +58,18 @@ RawlogRecordNode::ParametersNode::ParametersNode(
 
 	node.param<bool>("record_range_scan", base_param_.record_range_scan, true);
 	ROS_INFO(
-	    "record_range_scan: %s",
-	    (base_param_.record_range_scan ? "true" : "false"));
+		"record_range_scan: %s",
+		(base_param_.record_range_scan ? "true" : "false"));
 	node.param<bool>(
-	    "record_bearing_range", base_param_.record_bearing_range, false);
+		"record_bearing_range", base_param_.record_bearing_range, false);
 	ROS_INFO(
-	    "record_bearing_range: %s",
-	    (base_param_.record_bearing_range ? "true" : "false"));
+		"record_bearing_range: %s",
+		(base_param_.record_bearing_range ? "true" : "false"));
 	node.param<bool>(
-	    "record_beacon_range", base_param_.record_beacon_range, false);
+		"record_beacon_range", base_param_.record_beacon_range, false);
 	ROS_INFO(
-	    "record_beacon_range: %s",
-	    (base_param_.record_beacon_range ? "true" : "false"));
+		"record_beacon_range: %s",
+		(base_param_.record_beacon_range ? "true" : "false"));
 }
 
 void RawlogRecordNode::ParametersNode::update(const unsigned long& loop_count)
@@ -99,9 +96,9 @@ void RawlogRecordNode::ParametersNode::callbackParameters(
 		motionModelOptions.gaussianModel.a3 = config.motion_gaussian_alpha_3;
 		motionModelOptions.gaussianModel.a4 = config.motion_gaussian_alpha_4;
 		motionModelOptions.gaussianModel.minStdXY =
-		    config.motion_gaussian_alpha_xy;
+			config.motion_gaussian_alpha_xy;
 		motionModelOptions.gaussianModel.minStdPHI =
-		    config.motion_gaussian_alpha_phi;
+			config.motion_gaussian_alpha_phi;
 		ROS_INFO("gaussianModel.a1: %f", motionModelOptions.gaussianModel.a1);
 		ROS_INFO("gaussianModel.a2: %f", motionModelOptions.gaussianModel.a2);
 		ROS_INFO("gaussianModel.a3: %f", motionModelOptions.gaussianModel.a3);
@@ -117,16 +114,14 @@ void RawlogRecordNode::ParametersNode::callbackParameters(
 		base_param_.bearing_range_std_yaw = config.bearing_range_std_yaw;
 		base_param_.bearing_range_std_pitch = config.bearing_range_std_pitch;
 		ROS_INFO(
-		    "bearing_range_std_range: %f",
-		    base_param_.bearing_range_std_range);
+			"bearing_range_std_range: %f", base_param_.bearing_range_std_range);
 		ROS_INFO(
-		    "bearing_range_std_yaw: %f", base_param_.bearing_range_std_yaw);
+			"bearing_range_std_yaw: %f", base_param_.bearing_range_std_yaw);
 		ROS_INFO(
-		    "bearing_range_std_pitch: %f",
-		    base_param_.bearing_range_std_pitch);
+			"bearing_range_std_pitch: %f", base_param_.bearing_range_std_pitch);
 
 		sensor_frame_sync_threshold = config.sensor_frame_sync_threshold;
 		ROS_INFO(
-		    "sensor_frame_sync_threshold: %f", sensor_frame_sync_threshold);
+			"sensor_frame_sync_threshold: %f", sensor_frame_sync_threshold);
 	}
 }

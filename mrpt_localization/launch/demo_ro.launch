@@ -11,7 +11,6 @@
     <param name="base_frame_id" value="base_link"/> 
     <param name="map_update_skip" value="20"/> 
     <param name="particlecloud_update_skip" value="1"/> 
-    <param name="tf_prefix" value=""/> 
     <param name="debug" value="true"/>
     <param name="gui_mrpt" value="true"/> 
     <param name="sensor_sources" value="/beacon"/> <!-- for multiple sensors, place comma eg "r1/front_laser/scan,/beacon" -->

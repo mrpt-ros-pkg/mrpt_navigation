@@ -32,14 +32,14 @@
  ***********************************************************************************/
 
 #include "rawlog_record_node.h"
+
+#include <mrpt/ros1bridge/laser_scan.h>
+#include <mrpt/ros1bridge/pose.h>
+#include <mrpt/ros1bridge/time.h>
+#include <mrpt_msgs_bridge/marker_msgs.h>
+
 #include <boost/interprocess/sync/scoped_lock.hpp>
 
-#include <mrpt/ros1bridge/pose.h>
-#include <mrpt/ros1bridge/laser_scan.h>
-#include <mrpt/ros1bridge/marker_msgs.h>
-#include <mrpt/ros1bridge/time.h>
-
-#include <mrpt/version.h>
 using namespace mrpt::maps;
 using namespace mrpt::obs;
 
@@ -81,38 +81,34 @@ bool RawlogRecordNode::waitForTransform(
 	const std::string& source_frame, const ros::Time& time,
 	const ros::Duration& timeout, const ros::Duration& polling_sleep_duration)
 {
-	tf::StampedTransform transform;
+	geometry_msgs::TransformStamped transform;
 	try
 	{
-		if (base_param_.debug)
-			ROS_INFO(
-				"debug: waitForTransform(): target_frame='%s' "
-				"source_frame='%s'",
-				target_frame.c_str(), source_frame.c_str());
-
-		listenerTF_.waitForTransform(
-			target_frame, source_frame, time, polling_sleep_duration);
-		listenerTF_.lookupTransform(
-			target_frame, source_frame, time, transform);
+		transform = tf_buffer_.lookupTransform(
+			target_frame, source_frame, time, timeout);
 	}
-	catch (const tf::TransformException&)
+	catch (const tf2::TransformException& e)
 	{
-		ROS_INFO(
-			"Failed to get transform target_frame (%s) to source_frame (%s)",
-			target_frame.c_str(), source_frame.c_str());
+		ROS_WARN(
+			"Failed to get transform target_frame (%s) to source_frame (%s): "
+			"%s",
+			target_frame.c_str(), source_frame.c_str(), e.what());
 		return false;
 	}
-	mrpt_bridge::convert(transform, des);
+	tf2::Transform tx;
+	tf2::fromMsg(transform.transform, tx);
+	des = mrpt::ros1bridge::fromROS(tx);
 	return true;
 }
 
 void RawlogRecordNode::convert(
 	const nav_msgs::Odometry& src, mrpt::obs::CObservationOdometry& des)
 {
-	mrpt_bridge::convert(src.header.stamp, des.timestamp);
-	mrpt_bridge::convert(src.pose.pose, des.odometry);
-	std::string odom_frame_id =
-		tf::resolve(param_.tf_prefix, param_.odom_frame_id);
+	des.timestamp = mrpt::ros1bridge::fromROS(src.header.stamp);
+	des.odometry =
+		mrpt::poses::CPose2D(mrpt::ros1bridge::fromROS(src.pose.pose));
+
+	std::string odom_frame_id = param_.odom_frame_id;
 	des.sensorLabel = odom_frame_id;
 	des.hasEncodersInfo = false;
 	des.hasVelocities = false;
@@ -140,7 +136,8 @@ void RawlogRecordNode::callbackLaser(const sensor_msgs::LaserScan& _msg)
 
 	if (getStaticTF(_msg.header.frame_id, sensor_pose_on_robot))
 	{
-		mrpt_bridge::convert(_msg, sensor_pose_on_robot, *last_range_scan_);
+		mrpt::ros1bridge::fromROS(
+			_msg, sensor_pose_on_robot, *last_range_scan_);
 
 		addObservation(_msg.header.stamp);
 	}
@@ -161,14 +158,17 @@ void RawlogRecordNode::callbackMarker(const marker_msgs::MarkerDetection& _msg)
 
 	if (getStaticTF(_msg.header.frame_id, sensor_pose_on_robot))
 	{
-		mrpt_bridge::convert(_msg, sensor_pose_on_robot, *last_bearing_range_);
+		mrpt_msgs_bridge::fromROS(
+			_msg, sensor_pose_on_robot, *last_bearing_range_);
+
 		last_bearing_range_->sensor_std_range =
 			base_param_.bearing_range_std_range;
 		last_bearing_range_->sensor_std_yaw = base_param_.bearing_range_std_yaw;
 		last_bearing_range_->sensor_std_pitch =
 			base_param_.bearing_range_std_pitch;
 
-		mrpt_bridge::convert(_msg, sensor_pose_on_robot, *last_beacon_range_);
+		mrpt_msgs_bridge::fromROS(
+			_msg, sensor_pose_on_robot, *last_beacon_range_);
 		last_beacon_range_->stdError = base_param_.bearing_range_std_range;
 		addObservation(_msg.header.stamp);
 	}
@@ -273,47 +273,52 @@ void RawlogRecordNode::addObservation(const ros::Time& time)
 bool RawlogRecordNode::getStaticTF(
 	std::string source_frame, mrpt::poses::CPose3D& des)
 {
-	std::string target_frame_id =
-		tf::resolve(param_.tf_prefix, param_.base_frame_id);
+	std::string target_frame_id = param_.base_frame_id;
 	std::string source_frame_id = source_frame;
 	std::string key = target_frame_id + "->" + source_frame_id;
 	mrpt::poses::CPose3D pose;
-	tf::StampedTransform transform;
+
+	geometry_msgs::TransformStamped tfGeom;
 
 	if (static_tf_.find(key) == static_tf_.end())
 	{
+		if (base_param_.debug)
+		{
+			ROS_INFO(
+				"debug: updateLaserPose(): target_frame_id='%s' "
+				"source_frame_id='%s'",
+				target_frame_id.c_str(), source_frame_id.c_str());
+		}
+
 		try
 		{
-			if (base_param_.debug)
-				ROS_INFO(
-					"debug: updateLaserPose(): target_frame_id='%s' "
-					"source_frame_id='%s'",
-					target_frame_id.c_str(), source_frame_id.c_str());
-
-			listenerTF_.lookupTransform(
-				target_frame_id, source_frame_id, ros::Time(0), transform);
-			tf::Vector3 translation = transform.getOrigin();
-			tf::Quaternion quat = transform.getRotation();
-			pose.x() = translation.x();
-			pose.y() = translation.y();
-			pose.z() = translation.z();
-			tf::Matrix3x3 Rsrc(quat);
-			mrpt::math::CMatrixDouble33 Rdes;
-			for (int c = 0; c < 3; c++)
-				for (int r = 0; r < 3; r++) Rdes(r, c) = Rsrc.getRow(r)[c];
-			pose.setRotationMatrix(Rdes);
-			static_tf_[key] = pose;
-			ROS_INFO(
-				"Static tf '%s' with '%s'", key.c_str(),
-				pose.asString().c_str());
+			tfGeom = tf_buffer_.lookupTransform(
+				target_frame_id, source_frame_id, ros::Time(0));
 		}
-		catch (const tf::TransformException& ex)
+		catch (const tf2::TransformException& ex)
 		{
 			ROS_INFO("getStaticTF");
 			ROS_ERROR("%s", ex.what());
 			ros::Duration(1.0).sleep();
 			return false;
 		}
+
+		tf2::Transform transform;
+		tf2::fromMsg(tfGeom.transform, transform);
+
+		tf2::Vector3 translation = transform.getOrigin();
+		tf2::Quaternion quat = transform.getRotation();
+		pose.x() = translation.x();
+		pose.y() = translation.y();
+		pose.z() = translation.z();
+		tf2::Matrix3x3 Rsrc(quat);
+		mrpt::math::CMatrixDouble33 Rdes;
+		for (int c = 0; c < 3; c++)
+			for (int r = 0; r < 3; r++) Rdes(r, c) = Rsrc.getRow(r)[c];
+		pose.setRotationMatrix(Rdes);
+		static_tf_[key] = pose;
+		ROS_INFO(
+			"Static tf '%s' with '%s'", key.c_str(), pose.asString().c_str());
 	}
 	des = static_tf_[key];
 	return true;

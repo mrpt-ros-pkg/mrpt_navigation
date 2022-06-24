@@ -636,11 +636,12 @@ void PFLocalizationNode::publishTF()
 		ros::Duration(param()->transform_tolerance);
 
 	tf2::Stamped<tf2::Transform> tmp_tf_stamped(
-		baseOnMap_tf * odomOnBase_tf,
-		transform_expiration,  // global_frame_id,
-		odom_frame_id);
+		baseOnMap_tf * odomOnBase_tf, transform_expiration, global_frame_id);
 
-	tf_broadcaster_.sendTransform(tf2::toMsg(tmp_tf_stamped));
+	geometry_msgs::TransformStamped tfGeom = tf2::toMsg(tmp_tf_stamped);
+	tfGeom.child_frame_id = odom_frame_id;
+
+	tf_broadcaster_.sendTransform(tfGeom);
 }
 
 /**

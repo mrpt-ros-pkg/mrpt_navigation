@@ -35,4 +35,4 @@
 #include <mrpt_rawlog_play/rawlog_play_defaults.h>
 
 RawlogPlay::~RawlogPlay() {}
-RawlogPlay::RawlogPlay(Parameters* param) : param_(param), entry_(0) {}
+RawlogPlay::RawlogPlay(Parameters* param) : param_(param) {}
