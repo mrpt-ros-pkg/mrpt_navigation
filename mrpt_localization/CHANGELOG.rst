@@ -2,6 +2,9 @@
 Changelog for package mrpt_localization
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+
 1.0.1 (2022-06-24)
 ------------------
 * fix all build errors; removed now obsolete tf_prefix

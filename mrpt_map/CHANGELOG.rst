@@ -2,6 +2,9 @@
 Changelog for package mrpt_map
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+
 1.0.1 (2022-06-24)
 ------------------
 * Fix build errors
