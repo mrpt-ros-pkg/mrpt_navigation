@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <package format="2">
   <name>mrpt_msgs_bridge</name>
-  <version>1.0.1</version>
+  <version>1.0.2</version>
   <description>C++ library to convert between custom mrpt_msgs messages and native MRPT classes</description>
 
   <url type="website">https://www.mrpt.org/</url>

@@ -2,8 +2,8 @@
 Changelog for package mrpt_msgs_bridge
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.0.2 (2022-06-25)
+------------------
 * Fix wrong destination for mrpt_msgs_bridge headers
 * Contributors: Jose Luis Blanco Claraco
 

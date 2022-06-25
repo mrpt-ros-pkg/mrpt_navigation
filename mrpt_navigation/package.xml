@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <package format="2">
   <name>mrpt_navigation</name>
-  <version>1.0.1</version>
+  <version>1.0.2</version>
   <description>
     Tools related to the Mobile Robot Programming Toolkit (MRPT).
     Refer to https://wiki.ros.org/mrpt_navigation for further documentation.
