@@ -2,6 +2,11 @@
 Changelog for package mrpt_msgs_bridge
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Fix CMake script error due to last commit typo
+* Contributors: Jose Luis Blanco Claraco
+
 1.0.2 (2022-06-25)
 ------------------
 * Fix wrong destination for mrpt_msgs_bridge headers
