@@ -44,16 +44,48 @@ using mrpt::maps::COccupancyGridMap2D;
 MapServer::MapServer(ros::NodeHandle& n) : n_(n) {}
 
 MapServer::~MapServer() {}
+
 void MapServer::init()
 {
-	std::string ini_file;
-	std::string map_file;
 	n_param_.param<bool>("debug", debug_, true);
 	ROS_INFO("debug: %s", (debug_ ? "true" : "false"));
-	n_param_.param<std::string>("ini_file", ini_file, "map.ini");
-	ROS_INFO("ini_file: %s", ini_file.c_str());
-	n_param_.param<std::string>("map_file", map_file, "map.simplemap");
-	ROS_INFO("map_file: %s", map_file.c_str());
+
+	mrpt::maps::COccupancyGridMap2D::Ptr grid;
+
+	if (auto yamlFile = n_param_.param<std::string>("map_yaml_file", "");
+		!yamlFile.empty())
+	{
+		ROS_INFO("map_yaml_file: %s", yamlFile.c_str());
+
+		grid = mrpt::maps::COccupancyGridMap2D::Create();
+		grid->loadFromROSMapServerYAML(yamlFile);
+	}
+	else
+	{
+		std::string ini_file;
+		std::string map_file;
+		n_param_.param<std::string>("ini_file", ini_file, "map.ini");
+
+		n_param_.param<std::string>("map_file", map_file, "map.simplemap");
+
+		ROS_INFO("ini_file: %s", ini_file.c_str());
+		ROS_INFO("map_file: %s", map_file.c_str());
+
+		ASSERT_FILE_EXISTS_(ini_file);
+		ASSERT_FILE_EXISTS_(map_file);
+		CConfigFile config_file;
+		config_file.setFileName(ini_file);
+
+		metric_map_ = CMultiMetricMap::Create();
+
+		mrpt::ros1bridge::MapHdl::loadMap(
+			*metric_map_, config_file, map_file, "metricMap", debug_);
+
+		grid = metric_map_->mapByClass<COccupancyGridMap2D>();
+	}
+
+	ASSERT_(grid);
+
 	n_param_.param<std::string>(
 		"frame_id", resp_ros_.map.header.frame_id, "map");
 	ROS_INFO("frame_id: %s", resp_ros_.map.header.frame_id.c_str());
@@ -66,33 +98,13 @@ void MapServer::init()
 	service_map_ =
 		n_.advertiseService("static_map", &MapServer::mapCallback, this);
 
-	if (!mrpt::system::fileExists(ini_file))
-	{
-		ROS_ERROR("ini_file: %s does not exit", ini_file.c_str());
-	}
-	if (!mrpt::system::fileExists(map_file))
-	{
-		ROS_ERROR("map_file: %s does not exit", map_file.c_str());
-	}
-	ASSERT_FILE_EXISTS_(ini_file);
-	CConfigFile config_file;
-	config_file.setFileName(ini_file);
-
-	metric_map_ = CMultiMetricMap::Create();
-
-	mrpt::ros1bridge::MapHdl::loadMap(
-		*metric_map_, config_file, map_file, "metricMap", debug_);
-
-	const COccupancyGridMap2D& grid =
-		*metric_map_->mapByClass<COccupancyGridMap2D>();
-
 	if (debug_)
 		printf(
 			"gridMap[0]:  %i x %i @ %4.3fm/p, %4.3f, %4.3f, %4.3f, %4.3f\n",
-			grid.getSizeX(), grid.getSizeY(), grid.getResolution(),
-			grid.getXMin(), grid.getYMin(), grid.getXMax(), grid.getYMax());
+			grid->getSizeX(), grid->getSizeY(), grid->getResolution(),
+			grid->getXMin(), grid->getYMin(), grid->getXMax(), grid->getYMax());
 
-	mrpt::ros1bridge::toROS(grid, resp_ros_.map);
+	mrpt::ros1bridge::toROS(*grid, resp_ros_.map);
 
 	if (debug_)
 		printf(
