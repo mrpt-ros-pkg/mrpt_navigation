@@ -1,32 +1,24 @@
-cmake_minimum_required(VERSION 3.1)
+cmake_minimum_required(VERSION 3.8)
 project(mrpt_localization)
 
-## Find catkin macros and libraries
-## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
-## is used, also find other catkin packages
-find_package(catkin REQUIRED COMPONENTS
-  roscpp
-  tf2
-  tf2_ros
-  tf2_geometry_msgs
-  std_msgs
-  nav_msgs
-  sensor_msgs
-  mrpt_msgs
-  mrpt_msgs_bridge
-  pose_cov_ops
-  dynamic_reconfigure
-  )
+# find dependencies
+find_package(ament_cmake REQUIRED)
 
-## System dependencies are found with CMake's conventions
+find_package(geometry_msgs REQUIRED)
+find_package(tf2 REQUIRED)
+find_package(std_msgs REQUIRED)
+find_package(nav_msgs REQUIRED)
+find_package(mrpt_msgs REQUIRED)
+find_package(pose_cov_ops REQUIRED)
+find_package(mrpt_msgs_bridge REQUIRED)
+find_package(sensor_msgs REQUIRED)
+find_package(tf2_geometry_msgs REQUIRED)
+
+find_package(mrpt-ros2bridge REQUIRED)
 find_package(mrpt-gui REQUIRED)
 find_package(mrpt-slam REQUIRED)
-find_package(mrpt-ros1bridge REQUIRED)
-message(STATUS "MRPT_VERSION: ${MRPT_VERSION}")
 
-find_package(pose_cov_ops REQUIRED)
-# TODO: Apparently catkin is not exporting this PUBLIC flag from the pose_cov_ops library (!!!)
-add_definitions(-DPACKAGE_ROS_VERSION=1)
+message(STATUS "MRPT_VERSION: ${mrpt-slam_VERSION}")
 
 if (CMAKE_COMPILER_IS_GNUCXX)
 	# High level of warnings.
@@ -42,12 +34,6 @@ endif()
 IF(CMAKE_COMPILER_IS_GNUCXX AND NOT CMAKE_BUILD_TYPE MATCHES "Debug")
   add_compile_options(-O3)
 ENDIF()
-
-# Add dynamic reconfigure api
-generate_dynamic_reconfigure_options(
-  cfg/Motion.cfg
-  cfg/RosInterface.cfg
-)
 
 ###################################
 ## catkin specific configuration ##
@@ -100,6 +86,18 @@ add_executable(${PROJECT_NAME}_node
     src/${PROJECT_NAME}_node_parameters.cpp
 )
 
+ament_target_dependencies(
+  ${PROJECT_NAME}_core
+    rclcpp
+    geometry_msgs
+    nav_msgs
+    sensor_msgs
+    visualization_msgs
+    tf2
+    tf2_geometry_msgs
+)
+
+
 
 ## Add cmake target dependencies of the executable/library
 ## as an example, message headers may need to be generated before nodes
@@ -112,21 +110,18 @@ add_dependencies(${PROJECT_NAME}
 ## Specify libraries to link a library or executable target against
 target_link_libraries(${PROJECT_NAME}_core
   PUBLIC
-  ${catkin_LIBRARIES}
   mrpt::gui
   mrpt::slam
-  mrpt::ros1bridge
+  mrpt::ros2bridge
 )
 
 target_link_libraries(${PROJECT_NAME}
   ${PROJECT_NAME}_core
-  ${catkin_LIBRARIES}
 )
 
 target_link_libraries(${PROJECT_NAME}_node
   PRIVATE
   ${PROJECT_NAME}
-  ${catkin_LIBRARIES}
 )
 
 #############
@@ -135,6 +130,11 @@ target_link_libraries(${PROJECT_NAME}_node
 
 # all install targets should use catkin DESTINATION variables
 # See http://ros.org/doc/api/catkin/html/adv_user_guide/variables.html
+
+set(CATKIN_PACKAGE_LIB_DESTINATION lib)
+set(CATKIN_PACKAGE_BIN_DESTINATION lib/${PROJECT_NAME})
+set(CATKIN_PACKAGE_INCLUDE_DESTINATION include)
+set(CATKIN_PACKAGE_SHARE_DESTINATION share/${PROJECT_NAME})
 
 # Mark executables and/or libraries for installation
 install(TARGETS ${PROJECT_NAME}_node ${PROJECT_NAME}_core ${PROJECT_NAME}
@@ -156,6 +156,23 @@ install(DIRECTORY
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
 )
 
-#############
-## Testing ##
-#############
+find_package(ament_cmake_xmllint REQUIRED)
+
+#ament_copyright()
+#ament_cpplint()
+#ament_lint_cmake()
+ament_xmllint()
+
+#find_package(ament_cmake_gtest REQUIRED)
+#ament_add_gtest(${PROJECT_NAME}-test test/test_pose_cov_ops.cpp)
+
+ament_export_dependencies()
+
+# Export old-style CMake variables
+ament_export_include_directories("include/${PROJECT_NAME}")
+ament_export_libraries(${PROJECT_NAME})
+
+# Export modern CMake targets
+ament_export_targets(export_${PROJECT_NAME})
+
+ament_package()

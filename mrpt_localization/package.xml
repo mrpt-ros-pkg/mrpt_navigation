@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<package format="2">
+<package format="3">
   <name>mrpt_localization</name>
   <version>1.0.3</version>
   <description>Package for robot 2D self-localization using dynamic or static (MRPT or ROS) maps.
@@ -9,20 +9,21 @@
 
   <url type="website">http://www.mrpt.org/</url>
   <maintainer email="markus.bader@tuwien.ac.at">Markus Bader</maintainer>
+  <maintainer email="joseluisblancoc@gmail.com">Jose Luis Blanco-Claraco</maintainer>
   <author>Markus Bader</author>
   <author email="raffi.z@gmail.com">Raphael Zack</author>
   <license>BSD</license>
 
-
   <license>BSD</license>
   <url>https://wiki.ros.org/mrpt_localization</url>
 
-  <buildtool_depend>catkin</buildtool_depend>
+  <!-- BUILD TOOLS -->
+  <buildtool_depend>cmake</buildtool_depend>
+  <buildtool_depend>ament_cmake</buildtool_depend>
 
+  <!-- DEPS -->
   <depend>mrpt2</depend>
-  <depend>roscpp</depend>
   <depend>tf2</depend>
-  <depend>tf2_ros</depend>
   <depend>tf2_geometry_msgs</depend>
   <depend>std_msgs</depend>
   <depend>sensor_msgs</depend>
@@ -30,7 +31,8 @@
   <depend>mrpt_msgs</depend>
   <depend>mrpt_msgs_bridge</depend>
   <depend>pose_cov_ops</depend>
-  <depend>dynamic_reconfigure</depend>
 
-
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
 </package>

@@ -1,21 +1,18 @@
-cmake_minimum_required(VERSION 3.1)
+cmake_minimum_required(VERSION 3.8)
 project(mrpt_msgs_bridge)
 
-## Find catkin macros and libraries
-## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
-## is used, also find other catkin packages
-find_package(catkin REQUIRED COMPONENTS 
-  geometry_msgs
-  marker_msgs
-  mrpt_msgs
-  roscpp
-  tf2
-  )
+# find dependencies
+find_package(ament_cmake REQUIRED)
 
-## System dependencies are found with CMake's conventions
+find_package(geometry_msgs REQUIRED)
+find_package(tf2 REQUIRED)
+find_package(mrpt_msgs REQUIRED)
+find_package(visualization_msgs REQUIRED)
+
+find_package(mrpt-ros2bridge REQUIRED)
 find_package(mrpt-obs REQUIRED)
-find_package(mrpt-ros1bridge REQUIRED)
-message(STATUS "MRPT_VERSION: ${MRPT_VERSION}")
+
+message(STATUS "MRPT_VERSION: ${mrpt-obs_VERSION}")
 
 if (CMAKE_COMPILER_IS_GNUCXX)
 	# High level of warnings.
@@ -31,27 +28,6 @@ endif()
 IF(CMAKE_COMPILER_IS_GNUCXX AND NOT CMAKE_BUILD_TYPE MATCHES "Debug")
   add_compile_options(-O3)
 ENDIF()
-
-###################################
-## catkin specific configuration ##
-###################################
-## The catkin_package macro generates cmake config files for your package
-## Declare things to be passed to dependent projects
-## INCLUDE_DIRS: uncomment this if you package contains header files
-## LIBRARIES: libraries you create in this project that dependent projects also need
-## CATKIN_DEPENDS: catkin_packages dependent projects also need
-## DEPENDS: system dependencies of this project that dependent projects also need
-catkin_package(
-  INCLUDE_DIRS include
-  LIBRARIES ${PROJECT_NAME}
-  CATKIN_DEPENDS
-    geometry_msgs
-    marker_msgs
-    mrpt_msgs
-    roscpp
-    tf2
-#  DEPENDS mrpt
-)
 
 ###########
 ## Build ##
@@ -71,31 +47,51 @@ add_library(${PROJECT_NAME}
 
 ## Specify libraries to link a library or executable target against
 target_link_libraries(${PROJECT_NAME}
-  PUBLIC
   mrpt::obs
-  mrpt::ros1bridge
+  mrpt::ros2bridge
 )
+
 
 #############
 ## Install ##
 #############
 
-# all install targets should use catkin DESTINATION variables
-# See http://ros.org/doc/api/catkin/html/adv_user_guide/variables.html
-
 # Mark executables and/or libraries for installation
 install(TARGETS ${PROJECT_NAME}
-  ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+  ARCHIVE DESTINATION lib
+  LIBRARY DESTINATION lib
+  RUNTIME DESTINATION lib/${PROJECT_NAME}
 )
 
 # Mark cpp header files for installation
 install(DIRECTORY include/${PROJECT_NAME}/
-  DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
+  DESTINATION include
   FILES_MATCHING PATTERN "*.h"
 )
 
 #############
-## Testing ##
-#############
+ament_target_dependencies(${PROJECT_NAME} 
+  rclcpp
+  visualization_msgs
+  tf2
+  mrpt_msgs
+)
+
+#ament_copyright()
+#ament_cpplint()
+#ament_lint_cmake()
+#ament_xmllint()
+
+#find_package(ament_cmake_gtest REQUIRED)
+#ament_add_gtest(${PROJECT_NAME}-test test/test_pose_cov_ops.cpp)
+
+ament_export_dependencies()
+
+# Export old-style CMake variables
+#ament_export_include_directories("include/${PROJECT_NAME}")
+#ament_export_libraries(${PROJECT_NAME})
+
+# Export modern CMake targets
+#ament_export_targets(export_${PROJECT_NAME})
+
+ament_package()
