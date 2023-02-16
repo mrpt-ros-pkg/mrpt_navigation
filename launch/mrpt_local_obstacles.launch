@@ -3,6 +3,8 @@
 	<!-- Node: Local obstacles builder -->
 	<node pkg="mrpt_local_obstacles" type="mrpt_local_obstacles_node" name="mrpt_local_obstacles_node" output="screen">
 		<param name="source_topics_2dscan" value="/front/scan"/> 
+        <param name="show_gui" value="true"/>
+        <param name="topic_local_map_pointcloud" value="lidarScan"/>
 	</node>
 
 </launch>
