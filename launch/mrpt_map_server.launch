@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+<launch>
+    <arg name="map_yaml_file" default="$(find jackal_helper)/map_files/yaml_0.yaml" />
+	<!-- Node: Local obstacles builder -->
+	<node pkg="mrpt_map" type="map_server_node" name="map_server_node" output="screen">
+		<param name="map_yaml_file" value="$(arg map_yaml_file)" /> 
+        <param name="frame_id" value="map"/>
+        <param name="frequency" value="1"/>
+	</node>
+
+</launch>
