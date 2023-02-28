@@ -11,6 +11,9 @@
 <arg name="gui_mrpt" default="true"/>
 <arg name="sensor_sources" default="/front/scan"/>
 <arg name="use_map_topic" default="true"/>
+<arg name="initial_pose_x" default="0.0"/>
+<arg name="initial_pose_y" default="0.0"/>
+<arg name="initial_pose_phi" default="0.0"/>
 
 <node pkg="mrpt_localization" type="mrpt_localization_node" name="mrpt_localization_node" output="screen">
     <param name="ini_file" value="$(arg ini_file)"/> 
@@ -24,6 +27,9 @@
     <param name="gui_mrpt" value="$(arg gui_mrpt)"/> 
     <param name="sensor_sources" value="$(arg sensor_sources)"/>
     <param name="use_map_topic" value="$(arg use_map_topic)"/>
+    <param name="initial_pose_x" value="$(arg initial_pose_x)"/>
+    <param name="initial_pose_y" value="$(arg initial_pose_y)"/>
+    <param name="initial_pose_phi" value="$(arg initial_pose_phi)"/>
     <remap from="particlecloud" to="/mrpt/particlecloud"/>
   </node>
 
