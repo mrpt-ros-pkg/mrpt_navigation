@@ -76,6 +76,12 @@ PFLocalizationNode::Parameters::Parameters(PFLocalizationNode* p)
 	ROS_INFO("first_map_only: %s", first_map_only ? "true" : "false");
 	node.param<bool>("debug", debug, true);
 	ROS_INFO("debug: %s", debug ? "true" : "false");
+	node.param<double>("initial_pose_x", init_x, 0.0);
+	ROS_INFO("initial_pose_x: %f", init_x);
+	node.param<double>("initial_pose_y", init_y, 0.0);
+	ROS_INFO("initial_pose_y: %f", init_y);
+	node.param<double>("initial_pose_phi", init_phi, 0.0); // radians
+	ROS_INFO("initial_pose_phi: %f rad", init_phi);
 
 	reconfigure_cb_ = boost::bind(
 		&PFLocalizationNode::Parameters::callbackParameters, this, _1, _2);

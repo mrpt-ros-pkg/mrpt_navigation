@@ -83,6 +83,13 @@ void PFLocalizationNode::init()
 	useROSLogLevel();
 
 	PFLocalization::init();
+	if(param()->init_x || param()->init_y || param()->init_phi)
+	{
+		auto init_pose = mrpt::poses::CPose2D(param()->init_x, param()->init_y, param()->init_phi);
+		initial_pose_ = mrpt::poses::CPosePDFGaussian(init_pose);
+		update_counter_ = 0;
+		state_ = INIT;
+	}
 	sub_init_pose_ = nh_.subscribe(
 		"initialpose", 1, &PFLocalizationNode::callbackInitialpose, this);
 

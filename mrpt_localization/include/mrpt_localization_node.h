@@ -93,6 +93,9 @@ class PFLocalizationNode : public PFLocalization
 		bool tf_broadcast;
 		bool use_map_topic;
 		bool first_map_only;
+		double init_x; // m
+		double init_y; // m
+		double init_phi; //radians
 	};
 
 	PFLocalizationNode(ros::NodeHandle& n);
