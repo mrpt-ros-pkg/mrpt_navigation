@@ -35,6 +35,7 @@
 
 #include <mrpt/config/CConfigFile.h>
 #include <mrpt/gui/CDisplayWindow3D.h>
+#include <mrpt/opengl/COpenGLScene.h>
 #include <mrpt/io/CFileGZInputStream.h>
 #include <mrpt_localization/mrpt_localization_core.h>
 #include <stdint.h>

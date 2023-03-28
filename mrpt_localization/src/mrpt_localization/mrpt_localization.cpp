@@ -34,6 +34,7 @@
 #include <mrpt/maps/COccupancyGridMap2D.h>
 #include <mrpt/maps/CSimplePointsMap.h>
 #include <mrpt/opengl/CEllipsoid2D.h>
+#include <mrpt/opengl/COpenGLScene.h>
 #include <mrpt/opengl/CPointCloud.h>
 #include <mrpt/ros1bridge/map.h>
 #include <mrpt/system/filesystem.h>
