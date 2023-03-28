@@ -2,8 +2,8 @@
 Changelog for package mrpt_local_obstacles
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.0.4 (2023-03-28)
+------------------
 * Fix demo launch files for newer MVSIM
 * Fix build against mrpt >=2.7.0
 * Contributors: Jose Luis Blanco Claraco

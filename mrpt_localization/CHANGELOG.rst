@@ -2,8 +2,8 @@
 Changelog for package mrpt_localization
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.0.4 (2023-03-28)
+------------------
 * Fix build against mrpt >=2.7.0
 * add initial pose for localization as param
 * Contributors: Jose Luis Blanco-Claraco, SRai22

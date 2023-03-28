@@ -2,8 +2,8 @@
 Changelog for package mrpt_map
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.0.4 (2023-03-28)
+------------------
 * mrpt_map: new param to load from ROS map-YAML file
   (Closes `#73 <https://github.com/mrpt-ros-pkg/mrpt_navigation/issues/73>`_)
 * Contributors: Jose Luis Blanco Claraco

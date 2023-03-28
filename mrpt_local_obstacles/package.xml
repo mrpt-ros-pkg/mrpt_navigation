@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <package format="2">
   <name>mrpt_local_obstacles</name>
-  <version>1.0.3</version>
+  <version>1.0.4</version>
   <description>Maintains a local obstacle map (point cloud,
    voxels or occupancy grid) from recent sensor readings within a
    configurable time window.</description>

@@ -2,8 +2,8 @@
 Changelog for package mrpt_reactivenav2d
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.0.4 (2023-03-28)
+------------------
 * Fix demo launch files for newer MVSIM
 * Contributors: Jose Luis Blanco Claraco
 
