@@ -6,7 +6,7 @@
 	</node>
 
 	<!-- Launch a MvSim simulator instance with one robot -->
-	<include file="$(find mvsim)/mvsim_tutorial/mvsim_demo_1robot.launch" />
+	<include file="$(find mvsim)/mvsim_tutorial/demo_1robot.launch" />
 
 </launch>
 

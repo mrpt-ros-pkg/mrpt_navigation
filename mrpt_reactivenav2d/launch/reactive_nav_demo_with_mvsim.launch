@@ -6,7 +6,7 @@
 		<param name="show_gui" value="false"/>
 	</node>
 	<!-- Launch a MvSim simulator instance with one robot -->
-	<arg name="world_file" default="$(find mvsim)/mvsim_tutorial/mvsim_demo_1robot.xml" />
+	<arg name="world_file" default="$(find mvsim)/mvsim_tutorial/demo_1robot.world.xml" />
 	<node pkg="mvsim" type="mvsim_node" name="mvsim_simulator" output="screen">
 		<param name="world_file" value="$(arg world_file)"/>
 		<param name="do_fake_localization" value="true"/>
