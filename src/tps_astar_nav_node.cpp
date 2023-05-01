@@ -1,4 +1,6 @@
 #include <ros/ros.h> 
+#include <sstream>
+#include <string>
 #include <mutex>
 #include "mrpt/system/CTimeLogger.h"
 #include "mrpt/math/TPose2D.h"
@@ -28,17 +30,30 @@ class TPS_Astar_Nav_Node
                 m_nh(),
                 m_localn("~")
     {
-        std::vector<double> goal_pose;
-        std::vector<double> default_goal_pose = {0.0, 0.0, 0.0};
+        std::string nav_goal_str = "[0.0, 0.0, 0.0]";
         m_localn.param(
-			"nav_goal", goal_pose, default_goal_pose);
-
+			"nav_goal", nav_goal_str, nav_goal_str);
+        // Replace brackets and use ',' as the delimiter
+        std::replace(nav_goal_str.begin(), nav_goal_str.end(), '[', ' ');
+        std::replace(nav_goal_str.begin(), nav_goal_str.end(), ']', ' ');
+        std::cout<<"Goal "<<nav_goal_str<<std::endl;
+        std::vector<double> goal_pose;
+        std::istringstream nav_goal_ss(nav_goal_str);
+        double value;
+        while (nav_goal_ss >> value) 
+        {
+            goal_pose.push_back(value);
+            if (nav_goal_ss.peek() == ',') 
+            {
+                nav_goal_ss.ignore();
+            }
+        }
         if (goal_pose.size() != 3) 
         {
             ROS_ERROR("Invalid nav_goal parameter.");
             return;
         }
-        std::cout<<"Goal"<<goal_pose[0]<<"\t"<<goal_pose[1]<<"\t"<<goal_pose[2]<<std::endl;
+       
         m_nav_goal = mrpt::math::TPose2D(goal_pose[0], goal_pose[1], goal_pose[2]);
 
         std::cout<<"nav goal received"<< m_nav_goal.asString()<<std::endl;
