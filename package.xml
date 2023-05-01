@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <package format="2">
-  <name>tps_astar</name>
+  <name>tps_astar_nav</name>
   <version>0.0.1</version>
   <description>ROS Navigator with A* in TP-Space Engine</description>
   <maintainer email="shravansomashekara.rai@gmail.com">Shravan_S_Rai</maintainer>
@@ -11,11 +11,20 @@
   <!--Dependencie  -->
   <doc_depend>doxygen</doc_depend>
   <buildtool_depend>catkin</buildtool_depend>
+  <depend>mrpt2</depend>
+  <depend>actionlib</depend>
+  <depend>actionlib_msgs</depend>
+  <depend>dynamic_reconfigure</depend>
+  <depend>geometry_msgs</depend>
+  <depend>tf2</depend>
+  <depend>tf2_ros</depend>
+  <depend>tf2_geometry_msgs</depend>
+  <depend>visualization_msgs</depend>
   <build_depend>roscpp</build_depend>
   <build_depend>rospy</build_depend>
   <build_depend>sensor_msgs</build_depend>
   <build_depend>std_msgs</build_depend>
-  <build_depend>tf</build_depend>
+  
   <build_depend>message_generation</build_depend>
   <build_export_depend>roscpp</build_export_depend>
   <build_export_depend>rospy</build_export_depend>

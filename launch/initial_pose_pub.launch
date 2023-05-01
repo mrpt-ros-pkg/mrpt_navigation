@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+<launch>
+    <arg name="initial_x" default="-2" />
+    <arg name="initial_y" default="3" />
+    <arg name="initial_phi" default="1.57"/>
+	<!-- Node: Local obstacles builder -->
+	<node pkg="tps_astar_nav" type="initial_pose_publisher.py" name="initial_pose_publisher_node" output="screen">
+		<param name="initial_x" value="$(arg initial_x)" /> 
+        <param name="initial_y" value="$(arg initial_y)"/>
+        <param name="initial_phi" value="$(arg initial_phi)"/>
+	</node>
+
+</launch>
