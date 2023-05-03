@@ -6,13 +6,12 @@
 
 	<!-- Node: TP Space A* Navigator builder -->
 	<node pkg="tps_astar_nav" type="tps_astar_nav_node" name="tps_astar_nav_node" output="screen">
-        <rosparam file="$(find tps_astar_nav)/configs/params/nav-engine-params.yaml" command="load" ns="nav-engine-parameters" />
-        <rosparam file="$(find tps_astar_nav)/configs/params/planner-params.yaml" command="load" ns="planner-parameters" />
 
-        <rosparam file="$(find tps_astar_nav)/configs/params/costmap-obstacles.yaml" command="load" ns="global-costmap-parameters" />
-        <rosparam file="$(find tps_astar_nav)/configs/params/costmap-obstacles.yaml" command="load" ns="local-costmap-parameters" />
-
-        <rosparam file="$(find tps_astar_nav)/configs/params/costmap-prefer-waypoints.yaml" command="load" ns="prefer-waypoints-parameters" />
+        <param name="nav_engine_parameters" value="$(find tps_astar_nav)/configs/params/nav-engine-params.yaml"/>
+        <param name="planner_parameters"  value="$(find tps_astar_nav)/configs/params/planner-params.yaml"/>
+        <param name="global_costmap_parameters" value="$(find tps_astar_nav)/configs/params/costmap-obstacles.yaml"/>
+        <param name="local_costmap_parameters"  value="$(find tps_astar_nav)/configs/params/costmap-obstacles.yaml"/>
+        <param name="prefer_waypoints_parameters" value="$(find tps_astar_nav)/configs/params/costmap-prefer-waypoints.yaml"/>
         <param name="ptg_ini" value="$(find tps_astar_nav)/configs/ini/ptgs_jackal.ini"/>
         <param name="nav_goal" value="$(arg nav_goal)"/>
         <param name="start_pose" value="$(arg start_pose)"/>

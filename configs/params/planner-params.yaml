@@ -3,7 +3,7 @@
 # It is safe to use coarse lattice values, since a post-processing path
 # refining stage will normally improve the result, with a very reduced overall
 # time cost:
-grid_resolution_xy: 0.40    # [meters]
+grid_resolution_xy: 0.15    # [meters]
 grid_resolution_yaw: 25.0   # [deg]
 
 # find_feasible_paths_to_neighbors() params:

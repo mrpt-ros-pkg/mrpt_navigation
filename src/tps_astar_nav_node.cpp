@@ -8,8 +8,15 @@
 #include <mrpt/math/TPose2D.h>
 #include <mrpt/math/TTwist2D.h>
 #include <mrpt/maps/COccupancyGridMap2D.h>
+#include <mrpt/maps/CSimplePointsMap.h>
 #include <mrpt/maps/CPointsMap.h>
 #include <mrpt/ros1bridge/map.h>
+#include <mrpt/system/filesystem.h>
+#include <mrpt/config/CConfigFile.h>
+#include <mrpt/containers/yaml.h>
+#include <mrpt/version.h>
+#include <selfdriving/algos/CostEvaluatorCostMap.h>
+#include <selfdriving/algos/CostEvaluatorPreferredWaypoint.h>
 #include <selfdriving/algos/TPS_Astar.h>
 #include <selfdriving/interfaces/ObstacleSource.h>
 #include <nav_msgs/OccupancyGrid.h>
@@ -34,6 +41,8 @@ class TPS_Astar_Nav_Node
     std::once_flag m_init_flag;
     std::once_flag m_map_received_flag;
     mrpt::maps::CPointsMap::Ptr m_grid_map;
+
+
     mrpt::math::TPose2D m_nav_goal;
     mrpt::math::TPose2D m_start_pose;
     mrpt::math::TTwist2D m_start_vel;
@@ -79,11 +88,8 @@ class TPS_Astar_Nav_Node
         m_start_vel = mrpt::math::TTwist2D(std::stod(vel_str), 0.0, 0.0);
         std::cout<<"***************************** starting velocity ="<< m_start_vel.asString()<<std::endl;
 
+
         m_sub_map = m_nh.subscribe("map", 1, &TPS_Astar_Nav_Node::callbackMap, this);
-        //m_sub_map_meta_data = m_nh.subscribe("map_metadata", 1, &TPS_Astar_Nav_Node::callbackMapMetaData, this);
-
-
-
     }
 
     template <typename T>
@@ -124,12 +130,15 @@ class TPS_Astar_Nav_Node
 	    mrpt::ros1bridge::fromROS(msg, grid);
         auto obsPts = mrpt::maps::CSimplePointsMap::Create();
         grid.getAsPointCloud(*obsPts);
-        ROS_INFO_STREAM("Setting gridmap for planning");
-        m_grid_map = obsPts;
+        ROS_INFO_STREAM("*****************************************Setting gridmap for planning");
+        m_grid_map = std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(obsPts);
+
+        do_path_plan();
     }
 
     void do_path_plan()
     {
+        ROS_INFO_STREAM("************************ Do path planning");
         auto obs =  selfdriving::ObstacleSource::FromStaticPointcloud(m_grid_map);
         selfdriving::PlannerInput planner_input;
 
@@ -139,7 +148,111 @@ class TPS_Astar_Nav_Node
         planner_input.obstacles.emplace_back(obs);
         auto bbox = obs->obstacles()->boundingBox();
 
-        std::cout<<"Map bounding box = "<<bbox.asString()<<std::endl;
+        {
+            const auto bboxMargin = mrpt::math::TPoint3Df(2.0, 2.0, .0);
+            const auto ptStart = mrpt::math::TPoint3Df(planner_input.stateStart.pose.x, 
+                                                       planner_input.stateStart.pose.y, 0);
+            const auto ptGoal = mrpt::math::TPoint3Df(planner_input.stateGoal.asSE2KinState().pose.x,
+                                                      planner_input.stateGoal.asSE2KinState().pose.y, 0);
+            bbox.updateWithPoint(ptStart - bboxMargin);
+            bbox.updateWithPoint(ptStart + bboxMargin);
+            bbox.updateWithPoint(ptGoal - bboxMargin);
+            bbox.updateWithPoint(ptGoal + bboxMargin);
+        }
+
+        planner_input.worldBboxMax = {bbox.max.x, bbox.max.y, M_PI};
+        planner_input.worldBboxMin = {bbox.min.x, bbox.min.y, -M_PI};
+
+        ROS_INFO_STREAM("************************************** World BBOX defined");
+
+        selfdriving::Planner::Ptr planner = selfdriving::TPS_Astar::Create();
+
+        // Enable time profiler:
+        planner->profiler_().enable(true);
+
+        // cost map:
+        std::string costmap_param_file;
+
+        m_localn.param(
+			"global_costmap_parameters", costmap_param_file, costmap_param_file);
+
+        ROS_ASSERT_MSG(
+			mrpt::system::fileExists(costmap_param_file),
+			"costmap params file not found: '%s'", costmap_param_file.c_str());
+
+        const auto costMapParams =
+            selfdriving::CostEvaluatorCostMap::Parameters::FromYAML(
+                mrpt::containers::yaml::FromFile(costmap_param_file));
+
+        auto costmap =
+            selfdriving::CostEvaluatorCostMap::FromStaticPointObstacles(
+                *m_grid_map, costMapParams, planner_input.stateStart.pose);
+
+        ROS_INFO_STREAM("******************************* Costmap file read");
+
+        planner->costEvaluators_.push_back(costmap);
+        
+        {
+            std::string planner_parameters_file;
+            m_localn.param(
+                "planner_parameters", planner_parameters_file, planner_parameters_file);
+
+            ROS_ASSERT_MSG(
+                mrpt::system::fileExists(planner_parameters_file),
+                "Planner params file not found: '%s'", planner_parameters_file.c_str());
+            
+            const auto c = mrpt::containers::yaml::FromFile(planner_parameters_file);
+            planner->params_from_yaml(c);
+            std::cout << "Loaded these planner params:\n";
+            planner->params_as_yaml().printAsYAML();
+        }
+
+        // Insert custom progress callback:
+        planner->progressCallback_ =
+        [](const selfdriving::ProgressCallbackData& pcd) {
+            std::cout << "[progressCallback] bestCostFromStart: "
+                      << pcd.bestCostFromStart
+                      << " bestCostToGoal: " << pcd.bestCostToGoal
+                      << " bestPathLength: " << pcd.bestPath.size()
+                      << std::endl;
+        };
+
+        {
+            std::string ptg_ini_file;
+            m_localn.param(
+                "ptg_ini", ptg_ini_file, ptg_ini_file);
+
+            ROS_ASSERT_MSG(
+                mrpt::system::fileExists(ptg_ini_file),
+                "PTG ini file not found: '%s'", ptg_ini_file.c_str());
+            mrpt::config::CConfigFile cfg(ptg_ini_file);
+            planner_input.ptgs.initFromConfigFile(cfg, "SelfDriving");
+
+            ROS_INFO_STREAM("******************************* PTG ini");
+
+        }
+
+        const selfdriving::PlannerOutput plan = planner->plan(planner_input);
+
+        std::cout << "\nDone.\n";
+        std::cout << "Success: " << (plan.success ? "YES" : "NO") << "\n";
+        std::cout << "Plan has " << plan.motionTree.edges_to_children.size()
+                << " overall edges, " << plan.motionTree.nodes().size()
+                << " nodes\n";
+
+        if (!plan.bestNodeId.has_value())
+        {
+            std::cerr << "No bestNodeId in plan output.\n";
+            return;
+        }
+
+        // backtrack:
+        auto [plannedPath, pathEdges] =
+            plan.motionTree.backtrack_path(*plan.bestNodeId);
+
+        //selfdriving::refine_trajectory(plannedPath, pathEdges, planner_input.ptgs);
+
+        ROS_INFO_STREAM("*******************************Planner Refined");
 
     }
 };
@@ -148,7 +261,7 @@ class TPS_Astar_Nav_Node
 int main(int argc, char** argv)
 {
 	TPS_Astar_Nav_Node the_node(argc, argv);
-    the_node.do_path_plan();
+    //the_node.do_path_plan();
 	ros::spin();
 	return 0;
 }
