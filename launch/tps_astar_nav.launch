@@ -13,8 +13,7 @@
         <rosparam file="$(find tps_astar_nav)/configs/params/costmap-obstacles.yaml" command="load" ns="local-costmap-parameters" />
 
         <rosparam file="$(find tps_astar_nav)/configs/params/costmap-prefer-waypoints.yaml" command="load" ns="prefer-waypoints-parameters" />
-        <rosparam file="$(find tps_astar_nav)/configs/ini/ptgs_jackal.ini" command="load" ns="ptg" />
-        
+        <param name="ptg_ini" value="$(find tps_astar_nav)/configs/ini/ptgs_jackal.ini"/>
         <param name="nav_goal" value="$(arg nav_goal)"/>
         <param name="start_pose" value="$(arg start_pose)"/>
         <param name="start_vel" value="$(arg start_vel)"/>
