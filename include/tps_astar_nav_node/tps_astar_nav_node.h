@@ -6,6 +6,7 @@
 #include <mutex>
 #include <functional>
 #include <memory>
+#include <optional>
 #include <mrpt/system/CTimeLogger.h>
 #include <mrpt/math/TPose2D.h>
 #include <mrpt/math/TTwist2D.h>
@@ -16,13 +17,18 @@
 #include <mrpt/system/filesystem.h>
 #include <mrpt/config/CConfigFile.h>
 #include <mrpt/containers/yaml.h>
+#include <mrpt/obs/CObservationOdometry.h>
 #include <mrpt/version.h>
 #include <selfdriving/algos/CostEvaluatorCostMap.h>
 #include <selfdriving/algos/CostEvaluatorPreferredWaypoint.h>
 #include <selfdriving/algos/TPS_Astar.h>
 #include <selfdriving/interfaces/ObstacleSource.h>
+#include <selfdriving/interfaces/VehicleMotionInterface.h>
 #include <nav_msgs/OccupancyGrid.h>
-#include <nav_msgs/MapMetaData.h>
+#include <geometry_msgs/PoseArray.h>
+#include <geometry_msgs/PoseWithCovarianceStamped.h>
+#include <nav_msgs/Odometry.h>
+#include <sensor_msgs/PointCloud.h>
 
 // for debugging
 #include <mrpt/gui/CDisplayWindow3D.h>
@@ -53,8 +59,18 @@ class TPS_Astar_Nav_Node
     mrpt::math::TPose2D m_nav_goal;
     mrpt::math::TPose2D m_start_pose;
     mrpt::math::TTwist2D m_start_vel;
+	mrpt::math::TPose2D m_localization_pose;
+	mrpt::obs::CObservationOdometry m_odometry;
 
     ros::Subscriber m_sub_map;
+	ros::Subscriber m_sub_localization_pose;
+	ros::Subscriber m_sub_odometry;
+	ros::Subscriber m_sub_obstacles;
+
+	std::string m_sub_map_str;
+	std::string m_sub_localization_str;
+	std::string m_sub_odometry_str;
+	std::string m_sub_obstacles_str;
 
 	//for debugging
 	bool m_debug;
@@ -62,15 +78,106 @@ class TPS_Astar_Nav_Node
 	mrpt::gui::CDisplayWindow3D::Ptr m_win_3d;
 	mrpt::opengl::COpenGLScene m_scene;
 
+	struct Jackal_Interface : public selfdriving::VehicleMotionInterface,
+									 selfdriving::ObstacleSource
+	{
+		TPS_Astar_Nav_Node& m_parent;
+		bool m_enqueued_motion_pending;
+		bool m_enqueued_motion_timeout;
+
+		Jackal_Interface(TPS_Astar_Nav_Node& parent) : m_parent(parent) 
+		{
+
+		}
+
+		selfdriving::VehicleLocalizationState get_localization()override
+		{
+
+		}
+
+		selfdriving::VehicleOdometryState get_odometry() override
+		{
+
+		}
+
+		bool motion_execute(
+        		const std::optional<mrpt::kinematics::CVehicleVelCmd::Ptr>& immediate,
+        		const std::optional<selfdriving::EnqueuedMotionCmd>&   next)override
+		{
+
+		}
+
+		bool supports_enqeued_motions() const override { return true; }
+
+		bool enqeued_motion_pending() const override
+		{
+
+		}
+
+		bool enqeued_motion_timed_out() const override
+		{
+
+		}
+
+		void stop(const selfdriving::STOP_TYPE stopType)override
+		{
+
+		}
+
+		void stop_watchdog()override
+		{
+			
+		}
+
+		void start_watchdog(const size_t periodMilliseconds) override
+		{
+			
+		}
+
+		void on_nav_end_due_to_error()override
+		{
+
+		}
+    	
+		void on_nav_start()override
+		{
+
+		}
+
+    	void on_nav_end()override
+		{
+
+		}
+
+    	void on_path_seems_blocked()override
+		{
+
+		}
+
+    	void on_apparent_collision()override
+		{
+
+		}
+
+		mrpt::maps::CPointsMap::Ptr obstacles( [[maybe_unused]]
+                        mrpt::system::TTimeStamp t = mrpt::system::TTimeStamp())override
+		{
+
+		}
+
+	};
+
 	public: 
 	TPS_Astar_Nav_Node(int argc, char** argv);
 	~TPS_Astar_Nav_Node(){};
 	template <typename T>
 	std::vector<T> processStringParam(const std::string& param_str);
 	void callbackMap(const nav_msgs::OccupancyGrid& _map);
+	void callbackLocalization(const geometry_msgs::PoseWithCovarianceStamped& _pose);
+	void callbackOdometry(const nav_msgs::Odometry& _odom);
+	void callbackObstacles(const sensor_msgs::PointCloud& _pc);
 	void updateMap(const nav_msgs::OccupancyGrid& msg);
 	void do_path_plan();
 	void init3DDebug();
-	void show3DDebug();
 
 };

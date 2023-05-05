@@ -3,6 +3,10 @@
         <arg name="nav_goal" default="[0.0, 0.0, 0.0]" />
         <arg name="start_pose" default="[0.0, 0.0, 0.0]" />
         <arg name="start_vel" default="2.0" />
+        <arg name="topic_map_sub" default="map"/>
+        <arg name="topic_localization_sub" default="mrpt_pose"/>
+        <arg name="topic_odometry_sub" default="odom"/>
+        <arg name="topic_obstacles_sub" default="/map_pointcloud"/>
 
 	<!-- Node: TP Space A* Navigator builder -->
 	<node pkg="tps_astar_nav" type="tps_astar_nav_node" name="tps_astar_nav_node" output="screen">
@@ -16,6 +20,10 @@
         <param name="nav_goal" value="$(arg nav_goal)"/>
         <param name="start_pose" value="$(arg start_pose)"/>
         <param name="start_vel" value="$(arg start_vel)"/>
+        <param name="topic_map_sub" value="$(arg topic_map_sub)"/>
+        <param name="topic_localization_sub" value="$(arg topic_localization_sub)"/>
+        <param name="topic_odometry_sub" value="$(arg topic_odometry_sub)"/>
+        <param name="topic_obstacles_sub" value="$(arg topic_obstacles_sub)"/>
 	</node>
 
 </launch>

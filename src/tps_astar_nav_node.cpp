@@ -7,7 +7,9 @@ TPS_Astar_Nav_Node::TPS_Astar_Nav_Node(int argc, char** argv):
                 m_localn("~"),
                 m_nav_goal(mrpt::math::TPose2D(0.0, 0.0, 0.0)),
                 m_start_pose(mrpt::math::TPose2D(0.0, 0.0, 0.0)),
-                m_start_vel(mrpt::math::TTwist2D(0.0, 0.0, 0.0))
+                m_start_vel(mrpt::math::TTwist2D(0.0, 0.0, 0.0)),
+                m_debug(true),
+                m_gui_mrpt(true)
 {
     std::string nav_goal_str = "[0.0, 0.0, 0.0]";
     std::string start_pose_str = "[0.0, 0.0, 0.0]";
@@ -36,8 +38,18 @@ TPS_Astar_Nav_Node::TPS_Astar_Nav_Node(int argc, char** argv):
     m_start_vel = mrpt::math::TTwist2D(std::stod(vel_str), 0.0, 0.0);
     std::cout<<"***************************** starting velocity ="<< m_start_vel.asString()<<std::endl;
 
+    m_localn.param("topic_map_sub", m_sub_map_str, m_sub_map_str);
+    m_sub_map = m_nh.subscribe(m_sub_map_str, 1, &TPS_Astar_Nav_Node::callbackMap, this);
 
-    m_sub_map = m_nh.subscribe("map", 1, &TPS_Astar_Nav_Node::callbackMap, this);
+    m_localn.param("topic_localization_sub", m_sub_localization_str, m_sub_localization_str);
+    m_sub_localization_pose= m_nh.subscribe(m_sub_localization_str, 1, &TPS_Astar_Nav_Node::callbackLocalization, this);
+
+    m_localn.param("topic_odometry_sub", m_sub_odometry_str, m_sub_odometry_str);
+    m_sub_odometry = m_nh.subscribe(m_sub_odometry_str, 1, &TPS_Astar_Nav_Node::callbackOdometry, this);
+
+    m_localn.param("topic_obstacles_sub", m_sub_obstacles_str, m_sub_obstacles_str);
+    m_sub_obstacles = m_nh.subscribe(m_sub_obstacles_str, 1, &TPS_Astar_Nav_Node::callbackObstacles, this);
+
 }
 
 template <typename T>
@@ -64,6 +76,21 @@ void TPS_Astar_Nav_Node::callbackMap(const nav_msgs::OccupancyGrid& _map)
 {
     //ROS_INFO_STREAM("Navigator Map received for planning");
     std::call_once(m_map_received_flag,[this,_map]() {this->updateMap(_map);});
+}
+
+void TPS_Astar_Nav_Node::callbackLocalization(const geometry_msgs::PoseWithCovarianceStamped& _pose)
+{
+
+}
+
+void TPS_Astar_Nav_Node::callbackOdometry(const nav_msgs::Odometry& _odom)
+{
+
+}
+
+void TPS_Astar_Nav_Node::callbackObstacles(const sensor_msgs::PointCloud& _pc)
+{
+
 }
 
 void TPS_Astar_Nav_Node::init3DDebug()

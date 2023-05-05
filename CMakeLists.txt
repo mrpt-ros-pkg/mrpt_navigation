@@ -16,6 +16,8 @@ find_package(catkin REQUIRED COMPONENTS
   tf2_ros
   tf2_geometry_msgs
   visualization_msgs
+  nav_msgs
+  sensor_msgs
 )
 
 add_subdirectory(submodules)
@@ -74,6 +76,8 @@ CATKIN_DEPENDS
     tf2_ros
     tf2_geometry_msgs
     visualization_msgs
+    nav_msgs
+    sensor_msgs
 #  DEPENDS system_lib
 )
 
