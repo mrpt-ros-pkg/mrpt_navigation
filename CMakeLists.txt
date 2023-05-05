@@ -1,8 +1,7 @@
 cmake_minimum_required(VERSION 3.0.2)
 project(tps_astar_nav)
 set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
-## Compile as C++11, supported in ROS Kinetic and newer
-# add_compile_options(-std=c++11)
+
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
@@ -21,7 +20,6 @@ find_package(catkin REQUIRED COMPONENTS
 
 add_subdirectory(submodules)
 
-#find_package(mrpt COMPONENTS ros1bridge, nav, kinematics, math, system)
 find_package(mrpt-ros1bridge REQUIRED)
 find_package(mrpt-nav REQUIRED)
 find_package(mrpt-kinematics REQUIRED)
@@ -84,7 +82,7 @@ CATKIN_DEPENDS
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
 include_directories(
-# include
+  include
   ${catkin_INCLUDE_DIRS}
   selfdriving
 )
@@ -100,8 +98,6 @@ include_directories(
 # add_dependencies(${PROJECT_NAME} ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Declare a C++ executable
-## With catkin_make all packages are built within a single CMake context
-## The recommended prefix ensures that target names across packages don't collide
 add_executable(${PROJECT_NAME}_node src/tps_astar_nav_node.cpp)
 
 ## Rename C++ executable without prefix
@@ -150,11 +146,11 @@ install(DIRECTORY
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
 )
 ## Mark cpp header files for installation
-# install(DIRECTORY include/${PROJECT_NAME}/
-#   DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
-#   FILES_MATCHING PATTERN "*.h"
+install(DIRECTORY include/${PROJECT_NAME}_node/
+  DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
+  FILES_MATCHING PATTERN "*.h"
 #   PATTERN ".svn" EXCLUDE
-# )
+)
 
 ## Mark other files for installation (e.g. launch and bag files, etc.)
 # install(FILES
