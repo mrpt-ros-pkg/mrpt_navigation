@@ -24,6 +24,11 @@
 #include <nav_msgs/OccupancyGrid.h>
 #include <nav_msgs/MapMetaData.h>
 
+// for debugging
+#include <mrpt/gui/CDisplayWindow3D.h>
+#include <mrpt/opengl/CGridPlaneXY.h>
+#include <mrpt/opengl/COpenGLScene.h>
+#include <mrpt/opengl/stock_objects.h>
 
 class TPS_Astar_Nav_Node
 {
@@ -51,6 +56,12 @@ class TPS_Astar_Nav_Node
 
     ros::Subscriber m_sub_map;
 
+	//for debugging
+	bool m_debug;
+	bool m_gui_mrpt;
+	mrpt::gui::CDisplayWindow3D::Ptr m_win_3d;
+	mrpt::opengl::COpenGLScene m_scene;
+
 	public: 
 	TPS_Astar_Nav_Node(int argc, char** argv);
 	~TPS_Astar_Nav_Node(){};
@@ -59,5 +70,7 @@ class TPS_Astar_Nav_Node
 	void callbackMap(const nav_msgs::OccupancyGrid& _map);
 	void updateMap(const nav_msgs::OccupancyGrid& msg);
 	void do_path_plan();
+	void init3DDebug();
+	void show3DDebug();
 
 };

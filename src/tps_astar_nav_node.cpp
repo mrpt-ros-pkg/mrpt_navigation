@@ -66,6 +66,32 @@ void TPS_Astar_Nav_Node::callbackMap(const nav_msgs::OccupancyGrid& _map)
     std::call_once(m_map_received_flag,[this,_map]() {this->updateMap(_map);});
 }
 
+void TPS_Astar_Nav_Node::init3DDebug()
+{
+    ROS_INFO("init3DDebug");
+
+	if (!m_win_3d)
+	{
+		m_win_3d = mrpt::gui::CDisplayWindow3D::Create(
+			"Pathplanning-TPS-AStar", 1000, 600);
+		m_win_3d->setCameraZoom(20);
+		m_win_3d->setCameraAzimuthDeg(-45);
+
+		auto plane = m_grid_map->getVisualization();
+		m_scene.insert(plane);
+
+		{
+			mrpt::opengl::COpenGLScene::Ptr ptr_scene = m_win_3d->get3DSceneAndLock();
+
+			ptr_scene->insert(plane);
+
+			ptr_scene->enableFollowCamera(true);
+
+			m_win_3d->unlockAccess3DScene();
+		}
+	}  // Show 3D?
+}
+
 // void TPS_Astar_Nav_Node::callbackMapMetaData(const nav_msgs::MapMetaData& _map_meta_data)
 // {
 //     ROS_INFO_STREAM("Map metadata callback received");
@@ -80,14 +106,14 @@ void TPS_Astar_Nav_Node::updateMap(const nav_msgs::OccupancyGrid& msg)
     grid.getAsPointCloud(*obsPts);
     ROS_INFO_STREAM("*****************************************Setting gridmap for planning");
     m_grid_map = std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(obsPts);
-
+    init3DDebug();
     do_path_plan();
 }
 
 void TPS_Astar_Nav_Node::do_path_plan()
 {
     ROS_INFO_STREAM("************************ Do path planning");
-    auto obs =  selfdriving::ObstacleSource::FromStaticPointcloud(m_grid_map);
+    auto obs = selfdriving::ObstacleSource::FromStaticPointcloud(m_grid_map);
     selfdriving::PlannerInput planner_input;
 
     planner_input.stateStart.pose = m_start_pose;
@@ -111,34 +137,59 @@ void TPS_Astar_Nav_Node::do_path_plan()
     planner_input.worldBboxMax = {bbox.max.x, bbox.max.y, M_PI};
     planner_input.worldBboxMin = {bbox.min.x, bbox.min.y, -M_PI};
 
-    ROS_INFO_STREAM("************************************** World BBOX defined");
+    std::cout << "Start state: " << planner_input.stateStart.asString() << "\n";
+    std::cout << "Goal state : " << planner_input.stateGoal.asString() << "\n";
+    std::cout << "Obstacles  : " << obs->obstacles()->size() << " points\n";
+    std::cout << "World bbox : " << planner_input.worldBboxMin.asString() << " - "
+              << planner_input.worldBboxMax.asString() << "\n";
 
     selfdriving::Planner::Ptr planner = selfdriving::TPS_Astar::Create();
 
     // Enable time profiler:
     planner->profiler_().enable(true);
 
-    // cost map:
-    std::string costmap_param_file;
+    {
+        // cost map:
+        std::string costmap_param_file;
 
-    m_localn.param(
-        "global_costmap_parameters", costmap_param_file, costmap_param_file);
+        m_localn.param(
+            "global_costmap_parameters", costmap_param_file, costmap_param_file);
 
-    ROS_ASSERT_MSG(
-        mrpt::system::fileExists(costmap_param_file),
-        "costmap params file not found: '%s'", costmap_param_file.c_str());
+        ROS_ASSERT_MSG(
+            mrpt::system::fileExists(costmap_param_file),
+            "costmap params file not found: '%s'", costmap_param_file.c_str());
 
-    const auto costMapParams =
-        selfdriving::CostEvaluatorCostMap::Parameters::FromYAML(
-            mrpt::containers::yaml::FromFile(costmap_param_file));
+        const auto costMapParams =
+            selfdriving::CostEvaluatorCostMap::Parameters::FromYAML(
+                mrpt::containers::yaml::FromFile(costmap_param_file));
 
-    auto costmap =
-        selfdriving::CostEvaluatorCostMap::FromStaticPointObstacles(
-            *m_grid_map, costMapParams, planner_input.stateStart.pose);
+        auto costmap =
+            selfdriving::CostEvaluatorCostMap::FromStaticPointObstacles(
+                *m_grid_map, costMapParams, planner_input.stateStart.pose);
 
-    ROS_INFO_STREAM("******************************* Costmap file read");
+        ROS_INFO_STREAM("******************************* Costmap file read");
 
-    planner->costEvaluators_.push_back(costmap);
+        planner->costEvaluators_.push_back(costmap);
+    }
+
+    // Preferred waypoints:
+    auto wpParams = selfdriving::CostEvaluatorPreferredWaypoint::Parameters();
+    {
+        std::string wp_params_file;
+        m_localn.param(
+            "prefer_waypoints_parameters", wp_params_file, wp_params_file);
+
+        ROS_ASSERT_MSG(
+            mrpt::system::fileExists(wp_params_file),
+            "Prefer waypoints params file not found: '%s'", wp_params_file.c_str());
+        wpParams =
+            selfdriving::CostEvaluatorPreferredWaypoint::Parameters::FromYAML(
+                mrpt::containers::yaml::FromFile(wp_params_file));
+    }
+
+    auto costEval = selfdriving::CostEvaluatorPreferredWaypoint::Create();
+    costEval->params_ = wpParams;
+    planner->costEvaluators_.push_back(costEval);
     
     {
         std::string planner_parameters_file;

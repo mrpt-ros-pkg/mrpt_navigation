@@ -27,6 +27,8 @@ find_package(mrpt-math REQUIRED)
 find_package(mrpt-system REQUIRED)
 find_package(mrpt-containers REQUIRED)
 find_package(mrpt-maps REQUIRED)
+find_package(mrpt-gui REQUIRED)
+find_package(mrpt-opengl REQUIRED)
 if(NOT TARGET selfdriving)
 	find_package(selfdriving REQUIRED) # selfdriving::selfdriving
 else()
@@ -120,6 +122,8 @@ target_link_libraries(${PROJECT_NAME}_node
   mrpt::kinematics
   mrpt::maps
   mrpt::containers
+  mrpt::gui 
+  mrpt::opengl
   selfdriving::selfdriving
 )
 
