@@ -14,7 +14,10 @@
 #include <mrpt/maps/CSimplePointsMap.h>
 #include <mrpt/maps/CPointsMap.h>
 #include <mrpt/ros1bridge/map.h>
+#include <mrpt/ros1bridge/time.h>
+#include <mrpt/ros1bridge/pose.h>
 #include <mrpt/system/filesystem.h>
+#include <mrpt/system/datetime.h>
 #include <mrpt/config/CConfigFile.h>
 #include <mrpt/containers/yaml.h>
 #include <mrpt/obs/CObservationOdometry.h>
@@ -59,8 +62,8 @@ class TPS_Astar_Nav_Node
     mrpt::math::TPose2D m_nav_goal;
     mrpt::math::TPose2D m_start_pose;
     mrpt::math::TTwist2D m_start_vel;
-	mrpt::math::TPose2D m_localization_pose;
-	mrpt::obs::CObservationOdometry m_odometry;
+	selfdriving::VehicleLocalizationState m_localization_pose;
+	selfdriving::VehicleOdometryState m_odometry;
 
     ros::Subscriber m_sub_map;
 	ros::Subscriber m_sub_localization_pose;
@@ -90,14 +93,14 @@ class TPS_Astar_Nav_Node
 
 		}
 
-		selfdriving::VehicleLocalizationState get_localization()override
+		selfdriving::VehicleLocalizationState get_localization() override
 		{
-
+			return m_parent.get_localization_state();
 		}
 
 		selfdriving::VehicleOdometryState get_odometry() override
 		{
-
+			return m_parent.get_odometry_state();
 		}
 
 		bool motion_execute(
@@ -177,7 +180,12 @@ class TPS_Astar_Nav_Node
 	void callbackOdometry(const nav_msgs::Odometry& _odom);
 	void callbackObstacles(const sensor_msgs::PointCloud& _pc);
 	void updateMap(const nav_msgs::OccupancyGrid& msg);
+	void updateLocalization(const geometry_msgs::PoseWithCovarianceStamped& _pose);
+	void updateOdom(const nav_msgs::Odometry& _odom);
+	void updateObstacles(const sensor_msgs::PointCloud& _pc);
 	void do_path_plan();
 	void init3DDebug();
+	selfdriving::VehicleLocalizationState get_localization_state() const{ return m_localization_pose;}
+	selfdriving::VehicleOdometryState get_odometry_state() const{ return m_odometry;}
 
 };

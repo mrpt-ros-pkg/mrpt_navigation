@@ -14,6 +14,7 @@
 <arg name="initial_pose_x" default="0.0"/>
 <arg name="initial_pose_y" default="0.0"/>
 <arg name="initial_pose_phi" default="0.0"/>
+<arg name="pose_broadcast" default="true"/>
 
 <node pkg="mrpt_localization" type="mrpt_localization_node" name="mrpt_localization_node" output="screen">
     <param name="ini_file" value="$(arg ini_file)"/> 
@@ -24,6 +25,7 @@
     <param name="map_update_skip" value="$(arg map_update_skip)"/> 
     <param name="particlecloud_update_skip" value="$(arg particle_cloud_update_skip)"/> 
     <param name="debug" value="$(arg debug)"/>
+    <param name="pose_broadcast" value="$(arg pose_broadcast)"/>
     <param name="gui_mrpt" value="$(arg gui_mrpt)"/> 
     <param name="sensor_sources" value="$(arg sensor_sources)"/>
     <param name="use_map_topic" value="$(arg use_map_topic)"/>
@@ -31,7 +33,8 @@
     <param name="initial_pose_y" value="$(arg initial_pose_y)"/>
     <param name="initial_pose_phi" value="$(arg initial_pose_phi)"/>
     <remap from="particlecloud" to="/mrpt/particlecloud"/>
-  </node>
+    <remap from="mrpt_pose" to="/mrpt_pose"/>
+  </node> 
 
 
 </launch>

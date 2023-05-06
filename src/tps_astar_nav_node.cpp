@@ -1,4 +1,6 @@
 #include <tps_astar_nav_node/tps_astar_nav_node.h>
+#include <tf2/LinearMath/Matrix3x3.h>
+#include <tf2/LinearMath/Quaternion.h>
 
 
 TPS_Astar_Nav_Node::TPS_Astar_Nav_Node(int argc, char** argv):
@@ -42,6 +44,7 @@ TPS_Astar_Nav_Node::TPS_Astar_Nav_Node(int argc, char** argv):
     m_sub_map = m_nh.subscribe(m_sub_map_str, 1, &TPS_Astar_Nav_Node::callbackMap, this);
 
     m_localn.param("topic_localization_sub", m_sub_localization_str, m_sub_localization_str);
+    ROS_INFO_STREAM("Subsciber Name:"<<m_sub_localization_str.c_str());
     m_sub_localization_pose= m_nh.subscribe(m_sub_localization_str, 1, &TPS_Astar_Nav_Node::callbackLocalization, this);
 
     m_localn.param("topic_odometry_sub", m_sub_odometry_str, m_sub_odometry_str);
@@ -80,17 +83,17 @@ void TPS_Astar_Nav_Node::callbackMap(const nav_msgs::OccupancyGrid& _map)
 
 void TPS_Astar_Nav_Node::callbackLocalization(const geometry_msgs::PoseWithCovarianceStamped& _pose)
 {
-
+    updateLocalization(_pose);
 }
 
 void TPS_Astar_Nav_Node::callbackOdometry(const nav_msgs::Odometry& _odom)
 {
-
+   updateOdom(_odom);
 }
 
 void TPS_Astar_Nav_Node::callbackObstacles(const sensor_msgs::PointCloud& _pc)
 {
-
+    //updateObstacles(_pc);
 }
 
 void TPS_Astar_Nav_Node::init3DDebug()
@@ -117,6 +120,49 @@ void TPS_Astar_Nav_Node::init3DDebug()
 			m_win_3d->unlockAccess3DScene();
 		}
 	}  // Show 3D?
+}
+
+void TPS_Astar_Nav_Node::updateLocalization(const geometry_msgs::PoseWithCovarianceStamped& msg)
+{
+    tf2::Quaternion quat(msg.pose.pose.orientation.x, 
+                         msg.pose.pose.orientation.y, 
+                         msg.pose.pose.orientation.z, 
+                         msg.pose.pose.orientation.w);
+    tf2::Matrix3x3 mat(quat);
+    double roll, pitch, yaw;
+    mat.getRPY(roll, pitch, yaw);
+    m_localization_pose.frame_id = msg.header.frame_id;
+    m_localization_pose.valid = true;
+    m_localization_pose.pose.x = msg.pose.pose.position.x;
+    m_localization_pose.pose.y = msg.pose.pose.position.y;
+    m_localization_pose.pose.phi = yaw;
+    m_localization_pose.timestamp = mrpt::ros1bridge::fromROS(msg.header.stamp);
+    ROS_INFO_STREAM("Localization update complete");
+}
+
+void TPS_Astar_Nav_Node::updateOdom(const nav_msgs::Odometry& msg)
+{
+    tf2::Quaternion quat(msg.pose.pose.orientation.x, 
+                         msg.pose.pose.orientation.y, 
+                         msg.pose.pose.orientation.z, 
+                         msg.pose.pose.orientation.w);
+    tf2::Matrix3x3 mat(quat);
+    double roll, pitch, yaw;
+    mat.getRPY(roll, pitch, yaw);
+
+    m_odometry.odometry.x = msg.pose.pose.position.x;
+    m_odometry.odometry.y = msg.pose.pose.position.y;
+    m_odometry.odometry.phi = yaw;
+
+    m_odometry.odometryVelocityLocal.vx= msg.twist.twist.linear.x;
+    m_odometry.odometryVelocityLocal.vy= msg.twist.twist.linear.y;
+    m_odometry.odometryVelocityLocal.omega= msg.twist.twist.angular.z;
+    
+    m_odometry.valid = true;
+    m_odometry.timestamp = mrpt::system::now();
+    /*TODO*/
+    m_odometry.pendedActionExists = false;
+    ROS_INFO_STREAM("Odometry update complete");       
 }
 
 // void TPS_Astar_Nav_Node::callbackMapMetaData(const nav_msgs::MapMetaData& _map_meta_data)
