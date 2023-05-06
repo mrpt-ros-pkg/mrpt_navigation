@@ -4,7 +4,7 @@
         <arg name="start_pose" default="[0.0, 0.0, 0.0]" />
         <arg name="start_vel" default="2.0" />
         <arg name="topic_map_sub" default="map"/>
-        <arg name="topic_localization_sub" default="mrpt_pose"/>
+        <arg name="topic_localization_sub" default="/mrpt_pose"/>
         <arg name="topic_odometry_sub" default="odom"/>
         <arg name="topic_obstacles_sub" default="/map_pointcloud"/>
 

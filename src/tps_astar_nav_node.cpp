@@ -88,12 +88,12 @@ void TPS_Astar_Nav_Node::callbackLocalization(const geometry_msgs::PoseWithCovar
 
 void TPS_Astar_Nav_Node::callbackOdometry(const nav_msgs::Odometry& _odom)
 {
-   updateOdom(_odom);
+    updateOdom(_odom);
 }
 
 void TPS_Astar_Nav_Node::callbackObstacles(const sensor_msgs::PointCloud& _pc)
 {
-    //updateObstacles(_pc);
+    updateObstacles(_pc);
 }
 
 void TPS_Astar_Nav_Node::init3DDebug()
@@ -163,6 +163,20 @@ void TPS_Astar_Nav_Node::updateOdom(const nav_msgs::Odometry& msg)
     /*TODO*/
     m_odometry.pendedActionExists = false;
     ROS_INFO_STREAM("Odometry update complete");       
+}
+
+void TPS_Astar_Nav_Node::updateObstacles(const sensor_msgs::PointCloud& _pc)
+{
+    mrpt::maps::CSimplePointsMap point_cloud;
+    if(!mrpt::ros1bridge::fromROS(_pc, point_cloud))
+    {
+        ROS_ERROR("Failed to convert Point Cloud to MRPT Points Map");
+    }
+
+    m_obstacle_src = std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(
+                        std::make_shared<mrpt::maps::CSimplePointsMap>(point_cloud));
+    
+    ROS_INFO_STREAM("Obstacles update complete"); 
 }
 
 // void TPS_Astar_Nav_Node::callbackMapMetaData(const nav_msgs::MapMetaData& _map_meta_data)

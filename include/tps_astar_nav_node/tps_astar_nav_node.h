@@ -15,6 +15,7 @@
 #include <mrpt/maps/CPointsMap.h>
 #include <mrpt/ros1bridge/map.h>
 #include <mrpt/ros1bridge/time.h>
+#include <mrpt/ros1bridge/point_cloud.h>
 #include <mrpt/ros1bridge/pose.h>
 #include <mrpt/system/filesystem.h>
 #include <mrpt/system/datetime.h>
@@ -64,6 +65,7 @@ class TPS_Astar_Nav_Node
     mrpt::math::TTwist2D m_start_vel;
 	selfdriving::VehicleLocalizationState m_localization_pose;
 	selfdriving::VehicleOdometryState m_odometry;
+	mrpt::maps::CPointsMap::Ptr m_obstacle_src;
 
     ros::Subscriber m_sub_map;
 	ros::Subscriber m_sub_localization_pose;
@@ -165,7 +167,7 @@ class TPS_Astar_Nav_Node
 		mrpt::maps::CPointsMap::Ptr obstacles( [[maybe_unused]]
                         mrpt::system::TTimeStamp t = mrpt::system::TTimeStamp())override
 		{
-
+			return m_parent.get_current_obstacles();
 		}
 
 	};
@@ -187,5 +189,6 @@ class TPS_Astar_Nav_Node
 	void init3DDebug();
 	selfdriving::VehicleLocalizationState get_localization_state() const{ return m_localization_pose;}
 	selfdriving::VehicleOdometryState get_odometry_state() const{ return m_odometry;}
+	mrpt::maps::CPointsMap::Ptr get_current_obstacles() const{ return m_obstacle_src; }
 
 };
