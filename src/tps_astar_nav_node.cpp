@@ -53,6 +53,9 @@ TPS_Astar_Nav_Node::TPS_Astar_Nav_Node(int argc, char** argv):
     m_localn.param("topic_obstacles_sub", m_sub_obstacles_str, m_sub_obstacles_str);
     m_sub_obstacles = m_nh.subscribe(m_sub_obstacles_str, 1, &TPS_Astar_Nav_Node::callbackObstacles, this);
 
+    m_localn.param("topic_cmd_vel_pub", m_pub_cmd_vel_str, m_pub_cmd_vel_str);
+    m_pub_cmd_vel = m_nh.advertise<geometry_msgs::Twist>(m_pub_cmd_vel_str, 1);
+
 }
 
 template <typename T>
@@ -94,6 +97,12 @@ void TPS_Astar_Nav_Node::callbackOdometry(const nav_msgs::Odometry& _odom)
 void TPS_Astar_Nav_Node::callbackObstacles(const sensor_msgs::PointCloud& _pc)
 {
     updateObstacles(_pc);
+}
+
+void TPS_Astar_Nav_Node::publish_cmd_vel(const geometry_msgs::Twist& cmd_vel)
+{
+    ROS_INFO_STREAM("Publishing velocity command"<<cmd_vel);
+    m_pub_cmd_vel.publish(cmd_vel);
 }
 
 void TPS_Astar_Nav_Node::init3DDebug()

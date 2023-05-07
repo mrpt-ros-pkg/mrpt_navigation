@@ -22,15 +22,18 @@
 #include <mrpt/config/CConfigFile.h>
 #include <mrpt/containers/yaml.h>
 #include <mrpt/obs/CObservationOdometry.h>
+#include <mrpt/kinematics/CVehicleVelCmd_DiffDriven.h>
 #include <mrpt/version.h>
 #include <selfdriving/algos/CostEvaluatorCostMap.h>
 #include <selfdriving/algos/CostEvaluatorPreferredWaypoint.h>
 #include <selfdriving/algos/TPS_Astar.h>
 #include <selfdriving/interfaces/ObstacleSource.h>
 #include <selfdriving/interfaces/VehicleMotionInterface.h>
+#include <selfdriving/algos/NavEngine.h>
 #include <nav_msgs/OccupancyGrid.h>
 #include <geometry_msgs/PoseArray.h>
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
+#include <geometry_msgs/Twist.h>
 #include <nav_msgs/Odometry.h>
 #include <sensor_msgs/PointCloud.h>
 
@@ -71,11 +74,13 @@ class TPS_Astar_Nav_Node
 	ros::Subscriber m_sub_localization_pose;
 	ros::Subscriber m_sub_odometry;
 	ros::Subscriber m_sub_obstacles;
+	ros::Publisher  m_pub_cmd_vel;
 
 	std::string m_sub_map_str;
 	std::string m_sub_localization_str;
 	std::string m_sub_odometry_str;
 	std::string m_sub_obstacles_str;
+	std::string m_pub_cmd_vel_str;
 
 	//for debugging
 	bool m_debug;
@@ -89,6 +94,7 @@ class TPS_Astar_Nav_Node
 		TPS_Astar_Nav_Node& m_parent;
 		bool m_enqueued_motion_pending;
 		bool m_enqueued_motion_timeout;
+		std::mutex m_enqueued_motion_mutex;
 
 		Jackal_Interface(TPS_Astar_Nav_Node& parent) : m_parent(parent) 
 		{
@@ -116,27 +122,79 @@ class TPS_Astar_Nav_Node
 
 		bool enqeued_motion_pending() const override
 		{
-
+			auto lck = mrpt::lockHelper(m_enqueued_motion_mutex);
+			ROS_INFO_STREAM("Enqueued motion command pending ?"<<
+							(m_enqueued_motion_pending)?"True":"False");
+			return m_enqueued_motion_pending;
 		}
 
 		bool enqeued_motion_timed_out() const override
 		{
+			auto lck = mrpt::lockHelper(m_enqueued_motion_mutex);
+			ROS_INFO_STREAM("Enqueued motion command timed out ?"<<
+							(m_enqueued_motion_timeout)?"True":"False");
+			return m_enqueued_motion_timeout;
+		}
 
+		bool changeSpeeds(
+			const mrpt::kinematics::CVehicleVelCmd& vel_cmd)
+		{
+			using namespace mrpt::kinematics;
+			const CVehicleVelCmd_DiffDriven* vel_cmd_diff_driven =
+				dynamic_cast<const CVehicleVelCmd_DiffDriven*>(&vel_cmd);
+			ASSERT_(vel_cmd_diff_driven);
+
+			const double v = vel_cmd_diff_driven->lin_vel;
+			const double w = vel_cmd_diff_driven->ang_vel;
+			ROS_INFO_STREAM(
+				"changeSpeeds: v= "<< v <<"m/s and w="<<w * 180.0f / M_PI<<"deg/s");
+			geometry_msgs::Twist cmd;
+			cmd.linear.x = v;
+			cmd.angular.z = w;
+			m_parent.publish_cmd_vel(cmd);
+			return true;
 		}
 
 		void stop(const selfdriving::STOP_TYPE stopType)override
 		{
+			if (stopType == selfdriving::STOP_TYPE::EMERGENCY) 
+			{
+				const auto cmd = getEmergencyStopCmd();
+				m_enqueued_motion_pending = false;
+				m_enqueued_motion_timeout = false;
+				changeSpeeds(*cmd);
+			} 
+			else 
+			{
+				const auto cmd = getStopCmd();
+				m_enqueued_motion_pending = false;
+				m_enqueued_motion_timeout = false;
+				changeSpeeds(*cmd);
+			}
+		}
 
+		mrpt::kinematics::CVehicleVelCmd::Ptr getStopCmd()
+    	{
+			mrpt::kinematics::CVehicleVelCmd::Ptr vel =
+						mrpt::kinematics::CVehicleVelCmd::Ptr(
+							new mrpt::kinematics::CVehicleVelCmd_DiffDriven);
+			vel->setToStop();
+			return vel;
+    	}
+
+		mrpt::kinematics::CVehicleVelCmd::Ptr getEmergencyStopCmd()
+		{
+			return getStopCmd();
 		}
 
 		void stop_watchdog()override
 		{
-			
+			ROS_INFO_STREAM("TPS_Astar_Navigator watchdog timer stopped");	
 		}
 
 		void start_watchdog(const size_t periodMilliseconds) override
 		{
-			
+			ROS_INFO_STREAM("TPS_Astar_Navigator start watchdog timer");
 		}
 
 		void on_nav_end_due_to_error()override
@@ -190,5 +248,6 @@ class TPS_Astar_Nav_Node
 	selfdriving::VehicleLocalizationState get_localization_state() const{ return m_localization_pose;}
 	selfdriving::VehicleOdometryState get_odometry_state() const{ return m_odometry;}
 	mrpt::maps::CPointsMap::Ptr get_current_obstacles() const{ return m_obstacle_src; }
+	void publish_cmd_vel(const geometry_msgs::Twist& cmd_vel);
 
 };
