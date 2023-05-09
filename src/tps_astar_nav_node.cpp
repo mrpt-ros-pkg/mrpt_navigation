@@ -11,7 +11,8 @@ TPS_Astar_Nav_Node::TPS_Astar_Nav_Node(int argc, char** argv):
                 m_start_pose(mrpt::math::TPose2D(0.0, 0.0, 0.0)),
                 m_start_vel(mrpt::math::TTwist2D(0.0, 0.0, 0.0)),
                 m_debug(true),
-                m_gui_mrpt(true)
+                m_gui_mrpt(true),
+                m_nav_period(0.100)
 {
     std::string nav_goal_str = "[0.0, 0.0, 0.0]";
     std::string start_pose_str = "[0.0, 0.0, 0.0]";
@@ -55,6 +56,21 @@ TPS_Astar_Nav_Node::TPS_Astar_Nav_Node(int argc, char** argv):
 
     m_localn.param("topic_cmd_vel_pub", m_pub_cmd_vel_str, m_pub_cmd_vel_str);
     m_pub_cmd_vel = m_nh.advertise<geometry_msgs::Twist>(m_pub_cmd_vel_str, 1);
+
+    // Init timers:
+    m_timer_run_nav = m_nh.createTimer(ros::Duration(m_nav_period), &TPS_Astar_Nav_Node::onDoNavigation, this);
+
+    if(m_nav_engine)
+    {
+        ROS_INFO_STREAM("TPS Astart Navigator already initialized, resetting nav engine");
+        m_nav_engine.reset();
+    }
+
+    m_nav_engine = std::make_shared<selfdriving::NavEngine>();
+
+    m_jackal_robot = std::make_shared<Jackal_Interface>(*this);
+
+
 
 }
 
@@ -203,12 +219,107 @@ void TPS_Astar_Nav_Node::updateMap(const nav_msgs::OccupancyGrid& msg)
     ROS_INFO_STREAM("*****************************************Setting gridmap for planning");
     m_grid_map = std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(obsPts);
     init3DDebug();
-    do_path_plan();
+    //do_path_plan();
+    
+}
+
+void TPS_Astar_Nav_Node::initializeNavigator()
+{
+    if(!m_nav_engine)
+    {
+        ROS_ERROR("TPS_AStar Not created!");
+        return;
+    }
+
+    m_nav_engine->setMinLoggingLevel(mrpt::system::VerbosityLevel::LVL_INFO);
+    m_nav_engine->config_.vehicleMotionInterface = std::dynamic_pointer_cast<selfdriving::VehicleMotionInterface>(
+                                                        /*std::make_shared<Jackal_Interface>*/(m_jackal_robot));
+    m_nav_engine->config_.vehicleMotionInterface->setMinLoggingLevel(mrpt::system::VerbosityLevel::LVL_INFO);
+    m_nav_engine->config_.globalMapObstacleSource = selfdriving::ObstacleSource::FromStaticPointcloud(m_obstacle_src);
+
+    {
+        std::string ptg_ini_file;
+        m_localn.param(
+            "ptg_ini", ptg_ini_file, ptg_ini_file);
+
+        ROS_ASSERT_MSG(
+            mrpt::system::fileExists(ptg_ini_file),
+            "PTG ini file not found: '%s'", ptg_ini_file.c_str());
+        mrpt::config::CConfigFile cfg(ptg_ini_file);
+        m_nav_engine->config_.ptgs.initFromConfigFile(cfg, "SelfDriving");
+    }
+
+    {
+        // cost map:
+        std::string costmap_param_file;
+
+        m_localn.param(
+            "global_costmap_parameters", costmap_param_file, costmap_param_file);
+
+        ROS_ASSERT_MSG(
+            mrpt::system::fileExists(costmap_param_file),
+            "costmap params file not found: '%s'", costmap_param_file.c_str());
+
+        
+        m_nav_engine->config_.globalCostParameters = 
+                    selfdriving::CostEvaluatorCostMap::Parameters::FromYAML(
+                            mrpt::containers::yaml::FromFile(costmap_param_file));
+
+        m_nav_engine->config_.localCostParameters = 
+                    selfdriving::CostEvaluatorCostMap::Parameters::FromYAML(
+                            mrpt::containers::yaml::FromFile(costmap_param_file));
+    }
+
+    // Preferred waypoints:
+    {
+        std::string wp_params_file;
+        m_localn.param(
+            "prefer_waypoints_parameters", wp_params_file, wp_params_file);
+
+        ROS_ASSERT_MSG(
+            mrpt::system::fileExists(wp_params_file),
+            "Prefer waypoints params file not found: '%s'", wp_params_file.c_str());
+        m_nav_engine->config_.preferWaypointsParameters =
+            selfdriving::CostEvaluatorPreferredWaypoint::Parameters::FromYAML(
+                mrpt::containers::yaml::FromFile(wp_params_file));
+    }
+    
+    {
+        std::string planner_parameters_file;
+        m_localn.param(
+            "planner_parameters", planner_parameters_file, planner_parameters_file);
+
+        ROS_ASSERT_MSG(
+            mrpt::system::fileExists(planner_parameters_file),
+            "Planner params file not found: '%s'", planner_parameters_file.c_str());
+        
+        m_nav_engine->config_.plannerParams = 
+                    selfdriving::TPS_Astar_Parameters::FromYAML(
+                        mrpt::containers::yaml::FromFile(planner_parameters_file));
+    }
+
+    {
+        std::string nav_engine_parameters_file;
+        m_localn.param(
+            "nav_engine_parameters", nav_engine_parameters_file, nav_engine_parameters_file);
+
+        ROS_ASSERT_MSG(
+            mrpt::system::fileExists(nav_engine_parameters_file),
+            "Planner params file not found: '%s'", nav_engine_parameters_file.c_str());
+        
+        m_nav_engine->config_.loadFrom(
+                        mrpt::containers::yaml::FromFile(nav_engine_parameters_file));
+    }
+
+    m_nav_engine->initialize();
+
+    ROS_INFO_STREAM("TPS_Astar Navigator intialized");
+
 }
 
 void TPS_Astar_Nav_Node::do_path_plan()
 {
-    ROS_INFO_STREAM("************************ Do path planning");
+    ROS_INFO_STREAM("Do path planning");
     auto obs = selfdriving::ObstacleSource::FromStaticPointcloud(m_grid_map);
     selfdriving::PlannerInput planner_input;
 
@@ -351,6 +462,13 @@ void TPS_Astar_Nav_Node::do_path_plan()
 
 }
 
+void TPS_Astar_Nav_Node::onDoNavigation(const ros::TimerEvent&)
+{
+    if(m_obstacle_src)
+    {
+        std::call_once(m_init_nav_flag,[this]() {this->initializeNavigator();});
+    }
+}
 
 
 int main(int argc, char** argv)

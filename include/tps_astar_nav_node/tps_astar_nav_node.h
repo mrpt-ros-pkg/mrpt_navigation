@@ -69,6 +69,10 @@ class TPS_Astar_Nav_Node
 	selfdriving::VehicleLocalizationState m_localization_pose;
 	selfdriving::VehicleOdometryState m_odometry;
 	mrpt::maps::CPointsMap::Ptr m_obstacle_src;
+	std::once_flag m_init_nav_flag;
+
+	ros::Timer m_timer_run_nav; 
+	double m_nav_period;
 
     ros::Subscriber m_sub_map;
 	ros::Subscriber m_sub_localization_pose;
@@ -228,26 +232,43 @@ class TPS_Astar_Nav_Node
 			return m_parent.get_current_obstacles();
 		}
 
+		CObject* clone() const override{return nullptr;}
+
 	};
+
+	std::shared_ptr<Jackal_Interface> m_jackal_robot;
+
+	std::shared_ptr<selfdriving::NavEngine> m_nav_engine;
+	selfdriving::WaypointSequence m_waypts;	 //<! DS for waypoints
+	selfdriving::WaypointStatusSequence m_wayptsStatus;	 //<! DS for waypoint status
 
 	public: 
 	TPS_Astar_Nav_Node(int argc, char** argv);
 	~TPS_Astar_Nav_Node(){};
 	template <typename T>
 	std::vector<T> processStringParam(const std::string& param_str);
+	/* Define callbacks*/
 	void callbackMap(const nav_msgs::OccupancyGrid& _map);
 	void callbackLocalization(const geometry_msgs::PoseWithCovarianceStamped& _pose);
 	void callbackOdometry(const nav_msgs::Odometry& _odom);
 	void callbackObstacles(const sensor_msgs::PointCloud& _pc);
+	/* update methods*/
 	void updateMap(const nav_msgs::OccupancyGrid& msg);
 	void updateLocalization(const geometry_msgs::PoseWithCovarianceStamped& _pose);
 	void updateOdom(const nav_msgs::Odometry& _odom);
 	void updateObstacles(const sensor_msgs::PointCloud& _pc);
+
 	void do_path_plan();
 	void init3DDebug();
 	selfdriving::VehicleLocalizationState get_localization_state() const{ return m_localization_pose;}
 	selfdriving::VehicleOdometryState get_odometry_state() const{ return m_odometry;}
 	mrpt::maps::CPointsMap::Ptr get_current_obstacles() const{ return m_obstacle_src; }
 	void publish_cmd_vel(const geometry_msgs::Twist& cmd_vel);
+
+	/* Navigator methods*/
+	void initializeNavigator();
+	// void navigateTo(const mrpt::math::TPose2D& target);
+	void onDoNavigation(const ros::TimerEvent&);
+
 
 };
