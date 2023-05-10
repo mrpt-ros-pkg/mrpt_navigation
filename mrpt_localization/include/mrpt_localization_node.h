@@ -96,6 +96,8 @@ class PFLocalizationNode : public PFLocalization
 		double init_x; // m
 		double init_y; // m
 		double init_phi; //radians
+		double init_std_xy = 0.20; // m
+		double init_std_phi = 0.10; // rad
 	};
 
 	PFLocalizationNode(ros::NodeHandle& n);
