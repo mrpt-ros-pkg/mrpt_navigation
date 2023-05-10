@@ -1,0 +1,9 @@
+# For CostEvaluatorCostMap
+resolution: 0.04
+preferredClearanceDistance: 0.50
+maxCost: 4.0
+
+useAverageOfPath: false
+
+maxRadiusFromRobot: 10.0  # [meters]
+
