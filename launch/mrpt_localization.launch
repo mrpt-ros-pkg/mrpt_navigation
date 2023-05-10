@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <launch>
-<arg name="ini_file" default="$(find mrpt_localization)/tutorial/pf-localization.ini" />
+<arg name="ini_file" default="$(find tps_astar_nav)/configs/ini/barn-pf-localization.ini" />
 <arg name="map_file" default=""/>
 <arg name="odom_frame_id" default="r1/odom"/>
 <arg name="global_frame_id" default="map"/>
@@ -14,6 +14,8 @@
 <arg name="initial_pose_x" default="0.0"/>
 <arg name="initial_pose_y" default="0.0"/>
 <arg name="initial_pose_phi" default="0.0"/>
+<arg name="initial_pose_std_xy" default="0.10"/>
+<arg name="initial_pose_std_phi" default="0.10"/>
 <arg name="pose_broadcast" default="true"/>
 
 <node pkg="mrpt_localization" type="mrpt_localization_node" name="mrpt_localization_node" output="screen">
@@ -32,6 +34,8 @@
     <param name="initial_pose_x" value="$(arg initial_pose_x)"/>
     <param name="initial_pose_y" value="$(arg initial_pose_y)"/>
     <param name="initial_pose_phi" value="$(arg initial_pose_phi)"/>
+    <param name="initial_pose_std_xy" value="$(arg initial_pose_std_xy)"/>
+    <param name="initial_pose_std_phi" value="$(arg initial_pose_std_phi)"/>
     <remap from="particlecloud" to="/mrpt/particlecloud"/>
     <remap from="mrpt_pose" to="/mrpt_pose"/>
   </node> 

@@ -153,6 +153,7 @@ install(DIRECTORY
   configs
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
 )
+
 ## Mark cpp header files for installation
 install(DIRECTORY include/${PROJECT_NAME}_node/
   DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
@@ -166,4 +167,3 @@ install(DIRECTORY include/${PROJECT_NAME}_node/
 #   # myfile2
 #   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
 # )
-
