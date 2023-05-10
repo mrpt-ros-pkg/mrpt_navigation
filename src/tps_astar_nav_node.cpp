@@ -70,8 +70,6 @@ TPS_Astar_Nav_Node::TPS_Astar_Nav_Node(int argc, char** argv):
 
     m_jackal_robot = std::make_shared<Jackal_Interface>(*this);
 
-
-
 }
 
 template <typename T>
@@ -219,8 +217,7 @@ void TPS_Astar_Nav_Node::updateMap(const nav_msgs::OccupancyGrid& msg)
     ROS_INFO_STREAM("*****************************************Setting gridmap for planning");
     m_grid_map = std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(obsPts);
     init3DDebug();
-    //do_path_plan();
-    
+    do_path_plan();
 }
 
 void TPS_Astar_Nav_Node::initializeNavigator()
