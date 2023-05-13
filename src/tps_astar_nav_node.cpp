@@ -1,6 +1,7 @@
 #include <tps_astar_nav_node/tps_astar_nav_node.h>
 #include <tf2/LinearMath/Matrix3x3.h>
 #include <tf2/LinearMath/Quaternion.h>
+#include <cmath>
 
 
 TPS_Astar_Nav_Node::TPS_Astar_Nav_Node(int argc, char** argv):
@@ -12,7 +13,11 @@ TPS_Astar_Nav_Node::TPS_Astar_Nav_Node(int argc, char** argv):
                 m_start_vel(mrpt::math::TTwist2D(0.0, 0.0, 0.0)),
                 m_debug(true),
                 m_gui_mrpt(true),
-                m_nav_period(0.100)
+                m_nav_period(0.100),
+                m_nav_engine_init(false),
+                m_path_plan_done(false),
+                m_motion_trigger_timeout(0.0),
+                m_enq_motion_timer(0.0)
 {
     std::string nav_goal_str = "[0.0, 0.0, 0.0]";
     std::string start_pose_str = "[0.0, 0.0, 0.0]";
@@ -26,7 +31,8 @@ TPS_Astar_Nav_Node::TPS_Astar_Nav_Node(int argc, char** argv):
         return;
     }
     m_nav_goal = mrpt::math::TPose2D(goal_pose[0], goal_pose[1], goal_pose[2]);
-    std::cout<<"***********************************nav goal received ="<< m_nav_goal.asString()<<std::endl;
+    ROS_INFO_STREAM("[TPS_Astar_Nav_Node]nav goal received ="<< m_nav_goal.asString());
+
     m_localn.param(
         "start_pose", start_pose_str, start_pose_str);
     std::vector<double>start_pose = processStringParam<double>(start_pose_str);
@@ -36,16 +42,16 @@ TPS_Astar_Nav_Node::TPS_Astar_Nav_Node(int argc, char** argv):
         return;
     }
     m_start_pose = mrpt::math::TPose2D(start_pose[0], start_pose[1], start_pose[2]);
-    std::cout<<"***********************************start pose received ="<< m_start_pose.asString()<<std::endl;
+    ROS_INFO_STREAM("[TPS_Astar_Nav_Node] start pose received ="<< m_start_pose.asString());
+
     m_localn.param("start_vel", vel_str, vel_str);
     m_start_vel = mrpt::math::TTwist2D(std::stod(vel_str), 0.0, 0.0);
-    std::cout<<"***************************** starting velocity ="<< m_start_vel.asString()<<std::endl;
+    ROS_INFO_STREAM("[TPS_Astar_Nav_Node]starting velocity ="<< m_start_vel.asString());
 
     m_localn.param("topic_map_sub", m_sub_map_str, m_sub_map_str);
     m_sub_map = m_nh.subscribe(m_sub_map_str, 1, &TPS_Astar_Nav_Node::callbackMap, this);
 
     m_localn.param("topic_localization_sub", m_sub_localization_str, m_sub_localization_str);
-    ROS_INFO_STREAM("Subsciber Name:"<<m_sub_localization_str.c_str());
     m_sub_localization_pose= m_nh.subscribe(m_sub_localization_str, 1, &TPS_Astar_Nav_Node::callbackLocalization, this);
 
     m_localn.param("topic_odometry_sub", m_sub_odometry_str, m_sub_odometry_str);
@@ -59,6 +65,9 @@ TPS_Astar_Nav_Node::TPS_Astar_Nav_Node(int argc, char** argv):
 
     // Init timers:
     m_timer_run_nav = m_nh.createTimer(ros::Duration(m_nav_period), &TPS_Astar_Nav_Node::onDoNavigation, this);
+
+    //Odometry publisher runs at 50Hz, so this functions runs at the same periodicity
+    m_timer_enqueue = m_nh.createTimer(ros::Duration(0.020), &TPS_Astar_Nav_Node::checkEnqueuedMotionCmds, this);
 
     if(m_nav_engine)
     {
@@ -154,6 +163,7 @@ void TPS_Astar_Nav_Node::updateLocalization(const geometry_msgs::PoseWithCovaria
     tf2::Matrix3x3 mat(quat);
     double roll, pitch, yaw;
     mat.getRPY(roll, pitch, yaw);
+    std::lock_guard<std::mutex> csl(m_localization_cs);
     m_localization_pose.frame_id = msg.header.frame_id;
     m_localization_pose.valid = true;
     m_localization_pose.pose.x = msg.pose.pose.position.x;
@@ -172,7 +182,7 @@ void TPS_Astar_Nav_Node::updateOdom(const nav_msgs::Odometry& msg)
     tf2::Matrix3x3 mat(quat);
     double roll, pitch, yaw;
     mat.getRPY(roll, pitch, yaw);
-
+    std::lock_guard<std::mutex> csl(m_odometry_cs);
     m_odometry.odometry.x = msg.pose.pose.position.x;
     m_odometry.odometry.y = msg.pose.pose.position.y;
     m_odometry.odometry.phi = yaw;
@@ -184,7 +194,7 @@ void TPS_Astar_Nav_Node::updateOdom(const nav_msgs::Odometry& msg)
     m_odometry.valid = true;
     m_odometry.timestamp = mrpt::system::now();
     /*TODO*/
-    m_odometry.pendedActionExists = false;
+    m_odometry.pendedActionExists = m_jackal_robot->enqeued_motion_pending();
     ROS_INFO_STREAM("Odometry update complete");       
 }
 
@@ -195,17 +205,13 @@ void TPS_Astar_Nav_Node::updateObstacles(const sensor_msgs::PointCloud& _pc)
     {
         ROS_ERROR("Failed to convert Point Cloud to MRPT Points Map");
     }
-
+    std::lock_guard<std::mutex> csl(m_obstacles_cs);
     m_obstacle_src = std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(
                         std::make_shared<mrpt::maps::CSimplePointsMap>(point_cloud));
     
     ROS_INFO_STREAM("Obstacles update complete"); 
 }
 
-// void TPS_Astar_Nav_Node::callbackMapMetaData(const nav_msgs::MapMetaData& _map_meta_data)
-// {
-//     ROS_INFO_STREAM("Map metadata callback received");
-// }
 
 void TPS_Astar_Nav_Node::updateMap(const nav_msgs::OccupancyGrid& msg)
 {
@@ -216,8 +222,8 @@ void TPS_Astar_Nav_Node::updateMap(const nav_msgs::OccupancyGrid& msg)
     grid.getAsPointCloud(*obsPts);
     ROS_INFO_STREAM("*****************************************Setting gridmap for planning");
     m_grid_map = std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(obsPts);
-    init3DDebug();
-    do_path_plan();
+
+    //m_path_plan_done = do_path_plan();
 }
 
 void TPS_Astar_Nav_Node::initializeNavigator()
@@ -232,7 +238,8 @@ void TPS_Astar_Nav_Node::initializeNavigator()
     m_nav_engine->config_.vehicleMotionInterface = std::dynamic_pointer_cast<selfdriving::VehicleMotionInterface>(
                                                         /*std::make_shared<Jackal_Interface>*/(m_jackal_robot));
     m_nav_engine->config_.vehicleMotionInterface->setMinLoggingLevel(mrpt::system::VerbosityLevel::LVL_INFO);
-    m_nav_engine->config_.globalMapObstacleSource = selfdriving::ObstacleSource::FromStaticPointcloud(m_obstacle_src);
+    m_nav_engine->config_.globalMapObstacleSource = selfdriving::ObstacleSource::FromStaticPointcloud(m_grid_map);
+    m_nav_engine->config_.localSensedObstacleSource = selfdriving::ObstacleSource::FromStaticPointcloud(m_obstacle_src);
 
     {
         std::string ptg_ini_file;
@@ -312,9 +319,24 @@ void TPS_Astar_Nav_Node::initializeNavigator()
 
     ROS_INFO_STREAM("TPS_Astar Navigator intialized");
 
+    navigateTo(m_nav_goal);
+
+    m_nav_engine_init = true;
+
 }
 
-void TPS_Astar_Nav_Node::do_path_plan()
+void TPS_Astar_Nav_Node::navigateTo(const mrpt::math::TPose2D& target)
+{
+    selfdriving::Waypoint waypoint(target.x, target.y, 1.0, false, 0.0, 0.0);
+
+    ROS_INFO_STREAM("[TPS_Astar_Nav_Node] navigateTo"<<waypoint.getAsText());
+
+    m_waypts.waypoints.push_back(waypoint);
+
+    m_nav_engine->request_navigation(m_waypts);
+}
+
+bool TPS_Astar_Nav_Node::do_path_plan()
 {
     ROS_INFO_STREAM("Do path planning");
     auto obs = selfdriving::ObstacleSource::FromStaticPointcloud(m_grid_map);
@@ -375,25 +397,6 @@ void TPS_Astar_Nav_Node::do_path_plan()
 
         planner->costEvaluators_.push_back(costmap);
     }
-
-    // Preferred waypoints:
-    auto wpParams = selfdriving::CostEvaluatorPreferredWaypoint::Parameters();
-    {
-        std::string wp_params_file;
-        m_localn.param(
-            "prefer_waypoints_parameters", wp_params_file, wp_params_file);
-
-        ROS_ASSERT_MSG(
-            mrpt::system::fileExists(wp_params_file),
-            "Prefer waypoints params file not found: '%s'", wp_params_file.c_str());
-        wpParams =
-            selfdriving::CostEvaluatorPreferredWaypoint::Parameters::FromYAML(
-                mrpt::containers::yaml::FromFile(wp_params_file));
-    }
-
-    auto costEval = selfdriving::CostEvaluatorPreferredWaypoint::Create();
-    costEval->params_ = wpParams;
-    planner->costEvaluators_.push_back(costEval);
     
     {
         std::string planner_parameters_file;
@@ -446,24 +449,81 @@ void TPS_Astar_Nav_Node::do_path_plan()
     if (!plan.bestNodeId.has_value())
     {
         std::cerr << "No bestNodeId in plan output.\n";
-        return;
+        return false;
     }
 
-    // backtrack:
-    auto [plannedPath, pathEdges] =
-        plan.motionTree.backtrack_path(*plan.bestNodeId);
+    if(plan.success)
+    {
+        m_activePlanOutput = plan;
+        m_costEvaluators = planner->costEvaluators_;
+    }
 
-    //selfdriving::refine_trajectory(plannedPath, pathEdges, planner_input.ptgs);
+    return plan.success;
 
-    ROS_INFO_STREAM("*******************************Planner Refined");
+    // // backtrack:
+    // auto [plannedPath, pathEdges] =
+    //     plan.motionTree.backtrack_path(*plan.bestNodeId);
 
+    // selfdriving::refine_trajectory(plannedPath, pathEdges, planner_input.ptgs);
+}
+
+selfdriving::VehicleLocalizationState TPS_Astar_Nav_Node::get_localization_state()
+{ 	
+    std::lock_guard<std::mutex> csl(m_localization_cs);
+    return m_localization_pose;
+}
+selfdriving::VehicleOdometryState TPS_Astar_Nav_Node::get_odometry_state()
+{
+    std::lock_guard<std::mutex> csl(m_odometry_cs);
+    return m_odometry;
+}
+mrpt::maps::CPointsMap::Ptr TPS_Astar_Nav_Node::get_current_obstacles()
+{ 
+    std::lock_guard<std::mutex> csl(m_obstacles_cs);
+    return m_obstacle_src; 
 }
 
 void TPS_Astar_Nav_Node::onDoNavigation(const ros::TimerEvent&)
 {
-    if(m_obstacle_src)
+    if(m_obstacle_src && m_localization_pose.valid)
     {
         std::call_once(m_init_nav_flag,[this]() {this->initializeNavigator();});
+    }
+
+    if(m_nav_engine_init)
+    {
+        m_nav_engine->navigation_step();
+    }
+}
+
+double TPS_Astar_Nav_Node::normPose2D(const mrpt::math::TPose2D& poseA, 
+                                      const mrpt::math::TPose2D& poseB) 
+{
+    return std::sqrt(std::pow(poseA.x - poseB.x, 2) + std::pow(poseA.y - poseB.y, 2));
+}
+
+void TPS_Astar_Nav_Node::checkEnqueuedMotionCmds(const ros::TimerEvent&)
+{
+    std::lock_guard<std::mutex> csl(m_odometry_cs);
+    if(m_odometry.valid)
+    {
+        auto& odo = m_odometry.odometry;
+        if(std::abs(odo.x - m_motion_trigger_pose.x) < m_motion_trigger_tolerance.x &&
+           std::abs(odo.y - m_motion_trigger_pose.y) < m_motion_trigger_tolerance.y &&
+           std::abs(odo.phi - m_motion_trigger_pose.phi) < m_motion_trigger_tolerance.phi)
+        {
+            m_jackal_robot->changeSpeeds(*m_next_cmd);
+            on_enqueued_motion_fired();
+        }
+        else
+        {
+            m_enq_motion_timer += 0.020;
+            if(m_enq_motion_timer > m_motion_trigger_timeout)
+            {
+                on_enqueued_motion_timeout();
+                m_enq_motion_timer = 0.0;
+            }
+        }
     }
 }
 

@@ -27,9 +27,13 @@
 #include <selfdriving/algos/CostEvaluatorCostMap.h>
 #include <selfdriving/algos/CostEvaluatorPreferredWaypoint.h>
 #include <selfdriving/algos/TPS_Astar.h>
+#include <selfdriving/algos/refine_trajectory.h>
 #include <selfdriving/interfaces/ObstacleSource.h>
 #include <selfdriving/interfaces/VehicleMotionInterface.h>
+#include <selfdriving/data/EnqueuedMotionCmd.h>
 #include <selfdriving/algos/NavEngine.h>
+#include <selfdriving/data/PlannerOutput.h>
+#include <selfdriving/data/MotionPrimitivesTree.h>
 #include <nav_msgs/OccupancyGrid.h>
 #include <geometry_msgs/PoseArray.h>
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
@@ -70,8 +74,9 @@ class TPS_Astar_Nav_Node
 	selfdriving::VehicleOdometryState m_odometry;
 	mrpt::maps::CPointsMap::Ptr m_obstacle_src;
 	std::once_flag m_init_nav_flag;
-
+	bool m_nav_engine_init;
 	ros::Timer m_timer_run_nav; 
+	ros::Timer m_timer_enqueue;
 	double m_nav_period;
 
     ros::Subscriber m_sub_map;
@@ -86,11 +91,23 @@ class TPS_Astar_Nav_Node
 	std::string m_sub_obstacles_str;
 	std::string m_pub_cmd_vel_str;
 
+	std::mutex m_obstacles_cs;
+	std::mutex m_localization_cs;
+	std::mutex m_odometry_cs;
+
 	//for debugging
 	bool m_debug;
 	bool m_gui_mrpt;
 	mrpt::gui::CDisplayWindow3D::Ptr m_win_3d;
 	mrpt::opengl::COpenGLScene m_scene;
+
+	std::function<void()> on_enqueued_motion_fired; 
+	std::function<void()> on_enqueued_motion_timeout; 
+	mrpt::math::TPose2D m_motion_trigger_pose;
+	mrpt::math::TPose2D m_motion_trigger_tolerance;
+	double m_motion_trigger_timeout;
+	mrpt::kinematics::CVehicleVelCmd::Ptr m_next_cmd;
+	double m_enq_motion_timer;
 
 	struct Jackal_Interface : public selfdriving::VehicleMotionInterface,
 									 selfdriving::ObstacleSource
@@ -100,8 +117,22 @@ class TPS_Astar_Nav_Node
 		bool m_enqueued_motion_timeout;
 		std::mutex m_enqueued_motion_mutex;
 
-		Jackal_Interface(TPS_Astar_Nav_Node& parent) : m_parent(parent) 
+		Jackal_Interface(TPS_Astar_Nav_Node& parent) : 
+		m_parent(parent),
+		m_enqueued_motion_pending(false),
+		m_enqueued_motion_timeout(false) 
 		{
+			m_parent.on_enqueued_motion_fired = [this](){
+				auto lck = mrpt::lockHelper(m_enqueued_motion_mutex);
+				m_enqueued_motion_pending = false;
+				m_enqueued_motion_timeout = false; 
+			};
+
+			m_parent.on_enqueued_motion_timeout = [this] () {
+				auto lck = mrpt::lockHelper(m_enqueued_motion_mutex);
+				m_enqueued_motion_pending = false;
+				m_enqueued_motion_timeout = true; 
+			};
 
 		}
 
@@ -119,6 +150,20 @@ class TPS_Astar_Nav_Node
         		const std::optional<mrpt::kinematics::CVehicleVelCmd::Ptr>& immediate,
         		const std::optional<selfdriving::EnqueuedMotionCmd>&   next)override
 		{
+			if (immediate.has_value())
+			{
+				changeSpeeds(**immediate);
+			}
+
+			if(next.has_value())
+			{
+				m_enqueued_motion_pending = true;
+				m_parent.m_motion_trigger_pose = next->nextCondition.position;
+				m_parent.m_motion_trigger_tolerance = next->nextCondition.tolerance;
+				m_parent.m_motion_trigger_timeout = next->nextCondition.timeout;
+				m_parent.m_next_cmd = next->nextCmd;
+				m_parent.m_enq_motion_timer = 0.0;
+			}
 
 		}
 
@@ -238,9 +283,16 @@ class TPS_Astar_Nav_Node
 
 	std::shared_ptr<Jackal_Interface> m_jackal_robot;
 
+	selfdriving::PlannerOutput m_activePlanOutput;
+	std::vector<selfdriving::CostEvaluator::Ptr> m_costEvaluators;
+	bool m_path_plan_done;
+
 	std::shared_ptr<selfdriving::NavEngine> m_nav_engine;
 	selfdriving::WaypointSequence m_waypts;	 //<! DS for waypoints
 	selfdriving::WaypointStatusSequence m_wayptsStatus;	 //<! DS for waypoint status
+
+	double normPose2D(const mrpt::math::TPose2D& poseA, 
+                      const mrpt::math::TPose2D& poseB);
 
 	public: 
 	TPS_Astar_Nav_Node(int argc, char** argv);
@@ -258,17 +310,17 @@ class TPS_Astar_Nav_Node
 	void updateOdom(const nav_msgs::Odometry& _odom);
 	void updateObstacles(const sensor_msgs::PointCloud& _pc);
 
-	void do_path_plan();
+	bool do_path_plan();
 	void init3DDebug();
-	selfdriving::VehicleLocalizationState get_localization_state() const{ return m_localization_pose;}
-	selfdriving::VehicleOdometryState get_odometry_state() const{ return m_odometry;}
-	mrpt::maps::CPointsMap::Ptr get_current_obstacles() const{ return m_obstacle_src; }
+	selfdriving::VehicleLocalizationState get_localization_state();
+	selfdriving::VehicleOdometryState get_odometry_state();
+	mrpt::maps::CPointsMap::Ptr get_current_obstacles();
 	void publish_cmd_vel(const geometry_msgs::Twist& cmd_vel);
 
 	/* Navigator methods*/
 	void initializeNavigator();
-	// void navigateTo(const mrpt::math::TPose2D& target);
+	void navigateTo(const mrpt::math::TPose2D& target);
 	void onDoNavigation(const ros::TimerEvent&);
-
+	void checkEnqueuedMotionCmds(const ros::TimerEvent&);
 
 };
