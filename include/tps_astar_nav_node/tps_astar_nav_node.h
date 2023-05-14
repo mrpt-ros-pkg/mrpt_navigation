@@ -61,41 +61,41 @@ class TPS_Astar_Nav_Node
 	mrpt::system::CTimeLogger m_profiler;
 	TAuxInitializer m_auxinit;	//!< Just to make sure ROS is init first
 	ros::NodeHandle m_nh;  //!< The node handle
-	ros::NodeHandle m_localn;  //!< "~"
-    std::once_flag m_init_flag;
-    std::once_flag m_map_received_flag;
-    mrpt::maps::CPointsMap::Ptr m_grid_map;
+	ros::NodeHandle m_localn;  //!< "~" for handling params
+    std::once_flag m_init_flag; //!< Perform initialization once
+    std::once_flag m_map_received_flag; //!< Receive map once
+    mrpt::maps::CPointsMap::Ptr m_grid_map; //!< DS for the Gridmap
 
 
-    mrpt::math::TPose2D m_nav_goal;
-    mrpt::math::TPose2D m_start_pose;
-    mrpt::math::TTwist2D m_start_vel;
-	selfdriving::VehicleLocalizationState m_localization_pose;
-	selfdriving::VehicleOdometryState m_odometry;
-	mrpt::maps::CPointsMap::Ptr m_obstacle_src;
-	std::once_flag m_init_nav_flag;
-	bool m_nav_engine_init;
-	ros::Timer m_timer_run_nav; 
-	ros::Timer m_timer_enqueue;
-	double m_nav_period;
-	double m_enq_cmd_check_time;
+    mrpt::math::TPose2D m_nav_goal; //!< Navigation Goal position
+    mrpt::math::TPose2D m_start_pose; //!< Navigation start position
+    mrpt::math::TTwist2D m_start_vel; //!< Robot velocity at start
+	selfdriving::VehicleLocalizationState m_localization_pose; //!< DS for localization info
+	selfdriving::VehicleOdometryState m_odometry; //!< DS for odometry info
+	mrpt::maps::CPointsMap::Ptr m_obstacle_src; //!< DS for holding obstacle info from sensors
+	std::once_flag m_init_nav_flag; //!< Initialize Nav Engine once
+	bool m_nav_engine_init; //!< Flag to indicate nav engine is initialized
+	ros::Timer m_timer_run_nav; //!< Periodic timer for navigator
+	ros::Timer m_timer_enqueue; //!< Periodic timer for enqueued command status checker
+	double m_nav_period; //!< Time period(Frequency) of Nav Step
+	double m_enq_cmd_check_time; //!< Time period(frequency) of enqueued command status checker
 
-    ros::Subscriber m_sub_map;
-	ros::Subscriber m_sub_localization_pose;
-	ros::Subscriber m_sub_odometry;
-	ros::Subscriber m_sub_obstacles;
-	ros::Publisher  m_pub_cmd_vel;
+    ros::Subscriber m_sub_map; //!< Subscriber to Map
+	ros::Subscriber m_sub_localization_pose; //!< Subscriber to localization info
+	ros::Subscriber m_sub_odometry; //!< Subscriber to Odometry info from robot
+	ros::Subscriber m_sub_obstacles; //!< Subsciber to obstacle map info
+	ros::Publisher  m_pub_cmd_vel; //!< Publisher for velocity commands for the robot
 
-	std::string m_sub_map_str;
-	std::string m_sub_localization_str;
-	std::string m_sub_odometry_str;
-	std::string m_sub_obstacles_str;
-	std::string m_pub_cmd_vel_str;
+	std::string m_sub_map_str; //!< parameterized name for map subscriber
+	std::string m_sub_localization_str; //!<parameterized name for localization subscriber
+	std::string m_sub_odometry_str; //!< parameterized name for odometry subscriber
+	std::string m_sub_obstacles_str; //!< parameterized name for obsctacle source map subscriber
+	std::string m_pub_cmd_vel_str; //!< parameterized name for velocity command publisher
 
-	std::mutex m_obstacles_cs;
-	std::mutex m_localization_cs;
-	std::mutex m_odometry_cs;
-	std::mutex m_next_cmd_cs;
+	std::mutex m_obstacles_cs; //!< mutex for obstacle data
+	std::mutex m_localization_cs; //!< mutex for localization data
+	std::mutex m_odometry_cs; //!< mutex for odometry data
+	std::mutex m_next_cmd_cs; //!< mutex for enqueued command
 
 	//for debugging
 	bool m_debug;
@@ -103,35 +103,42 @@ class TPS_Astar_Nav_Node
 	mrpt::gui::CDisplayWindow3D::Ptr m_win_3d;
 	mrpt::opengl::COpenGLScene m_scene;
 
-	std::function<void()> on_enqueued_motion_fired; 
-	std::function<void()> on_enqueued_motion_timeout; 
-	mrpt::math::TPose2D m_motion_trigger_pose;
-	mrpt::math::TPose2D m_motion_trigger_tolerance;
-	double m_motion_trigger_timeout;
-	mrpt::kinematics::CVehicleVelCmd::Ptr m_next_cmd;
-	mrpt::kinematics::CVehicleVelCmd::Ptr m_NOP_cmd;
-	double m_enq_motion_timer;
+	std::function<void()> on_enqueued_motion_fired; //!< callback for jackal robot when enqueued cmd fired
+	std::function<void()> on_enqueued_motion_timeout; //!< callback for jackal robot when enqueud cmd timed out
+	mrpt::math::TPose2D m_motion_trigger_pose; //!< Pose at which enqueued cmd should be executed
+	mrpt::math::TPose2D m_motion_trigger_tolerance; //!< Pose tolerance for enqueued cmd
+	double m_motion_trigger_timeout; //!< Timeout period within which the enqueud cmd should execute
+	mrpt::kinematics::CVehicleVelCmd::Ptr m_next_cmd; //!< DS for enqueued motion cmd
+	mrpt::kinematics::CVehicleVelCmd::Ptr m_NOP_cmd; //!< DS for NO-op, continue with previous command
+	double m_enq_motion_timer; //!< Timer that checks if enqueued cmd timed out
 
+	/**
+	 * @brief Jackal Interface is the robot interface for the NavEngine. 
+	 * NavEngine algorithms callback into the interface functions to execute Robot ODOA
+	 */
 	struct Jackal_Interface : public selfdriving::VehicleMotionInterface,
 									 selfdriving::ObstacleSource
 	{
-		TPS_Astar_Nav_Node& m_parent;
-		bool m_enqueued_motion_pending;
-		bool m_enqueued_motion_timeout;
-		std::mutex m_enqueued_motion_mutex;
+		TPS_Astar_Nav_Node& m_parent; //!< Top level parent class object
+		bool m_enqueued_motion_pending; //!< indicator that enqueued command is pending and needs to be executed
+		bool m_enqueued_motion_timeout; //!< indicator that enqueued command timedout
+		std::mutex m_enqueued_motion_mutex; //!< mutex for enqueued commands
 
+		/* Ctor*/
 		Jackal_Interface(TPS_Astar_Nav_Node& parent) : 
 		m_parent(parent),
 		m_enqueued_motion_pending(false),
 		m_enqueued_motion_timeout(false) 
 		{
 			m_parent.on_enqueued_motion_fired = [this](){
+				ROS_INFO_STREAM("[Jackal Robot] Enqueud motion fired");
 				auto lck = mrpt::lockHelper(m_enqueued_motion_mutex);
 				m_enqueued_motion_pending = false;
 				m_enqueued_motion_timeout = false; 
 			};
 
 			m_parent.on_enqueued_motion_timeout = [this] () {
+				ROS_INFO_STREAM("[Jackal Robot] Enqueud motion timedout");
 				auto lck = mrpt::lockHelper(m_enqueued_motion_mutex);
 				m_enqueued_motion_pending = false;
 				m_enqueued_motion_timeout = true; 
@@ -139,35 +146,54 @@ class TPS_Astar_Nav_Node
 
 		}
 
+		/**
+		 * @brief Provides access to the vehicle localization data.
+		 *
+		 * In case of a hardware/communication error, leave `valid=false` in the
+		 * return structure.
+		 */
 		selfdriving::VehicleLocalizationState get_localization() override
 		{
 			return m_parent.get_localization_state();
 		}
 
+		/** @brief Access method to the vehicle odometry data.
+		 * 
+		 *
+		 * In case of a hardware/communication error, leave `valid=false` in the
+		 * return structure.
+		 */
 		selfdriving::VehicleOdometryState get_odometry() override
 		{
 			return m_parent.get_odometry_state();
 		}
 
+		/**
+		 * @brief Refer Parent class for docs 
+		 * 
+		 */
 		bool motion_execute(
         		const std::optional<mrpt::kinematics::CVehicleVelCmd::Ptr>& immediate,
         		const std::optional<selfdriving::EnqueuedMotionCmd>&   next)override
 		{
 			if (immediate.has_value())
 			{
-				std::lock_guard<std::mutex> csl(m_parent.m_next_cmd_cs);
+				std::lock_guard<std::mutex> csl(m_enqueued_motion_mutex);
 				ROS_INFO_STREAM("[Jackal_Robot] Motion command received");
 				mrpt::kinematics::CVehicleVelCmd& vel_cmd = *(immediate.value());
 				changeSpeeds(vel_cmd);
 				m_parent.m_NOP_cmd = immediate.value();
+				m_enqueued_motion_pending = false;
+				m_enqueued_motion_timeout = false;
 			}
 
 			if(next.has_value())
 			{
 				//ROS_INFO_STREAM("[Jackal_Robot] Enqueued command received");
-				std::lock_guard<std::mutex> csl(m_parent.m_next_cmd_cs);
+				std::lock_guard<std::mutex> csl(m_enqueued_motion_mutex);
 				auto& enq_cmd = next.value();
 				m_enqueued_motion_pending = true;
+				m_enqueued_motion_timeout = false;
 				m_parent.m_motion_trigger_pose = enq_cmd.nextCondition.position;
 				m_parent.m_motion_trigger_tolerance = enq_cmd.nextCondition.tolerance;
 				m_parent.m_motion_trigger_timeout = enq_cmd.nextCondition.timeout;
@@ -177,14 +203,17 @@ class TPS_Astar_Nav_Node
 								<< " Enq_Motion_timer = "<< m_parent.m_enq_motion_timer);
 			}
 
-			if(!immediate && !next)
+			if(!immediate.has_value() && !next.has_value())
 			{
+				std::lock_guard<std::mutex> csl(m_enqueued_motion_mutex);
 				ROS_INFO_STREAM("[Jackal_Robot] NOP command received");
 				if(m_parent.m_NOP_cmd)
 				{
 					changeSpeeds(*m_parent.m_NOP_cmd);
 				}
 			}
+
+			return true;
 
 		}
 
@@ -217,8 +246,8 @@ class TPS_Astar_Nav_Node
 
 			const double v = vel_cmd_diff_driven->lin_vel;
 			const double w = vel_cmd_diff_driven->ang_vel;
-			// ROS_INFO_STREAM(
-			// 	"changeSpeeds: v= "<< v <<"m/s and w="<<w * 180.0f / M_PI<<"deg/s");
+			ROS_INFO_STREAM(
+				"changeSpeeds: v= "<< v <<"m/s and w="<<w * 180.0f / M_PI<<"deg/s");
 			geometry_msgs::Twist cmd;
 			cmd.linear.x = v;
 			cmd.angular.z = w;
@@ -277,7 +306,7 @@ class TPS_Astar_Nav_Node
     	
 		void on_nav_start()override
 		{
-			ROS_INFO_STREAM("[TPS_Astar_Navigator] Nav starting to Goal"<<m_parent.m_nav_goal.asString());
+			ROS_INFO_STREAM("[TPS_Astar_Navigator] Nav starting to Goal ="<<m_parent.m_nav_goal.asString());
 		}
 
     	void on_nav_end()override
@@ -337,6 +366,8 @@ class TPS_Astar_Nav_Node
 
 	bool do_path_plan();
 	void init3DDebug();
+
+	/*Getter functions for Robot interface*/
 	selfdriving::VehicleLocalizationState get_localization_state();
 	selfdriving::VehicleOdometryState get_odometry_state();
 	mrpt::maps::CPointsMap::Ptr get_current_obstacles();
@@ -347,5 +378,4 @@ class TPS_Astar_Nav_Node
 	void navigateTo(const mrpt::math::TPose2D& target);
 	void onDoNavigation(const ros::TimerEvent&);
 	void checkEnqueuedMotionCmds(const ros::TimerEvent&);
-
 };

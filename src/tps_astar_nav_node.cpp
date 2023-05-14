@@ -13,7 +13,7 @@ TPS_Astar_Nav_Node::TPS_Astar_Nav_Node(int argc, char** argv):
                 m_start_vel(mrpt::math::TTwist2D(0.0, 0.0, 0.0)),
                 m_debug(true),
                 m_gui_mrpt(true),
-                m_nav_period(0.500),
+                m_nav_period(0.200),
                 m_nav_engine_init(false),
                 m_path_plan_done(false),
                 m_motion_trigger_timeout(0.0),
@@ -125,7 +125,7 @@ void TPS_Astar_Nav_Node::callbackObstacles(const sensor_msgs::PointCloud& _pc)
 
 void TPS_Astar_Nav_Node::publish_cmd_vel(const geometry_msgs::Twist& cmd_vel)
 {
-    //ROS_INFO_STREAM("Publishing velocity command"<<cmd_vel);
+    ROS_INFO_STREAM("Publishing velocity command"<<cmd_vel);
     m_pub_cmd_vel.publish(cmd_vel);
 }
 
@@ -499,18 +499,15 @@ void TPS_Astar_Nav_Node::onDoNavigation(const ros::TimerEvent&)
 
 void TPS_Astar_Nav_Node::checkEnqueuedMotionCmds(const ros::TimerEvent&)
 {
-    std::lock_guard<std::mutex> csl(m_next_cmd_cs);
-    std::cout<<"Here1\n";
     if(m_odometry.valid) // && m_jackal_robot->enqeued_motion_pending())
     {
-        std::cout<<"Here2\n";
-        //ROS_INFO_STREAM("Enter check enqueued motion cmds");
         auto& odo = m_odometry.odometry;
         ROS_INFO_STREAM("Odo: "<<  odo.asString());
         if(std::abs(odo.x - m_motion_trigger_pose.x) < m_motion_trigger_tolerance.x &&
            std::abs(odo.y - m_motion_trigger_pose.y) < m_motion_trigger_tolerance.y &&
            std::abs(odo.phi - m_motion_trigger_pose.phi) < m_motion_trigger_tolerance.phi)
         {
+            std::lock_guard<std::mutex> csl(m_jackal_robot->m_enqueued_motion_mutex);
             ROS_INFO_STREAM("Enqueued motion fired");
         
             m_jackal_robot->changeSpeeds(*m_next_cmd);
@@ -519,14 +516,15 @@ void TPS_Astar_Nav_Node::checkEnqueuedMotionCmds(const ros::TimerEvent&)
         }
         else
         {
-            std::cout<<"Here3\n";
-            ROS_INFO_STREAM("[TPS_Astar_Nav_Node] Enqueued motion timer ="<<m_enq_motion_timer);
+            ROS_INFO_STREAM("[TPS_Astar_Nav_Node] Enqueued motion timer = "<<m_enq_motion_timer);
             m_enq_motion_timer += m_enq_cmd_check_time;
             if(m_jackal_robot->enqeued_motion_pending() &&
               m_enq_motion_timer > m_motion_trigger_timeout)
             {
+                std::lock_guard<std::mutex> csl(m_jackal_robot->m_enqueued_motion_mutex);
                 on_enqueued_motion_timeout();
                 m_enq_motion_timer = 0.0;
+                navigateTo(m_nav_goal);
             }
         }
     }
