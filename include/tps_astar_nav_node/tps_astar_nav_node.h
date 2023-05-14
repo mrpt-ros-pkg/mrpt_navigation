@@ -78,6 +78,7 @@ class TPS_Astar_Nav_Node
 	ros::Timer m_timer_run_nav; 
 	ros::Timer m_timer_enqueue;
 	double m_nav_period;
+	double m_enq_cmd_check_time;
 
     ros::Subscriber m_sub_map;
 	ros::Subscriber m_sub_localization_pose;
@@ -94,6 +95,7 @@ class TPS_Astar_Nav_Node
 	std::mutex m_obstacles_cs;
 	std::mutex m_localization_cs;
 	std::mutex m_odometry_cs;
+	std::mutex m_next_cmd_cs;
 
 	//for debugging
 	bool m_debug;
@@ -107,6 +109,7 @@ class TPS_Astar_Nav_Node
 	mrpt::math::TPose2D m_motion_trigger_tolerance;
 	double m_motion_trigger_timeout;
 	mrpt::kinematics::CVehicleVelCmd::Ptr m_next_cmd;
+	mrpt::kinematics::CVehicleVelCmd::Ptr m_NOP_cmd;
 	double m_enq_motion_timer;
 
 	struct Jackal_Interface : public selfdriving::VehicleMotionInterface,
@@ -152,17 +155,35 @@ class TPS_Astar_Nav_Node
 		{
 			if (immediate.has_value())
 			{
-				changeSpeeds(**immediate);
+				std::lock_guard<std::mutex> csl(m_parent.m_next_cmd_cs);
+				ROS_INFO_STREAM("[Jackal_Robot] Motion command received");
+				mrpt::kinematics::CVehicleVelCmd& vel_cmd = *(immediate.value());
+				changeSpeeds(vel_cmd);
+				m_parent.m_NOP_cmd = immediate.value();
 			}
 
 			if(next.has_value())
 			{
+				//ROS_INFO_STREAM("[Jackal_Robot] Enqueued command received");
+				std::lock_guard<std::mutex> csl(m_parent.m_next_cmd_cs);
+				auto& enq_cmd = next.value();
 				m_enqueued_motion_pending = true;
-				m_parent.m_motion_trigger_pose = next->nextCondition.position;
-				m_parent.m_motion_trigger_tolerance = next->nextCondition.tolerance;
-				m_parent.m_motion_trigger_timeout = next->nextCondition.timeout;
+				m_parent.m_motion_trigger_pose = enq_cmd.nextCondition.position;
+				m_parent.m_motion_trigger_tolerance = enq_cmd.nextCondition.tolerance;
+				m_parent.m_motion_trigger_timeout = enq_cmd.nextCondition.timeout;
 				m_parent.m_next_cmd = next->nextCmd;
 				m_parent.m_enq_motion_timer = 0.0;
+				ROS_INFO_STREAM("[Jackal_Robot] Next cmd timeout = "<<m_parent.m_motion_trigger_timeout
+								<< " Enq_Motion_timer = "<< m_parent.m_enq_motion_timer);
+			}
+
+			if(!immediate && !next)
+			{
+				ROS_INFO_STREAM("[Jackal_Robot] NOP command received");
+				if(m_parent.m_NOP_cmd)
+				{
+					changeSpeeds(*m_parent.m_NOP_cmd);
+				}
 			}
 
 		}
@@ -172,22 +193,23 @@ class TPS_Astar_Nav_Node
 		bool enqeued_motion_pending() const override
 		{
 			auto lck = mrpt::lockHelper(m_enqueued_motion_mutex);
-			ROS_INFO_STREAM("Enqueued motion command pending ?"<<
-							(m_enqueued_motion_pending)?"True":"False");
+			// ROS_INFO_STREAM("Enqueued motion command pending ?"<<
+			// 				(m_enqueued_motion_pending?"True":"False"));
 			return m_enqueued_motion_pending;
 		}
 
 		bool enqeued_motion_timed_out() const override
 		{
 			auto lck = mrpt::lockHelper(m_enqueued_motion_mutex);
-			ROS_INFO_STREAM("Enqueued motion command timed out ?"<<
-							(m_enqueued_motion_timeout)?"True":"False");
+			// ROS_INFO_STREAM("Enqueued motion command timed out ?"<<
+			// 				(m_enqueued_motion_timeout?"True":"False"));
 			return m_enqueued_motion_timeout;
 		}
 
 		bool changeSpeeds(
 			const mrpt::kinematics::CVehicleVelCmd& vel_cmd)
 		{
+			// ROS_INFO_STREAM("[Jackal_Robot] change speeds");
 			using namespace mrpt::kinematics;
 			const CVehicleVelCmd_DiffDriven* vel_cmd_diff_driven =
 				dynamic_cast<const CVehicleVelCmd_DiffDriven*>(&vel_cmd);
@@ -195,14 +217,15 @@ class TPS_Astar_Nav_Node
 
 			const double v = vel_cmd_diff_driven->lin_vel;
 			const double w = vel_cmd_diff_driven->ang_vel;
-			ROS_INFO_STREAM(
-				"changeSpeeds: v= "<< v <<"m/s and w="<<w * 180.0f / M_PI<<"deg/s");
+			// ROS_INFO_STREAM(
+			// 	"changeSpeeds: v= "<< v <<"m/s and w="<<w * 180.0f / M_PI<<"deg/s");
 			geometry_msgs::Twist cmd;
 			cmd.linear.x = v;
 			cmd.angular.z = w;
 			m_parent.publish_cmd_vel(cmd);
 			return true;
 		}
+
 
 		void stop(const selfdriving::STOP_TYPE stopType)override
 		{
@@ -248,27 +271,32 @@ class TPS_Astar_Nav_Node
 
 		void on_nav_end_due_to_error()override
 		{
-
+			ROS_INFO_STREAM("[TPS_Astar_Navigator] Nav End due to error");
+			stop(selfdriving::STOP_TYPE::EMERGENCY);
 		}
     	
 		void on_nav_start()override
 		{
-
+			ROS_INFO_STREAM("[TPS_Astar_Navigator] Nav starting to Goal"<<m_parent.m_nav_goal.asString());
 		}
 
     	void on_nav_end()override
 		{
+			ROS_INFO_STREAM("[TPS_Astar_Navigator] Nav End");
+			stop(selfdriving::STOP_TYPE::REGULAR);
 
 		}
 
     	void on_path_seems_blocked()override
 		{
-
+			ROS_INFO_STREAM("[TPS_Astar_Navigator] Path Seems blocked");
+			stop(selfdriving::STOP_TYPE::REGULAR);
 		}
 
     	void on_apparent_collision()override
 		{
-
+			ROS_INFO_STREAM("[TPS_Astar_Navigator] Apparent collision");
+			//stop(selfdriving::STOP_TYPE::REGULAR);
 		}
 
 		mrpt::maps::CPointsMap::Ptr obstacles( [[maybe_unused]]
@@ -290,9 +318,6 @@ class TPS_Astar_Nav_Node
 	std::shared_ptr<selfdriving::NavEngine> m_nav_engine;
 	selfdriving::WaypointSequence m_waypts;	 //<! DS for waypoints
 	selfdriving::WaypointStatusSequence m_wayptsStatus;	 //<! DS for waypoint status
-
-	double normPose2D(const mrpt::math::TPose2D& poseA, 
-                      const mrpt::math::TPose2D& poseB);
 
 	public: 
 	TPS_Astar_Nav_Node(int argc, char** argv);

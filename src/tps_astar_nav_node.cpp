@@ -13,11 +13,12 @@ TPS_Astar_Nav_Node::TPS_Astar_Nav_Node(int argc, char** argv):
                 m_start_vel(mrpt::math::TTwist2D(0.0, 0.0, 0.0)),
                 m_debug(true),
                 m_gui_mrpt(true),
-                m_nav_period(0.100),
+                m_nav_period(0.500),
                 m_nav_engine_init(false),
                 m_path_plan_done(false),
                 m_motion_trigger_timeout(0.0),
-                m_enq_motion_timer(0.0)
+                m_enq_motion_timer(0.0),
+                m_enq_cmd_check_time(0.020)
 {
     std::string nav_goal_str = "[0.0, 0.0, 0.0]";
     std::string start_pose_str = "[0.0, 0.0, 0.0]";
@@ -67,7 +68,7 @@ TPS_Astar_Nav_Node::TPS_Astar_Nav_Node(int argc, char** argv):
     m_timer_run_nav = m_nh.createTimer(ros::Duration(m_nav_period), &TPS_Astar_Nav_Node::onDoNavigation, this);
 
     //Odometry publisher runs at 50Hz, so this functions runs at the same periodicity
-    m_timer_enqueue = m_nh.createTimer(ros::Duration(0.020), &TPS_Astar_Nav_Node::checkEnqueuedMotionCmds, this);
+    m_timer_enqueue = m_nh.createTimer(ros::Duration(m_enq_cmd_check_time), &TPS_Astar_Nav_Node::checkEnqueuedMotionCmds, this);
 
     if(m_nav_engine)
     {
@@ -124,7 +125,7 @@ void TPS_Astar_Nav_Node::callbackObstacles(const sensor_msgs::PointCloud& _pc)
 
 void TPS_Astar_Nav_Node::publish_cmd_vel(const geometry_msgs::Twist& cmd_vel)
 {
-    ROS_INFO_STREAM("Publishing velocity command"<<cmd_vel);
+    //ROS_INFO_STREAM("Publishing velocity command"<<cmd_vel);
     m_pub_cmd_vel.publish(cmd_vel);
 }
 
@@ -170,7 +171,7 @@ void TPS_Astar_Nav_Node::updateLocalization(const geometry_msgs::PoseWithCovaria
     m_localization_pose.pose.y = msg.pose.pose.position.y;
     m_localization_pose.pose.phi = yaw;
     m_localization_pose.timestamp = mrpt::ros1bridge::fromROS(msg.header.stamp);
-    ROS_INFO_STREAM("Localization update complete");
+    //ROS_INFO_STREAM("Localization update complete");
 }
 
 void TPS_Astar_Nav_Node::updateOdom(const nav_msgs::Odometry& msg)
@@ -195,7 +196,7 @@ void TPS_Astar_Nav_Node::updateOdom(const nav_msgs::Odometry& msg)
     m_odometry.timestamp = mrpt::system::now();
     /*TODO*/
     m_odometry.pendedActionExists = m_jackal_robot->enqeued_motion_pending();
-    ROS_INFO_STREAM("Odometry update complete");       
+    //ROS_INFO_STREAM("Odometry update complete");       
 }
 
 void TPS_Astar_Nav_Node::updateObstacles(const sensor_msgs::PointCloud& _pc)
@@ -220,7 +221,7 @@ void TPS_Astar_Nav_Node::updateMap(const nav_msgs::OccupancyGrid& msg)
     mrpt::ros1bridge::fromROS(msg, grid);
     auto obsPts = mrpt::maps::CSimplePointsMap::Create();
     grid.getAsPointCloud(*obsPts);
-    ROS_INFO_STREAM("*****************************************Setting gridmap for planning");
+    ROS_INFO_STREAM("Setting gridmap for planning");
     m_grid_map = std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(obsPts);
 
     //m_path_plan_done = do_path_plan();
@@ -397,7 +398,7 @@ bool TPS_Astar_Nav_Node::do_path_plan()
 
         planner->costEvaluators_.push_back(costmap);
     }
-    
+
     {
         std::string planner_parameters_file;
         m_localn.param(
@@ -434,7 +435,7 @@ bool TPS_Astar_Nav_Node::do_path_plan()
         mrpt::config::CConfigFile cfg(ptg_ini_file);
         planner_input.ptgs.initFromConfigFile(cfg, "SelfDriving");
 
-        ROS_INFO_STREAM("******************************* PTG ini");
+        ROS_INFO_STREAM("PTG ini");
 
     }
 
@@ -496,29 +497,33 @@ void TPS_Astar_Nav_Node::onDoNavigation(const ros::TimerEvent&)
     }
 }
 
-double TPS_Astar_Nav_Node::normPose2D(const mrpt::math::TPose2D& poseA, 
-                                      const mrpt::math::TPose2D& poseB) 
-{
-    return std::sqrt(std::pow(poseA.x - poseB.x, 2) + std::pow(poseA.y - poseB.y, 2));
-}
-
 void TPS_Astar_Nav_Node::checkEnqueuedMotionCmds(const ros::TimerEvent&)
 {
-    std::lock_guard<std::mutex> csl(m_odometry_cs);
-    if(m_odometry.valid)
+    std::lock_guard<std::mutex> csl(m_next_cmd_cs);
+    std::cout<<"Here1\n";
+    if(m_odometry.valid) // && m_jackal_robot->enqeued_motion_pending())
     {
+        std::cout<<"Here2\n";
+        //ROS_INFO_STREAM("Enter check enqueued motion cmds");
         auto& odo = m_odometry.odometry;
+        ROS_INFO_STREAM("Odo: "<<  odo.asString());
         if(std::abs(odo.x - m_motion_trigger_pose.x) < m_motion_trigger_tolerance.x &&
            std::abs(odo.y - m_motion_trigger_pose.y) < m_motion_trigger_tolerance.y &&
            std::abs(odo.phi - m_motion_trigger_pose.phi) < m_motion_trigger_tolerance.phi)
         {
+            ROS_INFO_STREAM("Enqueued motion fired");
+        
             m_jackal_robot->changeSpeeds(*m_next_cmd);
+            m_NOP_cmd = m_next_cmd;
             on_enqueued_motion_fired();
         }
         else
         {
-            m_enq_motion_timer += 0.020;
-            if(m_enq_motion_timer > m_motion_trigger_timeout)
+            std::cout<<"Here3\n";
+            ROS_INFO_STREAM("[TPS_Astar_Nav_Node] Enqueued motion timer ="<<m_enq_motion_timer);
+            m_enq_motion_timer += m_enq_cmd_check_time;
+            if(m_jackal_robot->enqeued_motion_pending() &&
+              m_enq_motion_timer > m_motion_trigger_timeout)
             {
                 on_enqueued_motion_timeout();
                 m_enq_motion_timer = 0.0;
