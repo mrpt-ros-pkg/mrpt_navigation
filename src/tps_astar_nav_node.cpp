@@ -13,7 +13,7 @@ TPS_Astar_Nav_Node::TPS_Astar_Nav_Node(int argc, char** argv):
                 m_start_vel(mrpt::math::TTwist2D(0.0, 0.0, 0.0)),
                 m_debug(true),
                 m_gui_mrpt(true),
-                m_nav_period(0.200),
+                m_nav_period(0.050),
                 m_nav_engine_init(false),
                 m_path_plan_done(false),
                 m_motion_trigger_timeout(0.0),
@@ -76,7 +76,7 @@ TPS_Astar_Nav_Node::TPS_Astar_Nav_Node(int argc, char** argv):
         m_nav_engine.reset();
     }
 
-    m_nav_engine = std::make_shared<selfdriving::NavEngine>();
+    m_nav_engine = std::make_shared<selfdriving::TPS_Navigator>();
 
     m_jackal_robot = std::make_shared<Jackal_Interface>(*this);
 
@@ -224,7 +224,7 @@ void TPS_Astar_Nav_Node::updateMap(const nav_msgs::OccupancyGrid& msg)
     ROS_INFO_STREAM("Setting gridmap for planning");
     m_grid_map = std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(obsPts);
 
-    //m_path_plan_done = do_path_plan();
+    m_path_plan_done = do_path_plan();
 }
 
 void TPS_Astar_Nav_Node::initializeNavigator()
@@ -235,10 +235,10 @@ void TPS_Astar_Nav_Node::initializeNavigator()
         return;
     }
 
-    m_nav_engine->setMinLoggingLevel(mrpt::system::VerbosityLevel::LVL_INFO);
+    m_nav_engine->setMinLoggingLevel(mrpt::system::VerbosityLevel::LVL_DEBUG);
     m_nav_engine->config_.vehicleMotionInterface = std::dynamic_pointer_cast<selfdriving::VehicleMotionInterface>(
                                                         /*std::make_shared<Jackal_Interface>*/(m_jackal_robot));
-    m_nav_engine->config_.vehicleMotionInterface->setMinLoggingLevel(mrpt::system::VerbosityLevel::LVL_INFO);
+    m_nav_engine->config_.vehicleMotionInterface->setMinLoggingLevel(mrpt::system::VerbosityLevel::LVL_DEBUG);
     m_nav_engine->config_.globalMapObstacleSource = selfdriving::ObstacleSource::FromStaticPointcloud(m_grid_map);
     m_nav_engine->config_.localSensedObstacleSource = selfdriving::ObstacleSource::FromStaticPointcloud(m_obstacle_src);
 
@@ -320,19 +320,21 @@ void TPS_Astar_Nav_Node::initializeNavigator()
 
     ROS_INFO_STREAM("TPS_Astar Navigator intialized");
 
-    navigateTo(m_nav_goal);
-
+    if(m_path_plan_done)
+    {
+        navigateTo(m_nav_goal);
+    }
     m_nav_engine_init = true;
 
 }
 
 void TPS_Astar_Nav_Node::navigateTo(const mrpt::math::TPose2D& target)
 {
-    selfdriving::Waypoint waypoint(target.x, target.y, 1.0, false, 0.0, 0.0);
+    // selfdriving::Waypoint waypoint(target.x, target.y, 1.0, false, 0.0, 0.0);
 
-    ROS_INFO_STREAM("[TPS_Astar_Nav_Node] navigateTo"<<waypoint.getAsText());
+    // ROS_INFO_STREAM("[TPS_Astar_Nav_Node] navigateTo"<<waypoint.getAsText());
 
-    m_waypts.waypoints.push_back(waypoint);
+    // m_waypts.waypoints.push_back(waypoint);
 
     m_nav_engine->request_navigation(m_waypts);
 }
@@ -459,13 +461,34 @@ bool TPS_Astar_Nav_Node::do_path_plan()
         m_costEvaluators = planner->costEvaluators_;
     }
 
+    // backtrack:
+    auto [plannedPath, pathEdges] =
+        plan.motionTree.backtrack_path(*plan.bestNodeId);
+
+    selfdriving::refine_trajectory(plannedPath, pathEdges, planner_input.ptgs);
+
+    size_t N = pathEdges.size();
+    int i = 0;
+    for(const auto& edge: pathEdges)
+    {
+        std::cout<<"******************************** Here 1\n";
+        const auto& goal_state = edge->stateTo;
+        std::cout<< "Waypoint: x = "<<goal_state.pose.x<<", y= "<<goal_state.pose.y<<std::endl;
+        if(i < (int)N-1)
+        {
+            selfdriving::Waypoint wp(goal_state.pose.x, goal_state.pose.y, 1, false, 0.0, 1.0);
+            m_waypts.waypoints.push_back(wp);
+        }
+        else
+        {
+            selfdriving::Waypoint wp(goal_state.pose.x, goal_state.pose.y, 0.5,false, goal_state.pose.phi, 0.0);
+            m_waypts.waypoints.push_back(wp);
+        }
+        i++;
+    }
+
+    std::cout<<"Total waypoints = "<<m_waypts.waypoints.size()<<std::endl;
     return plan.success;
-
-    // // backtrack:
-    // auto [plannedPath, pathEdges] =
-    //     plan.motionTree.backtrack_path(*plan.bestNodeId);
-
-    // selfdriving::refine_trajectory(plannedPath, pathEdges, planner_input.ptgs);
 }
 
 selfdriving::VehicleLocalizationState TPS_Astar_Nav_Node::get_localization_state()
@@ -493,7 +516,16 @@ void TPS_Astar_Nav_Node::onDoNavigation(const ros::TimerEvent&)
 
     if(m_nav_engine_init)
     {
-        m_nav_engine->navigation_step();
+        try
+	    {
+		    m_nav_engine->navigation_step();
+	    }
+	    catch (const std::exception& e)
+	    {
+		    std::cerr << "[TPS_Astar_Nav_Node] Exception:" << e.what() << std::endl;
+		    return;
+	    }
+        
     }
 }
 
@@ -503,16 +535,22 @@ void TPS_Astar_Nav_Node::checkEnqueuedMotionCmds(const ros::TimerEvent&)
     {
         auto& odo = m_odometry.odometry;
         ROS_INFO_STREAM("Odo: "<<  odo.asString());
+        auto& pose = m_localization_pose.pose;
+        ROS_INFO_STREAM("Pose: "<< pose.asString());
+        ROS_INFO_STREAM("Trigger Pose "<< m_motion_trigger_pose.asString());
         if(std::abs(odo.x - m_motion_trigger_pose.x) < m_motion_trigger_tolerance.x &&
            std::abs(odo.y - m_motion_trigger_pose.y) < m_motion_trigger_tolerance.y &&
            std::abs(odo.phi - m_motion_trigger_pose.phi) < m_motion_trigger_tolerance.phi)
         {
             std::lock_guard<std::mutex> csl(m_jackal_robot->m_enqueued_motion_mutex);
-            ROS_INFO_STREAM("Enqueued motion fired");
-        
-            m_jackal_robot->changeSpeeds(*m_next_cmd);
-            m_NOP_cmd = m_next_cmd;
+            //ROS_INFO_STREAM("Enqueued motion fired");
             on_enqueued_motion_fired();
+            m_jackal_robot->m_enqueued_motion_trigger_odom = m_odometry;
+            ROS_INFO_STREAM("calling change speeds upon pend action fired");
+            //m_jackal_robot->changeSpeeds(*m_next_cmd);
+            ROS_INFO_STREAM("Change speeds complete");
+            m_NOP_cmd = m_next_cmd;
+            ROS_INFO_STREAM("Next NOP command set");
         }
         else
         {
@@ -524,7 +562,6 @@ void TPS_Astar_Nav_Node::checkEnqueuedMotionCmds(const ros::TimerEvent&)
                 std::lock_guard<std::mutex> csl(m_jackal_robot->m_enqueued_motion_mutex);
                 on_enqueued_motion_timeout();
                 m_enq_motion_timer = 0.0;
-                navigateTo(m_nav_goal);
             }
         }
     }

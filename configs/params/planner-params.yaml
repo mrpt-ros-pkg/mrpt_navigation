@@ -12,7 +12,7 @@ max_ptg_trajectories_to_explore: 41
 max_ptg_speeds_to_explore: 1
 ptg_sample_timestamps: [0.1]  # seconds
 
-heuristic_heading_weight: 0.5
+heuristic_heading_weight: 0.40
 SE2_metricAngleWeight: 1.0
 pathInterpolatedSegments: 5
 

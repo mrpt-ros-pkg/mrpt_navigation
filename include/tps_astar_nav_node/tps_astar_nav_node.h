@@ -31,7 +31,7 @@
 #include <selfdriving/interfaces/ObstacleSource.h>
 #include <selfdriving/interfaces/VehicleMotionInterface.h>
 #include <selfdriving/data/EnqueuedMotionCmd.h>
-#include <selfdriving/algos/NavEngine.h>
+// #include <selfdriving/algos/NavEngine.h>
 #include <selfdriving/data/PlannerOutput.h>
 #include <selfdriving/data/MotionPrimitivesTree.h>
 #include <nav_msgs/OccupancyGrid.h>
@@ -40,6 +40,7 @@
 #include <geometry_msgs/Twist.h>
 #include <nav_msgs/Odometry.h>
 #include <sensor_msgs/PointCloud.h>
+#include "tps_astar_nav_node/tps_navigator.h"
 
 // for debugging
 #include <mrpt/gui/CDisplayWindow3D.h>
@@ -122,6 +123,7 @@ class TPS_Astar_Nav_Node
 		TPS_Astar_Nav_Node& m_parent; //!< Top level parent class object
 		bool m_enqueued_motion_pending; //!< indicator that enqueued command is pending and needs to be executed
 		bool m_enqueued_motion_timeout; //!< indicator that enqueued command timedout
+		selfdriving::VehicleOdometryState m_enqueued_motion_trigger_odom;
 		std::mutex m_enqueued_motion_mutex; //!< mutex for enqueued commands
 
 		/* Ctor*/
@@ -132,16 +134,23 @@ class TPS_Astar_Nav_Node
 		{
 			m_parent.on_enqueued_motion_fired = [this](){
 				ROS_INFO_STREAM("[Jackal Robot] Enqueud motion fired");
-				auto lck = mrpt::lockHelper(m_enqueued_motion_mutex);
-				m_enqueued_motion_pending = false;
-				m_enqueued_motion_timeout = false; 
+				changeSpeeds(*m_parent.m_next_cmd);
+				ROS_INFO_STREAM("[Jackal Robot] change speeds");
+				{
+					//std::lock_guard<std::mutex> csl(m_enqueued_motion_mutex);
+					m_enqueued_motion_pending = false;
+					m_enqueued_motion_timeout = false;
+				} 
+				ROS_INFO_STREAM("Mutex Release");
+				return;
 			};
 
 			m_parent.on_enqueued_motion_timeout = [this] () {
 				ROS_INFO_STREAM("[Jackal Robot] Enqueud motion timedout");
-				auto lck = mrpt::lockHelper(m_enqueued_motion_mutex);
+				//std::lock_guard<std::mutex> csl(m_enqueued_motion_mutex);
 				m_enqueued_motion_pending = false;
 				m_enqueued_motion_timeout = true; 
+				return;
 			};
 
 		}
@@ -210,6 +219,7 @@ class TPS_Astar_Nav_Node
 				if(m_parent.m_NOP_cmd)
 				{
 					changeSpeeds(*m_parent.m_NOP_cmd);
+					return true;
 				}
 			}
 
@@ -234,6 +244,12 @@ class TPS_Astar_Nav_Node
 			// 				(m_enqueued_motion_timeout?"True":"False"));
 			return m_enqueued_motion_timeout;
 		}
+
+		std::optional<selfdriving::VehicleOdometryState> enqued_motion_last_odom_when_triggered() const override
+    	{
+			auto lck = mrpt::lockHelper(m_enqueued_motion_mutex);
+        	return m_enqueued_motion_trigger_odom;
+    	}
 
 		bool changeSpeeds(
 			const mrpt::kinematics::CVehicleVelCmd& vel_cmd)
@@ -344,7 +360,7 @@ class TPS_Astar_Nav_Node
 	std::vector<selfdriving::CostEvaluator::Ptr> m_costEvaluators;
 	bool m_path_plan_done;
 
-	std::shared_ptr<selfdriving::NavEngine> m_nav_engine;
+	std::shared_ptr<selfdriving::TPS_Navigator> m_nav_engine;
 	selfdriving::WaypointSequence m_waypts;	 //<! DS for waypoints
 	selfdriving::WaypointStatusSequence m_wayptsStatus;	 //<! DS for waypoint status
 
