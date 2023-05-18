@@ -253,7 +253,10 @@ class ReactiveNav2DNode
 
 		void sendNavigationStartEvent() override {}
 		void sendNavigationEndEvent() override {}
-		void sendNavigationEndDueToErrorEvent() override {}
+		void sendNavigationEndDueToErrorEvent() override 
+		{
+			m_parent.m_have_waypoint_seq = false;
+		}
 		void sendWaySeemsBlockedEvent() override {}
 	};
 
@@ -482,8 +485,11 @@ class ReactiveNav2DNode
 		}
 
 		CTimeLoggerEntry tle(m_profiler, "onDoNavigation");
-
-		m_reactive_nav_engine.navigationStep();
+		
+		if(m_have_waypoint_seq)
+		{
+			m_reactive_nav_engine.navigationStep();
+		}
 	}
 
 	void onOdometryReceived(const nav_msgs::Odometry& msg)
@@ -525,6 +531,13 @@ class ReactiveNav2DNode
 
 			m_wps.waypoints.push_back(waypoint);
 		}
+
+		{
+			std::lock_guard<std::mutex> csl(m_reactive_nav_engine_cs);
+			ROS_INFO_STREAM("Nav Enge Navigate waypoints");
+			m_reactive_nav_engine.navigateWaypoints(m_wps);
+		}
+
 	}
 	void onWaypointSeqReceived(const mrpt_msgs::WaypointSequence& wps)
 	{
