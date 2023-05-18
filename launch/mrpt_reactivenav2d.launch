@@ -4,6 +4,9 @@
     <arg name="topic_obstacles" default="/map_pointcloud"/>
     <arg name="topic_cmd_vel" default="/cmd_vel"/>
     <arg name="topic_wp_seq" default="/waypoints" />
+
+    <arg name="save_nav_log" default="true" />
+
 	<!-- Node: Reactive Navigator -->
 	<node pkg="mrpt_reactivenav2d" type="mrpt_reactivenav2d_node" name="mrpt_reactivenav2d_node" output="screen">
 		<!-- *Important*: This external config file holds the most important navigation settings -->
@@ -12,6 +15,8 @@
         <param name="topic_obstacales" value="$(arg topic_obstacles)"/>
         <param name="topic_wp_seq" value="$(arg topic_wp_seq)"/>
         <param name="topic_cmd_vel" value="$(arg topic_cmd_vel)"/>
+		
+        <param name="save_nav_log" value="$(arg save_nav_log)"/>
 
 		<!-- Robot shape: Load from geometry_msgs::Polygon topic -->
 		<param name="topic_robot_shape" value="/chassis_polygon" />
