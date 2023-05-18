@@ -13,7 +13,7 @@ TPS_Astar_Nav_Node::TPS_Astar_Nav_Node(int argc, char** argv):
                 m_start_vel(mrpt::math::TTwist2D(0.0, 0.0, 0.0)),
                 m_debug(true),
                 m_gui_mrpt(true),
-                m_nav_period(0.050),
+                m_nav_period(1.00),
                 m_nav_engine_init(false),
                 m_path_plan_done(false),
                 m_motion_trigger_timeout(0.0),
@@ -63,6 +63,9 @@ TPS_Astar_Nav_Node::TPS_Astar_Nav_Node(int argc, char** argv):
 
     m_localn.param("topic_cmd_vel_pub", m_pub_cmd_vel_str, m_pub_cmd_vel_str);
     m_pub_cmd_vel = m_nh.advertise<geometry_msgs::Twist>(m_pub_cmd_vel_str, 1);
+
+    m_localn.param("topic_wp_seq_pub", m_pub_wp_seq_str, m_pub_wp_seq_str);
+    m_pub_wp_seq = m_nh.advertise<mrpt_msgs::WaypointSequence>(m_pub_wp_seq_str,1);
 
     // Init timers:
     m_timer_run_nav = m_nh.createTimer(ros::Duration(m_nav_period), &TPS_Astar_Nav_Node::onDoNavigation, this);
@@ -127,6 +130,11 @@ void TPS_Astar_Nav_Node::publish_cmd_vel(const geometry_msgs::Twist& cmd_vel)
 {
     ROS_INFO_STREAM("Publishing velocity command"<<cmd_vel);
     m_pub_cmd_vel.publish(cmd_vel);
+}
+
+void TPS_Astar_Nav_Node::publish_waypoint_sequence(const mrpt_msgs::WaypointSequence& wps)
+{
+    m_pub_wp_seq.publish(wps);
 }
 
 void TPS_Astar_Nav_Node::init3DDebug()
@@ -467,28 +475,57 @@ bool TPS_Astar_Nav_Node::do_path_plan()
 
     selfdriving::refine_trajectory(plannedPath, pathEdges, planner_input.ptgs);
 
-    size_t N = pathEdges.size();
-    int i = 0;
-    for(const auto& edge: pathEdges)
+    m_wps_msg = mrpt_msgs::WaypointSequence();
+    if(plan.success)
     {
-        std::cout<<"******************************** Here 1\n";
-        const auto& goal_state = edge->stateTo;
-        std::cout<< "Waypoint: x = "<<goal_state.pose.x<<", y= "<<goal_state.pose.y<<std::endl;
-        if(i < (int)N-1)
+        size_t N = pathEdges.size();
+        int i = 0;
+        for(const auto& edge: pathEdges)
         {
-            selfdriving::Waypoint wp(goal_state.pose.x, goal_state.pose.y, 1, false, 0.0, 1.0);
-            m_waypts.waypoints.push_back(wp);
-        }
-        else
-        {
-            selfdriving::Waypoint wp(goal_state.pose.x, goal_state.pose.y, 0.5,false, goal_state.pose.phi, 0.0);
-            m_waypts.waypoints.push_back(wp);
-        }
-        i++;
-    }
+            std::cout<<"******************************** Here 1\n";
+            const auto& goal_state = edge->stateTo;
+            std::cout<< "Waypoint: x = "<<goal_state.pose.x<<", y= "<<goal_state.pose.y<<std::endl;
+            if(i < (int)N-1)
+            {
+                auto wp_msg = mrpt_msgs::Waypoint();
+                wp_msg.target.position.x = goal_state.pose.x;
+                wp_msg.target.position.y = goal_state.pose.y;
+                wp_msg.target.position.z = 0.0;
+                wp_msg.target.orientation.x = 0.0;
+                wp_msg.target.orientation.y = 0.0;
+                wp_msg.target.orientation.z = 0.0;
+                wp_msg.target.orientation.w = 0.0;
+                wp_msg.allow_skip = true;
 
-    std::cout<<"Total waypoints = "<<m_waypts.waypoints.size()<<std::endl;
+                m_wps_msg.waypoints.push_back(wp_msg);
+            }
+            else
+            {
+                auto wp_msg = mrpt_msgs::Waypoint();
+                wp_msg.target.position.x = goal_state.pose.x;
+                wp_msg.target.position.y = goal_state.pose.y;
+                wp_msg.target.position.z = 0.0;
+                tf2::Quaternion quaternion;
+                quaternion.setRPY(0.0, 0.0, goal_state.pose.phi);
+                wp_msg.target.orientation.x = quaternion.x();
+                wp_msg.target.orientation.y = quaternion.y();
+                wp_msg.target.orientation.z = quaternion.z();
+                wp_msg.target.orientation.w = quaternion.w();
+                wp_msg.allow_skip = false;
+
+                m_wps_msg.waypoints.push_back(wp_msg);
+            }
+            i++;
+        }
+
+        std::cout<<"Total waypoints = "<<m_waypts.waypoints.size()<<std::endl;
+    }
     return plan.success;
+}
+
+mrpt_msgs::WaypointSequence TPS_Astar_Nav_Node::convertPathtoWpMsg(selfdriving::WaypointSequence& wps)
+{
+    
 }
 
 selfdriving::VehicleLocalizationState TPS_Astar_Nav_Node::get_localization_state()
@@ -509,62 +546,67 @@ mrpt::maps::CPointsMap::Ptr TPS_Astar_Nav_Node::get_current_obstacles()
 
 void TPS_Astar_Nav_Node::onDoNavigation(const ros::TimerEvent&)
 {
-    if(m_obstacle_src && m_localization_pose.valid)
+    if(m_path_plan_done)
     {
-        std::call_once(m_init_nav_flag,[this]() {this->initializeNavigator();});
+        publish_waypoint_sequence(m_wps_msg);
     }
+    
+    // if(m_obstacle_src && m_localization_pose.valid)
+    // {
+    //     std::call_once(m_init_nav_flag,[this]() {this->initializeNavigator();});
+    // }
 
-    if(m_nav_engine_init)
-    {
-        try
-	    {
-		    m_nav_engine->navigation_step();
-	    }
-	    catch (const std::exception& e)
-	    {
-		    std::cerr << "[TPS_Astar_Nav_Node] Exception:" << e.what() << std::endl;
-		    return;
-	    }
+    // if(m_nav_engine_init)
+    // {
+    //     try
+	//     {
+	// 	    m_nav_engine->navigation_step();
+	//     }
+	//     catch (const std::exception& e)
+	//     {
+	// 	    std::cerr << "[TPS_Astar_Nav_Node] Exception:" << e.what() << std::endl;
+	// 	    return;
+	//     }
         
-    }
+    // }
 }
 
 void TPS_Astar_Nav_Node::checkEnqueuedMotionCmds(const ros::TimerEvent&)
 {
-    if(m_odometry.valid) // && m_jackal_robot->enqeued_motion_pending())
-    {
-        auto& odo = m_odometry.odometry;
-        ROS_INFO_STREAM("Odo: "<<  odo.asString());
-        auto& pose = m_localization_pose.pose;
-        ROS_INFO_STREAM("Pose: "<< pose.asString());
-        ROS_INFO_STREAM("Trigger Pose "<< m_motion_trigger_pose.asString());
-        if(std::abs(odo.x - m_motion_trigger_pose.x) < m_motion_trigger_tolerance.x &&
-           std::abs(odo.y - m_motion_trigger_pose.y) < m_motion_trigger_tolerance.y &&
-           std::abs(odo.phi - m_motion_trigger_pose.phi) < m_motion_trigger_tolerance.phi)
-        {
-            std::lock_guard<std::mutex> csl(m_jackal_robot->m_enqueued_motion_mutex);
-            //ROS_INFO_STREAM("Enqueued motion fired");
-            on_enqueued_motion_fired();
-            m_jackal_robot->m_enqueued_motion_trigger_odom = m_odometry;
-            ROS_INFO_STREAM("calling change speeds upon pend action fired");
-            //m_jackal_robot->changeSpeeds(*m_next_cmd);
-            ROS_INFO_STREAM("Change speeds complete");
-            m_NOP_cmd = m_next_cmd;
-            ROS_INFO_STREAM("Next NOP command set");
-        }
-        else
-        {
-            ROS_INFO_STREAM("[TPS_Astar_Nav_Node] Enqueued motion timer = "<<m_enq_motion_timer);
-            m_enq_motion_timer += m_enq_cmd_check_time;
-            if(m_jackal_robot->enqeued_motion_pending() &&
-              m_enq_motion_timer > m_motion_trigger_timeout)
-            {
-                std::lock_guard<std::mutex> csl(m_jackal_robot->m_enqueued_motion_mutex);
-                on_enqueued_motion_timeout();
-                m_enq_motion_timer = 0.0;
-            }
-        }
-    }
+    // if(m_odometry.valid) // && m_jackal_robot->enqeued_motion_pending())
+    // {
+    //     auto& odo = m_odometry.odometry;
+    //     ROS_INFO_STREAM("Odo: "<<  odo.asString());
+    //     auto& pose = m_localization_pose.pose;
+    //     ROS_INFO_STREAM("Pose: "<< pose.asString());
+    //     ROS_INFO_STREAM("Trigger Pose "<< m_motion_trigger_pose.asString());
+    //     if(std::abs(odo.x - m_motion_trigger_pose.x) < m_motion_trigger_tolerance.x &&
+    //        std::abs(odo.y - m_motion_trigger_pose.y) < m_motion_trigger_tolerance.y &&
+    //        std::abs(odo.phi - m_motion_trigger_pose.phi) < m_motion_trigger_tolerance.phi)
+    //     {
+    //         std::lock_guard<std::mutex> csl(m_jackal_robot->m_enqueued_motion_mutex);
+    //         //ROS_INFO_STREAM("Enqueued motion fired");
+    //         on_enqueued_motion_fired();
+    //         m_jackal_robot->m_enqueued_motion_trigger_odom = m_odometry;
+    //         ROS_INFO_STREAM("calling change speeds upon pend action fired");
+    //         //m_jackal_robot->changeSpeeds(*m_next_cmd);
+    //         ROS_INFO_STREAM("Change speeds complete");
+    //         m_NOP_cmd = m_next_cmd;
+    //         ROS_INFO_STREAM("Next NOP command set");
+    //     }
+    //     else
+    //     {
+    //         ROS_INFO_STREAM("[TPS_Astar_Nav_Node] Enqueued motion timer = "<<m_enq_motion_timer);
+    //         m_enq_motion_timer += m_enq_cmd_check_time;
+    //         if(m_jackal_robot->enqeued_motion_pending() &&
+    //           m_enq_motion_timer > m_motion_trigger_timeout)
+    //         {
+    //             std::lock_guard<std::mutex> csl(m_jackal_robot->m_enqueued_motion_mutex);
+    //             on_enqueued_motion_timeout();
+    //             m_enq_motion_timer = 0.0;
+    //         }
+    //     }
+    // }
 }
 
 

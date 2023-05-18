@@ -38,7 +38,10 @@
 #include <geometry_msgs/PoseArray.h>
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
 #include <geometry_msgs/Twist.h>
+#include <geometry_msgs/PoseStamped.h>
 #include <nav_msgs/Odometry.h>
+#include <mrpt_msgs/Waypoint.h>
+#include <mrpt_msgs/WaypointSequence.h>
 #include <sensor_msgs/PointCloud.h>
 #include "tps_astar_nav_node/tps_navigator.h"
 
@@ -66,6 +69,7 @@ class TPS_Astar_Nav_Node
     std::once_flag m_init_flag; //!< Perform initialization once
     std::once_flag m_map_received_flag; //!< Receive map once
     mrpt::maps::CPointsMap::Ptr m_grid_map; //!< DS for the Gridmap
+	mrpt_msgs::WaypointSequence m_wps_msg;
 
 
     mrpt::math::TPose2D m_nav_goal; //!< Navigation Goal position
@@ -86,12 +90,14 @@ class TPS_Astar_Nav_Node
 	ros::Subscriber m_sub_odometry; //!< Subscriber to Odometry info from robot
 	ros::Subscriber m_sub_obstacles; //!< Subsciber to obstacle map info
 	ros::Publisher  m_pub_cmd_vel; //!< Publisher for velocity commands for the robot
+	ros::Publisher  m_pub_wp_seq; //!< Publisher for Waypoint sequence
 
 	std::string m_sub_map_str; //!< parameterized name for map subscriber
 	std::string m_sub_localization_str; //!<parameterized name for localization subscriber
 	std::string m_sub_odometry_str; //!< parameterized name for odometry subscriber
 	std::string m_sub_obstacles_str; //!< parameterized name for obsctacle source map subscriber
 	std::string m_pub_cmd_vel_str; //!< parameterized name for velocity command publisher
+	std::string m_pub_wp_seq_str;  //!< parameterized name for waypoint sequence publisher
 
 	std::mutex m_obstacles_cs; //!< mutex for obstacle data
 	std::mutex m_localization_cs; //!< mutex for localization data
@@ -375,12 +381,13 @@ class TPS_Astar_Nav_Node
 	void callbackOdometry(const nav_msgs::Odometry& _odom);
 	void callbackObstacles(const sensor_msgs::PointCloud& _pc);
 	/* update methods*/
-	void updateMap(const nav_msgs::OccupancyGrid& msg);
+	void updateMap(const nav_msgs::OccupancyGrid& _msg);
 	void updateLocalization(const geometry_msgs::PoseWithCovarianceStamped& _pose);
 	void updateOdom(const nav_msgs::Odometry& _odom);
 	void updateObstacles(const sensor_msgs::PointCloud& _pc);
 
 	bool do_path_plan();
+	mrpt_msgs::WaypointSequence convertPathtoWpMsg(selfdriving::WaypointSequence& _wps);
 	void init3DDebug();
 
 	/*Getter functions for Robot interface*/
@@ -388,6 +395,7 @@ class TPS_Astar_Nav_Node
 	selfdriving::VehicleOdometryState get_odometry_state();
 	mrpt::maps::CPointsMap::Ptr get_current_obstacles();
 	void publish_cmd_vel(const geometry_msgs::Twist& cmd_vel);
+	void publish_waypoint_sequence(const mrpt_msgs::WaypointSequence& wps);
 
 	/* Navigator methods*/
 	void initializeNavigator();

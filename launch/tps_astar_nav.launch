@@ -7,7 +7,8 @@
         <arg name="topic_localization_sub" default="/mrpt_pose"/>
         <arg name="topic_odometry_sub" default="odom"/>
         <arg name="topic_obstacles_sub" default="/map_pointcloud"/>
-        <arg name="topic_cmd_vel_pub" default="/cmd_vel"/>
+        <arg name="topic_cmd_vel_pub" default="/enq_motion"/>
+        <arg name="topic_wp_seq_pub" default="/waypoints" />
 
 	<!-- Node: TP Space A* Navigator builder -->
 	<node pkg="tps_astar_nav" type="tps_astar_nav_node" name="tps_astar_nav_node" output="screen">
@@ -26,6 +27,7 @@
         <param name="topic_odometry_sub" value="$(arg topic_odometry_sub)"/>
         <param name="topic_obstacles_sub" value="$(arg topic_obstacles_sub)"/>
         <param name="topic_cmd_vel_pub" value="$(arg topic_cmd_vel_pub)"/>
+        <param name="topic_wp_seq_pub" value="$(arg topic_wp_seq_pub)"/>
 	</node>
 
 </launch>

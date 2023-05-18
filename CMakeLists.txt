@@ -18,6 +18,7 @@ find_package(catkin REQUIRED COMPONENTS
   visualization_msgs
   nav_msgs
   sensor_msgs
+  mrpt_msgs
 )
 
 add_subdirectory(submodules)
@@ -78,6 +79,7 @@ CATKIN_DEPENDS
     visualization_msgs
     nav_msgs
     sensor_msgs
+    mrpt_msgs
 #  DEPENDS system_lib
 )
 
