@@ -46,6 +46,8 @@
 #include <ros/ros.h>
 #include <sensor_msgs/LaserScan.h>
 #include <sensor_msgs/PointCloud.h>
+#include <mrpt_msgs/Waypoint.h>
+#include <mrpt_msgs/WaypointSequence.h>
 
 #include <mutex>
 
@@ -77,6 +79,8 @@ class ReactiveNav2DNode
 
 	/** @name ROS pubs/subs
 	 *  @{ */
+	ros::Subscriber m_sub_odometry;
+	ros::Subscriber m_sub_wp_seq;
 	ros::Subscriber m_sub_nav_goal;
 	ros::Subscriber m_sub_local_obs;
 	ros::Subscriber m_sub_robot_shape;
@@ -91,8 +95,11 @@ class ReactiveNav2DNode
 	double m_nav_period;
 
 	std::string m_pub_topic_reactive_nav_goal;
+	std::string m_pub_topic_cmd_vel;
 	std::string m_sub_topic_local_obstacles;
 	std::string m_sub_topic_robot_shape;
+	std::string m_sub_topic_wp_seq;
+	std::string m_sub_topic_odometry;
 
 	std::string m_frameid_reference;
 	std::string m_frameid_robot;
@@ -259,6 +266,9 @@ class ReactiveNav2DNode
 		  m_pub_topic_reactive_nav_goal("reactive_nav_goal"),
 		  m_sub_topic_local_obstacles("local_map_pointcloud"),
 		  m_sub_topic_robot_shape(""),
+		  m_sub_topic_wp_seq("/waypoints"),
+		  m_sub_topic_odometry("/odom"),
+		  m_pub_topic_cmd_vel("/cmd_vel"),
 		  m_frameid_reference("map"),
 		  m_frameid_robot("base_link"),
 		  m_save_nav_log(false),
@@ -279,6 +289,18 @@ class ReactiveNav2DNode
 		m_localn.param(
 			"topic_robot_shape", m_sub_topic_robot_shape,
 			m_sub_topic_robot_shape);
+
+		m_localn.param(
+			"topic_wp_seq", m_sub_topic_wp_seq, m_sub_topic_wp_seq);
+		m_localn.param(
+			"topic_odometry", m_sub_topic_odometry, m_sub_topic_odometry);
+		m_localn.param(
+			"topic_cmd_vel", m_pub_topic_cmd_vel, m_pub_topic_cmd_vel);
+		m_localn.param(
+			"topic_obstacales", m_sub_topic_local_obstacles, 
+			m_sub_topic_local_obstacles);
+
+
 		m_localn.param("save_nav_log", m_save_nav_log, m_save_nav_log);
 
 		ROS_ASSERT(m_nav_period > 0);
@@ -328,10 +350,18 @@ class ReactiveNav2DNode
 
 		// Init ROS publishers:
 		// -----------------------
-		m_pub_cmd_vel = m_nh.advertise<geometry_msgs::Twist>("cmd_vel", 1);
+		m_pub_cmd_vel = m_nh.advertise<geometry_msgs::Twist>(m_pub_topic_cmd_vel, 1);
 
 		// Init ROS subs:
 		// -----------------------
+		// odometry
+		m_sub_odometry = m_nh.subscribe(
+			m_sub_topic_odometry, 1,
+			&ReactiveNav2DNode::onOdometryReceived, this);
+		// waypoints
+		m_sub_wp_seq = m_nh.subscribe(
+			m_sub_topic_wp_seq, 1,
+			&ReactiveNav2DNode::onWaypointSeqReceived, this);	
 		// "/reactive_nav_goal", "/move_base_simple/goal" (
 		// geometry_msgs/PoseStamped )
 		m_sub_nav_goal = m_nh.subscribe<geometry_msgs::PoseStamped>(
@@ -405,6 +435,16 @@ class ReactiveNav2DNode
 		CTimeLoggerEntry tle(m_profiler, "onDoNavigation");
 
 		m_reactive_nav_engine.navigationStep();
+	}
+
+	void onOdometryReceived(const nav_msgs::Odometry& odo)
+	{
+		ROS_INFO_STREAM("Odometry received");
+	}
+
+	void onWaypointSeqReceived(const mrpt_msgs::WaypointSequence& wps)
+	{
+		ROS_INFO_STREAM("Waypoint sequence recieved");
 	}
 
 	void onRosGoalReceived(const geometry_msgs::PoseStampedConstPtr& trg_ptr)
