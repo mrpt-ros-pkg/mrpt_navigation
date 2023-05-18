@@ -2,6 +2,7 @@
 #include <tf2/LinearMath/Matrix3x3.h>
 #include <tf2/LinearMath/Quaternion.h>
 #include <cmath>
+#include <selfdriving/algos/viz.h>
 
 
 TPS_Astar_Nav_Node::TPS_Astar_Nav_Node(int argc, char** argv):
@@ -474,6 +475,21 @@ bool TPS_Astar_Nav_Node::do_path_plan()
         plan.motionTree.backtrack_path(*plan.bestNodeId);
 
     selfdriving::refine_trajectory(plannedPath, pathEdges, planner_input.ptgs);
+
+
+    // Show plan in a GUI for debugging
+    MRPT_TODO("Define a ROS param to conditionally enable A* GUI plot");
+    if (1)
+    {
+        selfdriving::VisualizationOptions vizOpts;
+
+        vizOpts.renderOptions.highlight_path_to_node_id = plan.bestNodeId;
+        vizOpts.renderOptions.color_normal_edge         = {0xb0b0b0, 0x20};  // RGBA
+        vizOpts.renderOptions.width_normal_edge = 0; // hide all edges except best path
+        vizOpts.gui_modal = false; // leave GUI open in a background thread
+
+        selfdriving::viz_nav_plan(plan, vizOpts, planner->costEvaluators_);
+    }
 
     m_wps_msg = mrpt_msgs::WaypointSequence();
     if(plan.success)
