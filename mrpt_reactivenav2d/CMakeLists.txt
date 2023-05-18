@@ -21,6 +21,7 @@ find_package(catkin REQUIRED COMPONENTS
 ## System dependencies are found with CMake's conventions
 find_package(mrpt-ros1bridge REQUIRED)
 find_package(mrpt-nav REQUIRED)
+find_package(mrpt-obs REQUIRED)
 find_package(mrpt-kinematics REQUIRED)
 
 message(STATUS "MRPT_VERSION: ${MRPT_VERSION}")
@@ -93,6 +94,7 @@ add_executable(mrpt_reactivenav2d_node src/mrpt_reactivenav2d_node.cpp)
 target_link_libraries(mrpt_reactivenav2d_node
   ${catkin_LIBRARIES}
   mrpt::nav
+  mrpt::obs
   mrpt::kinematics
   mrpt::ros1bridge
 )

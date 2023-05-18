@@ -37,6 +37,7 @@
 #include <mrpt/kinematics/CVehicleVelCmd_DiffDriven.h>
 #include <mrpt/maps/CSimplePointsMap.h>
 #include <mrpt/nav/reactive/CReactiveNavigationSystem.h>
+#include <mrpt/nav/reactive/TWaypoint.h>
 #include <mrpt/ros1bridge/point_cloud.h>
 #include <mrpt/ros1bridge/pose.h>
 #include <mrpt/ros1bridge/time.h>
@@ -48,12 +49,15 @@
 #include <sensor_msgs/PointCloud.h>
 #include <mrpt_msgs/Waypoint.h>
 #include <mrpt_msgs/WaypointSequence.h>
+#include <mrpt/obs/CObservationOdometry.h>
 
 #include <mutex>
 
 #include "tf2_geometry_msgs/tf2_geometry_msgs.h"
 #include "tf2_ros/buffer.h"
 #include "tf2_ros/transform_listener.h"
+#include <tf2/LinearMath/Matrix3x3.h>
+#include <tf2/LinearMath/Quaternion.h>
 
 using namespace mrpt::nav;
 using mrpt::maps::CSimplePointsMap;
@@ -91,6 +95,7 @@ class ReactiveNav2DNode
 	/** @} */
 
 	bool m_1st_time_init;  //!< Reactive initialization done?
+	bool m_have_waypoint_seq; //!< have a waypoint sequence to navigate through? 
 	double m_target_allowed_distance;
 	double m_nav_period;
 
@@ -108,8 +113,11 @@ class ReactiveNav2DNode
 
 	ros::Timer m_timer_run_nav;
 
+	mrpt::obs::CObservationOdometry m_odometry;
+	mrpt::nav::TWaypointSequence m_wps;
 	CSimplePointsMap m_last_obstacles;
 	std::mutex m_last_obstacles_cs;
+	std::mutex m_odometry_cs;
 
 	struct MyReactiveInterface : public mrpt::nav::CRobot2NavInterface
 	{
@@ -261,6 +269,7 @@ class ReactiveNav2DNode
 		  m_nh(),
 		  m_localn("~"),
 		  m_1st_time_init(false),
+		  m_have_waypoint_seq(false),
 		  m_target_allowed_distance(0.40f),
 		  m_nav_period(0.100),
 		  m_pub_topic_reactive_nav_goal("reactive_nav_goal"),
@@ -346,6 +355,46 @@ class ReactiveNav2DNode
 			ros::Duration(3.0).sleep();
 			for (size_t i = 0; i < 100; i++) ros::spinOnce();
 			ROS_INFO("Wait done.");
+		}
+		else
+		{
+			// Load robot shape: 1/2 polygon
+    		// ---------------------------------------------
+			CConfigFile c(cfg_file_reactive);
+			std::string s= "CReactiveNavigationSystem";
+
+    		std::vector<float> xs, ys;
+    		c.read_vector(s, "RobotModel_shape2D_xs", std::vector<float>(), xs, false);
+    		c.read_vector(s, "RobotModel_shape2D_ys", std::vector<float>(), ys, false);
+    		ASSERTMSG_(
+        			xs.size() == ys.size(),
+			"Config parameters `RobotModel_shape2D_xs` and `RobotModel_shape2D_ys` "
+			"must have the same length!");
+			if (!xs.empty())
+			{
+				mrpt::math::CPolygon poly;
+				poly.resize(xs.size());
+				for (size_t i = 0; i < xs.size(); i++)
+				{
+					poly[i].x = xs[i];
+					poly[i].y = ys[i];
+				}
+
+				std::lock_guard<std::mutex> csl(m_reactive_nav_engine_cs);
+				m_reactive_nav_engine.changeRobotShape(poly);
+			}
+
+			// Load robot shape: 2/2 circle
+			// ---------------------------------------------
+			if (const double robot_radius =
+					c.read_double(s, "RobotModel_circular_shape_radius", -1.0, false);
+				robot_radius > 0)
+			{
+				std::lock_guard<std::mutex> csl(m_reactive_nav_engine_cs);
+				m_reactive_nav_engine.changeRobotCircularShapeRadius(robot_radius);
+			}
+
+			
 		}
 
 		// Init ROS publishers:
@@ -437,14 +486,53 @@ class ReactiveNav2DNode
 		m_reactive_nav_engine.navigationStep();
 	}
 
-	void onOdometryReceived(const nav_msgs::Odometry& odo)
+	void onOdometryReceived(const nav_msgs::Odometry& msg)
 	{
-		ROS_INFO_STREAM("Odometry received");
+		std::lock_guard<std::mutex> csl(m_odometry_cs);
+		tf2::Quaternion quat(msg.pose.pose.orientation.x, 
+							msg.pose.pose.orientation.y, 
+							msg.pose.pose.orientation.z, 
+							msg.pose.pose.orientation.w);
+    	tf2::Matrix3x3 mat(quat);
+    	double roll, pitch, yaw;
+    	mat.getRPY(roll, pitch, yaw);
+    	m_odometry.odometry= mrpt::poses::CPose2D(msg.pose.pose.position.x,
+							 					  msg.pose.pose.position.y, yaw);
+
+		m_odometry.velocityLocal.vx= msg.twist.twist.linear.x;
+		m_odometry.velocityLocal.vy= msg.twist.twist.linear.y;
+		m_odometry.velocityLocal.omega= msg.twist.twist.angular.z;
+		m_odometry.hasVelocities = true;
+
+		ROS_INFO_STREAM("Odometry updated");
 	}
 
+	void updateWaypointSequence(const mrpt_msgs::WaypointSequence& wps)
+	{
+
+		for(const auto& wp:wps.waypoints)
+		{
+			tf2::Quaternion quat(wp.target.orientation.x, 
+								 wp.target.orientation.y, 
+								 wp.target.orientation.z, 
+								 wp.target.orientation.w);
+			tf2::Matrix3x3 mat(quat);
+			double roll, pitch, yaw;
+			mat.getRPY(roll, pitch, yaw);
+			const auto& waypoint = mrpt::nav::TWaypoint(wp.target.position.x, 
+								wp.target.position.y, m_target_allowed_distance,
+								wp.allow_skip, yaw);
+
+			m_wps.waypoints.push_back(waypoint);
+		}
+	}
 	void onWaypointSeqReceived(const mrpt_msgs::WaypointSequence& wps)
 	{
-		ROS_INFO_STREAM("Waypoint sequence recieved");
+		if(!m_have_waypoint_seq)
+		{
+			updateWaypointSequence(wps);
+			m_have_waypoint_seq = true;
+		}
 	}
 
 	void onRosGoalReceived(const geometry_msgs::PoseStampedConstPtr& trg_ptr)
