@@ -3,20 +3,20 @@
 # It is safe to use coarse lattice values, since a post-processing path
 # refining stage will normally improve the result, with a very reduced overall
 # time cost:
-grid_resolution_xy: 0.25    # [meters]
-grid_resolution_yaw: 20.0   # [deg]
+grid_resolution_xy: 0.30    # [meters]
+grid_resolution_yaw: 25.0   # [deg]
 
 # find_feasible_paths_to_neighbors() params:
 # Note: path refining will always use *all* PTG trajectories, despite this value
-max_ptg_trajectories_to_explore: 41
+max_ptg_trajectories_to_explore: 51
 max_ptg_speeds_to_explore: 1
-ptg_sample_timestamps: [0.1]  # seconds
+ptg_sample_timestamps: [0.5, 1.0]  # seconds
 
-heuristic_heading_weight: 0.40
+heuristic_heading_weight: 0.25
 SE2_metricAngleWeight: 1.0
 pathInterpolatedSegments: 5
 
-maximumComputationTime: 10.0  # [seconds]
+maximumComputationTime: 15.0  # [seconds]
 
 #saveDebugVisualizationDecimation: 1
 debugVisualizationShowEdgeCosts: true
