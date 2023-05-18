@@ -525,9 +525,12 @@ class ReactiveNav2DNode
 			tf2::Matrix3x3 mat(quat);
 			double roll, pitch, yaw;
 			mat.getRPY(roll, pitch, yaw);
-			const auto& waypoint = mrpt::nav::TWaypoint(wp.target.position.x, 
+			auto waypoint = mrpt::nav::TWaypoint(wp.target.position.x, 
 								wp.target.position.y, m_target_allowed_distance,
-								wp.allow_skip, yaw);
+								wp.allow_skip);
+
+			if (yaw==yaw) // regular number, not NAN
+				waypoint.target_heading = yaw;
 
 			m_wps.waypoints.push_back(waypoint);
 		}
