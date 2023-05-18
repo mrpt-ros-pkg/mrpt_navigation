@@ -218,7 +218,7 @@ void TPS_Astar_Nav_Node::updateObstacles(const sensor_msgs::PointCloud& _pc)
     m_obstacle_src = std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(
                         std::make_shared<mrpt::maps::CSimplePointsMap>(point_cloud));
     
-    ROS_INFO_STREAM("Obstacles update complete"); 
+    //ROS_INFO_STREAM("Obstacles update complete"); 
 }
 
 
@@ -479,54 +479,41 @@ bool TPS_Astar_Nav_Node::do_path_plan()
     if(plan.success)
     {
         size_t N = pathEdges.size();
-        int i = 0;
         for(const auto& edge: pathEdges)
         {
-            std::cout<<"******************************** Here 1\n";
             const auto& goal_state = edge->stateTo;
             std::cout<< "Waypoint: x = "<<goal_state.pose.x<<", y= "<<goal_state.pose.y<<std::endl;
-            if(i < (int)N-1)
-            {
-                auto wp_msg = mrpt_msgs::Waypoint();
-                wp_msg.target.position.x = goal_state.pose.x;
-                wp_msg.target.position.y = goal_state.pose.y;
-                wp_msg.target.position.z = 0.0;
-                wp_msg.target.orientation.x = 0.0;
-                wp_msg.target.orientation.y = 0.0;
-                wp_msg.target.orientation.z = 0.0;
-                wp_msg.target.orientation.w = 0.0;
-                wp_msg.allow_skip = true;
+            auto wp_msg = mrpt_msgs::Waypoint();
+            wp_msg.target.position.x = goal_state.pose.x;
+            wp_msg.target.position.y = goal_state.pose.y;
+            wp_msg.target.position.z = 0.0;
+            wp_msg.target.orientation.x = 0.0;
+            wp_msg.target.orientation.y = 0.0;
+            wp_msg.target.orientation.z = 0.0;
+            wp_msg.target.orientation.w = 0.0;
+            wp_msg.allow_skip = true;
 
-                m_wps_msg.waypoints.push_back(wp_msg);
-            }
-            else
-            {
-                auto wp_msg = mrpt_msgs::Waypoint();
-                wp_msg.target.position.x = goal_state.pose.x;
-                wp_msg.target.position.y = goal_state.pose.y;
-                wp_msg.target.position.z = 0.0;
-                tf2::Quaternion quaternion;
-                quaternion.setRPY(0.0, 0.0, goal_state.pose.phi);
-                wp_msg.target.orientation.x = quaternion.x();
-                wp_msg.target.orientation.y = quaternion.y();
-                wp_msg.target.orientation.z = quaternion.z();
-                wp_msg.target.orientation.w = quaternion.w();
-                wp_msg.allow_skip = false;
-
-                m_wps_msg.waypoints.push_back(wp_msg);
-            }
-            i++;
+            m_wps_msg.waypoints.push_back(wp_msg);
         }
 
-        std::cout<<"Total waypoints = "<<m_waypts.waypoints.size()<<std::endl;
+        auto wp_msg = mrpt_msgs::Waypoint();
+        wp_msg.target.position.x = m_nav_goal.x;
+        wp_msg.target.position.y = m_nav_goal.y;
+        wp_msg.target.position.z = 0.0;
+        tf2::Quaternion quaternion;
+        quaternion.setRPY(0.0, 0.0, m_nav_goal.phi);
+        wp_msg.target.orientation.x = quaternion.x();
+        wp_msg.target.orientation.y = quaternion.y();
+        wp_msg.target.orientation.z = quaternion.z();
+        wp_msg.target.orientation.w = quaternion.w();
+        wp_msg.allow_skip = false;
+
+        m_wps_msg.waypoints.push_back(wp_msg);
+
     }
     return plan.success;
 }
 
-mrpt_msgs::WaypointSequence TPS_Astar_Nav_Node::convertPathtoWpMsg(selfdriving::WaypointSequence& wps)
-{
-    
-}
 
 selfdriving::VehicleLocalizationState TPS_Astar_Nav_Node::get_localization_state()
 { 	
