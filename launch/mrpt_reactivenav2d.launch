@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<launch>
+    <arg name="topic_odometry" default="/odom"/>
+    <arg name="topic_obstacles" default="/map_pointcloud"/>
+    <arg name="topic_cmd_vel" default="/cmd_vel"/>
+    <arg name="topic_wp_seq" default="/waypoints" />
+	<!-- Node: Reactive Navigator -->
+	<node pkg="mrpt_reactivenav2d" type="mrpt_reactivenav2d_node" name="mrpt_reactivenav2d_node" output="screen">
+		<!-- *Important*: This external config file holds the most important navigation settings -->
+		<param name="cfg_file_reactive" value="$(find tps_astar_nav)/configs/ini/reactive2d_config.ini"/> 
+        <param name="topic_odometry" value="$(arg topic_odometry)"/>
+        <param name="topic_obstacales" value="$(arg topic_obstacles)"/>
+        <param name="topic_wp_seq" value="$(arg topic_wp_seq)"/>
+        <param name="topic_cmd_vel" value="$(arg topic_cmd_vel)"/>
+
+		<!-- Robot shape: Load from geometry_msgs::Polygon topic -->
+		<param name="topic_robot_shape" value="/chassis_polygon" />
+	</node>
+
+</launch>
+
