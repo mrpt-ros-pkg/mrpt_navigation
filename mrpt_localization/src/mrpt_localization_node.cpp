@@ -86,7 +86,10 @@ void PFLocalizationNode::init()
 	if(param()->init_x || param()->init_y || param()->init_phi)
 	{
 		auto init_pose = mrpt::poses::CPose2D(param()->init_x, param()->init_y, param()->init_phi);
-		initial_pose_ = mrpt::poses::CPosePDFGaussian(init_pose);
+		auto cov = mrpt::math::CMatrixDouble33::Zero();
+		cov(0,0) = cov(1,1) =  mrpt::square(param()->init_std_xy);
+		cov(2,2) = mrpt::square(param()->init_std_phi);
+		initial_pose_ = mrpt::poses::CPosePDFGaussian(init_pose, cov);
 		update_counter_ = 0;
 		state_ = INIT;
 	}
