@@ -959,11 +959,7 @@ void TPS_Navigator::check_new_planner_output()
         _.activePlanPathEdges.clear();
         for (const auto& edge : edges) _.activePlanPathEdges.push_back(*edge);
 
-#if 0
-        const auto traj = selfdriving::plan_to_trajectory(
-            _.activePlanPathEdges, config_.ptgs);
-        selfdriving::save_to_txt(traj, "traj.txt");
-#endif
+
     }
 
     if (this->getMinLoggingLevel() == mrpt::system::LVL_DEBUG)

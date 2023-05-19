@@ -3,6 +3,7 @@
 #include <tf2/LinearMath/Quaternion.h>
 #include <cmath>
 #include <selfdriving/algos/viz.h>
+#include <selfdriving/algos/trajectories.h>
 
 
 TPS_Astar_Nav_Node::TPS_Astar_Nav_Node(int argc, char** argv):
@@ -479,7 +480,7 @@ bool TPS_Astar_Nav_Node::do_path_plan()
 
     // Show plan in a GUI for debugging
     MRPT_TODO("Define a ROS param to conditionally enable A* GUI plot");
-    if (1)
+    if(plan.success)
     {
         selfdriving::VisualizationOptions vizOpts;
 
@@ -491,9 +492,27 @@ bool TPS_Astar_Nav_Node::do_path_plan()
         selfdriving::viz_nav_plan(plan, vizOpts, planner->costEvaluators_);
     }
 
+    // Interpolate so we have many waypoints:
+    selfdriving::trajectory_t interpPath;
+    if(plan.success)
+    {    
+        const double interpPeriod = 0.25; // [s]
+
+        interpPath = selfdriving::plan_to_trajectory(
+            pathEdges, planner_input.ptgs, interpPeriod);
+
+        // Note: trajectory is in local frame of reference 
+        // of plan.originalInput.stateStart.pose
+        // so, correct that relative pose so we keep everything in global frame:
+        const auto &startPose = plan.originalInput.stateStart.pose;
+        for (auto &kv: interpPath)
+            kv.second.state.pose = startPose + kv.second.state.pose;
+    }
+
     m_wps_msg = mrpt_msgs::WaypointSequence();
     if(plan.success)
     {
+#if 0
         size_t N = pathEdges.size();
         for(const auto& edge: pathEdges)
         {
@@ -511,6 +530,24 @@ bool TPS_Astar_Nav_Node::do_path_plan()
 
             m_wps_msg.waypoints.push_back(wp_msg);
         }
+#else
+        for (auto &kv: interpPath)
+        {
+            const auto& goal_state = kv.second.state;
+            std::cout<< "Waypoint: x = "<<goal_state.pose.x<<", y= "<<goal_state.pose.y<<std::endl;
+            auto wp_msg = mrpt_msgs::Waypoint();
+            wp_msg.target.position.x = goal_state.pose.x;
+            wp_msg.target.position.y = goal_state.pose.y;
+            wp_msg.target.position.z = 0.0;
+            wp_msg.target.orientation.x = 0.0;
+            wp_msg.target.orientation.y = 0.0;
+            wp_msg.target.orientation.z = 0.0;
+            wp_msg.target.orientation.w = 0.0;
+            wp_msg.allow_skip = true;
+
+            m_wps_msg.waypoints.push_back(wp_msg);
+        }
+#endif
 
         auto wp_msg = mrpt_msgs::Waypoint();
         wp_msg.target.position.x = m_nav_goal.x;
