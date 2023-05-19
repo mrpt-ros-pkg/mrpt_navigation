@@ -1,7 +1,7 @@
 # For CostEvaluatorCostMap
 resolution: 0.04
-preferredClearanceDistance: 0.90
-maxCost: 9.0
+preferredClearanceDistance: 0.40
+maxCost: 5.0
 
 useAverageOfPath: false
 

@@ -504,7 +504,7 @@ bool TPS_Astar_Nav_Node::do_path_plan(mrpt::math::TPose2D& start, mrpt::math::TP
 #endif
 
     // Show plan in a GUI for debugging
-    if(plan.success && m_gui_mrpt)
+    if(plan.success) // && m_gui_mrpt
     {
         selfdriving::VisualizationOptions vizOpts;
 
