@@ -14,7 +14,7 @@ TPS_Astar_Nav_Node::TPS_Astar_Nav_Node(int argc, char** argv):
                 m_start_pose(mrpt::math::TPose2D(0.0, 0.0, 0.0)),
                 m_start_vel(mrpt::math::TTwist2D(0.0, 0.0, 0.0)),
                 m_debug(true),
-                m_gui_mrpt(true),
+                m_gui_mrpt(false),
                 m_nav_period(1.00),
                 m_nav_engine_init(false),
                 m_path_plan_done(false),
@@ -51,6 +51,10 @@ TPS_Astar_Nav_Node::TPS_Astar_Nav_Node(int argc, char** argv):
     m_start_vel = mrpt::math::TTwist2D(std::stod(vel_str), 0.0, 0.0);
     ROS_INFO_STREAM("[TPS_Astar_Nav_Node]starting velocity ="<< m_start_vel.asString());
 
+    m_localn.param("mrpt_gui", m_gui_mrpt_str, m_gui_mrpt_str);
+    if(!m_gui_mrpt_str.empty()) m_gui_mrpt = stringToBool(m_gui_mrpt_str);
+    else m_gui_mrpt = false;
+
     m_localn.param("topic_map_sub", m_sub_map_str, m_sub_map_str);
     m_sub_map = m_nh.subscribe(m_sub_map_str, 1, &TPS_Astar_Nav_Node::callbackMap, this);
 
@@ -62,6 +66,9 @@ TPS_Astar_Nav_Node::TPS_Astar_Nav_Node(int argc, char** argv):
 
     m_localn.param("topic_obstacles_sub", m_sub_obstacles_str, m_sub_obstacles_str);
     m_sub_obstacles = m_nh.subscribe(m_sub_obstacles_str, 1, &TPS_Astar_Nav_Node::callbackObstacles, this);
+
+    m_localn.param("topic_replan_sub", m_sub_replan_str, m_sub_replan_str);
+    m_sub_replan = m_nh.subscribe(m_sub_replan_str, 1, &TPS_Astar_Nav_Node::callbackReplan, this);
 
     m_localn.param("topic_cmd_vel_pub", m_pub_cmd_vel_str, m_pub_cmd_vel_str);
     m_pub_cmd_vel = m_nh.advertise<geometry_msgs::Twist>(m_pub_cmd_vel_str, 1);
@@ -87,6 +94,11 @@ TPS_Astar_Nav_Node::TPS_Astar_Nav_Node(int argc, char** argv):
 
 }
 
+
+bool TPS_Astar_Nav_Node::stringToBool(const std::string &str) {
+    if(str == "true" || str == "True" || str == "TRUE" || str == "1") return true;
+    if(str == "false" || str == "False" || str == "FALSE" || str == "0") return false;
+}
 template <typename T>
 std::vector<T> TPS_Astar_Nav_Node::processStringParam(const std::string& param_str) 
 {
@@ -126,6 +138,17 @@ void TPS_Astar_Nav_Node::callbackOdometry(const nav_msgs::Odometry& _odom)
 void TPS_Astar_Nav_Node::callbackObstacles(const sensor_msgs::PointCloud& _pc)
 {
     updateObstacles(_pc);
+}
+
+void TPS_Astar_Nav_Node::callbackReplan(const std_msgs::Bool& _flag)
+{
+    auto& pose = m_localization_pose;
+
+    if(pose.valid)
+    {
+        m_path_plan_done = do_path_plan(pose.pose, m_nav_goal);
+    }
+
 }
 
 void TPS_Astar_Nav_Node::publish_cmd_vel(const geometry_msgs::Twist& cmd_vel)
@@ -234,7 +257,7 @@ void TPS_Astar_Nav_Node::updateMap(const nav_msgs::OccupancyGrid& msg)
     ROS_INFO_STREAM("Setting gridmap for planning");
     m_grid_map = std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(obsPts);
 
-    m_path_plan_done = do_path_plan();
+    m_path_plan_done = do_path_plan(m_start_pose, m_nav_goal);
 }
 
 void TPS_Astar_Nav_Node::initializeNavigator()
@@ -349,15 +372,15 @@ void TPS_Astar_Nav_Node::navigateTo(const mrpt::math::TPose2D& target)
     m_nav_engine->request_navigation(m_waypts);
 }
 
-bool TPS_Astar_Nav_Node::do_path_plan()
+bool TPS_Astar_Nav_Node::do_path_plan(mrpt::math::TPose2D& start, mrpt::math::TPose2D& goal)
 {
     ROS_INFO_STREAM("Do path planning");
     auto obs = selfdriving::ObstacleSource::FromStaticPointcloud(m_grid_map);
     selfdriving::PlannerInput planner_input;
 
-    planner_input.stateStart.pose = m_start_pose;
+    planner_input.stateStart.pose = start;
     planner_input.stateStart.vel = m_start_vel;
-    planner_input.stateGoal.state = m_nav_goal;
+    planner_input.stateGoal.state = goal;
     planner_input.obstacles.emplace_back(obs);
     auto bbox = obs->obstacles()->boundingBox();
 
@@ -480,8 +503,7 @@ bool TPS_Astar_Nav_Node::do_path_plan()
 #endif
 
     // Show plan in a GUI for debugging
-    MRPT_TODO("Define a ROS param to conditionally enable A* GUI plot");
-    if(plan.success)
+    if(plan.success && m_gui_mrpt)
     {
         selfdriving::VisualizationOptions vizOpts;
 

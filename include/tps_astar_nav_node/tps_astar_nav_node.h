@@ -43,6 +43,7 @@
 #include <mrpt_msgs/Waypoint.h>
 #include <mrpt_msgs/WaypointSequence.h>
 #include <sensor_msgs/PointCloud.h>
+#include <std_msgs/Bool.h>
 #include "tps_astar_nav_node/tps_navigator.h"
 
 // for debugging
@@ -89,6 +90,8 @@ class TPS_Astar_Nav_Node
 	ros::Subscriber m_sub_localization_pose; //!< Subscriber to localization info
 	ros::Subscriber m_sub_odometry; //!< Subscriber to Odometry info from robot
 	ros::Subscriber m_sub_obstacles; //!< Subsciber to obstacle map info
+	ros::Subscriber m_sub_replan; //!< Subscribe to topic from rnav that tells to replan
+
 	ros::Publisher  m_pub_cmd_vel; //!< Publisher for velocity commands for the robot
 	ros::Publisher  m_pub_wp_seq; //!< Publisher for Waypoint sequence
 
@@ -96,6 +99,8 @@ class TPS_Astar_Nav_Node
 	std::string m_sub_localization_str; //!<parameterized name for localization subscriber
 	std::string m_sub_odometry_str; //!< parameterized name for odometry subscriber
 	std::string m_sub_obstacles_str; //!< parameterized name for obsctacle source map subscriber
+	std::string m_sub_replan_str;  //!<parameterized name for replan subscriber
+
 	std::string m_pub_cmd_vel_str; //!< parameterized name for velocity command publisher
 	std::string m_pub_wp_seq_str;  //!< parameterized name for waypoint sequence publisher
 
@@ -107,6 +112,7 @@ class TPS_Astar_Nav_Node
 	//for debugging
 	bool m_debug;
 	bool m_gui_mrpt;
+	std::string m_gui_mrpt_str;
 	mrpt::gui::CDisplayWindow3D::Ptr m_win_3d;
 	mrpt::opengl::COpenGLScene m_scene;
 
@@ -370,6 +376,7 @@ class TPS_Astar_Nav_Node
 	selfdriving::WaypointSequence m_waypts;	 //<! DS for waypoints
 	selfdriving::WaypointStatusSequence m_wayptsStatus;	 //<! DS for waypoint status
 
+	bool stringToBool(const std::string &str);
 	public: 
 	TPS_Astar_Nav_Node(int argc, char** argv);
 	~TPS_Astar_Nav_Node(){};
@@ -380,14 +387,14 @@ class TPS_Astar_Nav_Node
 	void callbackLocalization(const geometry_msgs::PoseWithCovarianceStamped& _pose);
 	void callbackOdometry(const nav_msgs::Odometry& _odom);
 	void callbackObstacles(const sensor_msgs::PointCloud& _pc);
+	void callbackReplan(const std_msgs::Bool& _flag);
 	/* update methods*/
 	void updateMap(const nav_msgs::OccupancyGrid& _msg);
 	void updateLocalization(const geometry_msgs::PoseWithCovarianceStamped& _pose);
 	void updateOdom(const nav_msgs::Odometry& _odom);
 	void updateObstacles(const sensor_msgs::PointCloud& _pc);
 
-	bool do_path_plan();
-	mrpt_msgs::WaypointSequence convertPathtoWpMsg(selfdriving::WaypointSequence& _wps);
+	bool do_path_plan(mrpt::math::TPose2D& start, mrpt::math::TPose2D& goal);
 	void init3DDebug();
 
 	/*Getter functions for Robot interface*/
