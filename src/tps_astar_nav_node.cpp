@@ -475,8 +475,9 @@ bool TPS_Astar_Nav_Node::do_path_plan()
     auto [plannedPath, pathEdges] =
         plan.motionTree.backtrack_path(*plan.bestNodeId);
 
+#if 0  // JLBC: disabled to check if this is causing troubles
     selfdriving::refine_trajectory(plannedPath, pathEdges, planner_input.ptgs);
-
+#endif
 
     // Show plan in a GUI for debugging
     MRPT_TODO("Define a ROS param to conditionally enable A* GUI plot");
