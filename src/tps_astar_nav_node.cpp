@@ -144,7 +144,7 @@ void TPS_Astar_Nav_Node::callbackReplan(const std_msgs::Bool& _flag)
 {
     auto& pose = m_localization_pose;
 
-    if(pose.valid)
+    if(pose.valid && _flag.data)
     {
         m_path_plan_done = do_path_plan(pose.pose, m_nav_goal);
     }
