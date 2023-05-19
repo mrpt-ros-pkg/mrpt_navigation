@@ -510,7 +510,7 @@ class ReactiveNav2DNode
 		m_odometry.velocityLocal.omega= msg.twist.twist.angular.z;
 		m_odometry.hasVelocities = true;
 
-		ROS_INFO_STREAM("Odometry updated");
+		ROS_DEBUG_STREAM("Odometry updated");
 	}
 
 	void updateWaypointSequence(const mrpt_msgs::WaypointSequence& wps)
