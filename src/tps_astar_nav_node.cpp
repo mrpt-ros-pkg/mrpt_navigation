@@ -567,6 +567,8 @@ bool TPS_Astar_Nav_Node::do_path_plan(mrpt::math::TPose2D& start, mrpt::math::TP
             wp_msg.target.orientation.y = 0.0;
             wp_msg.target.orientation.z = 0.0;
             wp_msg.target.orientation.w = 0.0;
+            
+            wp_msg.allowed_distance = 1.5;  // TODO: Make a param
             wp_msg.allow_skip = true;
 
             m_wps_msg.waypoints.push_back(wp_msg);
@@ -583,6 +585,8 @@ bool TPS_Astar_Nav_Node::do_path_plan(mrpt::math::TPose2D& start, mrpt::math::TP
         wp_msg.target.orientation.y = quaternion.y();
         wp_msg.target.orientation.z = quaternion.z();
         wp_msg.target.orientation.w = quaternion.w();
+
+        wp_msg.allowed_distance = 0.4;  // TODO: Make a param
         wp_msg.allow_skip = false;
 
         m_wps_msg.waypoints.push_back(wp_msg);

@@ -18,6 +18,8 @@
 		
         <param name="save_nav_log" value="$(arg save_nav_log)"/>
 
+		<param name="target_allowed_distance" value="1.5"/>
+
 		<!-- Robot shape: Load from geometry_msgs::Polygon topic -->
 		<param name="topic_robot_shape" value="/chassis_polygon" />
 	</node>
