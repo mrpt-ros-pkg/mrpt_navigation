@@ -526,7 +526,7 @@ class ReactiveNav2DNode
 			double roll, pitch, yaw;
 			mat.getRPY(roll, pitch, yaw);
 			auto waypoint = mrpt::nav::TWaypoint(wp.target.position.x, 
-								wp.target.position.y, m_target_allowed_distance,
+								wp.target.position.y, wp.allowed_distance,
 								wp.allow_skip);
 
 			if (yaw==yaw) // regular number, not NAN
