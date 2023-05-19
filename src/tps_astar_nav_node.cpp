@@ -97,7 +97,8 @@ TPS_Astar_Nav_Node::TPS_Astar_Nav_Node(int argc, char** argv):
 
 bool TPS_Astar_Nav_Node::stringToBool(const std::string &str) {
     if(str == "true" || str == "True" || str == "TRUE" || str == "1") return true;
-    if(str == "false" || str == "False" || str == "FALSE" || str == "0") return false;
+    else return false;
+//    if(str == "false" || str == "False" || str == "FALSE" || str == "0") return false;
 }
 template <typename T>
 std::vector<T> TPS_Astar_Nav_Node::processStringParam(const std::string& param_str) 
