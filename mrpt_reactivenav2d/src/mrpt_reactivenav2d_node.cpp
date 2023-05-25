@@ -90,7 +90,7 @@ class ReactiveNav2DNode
 	double m_target_allowed_distance = 0.40f;
 	double m_nav_period = 0.1;	//!< [s]
 
-	std::string m_pub_topic_reactive_nav_goal = "reactive_nav_goal";
+	std::string m_sub_topic_reactive_nav_goal = "reactive_nav_goal";
 	std::string m_sub_topic_local_obstacles = "local_map_pointcloud";
 	std::string m_sub_topic_robot_shape{};
 
@@ -303,16 +303,12 @@ class ReactiveNav2DNode
 		// if provided via a topic:
 		if (!m_sub_topic_robot_shape.empty())
 		{
+			ROS_INFO(
+				"Subscribing to robot shape via topic '%s'...",
+				m_sub_topic_robot_shape.c_str());
 			m_sub_robot_shape = m_nh.subscribe<geometry_msgs::Polygon>(
 				m_sub_topic_robot_shape, 1,
 				&ReactiveNav2DNode::onRosSetRobotShape, this);
-			ROS_INFO(
-				"Params say robot shape will arrive via topic '%s'... waiting "
-				"3 seconds for it.",
-				m_sub_topic_robot_shape.c_str());
-			ros::Duration(3.0).sleep();
-			for (size_t i = 0; i < 100; i++) ros::spinOnce();
-			ROS_INFO("Wait done.");
 		}
 
 		// Init ROS publishers:
@@ -324,7 +320,7 @@ class ReactiveNav2DNode
 		// "/reactive_nav_goal", "/move_base_simple/goal" (
 		// geometry_msgs/PoseStamped )
 		m_sub_nav_goal = m_nh.subscribe<geometry_msgs::PoseStamped>(
-			m_pub_topic_reactive_nav_goal, 1,
+			m_sub_topic_reactive_nav_goal, 1,
 			&ReactiveNav2DNode::onRosGoalReceived, this);
 		m_sub_local_obs = m_nh.subscribe<sensor_msgs::PointCloud>(
 			m_sub_topic_local_obstacles, 1,
