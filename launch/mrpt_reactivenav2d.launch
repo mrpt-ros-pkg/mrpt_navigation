@@ -22,7 +22,10 @@
 
 		<!-- Robot shape: Load from geometry_msgs::Polygon topic -->
 		<param name="topic_robot_shape" value="/chassis_polygon" />
-	</node>
 
+
+        <!-- to make it works with rviz direct clicks -->
+        <remap from="reactive_nav_goal" to="/move_base_simple/goal"/>
+	</node>
 </launch>
 

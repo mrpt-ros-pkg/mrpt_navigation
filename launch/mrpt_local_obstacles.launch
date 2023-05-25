@@ -1,10 +1,14 @@
 <?xml version="1.0"?>
 <launch>
+
+	<arg name="lidar_topic_name" default="/front/scan"/>
+	<arg name="show_gui" default="True"/>
+
 	<!-- Node: Local obstacles builder -->
 	<node pkg="mrpt_local_obstacles" type="mrpt_local_obstacles_node" name="mrpt_local_obstacles_node" output="screen">
-		<param name="source_topics_2dscan" value="/front/scan"/> 
-        <param name="show_gui" value="true"/>
-        <param name="topic_local_map_pointcloud" value="/map_pointcloud"/>
+		<param name="source_topics_2dscan" value="$(arg lidar_topic_name)"/>
+        <param name="show_gui" value="$(arg show_gui)"/>
+        <param name="topic_local_map_pointcloud" value="/local_map_pointcloud"/>
 	</node>
 
 </launch>
