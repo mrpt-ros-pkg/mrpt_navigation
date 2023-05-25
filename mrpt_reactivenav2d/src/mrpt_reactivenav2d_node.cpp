@@ -72,8 +72,8 @@ class ReactiveNav2DNode
 
 	CTimeLogger m_profiler;
 	TAuxInitializer m_auxinit;	//!< Just to make sure ROS is init first
-	ros::NodeHandle m_nh;  //!< The node handle
-	ros::NodeHandle m_localn;  //!< "~"
+	ros::NodeHandle m_nh{};	 //!< The node handle
+	ros::NodeHandle m_localn{"~"};	//!< "~"
 
 	/** @name ROS pubs/subs
 	 *  @{ */
@@ -86,18 +86,18 @@ class ReactiveNav2DNode
 	tf2_ros::TransformListener m_tf_listener{m_tf_buffer};
 	/** @} */
 
-	bool m_1st_time_init;  //!< Reactive initialization done?
-	double m_target_allowed_distance;
-	double m_nav_period;
+	bool m_1st_time_init = false;  //!< Reactive initialization done?
+	double m_target_allowed_distance = 0.40f;
+	double m_nav_period = 0.1;	//!< [s]
 
-	std::string m_pub_topic_reactive_nav_goal;
-	std::string m_sub_topic_local_obstacles;
-	std::string m_sub_topic_robot_shape;
+	std::string m_pub_topic_reactive_nav_goal = "reactive_nav_goal";
+	std::string m_sub_topic_local_obstacles = "local_map_pointcloud";
+	std::string m_sub_topic_robot_shape{};
 
-	std::string m_frameid_reference;
-	std::string m_frameid_robot;
+	std::string m_frameid_reference = "map";
+	std::string m_frameid_robot = "base_link";
 
-	bool m_save_nav_log;
+	bool m_save_nav_log = false;
 
 	ros::Timer m_timer_run_nav;
 
@@ -251,17 +251,6 @@ class ReactiveNav2DNode
 	/**  Constructor: Inits ROS system */
 	ReactiveNav2DNode(int argc, char** argv)
 		: m_auxinit(argc, argv),
-		  m_nh(),
-		  m_localn("~"),
-		  m_1st_time_init(false),
-		  m_target_allowed_distance(0.40f),
-		  m_nav_period(0.100),
-		  m_pub_topic_reactive_nav_goal("reactive_nav_goal"),
-		  m_sub_topic_local_obstacles("local_map_pointcloud"),
-		  m_sub_topic_robot_shape(""),
-		  m_frameid_reference("map"),
-		  m_frameid_robot("base_link"),
-		  m_save_nav_log(false),
 		  m_reactive_if(*this),
 		  m_reactive_nav_engine(m_reactive_if)
 	{
