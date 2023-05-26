@@ -114,7 +114,6 @@ class ReactiveNav2DNode
 	ros::Timer m_timer_run_nav;
 
 	mrpt::obs::CObservationOdometry m_odometry;
-	mrpt::nav::TWaypointSequence m_wps;
 	CSimplePointsMap m_last_obstacles;
 	std::mutex m_last_obstacles_cs;
 	std::mutex m_odometry_cs;
@@ -490,9 +489,11 @@ class ReactiveNav2DNode
 		ROS_DEBUG_STREAM("Odometry updated");
 	}
 
-	void updateWaypointSequence(const mrpt_msgs::WaypointSequence& wps)
+	void updateWaypointSequence(const mrpt_msgs::WaypointSequence& msg)
 	{
-		for (const auto& wp : wps.waypoints)
+		mrpt::nav::TWaypointSequence wps;
+
+		for (const auto& wp : msg.waypoints)
 		{
 			tf2::Quaternion quat(
 				wp.target.orientation.x, wp.target.orientation.y,
@@ -507,13 +508,13 @@ class ReactiveNav2DNode
 			if (yaw == yaw)	 // regular number, not NAN
 				waypoint.target_heading = yaw;
 
-			m_wps.waypoints.push_back(waypoint);
+			wps.waypoints.push_back(waypoint);
 		}
 
 		ROS_INFO_STREAM("New navigateWaypoints() command");
 		{
 			std::lock_guard<std::mutex> csl(m_reactive_nav_engine_cs);
-			m_reactive_nav_engine.navigateWaypoints(m_wps);
+			m_reactive_nav_engine.navigateWaypoints(wps);
 		}
 	}
 	void onWaypointSeqReceived(const mrpt_msgs::WaypointSequence& wps)
