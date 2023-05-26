@@ -292,7 +292,7 @@ class ReactiveNav2DNode
 		m_localn.param(
 			"topic_cmd_vel", m_pub_topic_cmd_vel, m_pub_topic_cmd_vel);
 		m_localn.param(
-			"topic_obstacales", m_sub_topic_local_obstacles,
+			"topic_obstacles", m_sub_topic_local_obstacles,
 			m_sub_topic_local_obstacles);
 
 		m_localn.param("save_nav_log", m_save_nav_log, m_save_nav_log);
