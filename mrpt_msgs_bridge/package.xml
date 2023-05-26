@@ -18,9 +18,12 @@
   
   <depend>geometry_msgs</depend>
   <depend>marker_msgs</depend>
-  <depend>mrpt_msgs</depend>
   <depend>roscpp</depend>
   <depend>tf2</depend>
+
+  <build_depend>mrpt_msgs</build_depend>
+  <build_export_depend>mrpt_msgs</build_export_depend>
+  <exec_depend>mrpt_msgs</exec_depend>
 
   <export>
     <build_type condition="$ROS_VERSION == 1">catkin</build_type>

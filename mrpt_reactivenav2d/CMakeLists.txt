@@ -14,11 +14,14 @@ find_package(catkin REQUIRED COMPONENTS
   tf2_ros
   tf2_geometry_msgs
   visualization_msgs
+  mrpt_msgs 
+  nav_msgs
 )
 
 ## System dependencies are found with CMake's conventions
 find_package(mrpt-ros1bridge REQUIRED)
 find_package(mrpt-nav REQUIRED)
+find_package(mrpt-obs REQUIRED)
 find_package(mrpt-kinematics REQUIRED)
 
 message(STATUS "MRPT_VERSION: ${MRPT_VERSION}")
@@ -58,7 +61,9 @@ catkin_package(
     tf2
     tf2_ros
     tf2_geometry_msgs
-      visualization_msgs
+    visualization_msgs
+    mrpt_msgs 
+    nav_msgs 
 #  DEPENDS mrpt
 )
 
@@ -83,12 +88,13 @@ add_executable(mrpt_reactivenav2d_node src/mrpt_reactivenav2d_node.cpp)
 
 ## Add cmake target dependencies of the executable/library
 ## as an example, message headers may need to be generated before nodes
-# add_dependencies(mrpt_reactivenav2d_node mrpt_reactivenav2d_generate_messages_cpp)
+add_dependencies(mrpt_reactivenav2d_node mrpt_msgs_generate_messages_cpp)
 
 ## Specify libraries to link a library or executable target against
 target_link_libraries(mrpt_reactivenav2d_node
   ${catkin_LIBRARIES}
   mrpt::nav
+  mrpt::obs
   mrpt::kinematics
   mrpt::ros1bridge
 )

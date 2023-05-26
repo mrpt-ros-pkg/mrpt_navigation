@@ -69,6 +69,8 @@ add_library(${PROJECT_NAME}
    src/network_of_poses.cpp
 )
 
+add_dependencies(${PROJECT_NAME} mrpt_msgs_generate_messages_cpp)
+
 ## Specify libraries to link a library or executable target against
 target_link_libraries(${PROJECT_NAME}
   PUBLIC
