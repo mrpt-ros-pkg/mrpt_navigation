@@ -1,6 +1,6 @@
 /***********************************************************************************
  * Revised BSD License *
- * Copyright (c) 2014-2015, Jose-Luis Blanco <jlblanco@ual.es> *
+ * Copyright (c) 2014-2023, Jose-Luis Blanco <jlblanco@ual.es> *
  * All rights reserved. *
  *                                                                                 *
  * Redistribution and use in source and binary forms, with or without *
@@ -30,6 +30,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. *
  ***********************************************************************************/
 
+#include <mp2p_icp_filters/FilterDecimateVoxels.h>
 #include <mrpt/config/CConfigFile.h>
 #include <mrpt/gui/CDisplayWindow3D.h>
 #include <mrpt/maps/COccupancyGridMap2D.h>
@@ -102,8 +103,14 @@ class LocalObstaclesNode
 	boost::mutex m_hist_obs_mtx;
 
 	/** The local maps */
-	CSimplePointsMap m_localmap_pts;
+	CSimplePointsMap::Ptr m_localmap_pts = CSimplePointsMap::Create();
 	// COccupancyGridMap2D m_localmap_grid;
+
+	/// Used for example to run voxel grid decimation, etc.
+	/// Refer to mp2p_icp docs
+	mp2p_icp_filters::FilterPipeline m_filter_pipeline;
+
+	std::string m_filter_output_layer_name;	 //!< mp2p_icp output layer name
 
 	mrpt::gui::CDisplayWindow3D::Ptr m_gui_win;
 
@@ -268,7 +275,7 @@ class LocalObstaclesNode
 
 		// Build local map(s):
 		// -----------------------------------------------
-		m_localmap_pts.clear();
+		m_localmap_pts->clear();
 		mrpt::poses::CPose3D curRobotPose;
 		{
 			CTimeLoggerEntry tle2(m_profiler, "onDoPublish.buildLocalMap");
@@ -312,20 +319,35 @@ class LocalObstaclesNode
 				relPose.inverseComposeFrom(ipt.robot_pose, curRobotPose);
 
 				// Insert obs:
-				m_localmap_pts.insertObservationPtr(ipt.observation, relPose);
+				m_localmap_pts->insertObservationPtr(ipt.observation, relPose);
 
 			}  // end for
+		}
+
+		// Filtering:
+		mrpt::maps::CPointsMap::Ptr filteredPts;
+
+		if (!m_filter_pipeline.empty())
+		{
+			mp2p_icp::metric_map_t mm;
+			mm.layers[mp2p_icp::metric_map_t::PT_LAYER_RAW] = m_localmap_pts;
+			mp2p_icp_filters::apply_filter_pipeline(m_filter_pipeline, mm);
+
+			filteredPts = mm.point_layer(m_filter_output_layer_name);
+		}
+		else
+		{
+			filteredPts = m_localmap_pts;
 		}
 
 		// Publish them:
 		if (m_pub_local_map_pointcloud.getNumSubscribers() > 0)
 		{
-			sensor_msgs::PointCloudPtr msg_pts =
-				sensor_msgs::PointCloudPtr(new sensor_msgs::PointCloud);
-			msg_pts->header.frame_id = m_frameid_robot;
-			msg_pts->header.stamp = ros::Time(obs.rbegin()->first);
+			sensor_msgs::PointCloud msg_pts;
+			msg_pts.header.frame_id = m_frameid_robot;
+			msg_pts.header.stamp = ros::Time(obs.rbegin()->first);
 
-			mrpt::ros1bridge::toROS(m_localmap_pts, msg_pts->header, *msg_pts);
+			mrpt::ros1bridge::toROS(*filteredPts, msg_pts.header, msg_pts);
 			m_pub_local_map_pointcloud.publish(msg_pts);
 		}
 
@@ -346,9 +368,15 @@ class LocalObstaclesNode
 				gl_obs->setName("obstacles");
 				scene->insert(gl_obs);
 
+				auto gl_rawpts = mrpt::opengl::CPointCloud::Create();
+				gl_rawpts->setName("raw_points");
+				gl_rawpts->setPointSize(1.0);
+				gl_rawpts->setColor_u8(TColor(0x00ff00));
+				scene->insert(gl_rawpts);
+
 				auto gl_pts = mrpt::opengl::CPointCloud::Create();
-				gl_pts->setName("points");
-				gl_pts->setPointSize(2.0);
+				gl_pts->setName("final_points");
+				gl_pts->setPointSize(3.0);
 				gl_pts->setColor_u8(TColor(0x0000ff));
 				scene->insert(gl_pts);
 
@@ -361,8 +389,11 @@ class LocalObstaclesNode
 			ROS_ASSERT(!!gl_obs);
 			gl_obs->clear();
 
-			auto gl_pts = mrpt::ptr_cast<mrpt::opengl::CPointCloud>::from(
-				scene->getByName("points"));
+			auto glRawPts = mrpt::ptr_cast<mrpt::opengl::CPointCloud>::from(
+				scene->getByName("raw_points"));
+
+			auto glFinalPts = mrpt::ptr_cast<mrpt::opengl::CPointCloud>::from(
+				scene->getByName("final_points"));
 
 			for (const auto& o : obs)
 			{
@@ -377,7 +408,8 @@ class LocalObstaclesNode
 				gl_obs->insert(gl_axis);
 			}  // end for
 
-			gl_pts->loadFromPointsMap(&m_localmap_pts);
+			glRawPts->loadFromPointsMap(m_localmap_pts.get());
+			glFinalPts->loadFromPointsMap(filteredPts.get());
 
 			m_gui_win->unlockAccess3DScene();
 			m_gui_win->repaint();
@@ -416,6 +448,22 @@ class LocalObstaclesNode
 		ROS_ASSERT(m_time_window > m_publish_period);
 		ROS_ASSERT(m_publish_period > 0);
 
+		// Optional filter pipeline:
+		if (const auto fil =
+				m_localn.param<std::string>("filter_yaml_file", {});
+			!fil.empty())
+		{
+			m_filter_pipeline =
+				mp2p_icp_filters::filter_pipeline_from_yaml_file(fil);
+
+			m_filter_output_layer_name =
+				m_localn.param<std::string>("filter_output_layer_name", {});
+			ASSERTMSG_(
+				!m_filter_output_layer_name.empty(),
+				"'filter_yaml_file' param also requires "
+				"'filter_output_layer_name'");
+		}
+
 		// Init ROS publishers:
 		m_pub_local_map_pointcloud = m_nh.advertise<sensor_msgs::PointCloud>(
 			m_topic_local_map_pointcloud, 10);
@@ -436,8 +484,8 @@ class LocalObstaclesNode
 			"sensory information!");
 
 		// Local map params:
-		m_localmap_pts.insertionOptions.minDistBetweenLaserPoints = 0;
-		m_localmap_pts.insertionOptions.also_interpolate = false;
+		m_localmap_pts->insertionOptions.minDistBetweenLaserPoints = 0;
+		m_localmap_pts->insertionOptions.also_interpolate = false;
 
 		// Init timers:
 		m_timer_publish = m_nh.createTimer(

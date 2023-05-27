@@ -1,0 +1,3 @@
+[submodule "mrpt_local_obstacles/submodules/mp2p_icp"]
+	path = mrpt_local_obstacles/submodules/mp2p_icp
+	url = https://github.com/MOLAorg/mp2p_icp.git

@@ -52,6 +52,9 @@ catkin_package(
 ## Build ##
 ###########
 
+# TODO: Remove and move as an independent ROS package:
+add_subdirectory(submodules/mp2p_icp)
+
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
 include_directories(
@@ -70,6 +73,8 @@ target_link_libraries(${PROJECT_NAME}_node
   mrpt::obs
   mrpt::gui
   mrpt::ros1bridge
+  # mp2p_icp
+  mp2p_icp_filters
 )
 
 #############
