@@ -1,6 +1,6 @@
 /***********************************************************************************
  * Revised BSD License *
- * Copyright (c) 2014-2015, Jose-Luis Blanco <jlblanco@ual.es> *
+ * Copyright (c) 2014-2023, Jose-Luis Blanco <jlblanco@ual.es> *
  * All rights reserved. *
  *                                                                                 *
  * Redistribution and use in source and binary forms, with or without *
