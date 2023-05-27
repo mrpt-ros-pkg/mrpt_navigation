@@ -505,7 +505,7 @@ class ReactiveNav2DNode
 				wp.target.position.x, wp.target.position.y, wp.allowed_distance,
 				wp.allow_skip);
 
-			if (yaw == yaw)	 // regular number, not NAN
+			if (yaw == yaw && !wp.ignore_heading) // regular number, not NAN
 				waypoint.target_heading = yaw;
 
 			wps.waypoints.push_back(waypoint);
