@@ -53,6 +53,9 @@ catkin_package(
 ###########
 
 # TODO: Remove and move as an independent ROS package:
+add_subdirectory(submodules/mola-common)
+set(mola-common_DIR ${CMAKE_BINARY_DIR} CACHE PATH "path to mola-common-config.cmake" FORCE)
+
 add_subdirectory(submodules/mp2p_icp)
 
 ## Specify additional locations of header files
