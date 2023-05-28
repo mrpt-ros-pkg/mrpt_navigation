@@ -43,14 +43,14 @@
 #include <mrpt/opengl/CPointCloud.h>
 #include <mrpt/opengl/stock_objects.h>
 #include <mrpt/ros1bridge/laser_scan.h>
-#include <mrpt/ros1bridge/point_cloud.h>
+#include <mrpt/ros1bridge/point_cloud2.h>
 #include <mrpt/ros1bridge/pose.h>
 #include <mrpt/system/CTimeLogger.h>
 #include <mrpt/system/string_utils.h>
 #include <nav_msgs/Odometry.h>
 #include <ros/ros.h>
 #include <sensor_msgs/LaserScan.h>
-#include <sensor_msgs/PointCloud.h>
+#include <sensor_msgs/PointCloud2.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 #include <tf2_ros/transform_listener.h>
 
@@ -248,7 +248,7 @@ class LocalObstaclesNode
 
 	/** Callback: On new sensor data
 	 */
-	void onNewSensor_PointCloud(const sensor_msgs::PointCloud::ConstPtr& pts)
+	void onNewSensor_PointCloud(const sensor_msgs::PointCloud2::ConstPtr& pts)
 	{
 		CTimeLoggerEntry tle(m_profiler, "onNewSensor_PointCloud");
 
@@ -446,11 +446,16 @@ class LocalObstaclesNode
 		// Publish them:
 		if (m_pub_local_map_pointcloud.getNumSubscribers() > 0)
 		{
-			sensor_msgs::PointCloud msg_pts;
+			sensor_msgs::PointCloud2 msg_pts;
 			msg_pts.header.frame_id = m_frameid_robot;
 			msg_pts.header.stamp = ros::Time(obs.rbegin()->first);
 
-			mrpt::ros1bridge::toROS(*filteredPts, msg_pts.header, msg_pts);
+			auto simplPts =
+				std::dynamic_pointer_cast<mrpt::maps::CSimplePointsMap>(
+					filteredPts);
+			ASSERT_(simplPts);
+
+			mrpt::ros1bridge::toROS(*simplPts, msg_pts.header, msg_pts);
 			m_pub_local_map_pointcloud.publish(msg_pts);
 		}
 
@@ -566,7 +571,7 @@ class LocalObstaclesNode
 		}
 
 		// Init ROS publishers:
-		m_pub_local_map_pointcloud = m_nh.advertise<sensor_msgs::PointCloud>(
+		m_pub_local_map_pointcloud = m_nh.advertise<sensor_msgs::PointCloud2>(
 			m_topic_local_map_pointcloud, 10);
 
 		// Init ROS subs:

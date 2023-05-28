@@ -39,7 +39,7 @@
 #include <mrpt/nav/reactive/CReactiveNavigationSystem.h>
 #include <mrpt/nav/reactive/TWaypoint.h>
 #include <mrpt/obs/CObservationOdometry.h>
-#include <mrpt/ros1bridge/point_cloud.h>
+#include <mrpt/ros1bridge/point_cloud2.h>
 #include <mrpt/ros1bridge/pose.h>
 #include <mrpt/ros1bridge/time.h>
 #include <mrpt/system/CTimeLogger.h>
@@ -49,7 +49,7 @@
 #include <nav_msgs/Odometry.h>
 #include <ros/ros.h>
 #include <sensor_msgs/LaserScan.h>
-#include <sensor_msgs/PointCloud.h>
+#include <sensor_msgs/PointCloud2.h>
 #include <tf2/LinearMath/Matrix3x3.h>
 #include <tf2/LinearMath/Quaternion.h>
 
@@ -399,7 +399,7 @@ class ReactiveNav2DNode
 		m_sub_nav_goal = m_nh.subscribe<geometry_msgs::PoseStamped>(
 			m_sub_topic_reactive_nav_goal, 1,
 			&ReactiveNav2DNode::onRosGoalReceived, this);
-		m_sub_local_obs = m_nh.subscribe<sensor_msgs::PointCloud>(
+		m_sub_local_obs = m_nh.subscribe<sensor_msgs::PointCloud2>(
 			m_sub_topic_local_obstacles, 1,
 			&ReactiveNav2DNode::onRosLocalObstacles, this);
 
@@ -505,7 +505,7 @@ class ReactiveNav2DNode
 				wp.target.position.x, wp.target.position.y, wp.allowed_distance,
 				wp.allow_skip);
 
-			if (yaw == yaw && !wp.ignore_heading) // regular number, not NAN
+			if (yaw == yaw && !wp.ignore_heading)  // regular number, not NAN
 				waypoint.target_heading = yaw;
 
 			wps.waypoints.push_back(waypoint);
@@ -556,7 +556,7 @@ class ReactiveNav2DNode
 			trg.pose.position.x, trg.pose.position.y, trg.pose.orientation.z));
 	}
 
-	void onRosLocalObstacles(const sensor_msgs::PointCloudConstPtr& obs)
+	void onRosLocalObstacles(const sensor_msgs::PointCloud2::ConstPtr& obs)
 	{
 		std::lock_guard<std::mutex> csl(m_last_obstacles_cs);
 		mrpt::ros1bridge::fromROS(*obs, m_last_obstacles);
@@ -564,7 +564,7 @@ class ReactiveNav2DNode
 		// int>(m_last_obstacles.size()) );
 	}
 
-	void onRosSetRobotShape(const geometry_msgs::PolygonConstPtr& newShape)
+	void onRosSetRobotShape(const geometry_msgs::Polygon::ConstPtr& newShape)
 	{
 		ROS_INFO_STREAM(
 			"[onRosSetRobotShape] Robot shape received via topic: "
