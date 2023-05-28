@@ -36,6 +36,7 @@
 #include <mrpt/maps/COccupancyGridMap2D.h>
 #include <mrpt/maps/CSimplePointsMap.h>
 #include <mrpt/obs/CObservation2DRangeScan.h>
+#include <mrpt/obs/CObservationPointCloud.h>
 #include <mrpt/obs/CSensoryFrame.h>
 #include <mrpt/opengl/CGridPlaneXY.h>
 #include <mrpt/opengl/COpenGLScene.h>
@@ -78,16 +79,19 @@ class LocalObstaclesNode
 	TAuxInitializer m_auxinit;	//!< Just to make sure ROS is init first
 	ros::NodeHandle m_nh;  //!< The node handle
 	ros::NodeHandle m_localn;  //!< "~"
-	bool m_show_gui;
-	std::string m_frameid_reference;  //!< typ: "odom"
-	std::string m_frameid_robot;  //!< typ: "base_link"
-	std::string
-		m_topic_local_map_pointcloud;  //!< Default: "local_map_pointcloud"
-	std::string m_source_topics_2dscan;	 //!< Default: "scan,laser1"
-	double m_time_window;  //!< In secs (default: 0.2). This can't be smaller
-	//! than m_publish_period
-	double m_publish_period;  //!< In secs (default: 0.05). This can't be larger
-	//! than m_time_window
+
+	bool m_show_gui = true;
+
+	std::string m_frameid_reference = "odom";
+	std::string m_frameid_robot = "base_link";
+
+	std::string m_topic_local_map_pointcloud = "local_map_pointcloud";
+
+	std::string m_source_topics_2dscan = "scan,laser1";
+	std::string m_source_topics_pointclouds = "";
+
+	double m_time_window = 0.20;  //!< [s]can't be smaller than m_publish_period
+	double m_publish_period = 0.05;	 //!< [s]
 
 	ros::Timer m_timer_publish;
 
@@ -120,6 +124,9 @@ class LocalObstaclesNode
 
 	//!< Subscriber to 2D laser scans
 	std::vector<ros::Subscriber> m_subs_2dlaser;
+
+	//!< Subscriber to point cloud sensors
+	std::vector<ros::Subscriber> m_subs_pointclouds;
 
 	tf2_ros::Buffer m_tf_buffer;
 	tf2_ros::TransformListener m_tf_listener{m_tf_buffer};
@@ -230,6 +237,102 @@ class LocalObstaclesNode
 		// Insert into the observation history:
 		TInfoPerTimeStep ipt;
 		ipt.observation = obsScan;
+		ipt.robot_pose = robotPose;
+
+		m_hist_obs_mtx.lock();
+		m_hist_obs.insert(
+			m_hist_obs.end(), TListObservations::value_type(timestamp, ipt));
+		m_hist_obs_mtx.unlock();
+
+	}  // end onNewSensor_Laser2D
+
+	/** Callback: On new sensor data
+	 */
+	void onNewSensor_PointCloud(const sensor_msgs::PointCloud::ConstPtr& pts)
+	{
+		CTimeLoggerEntry tle(m_profiler, "onNewSensor_PointCloud");
+
+		ros::Duration timeout(1.0);
+		// Get the relative position of the sensor wrt the robot:
+		geometry_msgs::TransformStamped sensorOnRobot;
+		try
+		{
+			CTimeLoggerEntry tle2(
+				m_profiler, "onNewSensor_PointCloud.lookupTransform_sensor");
+
+			sensorOnRobot = m_tf_buffer.lookupTransform(
+				m_frameid_robot, pts->header.frame_id, pts->header.stamp,
+				timeout);
+		}
+		catch (const tf2::TransformException& ex)
+		{
+			ROS_ERROR("%s", ex.what());
+			return;
+		}
+
+		// Convert data to MRPT format:
+		const mrpt::poses::CPose3D sensorOnRobot_mrpt = [&]() {
+			tf2::Transform tx;
+			tf2::fromMsg(sensorOnRobot.transform, tx);
+			return mrpt::ros1bridge::fromROS(tx);
+		}();
+
+		// In MRPT, CObservation2DRangeScan holds both: sensor data +
+		// relative pose:
+		auto obsPts = CObservationPointCloud::Create();
+		const auto ptsMap = mrpt::maps::CSimplePointsMap::Create();
+		obsPts->pointcloud = ptsMap;
+		obsPts->sensorPose = sensorOnRobot_mrpt;
+		mrpt::ros1bridge::fromROS(*pts, *ptsMap);
+
+		ROS_DEBUG(
+			"[onNewSensor_PointCloud] %u points, sensor pose on robot %s",
+			static_cast<unsigned int>(ptsMap->size()),
+			sensorOnRobot_mrpt.asString().c_str());
+
+		// Get sensor timestamp:
+		const double timestamp = pts->header.stamp.toSec();
+
+		// Get robot pose at that time in the reference frame, typ: /odom ->
+		// /base_link
+		mrpt::poses::CPose3D robotPose;
+		try
+		{
+			CTimeLoggerEntry tle3(
+				m_profiler, "onNewSensor_PointCloud.lookupTransform_robot");
+
+			geometry_msgs::TransformStamped robotTfStamp;
+			try
+			{
+				robotTfStamp = m_tf_buffer.lookupTransform(
+					m_frameid_reference, m_frameid_robot, pts->header.stamp,
+					timeout);
+			}
+			catch (const tf2::ExtrapolationException& ex)
+			{
+				ROS_ERROR("%s", ex.what());
+				return;
+			}
+
+			robotPose = [&]() {
+				tf2::Transform tx;
+				tf2::fromMsg(robotTfStamp.transform, tx);
+				return mrpt::ros1bridge::fromROS(tx);
+			}();
+
+			ROS_DEBUG(
+				"[onNewSensor_PointCloud] robot pose %s",
+				robotPose.asString().c_str());
+		}
+		catch (const tf2::TransformException& ex)
+		{
+			ROS_ERROR("%s", ex.what());
+			return;
+		}
+
+		// Insert into the observation history:
+		TInfoPerTimeStep ipt;
+		ipt.observation = obsPts;
 		ipt.robot_pose = robotPose;
 
 		m_hist_obs_mtx.lock();
@@ -420,28 +523,26 @@ class LocalObstaclesNode
    public:
 	/**  Constructor: Inits ROS system */
 	LocalObstaclesNode(int argc, char** argv)
-		: m_auxinit(argc, argv),
-		  m_nh(),
-		  m_localn("~"),
-		  m_show_gui(true),
-		  m_frameid_reference("odom"),
-		  m_frameid_robot("base_link"),
-		  m_topic_local_map_pointcloud("local_map_pointcloud"),
-		  m_source_topics_2dscan("scan,laser1"),
-		  m_time_window(0.2),
-		  m_publish_period(0.05)
+		: m_auxinit(argc, argv), m_nh(), m_localn("~")
 	{
 		// Load params:
 		m_localn.param("show_gui", m_show_gui, m_show_gui);
+
 		m_localn.param(
 			"frameid_reference", m_frameid_reference, m_frameid_reference);
 		m_localn.param("frameid_robot", m_frameid_robot, m_frameid_robot);
+
 		m_localn.param(
 			"topic_local_map_pointcloud", m_topic_local_map_pointcloud,
 			m_topic_local_map_pointcloud);
+
 		m_localn.param(
 			"source_topics_2dscan", m_source_topics_2dscan,
 			m_source_topics_2dscan);
+		m_localn.param(
+			"source_topics_pointclouds", m_source_topics_pointclouds,
+			m_source_topics_pointclouds);
+
 		m_localn.param("time_window", m_time_window, m_time_window);
 		m_localn.param("publish_period", m_publish_period, m_publish_period);
 
@@ -474,6 +575,10 @@ class LocalObstaclesNode
 		nSubsTotal += this->subscribeToMultipleTopics(
 			m_source_topics_2dscan, m_subs_2dlaser,
 			&LocalObstaclesNode::onNewSensor_Laser2D);
+
+		nSubsTotal += this->subscribeToMultipleTopics(
+			m_source_topics_pointclouds, m_subs_pointclouds,
+			&LocalObstaclesNode::onNewSensor_PointCloud);
 
 		ROS_INFO(
 			"Total number of sensor subscriptions: %u\n",
