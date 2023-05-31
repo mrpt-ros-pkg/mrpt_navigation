@@ -44,6 +44,7 @@
 #include <mrpt/ros1bridge/time.h>
 #include <mrpt/system/CTimeLogger.h>
 #include <mrpt/system/filesystem.h>
+#include <mrpt/system/os.h>
 #include <mrpt_msgs/Waypoint.h>
 #include <mrpt_msgs/WaypointSequence.h>
 #include <nav_msgs/Odometry.h>
@@ -108,6 +109,8 @@ class ReactiveNav2DNode
 
 	std::string m_frameid_reference = "map";
 	std::string m_frameid_robot = "base_link";
+
+	std::string m_plugin_file;
 
 	bool m_save_nav_log = false;
 
@@ -295,6 +298,19 @@ class ReactiveNav2DNode
 			m_sub_topic_local_obstacles);
 
 		m_localn.param("save_nav_log", m_save_nav_log, m_save_nav_log);
+
+		m_localn.param("ptg_plugin_files", m_plugin_file, m_plugin_file);
+
+		if (!m_plugin_file.empty())
+		{
+			ROS_INFO_STREAM("About to load plugins: " << m_plugin_file);
+			std::string errorMsgs;
+			if (!mrpt::system::loadPluginModules(m_plugin_file, errorMsgs))
+			{
+				ROS_ERROR_STREAM("Error loading rnav plugins: " << errorMsgs);
+			}
+			ROS_INFO_STREAM("Pluginns loaded OK.");
+		}
 
 		ROS_ASSERT(m_nav_period > 0);
 		ROS_ASSERT_MSG(
