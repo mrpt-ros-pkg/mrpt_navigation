@@ -2,7 +2,7 @@
    |                     Mobile Robot Programming Toolkit (MRPT)            |
    |                          https://www.mrpt.org/                         |
    |                                                                        |
-   | Copyright (c) 2005-2022, Individual contributors, see AUTHORS file     |
+   | Copyright (c) 2005-2023, Individual contributors, see AUTHORS file     |
    | See: https://www.mrpt.org/Authors - All rights reserved.               |
    | Released under BSD License. See: https://www.mrpt.org/License          |
    +------------------------------------------------------------------------+ */
@@ -16,8 +16,9 @@
 
 #pragma once
 
-#include <geometry_msgs/Pose.h>
-#include <marker_msgs/MarkerDetection.h>
+#include <geometry_msgs/msg/pose.hpp>
+#include <marker_msgs/msg/marker_detection.hpp>
+
 #include <mrpt/obs/CObservation2DRangeScan.h>
 #include <mrpt/obs/CObservationBeaconRanges.h>
 #include <mrpt/obs/CObservationBearingRange.h>
@@ -26,17 +27,17 @@
 
 namespace mrpt_msgs_bridge
 {
-// NOTE: These converters are here instead of mrpt::ros1bridge since
+// NOTE: These converters are here instead of mrpt::ros2bridge since
 //  the builds dep. MarkerDetection is not available in Debian/Ubuntu
 //  official repos, so we need to build it here within ROS.
 
 bool fromROS(
-	const marker_msgs::MarkerDetection& _msg,
+	const marker_msgs::msg::MarkerDetection& _msg,
 	const mrpt::poses::CPose3D& sensorPoseOnRobot,
 	mrpt::obs::CObservationBearingRange& _obj);
 
 bool fromROS(
-	const marker_msgs::MarkerDetection& _msg,
+	const marker_msgs::msg::MarkerDetection& _msg,
 	const mrpt::poses::CPose3D& sensorPoseOnRobot,
 	mrpt::obs::CObservationBeaconRanges& _obj);
 

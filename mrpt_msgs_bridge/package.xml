@@ -6,7 +6,11 @@
 
   <url type="website">https://www.mrpt.org/</url>
   <maintainer email="joseluisblancoc@gmail.com">José Luis Blanco-Claraco</maintainer>
+  <maintainer email="shravansomashekara.rai@gmail.com">Shravan S Rai</maintainer>
+
   <author>José Luis Blanco-Claraco</author>
+  <author>Shravan S Rai</author>
+
   <license>BSD</license>
   <url>https://wiki.ros.org/mrpt_msgs_bridge</url>
 
@@ -22,7 +26,7 @@
   <depend>tf2</depend>
 
   <export>
-    <build_type condition="$ROS_VERSION == 1">catkin</build_type>
+    <build_type condition="$ROS_VERSION == 2">ament</build_type>
   </export>
 
 </package>
