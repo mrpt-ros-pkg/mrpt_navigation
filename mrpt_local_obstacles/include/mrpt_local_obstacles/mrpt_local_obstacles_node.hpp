@@ -36,12 +36,14 @@
 #include <mrpt/maps/COccupancyGridMap2D.h>
 #include <mrpt/maps/CSimplePointsMap.h>
 #include <mrpt/obs/CObservation2DRangeScan.h>
+#include <mrpt/obs/CObservationPointCloud.h>
 #include <mrpt/obs/CSensoryFrame.h>
 #include <mrpt/opengl/CGridPlaneXY.h>
+#include <mrpt/opengl/COpenGLScene.h>
 #include <mrpt/opengl/CPointCloud.h>
 #include <mrpt/opengl/stock_objects.h>
 #include <mrpt/ros2bridge/laser_scan.h>
-#include <mrpt/ros2bridge/point_cloud.h>
+#include <mrpt/ros2bridge/point_cloud2.h>
 #include <mrpt/ros2bridge/pose.h>
 #include <mrpt/system/CTimeLogger.h>
 #include <mrpt/system/string_utils.h>
@@ -91,19 +93,38 @@ class LocalObstaclesNode: public rclcpp::Node
 	 * @param subs[in,out] List of subscribers will be here at return.
 	 * @return The number of topics subscribed to.
 	 */
-	template <typename MessageT, typename CallbackMethodType>
-	size_t subscribe_to_multiple_topics(
-		const std::string& lstTopics,
-        std::vector<typename rclcpp::Subscription<MessageT>::SharedPtr>& subscriptions,
-        CallbackMethodType callback);
+    template <typename MessageT, typename CallbackMethodType>
+    size_t subscribe_to_multiple_topics(const std::string& lstTopics,
+            std::vector<typename rclcpp::Subscription<MessageT>::SharedPtr>& subscriptions,
+            CallbackMethodType callback)
+    {
+        size_t num_subscriptions = 0;
+        // std::vector<std::string> lstSources;
+        // mrpt::system::tokenize(lstTopics, " ,\t\n", lstSources);
+
+        // // Error handling: check if lstSources is empty
+        // if (lstSources.empty()) 
+        // {
+        //     RCLCPP_ERROR(this->get_logger(), "List of topics is empty.");
+        //     return 0; // Return early with 0 subscriptions
+        // }
+        // for (const auto& source : lstSources) 
+        // {
+        //     const auto sub = this->create_subscription<MessageT>(source, 1, callback)
+        //     subscriptions.push_back(sub);  // 1 is the queue size
+        //     num_subscriptions++;
+        // }
+
+        // // Return the number of subscriptions created
+        return num_subscriptions;
+    }
 
     // member variables
     CTimeLogger m_profiler;
     bool m_show_gui = false;
-    std::string m_frameid_reference = "ddom"; //!< type:"odom" 
+    std::string m_frameid_reference = "odom"; //!< type:"odom" 
     std::string m_frameid_robot = "base_link"; //!< type: "base_link"
-    std::string m_topic_local_map_pointcloud = "local_map_pointcloud"; 
-    //!< Default: "local_map_pointcloud"
+    std::string m_topic_local_map_pointcloud = "local_map_pointcloud"; //!< Default: "local_map_pointcloud"
     std::string m_topics_source_2dscan = "scan, laser1"; //!< Default: "scan, laser1"
     std::string m_topics_source_pointclouds = "";
 
@@ -132,8 +153,8 @@ class LocalObstaclesNode: public rclcpp::Node
     /// Used for example to run voxel grid decimation, etc.
 	/// Refer to mp2p_icp docs
 	mp2p_icp_filters::FilterPipeline m_filter_pipeline;
-
 	std::string m_filter_output_layer_name;	 //!< mp2p_icp output layer name
+    std::string m_filter_yaml_file;
 
     /**
      * @name ROS2 pubs/subs
@@ -147,3 +168,5 @@ class LocalObstaclesNode: public rclcpp::Node
     std::shared_ptr<tf2_ros::TransformListener> m_tf_listener;
 
 };
+
+
