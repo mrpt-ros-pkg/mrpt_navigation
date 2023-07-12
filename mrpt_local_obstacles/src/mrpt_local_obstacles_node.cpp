@@ -449,21 +449,23 @@ void LocalObstaclesNode::read_parameters()
   this->get_parameter("topic_local_map_pointcloud", m_topic_local_map_pointcloud);
   RCLCPP_INFO(this->get_logger(), "topic_local_map_pointcloud: %s",m_topic_local_map_pointcloud.c_str());
 
-  this->declare_parameter<std::string>("topics_source_2dscan", "scan, laser1");
-  this->get_parameter("topics_source_2dscan", m_topics_source_2dscan);
-  RCLCPP_INFO(this->get_logger(), "topics_source_2dscan: %s", m_topics_source_2dscan.c_str());
+  this->declare_parameter<std::string>("source_topics_2dscan", "scan, laser1");
+  this->get_parameter("source_topics_2dscan", m_topics_source_2dscan);
+  RCLCPP_INFO(this->get_logger(), "source_topics_2dscan: %s", m_topics_source_2dscan.c_str());
 
-  this->declare_parameter<std::string>("topics_source_pointclouds", "");
-  this->get_parameter("topics_source_pointclouds", m_topics_source_pointclouds);
-  RCLCPP_INFO(this->get_logger(), "topics_source_pointclouds: %s", m_topics_source_pointclouds.c_str());
+  this->declare_parameter<std::string>("source_topics_pointclouds", "");
+  this->get_parameter("source_topics_pointclouds", m_topics_source_pointclouds);
+  RCLCPP_INFO(this->get_logger(), "source_topics_pointclouds: %s", m_topics_source_pointclouds.c_str());
 
   this->declare_parameter<std::string>("filter_yaml_file", "");
   this->get_parameter("filter_yaml_file", m_filter_yaml_file);
   RCLCPP_INFO(this->get_logger(), "filter_yaml_file: %s", m_filter_yaml_file.c_str());
   if(!m_filter_yaml_file.empty())
   {
-	//create CConfigFile and convert into yaml and pass to filter pipeline
-	//m_filter_pipeline = mp2p_icp_filters::filter_pipeline_from_yaml(fil);
+	ASSERT_FILE_EXISTS_(m_filter_yaml_file);
+	mrpt::containers::yaml cfg;
+	cfg.loadFromFile(m_filter_yaml_file);
+	m_filter_pipeline = mp2p_icp_filters::filter_pipeline_from_yaml(cfg);
   }
 
   this->declare_parameter<std::string>("filter_output_layer_name", "");

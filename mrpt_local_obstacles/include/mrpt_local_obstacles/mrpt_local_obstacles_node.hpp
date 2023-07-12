@@ -32,6 +32,8 @@
 
 /* mrpt deps*/
 #include <mrpt/config/CConfigFile.h>
+#include <mrpt/system/filesystem.h>
+#include <mrpt/containers/yaml.h>
 #include <mrpt/gui/CDisplayWindow3D.h>
 #include <mrpt/maps/COccupancyGridMap2D.h>
 #include <mrpt/maps/CSimplePointsMap.h>
@@ -47,6 +49,7 @@
 #include <mrpt/ros2bridge/pose.h>
 #include <mrpt/system/CTimeLogger.h>
 #include <mrpt/system/string_utils.h>
+#include <mp2p_icp/icp_pipeline_from_yaml.h>
 #include <mp2p_icp_filters/FilterDecimateVoxels.h>
 
 /* ros2 deps */
