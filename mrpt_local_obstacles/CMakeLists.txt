@@ -45,18 +45,18 @@ set(mola-common_DIR ${CMAKE_BINARY_DIR} CACHE PATH "path to mola-common-config.c
 
 add_subdirectory(submodules/mp2p_icp)
 
-add_executable(${PROJECT_NAME}
+add_executable(${PROJECT_NAME}_node
               src/mrpt_local_obstacles_node.cpp
               include/mrpt_local_obstacles/mrpt_local_obstacles_node.hpp)
 
-target_include_directories(${PROJECT_NAME}
+target_include_directories(${PROJECT_NAME}_node
                            PUBLIC
                             $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
                             $<INSTALL_INTERFACE:include>
 )
 
 target_link_libraries(
-  ${PROJECT_NAME}
+  ${PROJECT_NAME}_node
   mrpt::maps
   mrpt::obs
   mrpt::gui
@@ -65,7 +65,7 @@ target_link_libraries(
 )
 
 ament_target_dependencies(
-  ${PROJECT_NAME}
+  ${PROJECT_NAME}_node
   "rclcpp"
   "rclcpp_components"
   "nav_msgs"
@@ -76,7 +76,7 @@ ament_target_dependencies(
 )
 
 
-install(TARGETS ${PROJECT_NAME}
+install(TARGETS ${PROJECT_NAME}_node
   ARCHIVE DESTINATION lib/${PROJECT_NAME}
   LIBRARY DESTINATION lib/${PROJECT_NAME}
   RUNTIME DESTINATION bin/${PROJECT_NAME}
