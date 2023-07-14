@@ -8,12 +8,11 @@ find_package(rclcpp_components REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(geometry_msgs)
 find_package(sensor_msgs REQUIRED)
+find_package(mrpt_msgs REQUIRED)
 find_package(tf2 REQUIRED)
 find_package(tf2_ros)
 find_package(tf2_geometry_msgs REQUIRED)
 find_package(visualization_msgs REQUIRED)
-find_package(actionlib)
-find_package(actionlib_msgs)
 
 
 ## System dependencies are found with CMake's conventions
@@ -74,8 +73,7 @@ ament_target_dependencies(
   "nav_msgs"
   "sensor_msgs"
   "geometry_msgs"
-  "actionlib"
-  "actionlib_msgs"
+  "mrpt_msgs"
   "tf2"
   "tf2_ros"
   "tf2_geometry_msgs"

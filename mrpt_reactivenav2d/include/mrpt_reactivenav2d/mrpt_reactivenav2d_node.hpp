@@ -29,28 +29,35 @@
  **
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. *
  ***********************************************************************************/
-
+#pragma once
 
 #include <mrpt/config/CConfigFile.h>
 #include <mrpt/config/CConfigFileMemory.h>
 #include <mrpt/kinematics/CVehicleVelCmd_DiffDriven.h>
 #include <mrpt/maps/CSimplePointsMap.h>
 #include <mrpt/nav/reactive/CReactiveNavigationSystem.h>
-#include <mrpt/ros2bridge/point_cloud.h>
+#include <mrpt/nav/reactive/TWaypoint.h>
+#include <mrpt/obs/CObservationOdometry.h>
+#include <mrpt/ros2bridge/point_cloud2.h>
 #include <mrpt/ros2bridge/pose.h>
 #include <mrpt/ros2bridge/time.h>
 #include <mrpt/system/CTimeLogger.h>
 #include <mrpt/system/filesystem.h>
+#include <mrpt/system/os.h>
+#include <mrpt_msgs/msg/waypoint_sequence.hpp> 
+#include <mrpt_msgs/msg/waypoint.hpp>
 
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/laser_scan.hpp>
-#include <sensor_msgs/msg/point_cloud.hpp>
+#include <sensor_msgs/msg/point_cloud2.hpp>
 #include <geometry_msgs/msg/polygon.hpp>
 #include <geometry_msgs/msg/pose_stamped.hpp>
 #include <nav_msgs/msg/odometry.hpp>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 #include <tf2_ros/buffer.h>
 #include <tf2_ros/transform_listener.h>
+#include <tf2/LinearMath/Matrix3x3.h>
+#include <tf2/LinearMath/Quaternion.h>
 
 #include <mutex>
 
@@ -74,42 +81,54 @@ class ReactiveNav2DNode: public rclcpp::Node
    void navigate_to(const mrpt::math::TPose2D& target);
    void on_do_navigation();
    void on_goal_received(const geometry_msgs::msg::PoseStamped::SharedPtr& trg_ptr);
-   void on_local_obstacles(const sensor_msgs::msg::PointCloud::SharedPtr& obs);
+   void on_local_obstacles(const sensor_msgs::msg::PointCloud2::SharedPtr& obs);
    void on_set_robot_shape(const geometry_msgs::msg::Polygon::SharedPtr& newShape);
+   void on_odometry_received(const nav_msgs::msg::Odometry::SharedPtr& odom);
+   void update_waypoint_sequence(const mrpt_msgs::msg::WaypointSequence::SharedPtr& wp);
+   void on_waypoint_seq_received(const mrpt_msgs::msg::WaypointSequence::SharedPtr& wps);
 
-	CTimeLogger m_profiler;
-	TAuxInitializer m_auxinit;	//!< Just to make sure ROS is init first
-	ros::NodeHandle m_nh;  //!< The node handle
-	ros::NodeHandle m_localn;  //!< "~"
 
+   private:
 	/** @name ROS pubs/subs
 	 *  @{ */
-	ros::Subscriber m_sub_nav_goal;
-	ros::Subscriber m_sub_local_obs;
-	ros::Subscriber m_sub_robot_shape;
-	ros::Publisher m_pub_cmd_vel;
+    rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr m_sub_odometry;
+    rclcpp::Subscription<mrpt_msgs::msg::WaypointSequence>::SharedPtr m_sub_wp_seq;
+	rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr m_sub_nav_goal;
+	rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr m_sub_local_obs;
+	rclcpp::Subscription<geometry_msgs::msg::Polygon>::SharedPtr m_sub_robot_shape;
+	rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr m_pub_cmd_vel;
 
-	tf2_ros::Buffer m_tf_buffer;
-	tf2_ros::TransformListener m_tf_listener{m_tf_buffer};
+	std::shared_ptr<tf2_ros::Buffer> m_tf_buffer;
+    std::shared_ptr<tf2_ros::TransformListener> m_tf_listener;
 	/** @} */
 
+    CTimeLogger m_profiler;
 	bool m_1st_time_init;  //!< Reactive initialization done?
 	double m_target_allowed_distance;
 	double m_nav_period;
 
-	std::string m_pub_topic_reactive_nav_goal;
-	std::string m_sub_topic_local_obstacles;
-	std::string m_sub_topic_robot_shape;
+	std::string m_sub_topic_reactive_nav_goal = "reactive_nav_goal";
+	std::string m_sub_topic_local_obstacles = "local_map_pointcloud";
+	std::string m_sub_topic_robot_shape{};
+	std::string m_sub_topic_wp_seq = "reactive_nav_waypoints";
+	std::string m_sub_topic_odometry = "odom";
 
-	std::string m_frameid_reference;
-	std::string m_frameid_robot;
+    std::string m_pub_topic_cmd_vel = "cmd_vel";
+
+	std::string m_frameid_reference = "map";
+	std::string m_frameid_robot = "base_link";
+
+    std::string m_plugin_file;
+    std::string m_cfg_file_reactive;
 
 	bool m_save_nav_log;
 
-	ros::Timer m_timer_run_nav;
+	rclcpp::TimerBase::SharedPtr m_timer_run_nav;
 
+	mrpt::obs::CObservationOdometry m_odometry;
 	CSimplePointsMap m_last_obstacles;
 	std::mutex m_last_obstacles_cs;
+	std::mutex m_odometry_cs;
 
 	struct MyReactiveInterface : public mrpt::nav::CRobot2NavInterface
 	{
@@ -133,22 +152,22 @@ class ReactiveNav2DNode: public rclcpp::Node
 			CTimeLoggerEntry tle(
 				m_parent.m_profiler, "getCurrentPoseAndSpeeds");
 
-			ros::Duration timeout(0.1);
+			rclcpp::Duration timeout(0.1);
 
-			geometry_msgs::TransformStamped tfGeom;
+			geometry_msgs::msg::TransformStamped tfGeom;
 			try
 			{
 				CTimeLoggerEntry tle2(
 					m_parent.m_profiler,
 					"getCurrentPoseAndSpeeds.lookupTransform_sensor");
 
-				tfGeom = m_parent.m_tf_buffer.lookupTransform(
+				tfGeom = m_parent.m_tf_buffer->lookupTransform(
 					m_parent.m_frameid_reference, m_parent.m_frameid_robot,
-					ros::Time(0), timeout);
+					tf2::TimePointZero, tf2::durationFromSec(timeout.seconds()));
 			}
 			catch (const tf2::TransformException& ex)
 			{
-				ROS_ERROR("%s", ex.what());
+				RCLCPP_ERROR(m_parent.get_logger(), "%s", ex.what());
 				return false;
 			}
 
@@ -156,9 +175,9 @@ class ReactiveNav2DNode: public rclcpp::Node
 			tf2::fromMsg(tfGeom.transform, txRobotPose);
 
 			const mrpt::poses::CPose3D curRobotPose =
-				mrpt::ros1bridge::fromROS(txRobotPose);
+				mrpt::ros2bridge::fromROS(txRobotPose);
 
-			timestamp = mrpt::ros1bridge::fromROS(tfGeom.header.stamp);
+			timestamp = mrpt::ros2bridge::fromROS(tfGeom.header.stamp);
 
 			// Explicit 3d->2d to confirm we know we're losing information
 			curPose = mrpt::poses::CPose2D(curRobotPose).asTPose();
@@ -166,7 +185,7 @@ class ReactiveNav2DNode: public rclcpp::Node
 
 			curV = curW = 0;
 			MRPT_TODO("Retrieve current speeds from /odom topic?");
-			ROS_DEBUG(
+			RCLCPP_DEBUG(m_parent.get_logger(),
 				"[getCurrentPoseAndSpeeds] Latest pose: %s",
 				curPose.asString().c_str());
 
@@ -191,13 +210,13 @@ class ReactiveNav2DNode: public rclcpp::Node
 
 			const double v = vel_cmd_diff_driven->lin_vel;
 			const double w = vel_cmd_diff_driven->ang_vel;
-			ROS_DEBUG(
+			RCLCPP_DEBUG(m_parent.get_logger(),
 				"changeSpeeds: v=%7.4f m/s  w=%8.3f deg/s", v,
 				w * 180.0f / M_PI);
-			geometry_msgs::Twist cmd;
+			geometry_msgs::msg::Twist cmd;
 			cmd.linear.x = v;
 			cmd.angular.z = w;
-			m_parent.m_pub_cmd_vel.publish(cmd);
+			m_parent.m_pub_cmd_vel->publish(cmd);
 			return true;
 		}
 
