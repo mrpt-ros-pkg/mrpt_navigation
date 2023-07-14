@@ -23,11 +23,13 @@ LocalObstaclesNode::LocalObstaclesNode(const rclcpp::NodeOptions& options)
   size_t nSubsTotal = 0;
   nSubsTotal += subscribe_to_multiple_topics<sensor_msgs::msg::LaserScan>(
                 m_topics_source_2dscan, m_subs_2dlaser,
-                std::bind(&LocalObstaclesNode::on_new_sensor_laser_2d, this, std::placeholders::_1));
+				[this](const sensor_msgs::msg::LaserScan::SharedPtr scan)
+				{this-> on_new_sensor_laser_2d(scan);});
 
   nSubsTotal += subscribe_to_multiple_topics<sensor_msgs::msg::PointCloud2>(
-      m_topics_source_pointclouds, m_subs_pointclouds,
-      std::bind(&LocalObstaclesNode::on_new_sensor_pointcloud, this, std::placeholders::_1));
+      			m_topics_source_pointclouds, m_subs_pointclouds,
+				[this](const sensor_msgs::msg::PointCloud2::SharedPtr pts)
+				{this->on_new_sensor_pointcloud(pts);});
 
   RCLCPP_INFO(this->get_logger(),
       "Total number of sensor subscriptions: %u",
@@ -47,7 +49,7 @@ LocalObstaclesNode::LocalObstaclesNode(const rclcpp::NodeOptions& options)
 
   m_timer_publish = create_wall_timer(
             std::chrono::duration<double>(m_publish_period), 
-            std::bind(&LocalObstaclesNode::on_do_publish, this));
+			[this](){this->on_do_publish();});
 } //end ctor
 
 

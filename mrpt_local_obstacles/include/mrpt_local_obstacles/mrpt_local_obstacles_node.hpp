@@ -102,23 +102,23 @@ class LocalObstaclesNode: public rclcpp::Node
             CallbackMethodType callback)
     {
         size_t num_subscriptions = 0;
-        // std::vector<std::string> lstSources;
-        // mrpt::system::tokenize(lstTopics, " ,\t\n", lstSources);
+        std::vector<std::string> lstSources;
+        mrpt::system::tokenize(lstTopics, " ,\t\n", lstSources);
 
-        // // Error handling: check if lstSources is empty
-        // if (lstSources.empty()) 
-        // {
-        //     RCLCPP_ERROR(this->get_logger(), "List of topics is empty.");
-        //     return 0; // Return early with 0 subscriptions
-        // }
-        // for (const auto& source : lstSources) 
-        // {
-        //     const auto sub = this->create_subscription<MessageT>(source, 1, callback)
-        //     subscriptions.push_back(sub);  // 1 is the queue size
-        //     num_subscriptions++;
-        // }
+        // Error handling: check if lstSources is empty
+        if (lstSources.empty()) 
+        {
+            RCLCPP_ERROR(this->get_logger(), "List of topics is empty.");
+            return 0; // Return early with 0 subscriptions
+        }
+        for (const auto& source : lstSources) 
+        {
+            const auto sub = this->create_subscription<MessageT>(source, 1, callback);
+            subscriptions.push_back(sub);  // 1 is the queue size
+            num_subscriptions++;
+        }
 
-        // // Return the number of subscriptions created
+        // Return the number of subscriptions created
         return num_subscriptions;
     }
 
