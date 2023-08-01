@@ -60,6 +60,7 @@
 #include <tf2/LinearMath/Quaternion.h>
 
 #include <mutex>
+#include <chrono>
 
 using namespace mrpt::nav;
 using mrpt::maps::CSimplePointsMap;
@@ -152,7 +153,8 @@ class ReactiveNav2DNode: public rclcpp::Node
 			CTimeLoggerEntry tle(
 				m_parent.m_profiler, "getCurrentPoseAndSpeeds");
 
-			rclcpp::Duration timeout(0.1);
+			//rclcpp::Duration timeout(0.1);
+			rclcpp::Duration timeout(std::chrono::milliseconds(100));
 
 			geometry_msgs::msg::TransformStamped tfGeom;
 			try

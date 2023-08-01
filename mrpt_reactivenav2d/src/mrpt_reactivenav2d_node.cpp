@@ -344,7 +344,8 @@ void ReactiveNav2DNode::on_goal_received(const geometry_msgs::msg::PoseStamped::
 	// Convert to the "m_frameid_reference" frame of coordinates:
 	if (trg.header.frame_id != m_frameid_reference)
 	{
-		rclcpp::Duration timeout(0.2);
+		//rclcpp::Duration timeout(0.2);
+		rclcpp::Duration timeout(std::chrono::milliseconds(200));
 		try
 		{
 			geometry_msgs::msg::TransformStamped ref_to_trgFrame =
