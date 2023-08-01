@@ -98,7 +98,7 @@ void LocalObstaclesNode::on_do_publish()
 		// Get the latest robot pose in the reference frame (typ: /odom ->
 		// /base_link)
 		// so we can build the local map RELATIVE to it:
-		rclcpp::Duration timeout(1.0);
+		rclcpp::Duration timeout(std::chrono::seconds(1));
 
 		try
 		{
@@ -240,7 +240,7 @@ void LocalObstaclesNode::on_do_publish()
 void LocalObstaclesNode::on_new_sensor_laser_2d(const sensor_msgs::msg::LaserScan::SharedPtr& scan)
 {
 	CTimeLoggerEntry tle(m_profiler, "on_new_sensor_laser_2d");
-	rclcpp::Duration timeout(1.0);
+	rclcpp::Duration timeout(std::chrono::seconds(1));
 
 	geometry_msgs::msg::TransformStamped sensorOnRobot;
 	try
@@ -332,7 +332,7 @@ void LocalObstaclesNode::on_new_sensor_pointcloud(const sensor_msgs::msg::PointC
 {
 	CTimeLoggerEntry tle(m_profiler, "on_new_sensor_pointcloud");
 
-	rclcpp::Duration timeout(1.0);
+	rclcpp::Duration timeout(std::chrono::seconds(1));
 	// Get the relative position of the sensor wrt the robot:
 	geometry_msgs::msg::TransformStamped sensorOnRobot;
 	try

@@ -77,9 +77,7 @@ ament_target_dependencies(
 
 
 install(TARGETS ${PROJECT_NAME}_node
-  ARCHIVE DESTINATION lib/${PROJECT_NAME}
-  LIBRARY DESTINATION lib/${PROJECT_NAME}
-  RUNTIME DESTINATION bin/${PROJECT_NAME}
+  DESTINATION lib/${PROJECT_NAME}
 )
 
 install(
