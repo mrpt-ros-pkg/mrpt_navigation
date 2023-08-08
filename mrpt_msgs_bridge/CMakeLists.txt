@@ -8,6 +8,7 @@ find_package(geometry_msgs REQUIRED)
 find_package(tf2 REQUIRED)
 find_package(mrpt_msgs REQUIRED)
 find_package(visualization_msgs REQUIRED)
+find_package(marker_msgs REQUIRED)
 
 find_package(mrpt-ros2bridge REQUIRED)
 find_package(mrpt-obs REQUIRED)
@@ -58,9 +59,7 @@ target_link_libraries(${PROJECT_NAME}
 
 # Mark executables and/or libraries for installation
 install(TARGETS ${PROJECT_NAME}
-  ARCHIVE DESTINATION lib
-  LIBRARY DESTINATION lib
-  RUNTIME DESTINATION lib/${PROJECT_NAME}
+  DESTINATION lib/${PROJECT_NAME}
 )
 
 # Mark cpp header files for installation
@@ -75,6 +74,7 @@ ament_target_dependencies(${PROJECT_NAME}
   visualization_msgs
   tf2
   mrpt_msgs
+  marker_msgs
 )
 
 #ament_copyright()
