@@ -1,0 +1,15 @@
+- class_name: mp2p_icp_filters::FilterDecimateVoxels
+  params:
+    output_pointcloud_layer: 'decimated_pre'
+    voxel_filter_resolution: 0.05  # [m]
+    use_voxel_average: true
+    bounding_box_min: [ -5, -5, 0 ]
+    bounding_box_max: [ 10, 5, 1 ]
+- class_name: mp2p_icp_filters::FilterBoundingBox
+  params:
+    input_pointcloud_layer: 'decimated_pre'
+    output_pointcloud_layer: 'decimated'
+    keep_bbox_contents: false
+    bounding_box_min: [ -0.22, -0.27, -1 ]
+    bounding_box_max: [  0.22,  0.27,  1 ]
+

@@ -1,5 +1,6 @@
 #include <mrpt_local_obstacles/mrpt_local_obstacles_node.hpp>
 #include "rclcpp_components/register_node_macro.hpp"
+#include <sstream>
 
 using namespace mrpt::system;
 using namespace mrpt::config;
@@ -467,10 +468,13 @@ void LocalObstaclesNode::read_parameters()
 	ASSERT_FILE_EXISTS_(m_filter_yaml_file);
 	mrpt::containers::yaml cfg;
 	cfg.loadFromFile(m_filter_yaml_file);
+	std::stringstream ss;
+	cfg.printAsYAML(ss);
+	RCLCPP_INFO(this->get_logger(), "%s", ss.str().c_str());
 	m_filter_pipeline = mp2p_icp_filters::filter_pipeline_from_yaml(cfg);
   }
 
-  this->declare_parameter<std::string>("filter_output_layer_name", "");
+  this->declare_parameter<std::string>("filter_output_layer_name", "decimated");
   this->get_parameter("filter_output_layer_name", m_filter_output_layer_name);
   RCLCPP_INFO(this->get_logger(), "filter_output_layer_name: %s", m_filter_output_layer_name.c_str());
 
