@@ -6,23 +6,28 @@
 
   <url type="website">https://www.mrpt.org/</url>
   <maintainer email="joseluisblancoc@gmail.com">José Luis Blanco-Claraco</maintainer>
+  <maintainer email="shravansomashekara.rai@gmail.com">Shravan S Rai</maintainer>
+
   <author>José Luis Blanco-Claraco</author>
+  <author>Shravan S Rai</author>
+
   <license>BSD</license>
   <url>https://wiki.ros.org/mrpt_msgs_bridge</url>
 
   <build_depend>ros_environment</build_depend>
-
+  <buildtool_depend>ament_cmake</buildtool_depend>
   <buildtool_depend>catkin</buildtool_depend>
 
   <depend>mrpt2</depend>
   
   <depend>geometry_msgs</depend>
   <depend>visualization_msgs</depend>
+  <depend>marker_msgs</depend>
   <depend>mrpt_msgs</depend>
   <depend>tf2</depend>
 
   <export>
-    <build_type condition="$ROS_VERSION == 1">catkin</build_type>
+    <build_type condition="$ROS_VERSION == 2">ament_cmake</build_type>
   </export>
 
 </package>

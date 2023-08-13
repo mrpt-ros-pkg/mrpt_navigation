@@ -13,7 +13,7 @@
   <license>BSD</license>
   <url>https://wiki.ros.org/mrpt_navigation</url>
 
-  <buildtool_depend>catkin</buildtool_depend>
+  <buildtool_depend>ament_cmake</buildtool_depend>
 
   <exec_depend>mrpt_local_obstacles</exec_depend>
   <exec_depend>mrpt_localization</exec_depend>
@@ -23,6 +23,6 @@
   <exec_depend>mrpt_tutorials</exec_depend>
 
   <export>
-    <metapackage/>
+    <build_type>ament_cmake</build_type>
   </export>
 </package>

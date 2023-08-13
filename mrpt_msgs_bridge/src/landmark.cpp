@@ -2,7 +2,7 @@
    |                     Mobile Robot Programming Toolkit (MRPT)            |
    |                          http://www.mrpt.org/                          |
    |                                                                        |
-   | Copyright (c) 2005-2018, Individual contributors, see AUTHORS file     |
+   | Copyright (c) 2005-2023, Individual contributors, see AUTHORS file     |
    | See: http://www.mrpt.org/Authors - All rights reserved.                |
    | Released under BSD License. See details in http://www.mrpt.org/License |
    +------------------------------------------------------------------------+ */
@@ -13,20 +13,18 @@
  *
  */
 
-#include <geometry_msgs/Pose.h>
-#include <mrpt/obs/CObservationBearingRange.h>
-#include <mrpt/ros1bridge/pose.h>
-#include <mrpt/ros1bridge/time.h>
-#include <mrpt_msgs/ObservationRangeBearing.h>
-#include <mrpt_msgs_bridge/landmark.h>
+#include <mrpt_msgs_bridge/landmark.hpp>
+#include <mrpt/ros2bridge/pose.h>
+#include <mrpt/ros2bridge/time.h>
+
 
 bool mrpt_msgs_bridge::fromROS(
-	const mrpt_msgs::ObservationRangeBearing& _msg,
+	const mrpt_msgs::msg::ObservationRangeBearing& _msg,
 	const mrpt::poses::CPose3D& _pose,
 	mrpt::obs::CObservationBearingRange& _obj)
 
 {
-	_obj.timestamp = mrpt::ros1bridge::fromROS(_msg.header.stamp);
+	_obj.timestamp = mrpt::ros2bridge::fromROS(_msg.header.stamp);
 
 	mrpt::poses::CPose3D cpose_obj;
 
@@ -41,7 +39,7 @@ bool mrpt_msgs_bridge::fromROS(
 	if (_pose.empty())
 	{
 		_obj.setSensorPose(
-			mrpt::ros1bridge::fromROS(_msg.sensor_pose_on_robot));
+			mrpt::ros2bridge::fromROS(_msg.sensor_pose_on_robot));
 	}
 	else
 	{
@@ -65,11 +63,11 @@ bool mrpt_msgs_bridge::fromROS(
 
 bool mrpt_msgs_bridge::toROS(
 	const mrpt::obs::CObservationBearingRange& _obj,
-	mrpt_msgs::ObservationRangeBearing& _msg)
+	mrpt_msgs::msg::ObservationRangeBearing& _msg)
 {
-	_msg.header.stamp = mrpt::ros1bridge::toROS(_obj.timestamp);
+	_msg.header.stamp = mrpt::ros2bridge::toROS(_obj.timestamp);
 
-	_msg.sensor_pose_on_robot = mrpt::ros1bridge::toROS_Pose(_obj.sensorPose());
+	_msg.sensor_pose_on_robot = mrpt::ros2bridge::toROS_Pose(_obj.sensorPose());
 
 	_msg.max_sensor_distance = _obj.maxSensorDistance;
 	_msg.min_sensor_distance = _obj.minSensorDistance;
@@ -94,9 +92,9 @@ bool mrpt_msgs_bridge::toROS(
 
 bool mrpt_msgs_bridge::toROS(
 	const mrpt::obs::CObservationBearingRange& _obj,
-	mrpt_msgs::ObservationRangeBearing& _msg, geometry_msgs::Pose& sensorPose)
+	mrpt_msgs::msg::ObservationRangeBearing& _msg, geometry_msgs::msg::Pose& sensorPose)
 {
 	toROS(_obj, _msg);
-	sensorPose = mrpt::ros1bridge::toROS_Pose(_obj.sensorPose());
+	sensorPose = mrpt::ros2bridge::toROS_Pose(_obj.sensorPose());
 	return true;
 }

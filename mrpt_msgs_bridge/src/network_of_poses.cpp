@@ -2,32 +2,31 @@
    |                     Mobile Robot Programming Toolkit (MRPT)            |
    |                          http://www.mrpt.org/                          |
    |                                                                        |
-   | Copyright (c) 2005-2018, Individual contributors, see AUTHORS file     |
+   | Copyright (c) 2005-2023, Individual contributors, see AUTHORS file     |
    | See: http://www.mrpt.org/Authors - All rights reserved.                |
    | Released under BSD License. See details in http://www.mrpt.org/License |
    +------------------------------------------------------------------------+ */
 
-#include <geometry_msgs/Pose.h>
-#include <geometry_msgs/PoseWithCovariance.h>
+#include <geometry_msgs/msg/pose.hpp>
+#include <geometry_msgs/msg/pose_with_covariance.hpp>
 #include <mrpt/graphs/TNodeID.h>
-#include <mrpt/ros1bridge/pose.h>
-#include <mrpt_msgs/NodeIDWithPose.h>
-#include <mrpt_msgs_bridge/network_of_poses.h>
+#include <mrpt/ros2bridge/pose.h>
+#include <mrpt_msgs_bridge/network_of_poses.hpp>
 
 #include <iostream>	 // for debugging reasons
 
 using mrpt::graphs::TNodeID;
 
 ///////////////////////////////////////////////////////////////////////////////////////////
-// MRPT => ROS
+// MRPT => ROS2
 ///////////////////////////////////////////////////////////////////////////////////////////
 
 void mrpt_msgs_bridge::toROS(
 	const mrpt::graphs::CNetworkOfPoses2DInf& mrpt_graph,
-	mrpt_msgs::NetworkOfPoses& ros_graph)
+	mrpt_msgs::msg::NetworkOfPoses& ros_graph)
 {
 	MRPT_START
-	using namespace geometry_msgs;
+	using namespace geometry_msgs::msg;
 	using namespace mrpt::math;
 	using namespace mrpt::graphs;
 	using namespace mrpt::poses;
@@ -46,12 +45,12 @@ void mrpt_msgs_bridge::toROS(
 	for (poses_cit_t poses_cit = mrpt_graph.nodes.begin();
 		 poses_cit != mrpt_graph.nodes.end(); ++poses_cit)
 	{
-		mrpt_msgs::NodeIDWithPose ros_node;
+		mrpt_msgs::msg::NodeIDWithPose ros_node;
 
 		// nodeID
 		ros_node.node_id = poses_cit->first;
 		// pose
-		ros_node.pose = mrpt::ros1bridge::toROS_Pose(poses_cit->second);
+		ros_node.pose = mrpt::ros2bridge::toROS_Pose(poses_cit->second);
 
 		// zero the optional fields
 		ros_node.str_id.data = "";
@@ -63,7 +62,7 @@ void mrpt_msgs_bridge::toROS(
 	// fill the constraints
 	for (const auto& edge : constraints)
 	{
-		mrpt_msgs::GraphConstraint ros_constr;
+		mrpt_msgs::msg::GraphConstraint ros_constr;
 
 		// constraint ends
 		ros_constr.node_id_from = edge.first.first;
@@ -74,11 +73,11 @@ void mrpt_msgs_bridge::toROS(
 		{
 			CPosePDFGaussianInf constr_inv;
 			edge.second.inverse(constr_inv);
-			ros_constr.constraint = mrpt::ros1bridge::toROS(constr_inv);
+			ros_constr.constraint = mrpt::ros2bridge::toROS(constr_inv);
 		}
 		else
 		{
-			ros_constr.constraint = mrpt::ros1bridge::toROS(edge.second);
+			ros_constr.constraint = mrpt::ros2bridge::toROS(edge.second);
 		}
 
 		ros_graph.constraints.push_back(ros_constr);
@@ -89,7 +88,7 @@ void mrpt_msgs_bridge::toROS(
 
 void mrpt_msgs_bridge::toROS(
 	[[maybe_unused]] const mrpt::graphs::CNetworkOfPoses3DInf& mrpt_graph,
-	[[maybe_unused]] mrpt_msgs::NetworkOfPoses& ros_graph)
+	[[maybe_unused]] mrpt_msgs::msg::NetworkOfPoses& ros_graph)
 {
 	THROW_EXCEPTION("Conversion not implemented yet");
 	// TODO: Implement CNetworkOfPoses3DInf => mrpt_msgs::NetworkOfPoses
@@ -98,11 +97,11 @@ void mrpt_msgs_bridge::toROS(
 
 void mrpt_msgs_bridge::toROS(
 	const mrpt::graphs::CNetworkOfPoses2DInf_NA& mrpt_graph,
-	mrpt_msgs::NetworkOfPoses& ros_graph)
+	mrpt_msgs::msg::NetworkOfPoses& ros_graph)
 {
 	MRPT_START
 
-	using namespace geometry_msgs;
+	using namespace geometry_msgs::msg;
 	using namespace mrpt::math;
 	using namespace mrpt::graphs;
 	using namespace mrpt::poses;
@@ -128,12 +127,12 @@ void mrpt_msgs_bridge::toROS(
 	for (poses_cit_t poses_cit = mrpt_graph.nodes.begin();
 		 poses_cit != mrpt_graph.nodes.end(); ++poses_cit)
 	{
-		mrpt_msgs::NodeIDWithPose ros_node;
+		mrpt_msgs::msg::NodeIDWithPose ros_node;
 
 		// nodeID
 		ros_node.node_id = poses_cit->first;
 		// pose
-		ros_node.pose = mrpt::ros1bridge::toROS_Pose(poses_cit->second);
+		ros_node.pose = mrpt::ros2bridge::toROS_Pose(poses_cit->second);
 
 		// optional fields for the MR-SLAM case
 		ros_node.str_id.data = poses_cit->second.agent_ID_str;
@@ -146,7 +145,7 @@ void mrpt_msgs_bridge::toROS(
 	// CNetworkOfPoses2DInf
 	for (const auto& edge : constraints)
 	{
-		mrpt_msgs::GraphConstraint ros_constr;
+		mrpt_msgs::msg::GraphConstraint ros_constr;
 
 		// constraint ends
 		ros_constr.node_id_from = edge.first.first;
@@ -157,11 +156,11 @@ void mrpt_msgs_bridge::toROS(
 		{
 			CPosePDFGaussianInf constr_inv;
 			edge.second.inverse(constr_inv);
-			ros_constr.constraint = mrpt::ros1bridge::toROS(constr_inv);
+			ros_constr.constraint = mrpt::ros2bridge::toROS(constr_inv);
 		}
 		else
 		{
-			ros_constr.constraint = mrpt::ros1bridge::toROS(edge.second);
+			ros_constr.constraint = mrpt::ros2bridge::toROS(edge.second);
 		}
 
 		ros_graph.constraints.push_back(ros_constr);
@@ -172,22 +171,22 @@ void mrpt_msgs_bridge::toROS(
 
 void mrpt_msgs_bridge::toROS(
 	[[maybe_unused]] const mrpt::graphs::CNetworkOfPoses3DInf_NA& mrpt_graph,
-	[[maybe_unused]] mrpt_msgs::NetworkOfPoses& ros_graph)
+	[[maybe_unused]] mrpt_msgs::msg::NetworkOfPoses& ros_graph)
 {
 	THROW_EXCEPTION("Conversion not implemented yet");
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////
-// ROS => MRPT
+// ROS2 => MRPT
 ///////////////////////////////////////////////////////////////////////////////////////////
 
 void mrpt_msgs_bridge::fromROS(
-	const mrpt_msgs::NetworkOfPoses& ros_graph,
+	const mrpt_msgs::msg::NetworkOfPoses& ros_graph,
 	mrpt::graphs::CNetworkOfPoses2DInf& mrpt_graph)
 {
 	MRPT_START
 	using namespace mrpt::poses;
-	using namespace mrpt_msgs;
+	using namespace mrpt_msgs::msg;
 	using namespace std;
 
 	typedef NetworkOfPoses::_nodes_type::_vec_type::const_iterator nodes_cit_t;
@@ -201,7 +200,7 @@ void mrpt_msgs_bridge::fromROS(
 		 nodes_cit != ros_graph.nodes.vec.end(); ++nodes_cit)
 	{
 		// get the pose
-		CPose2D mrpt_pose = CPose2D(mrpt::ros1bridge::fromROS(nodes_cit->pose));
+		CPose2D mrpt_pose = CPose2D(mrpt::ros2bridge::fromROS(nodes_cit->pose));
 
 		mrpt_graph.nodes.insert(
 			make_pair(static_cast<TNodeID>(nodes_cit->node_id), mrpt_pose));
@@ -218,7 +217,7 @@ void mrpt_msgs_bridge::fromROS(
 
 		// constraint value
 		const auto mrpt_constr = mrpt::poses::CPosePDFGaussianInf(
-			mrpt::ros1bridge::fromROS(constr_cit->constraint));
+			mrpt::ros2bridge::fromROS(constr_cit->constraint));
 
 		mrpt_graph.edges.insert(make_pair(constr_ends, mrpt_constr));
 	}
@@ -229,7 +228,7 @@ void mrpt_msgs_bridge::fromROS(
 }
 
 void mrpt_msgs_bridge::fromROS(
-	[[maybe_unused]] const mrpt_msgs::NetworkOfPoses& ros_graph,
+	[[maybe_unused]] const mrpt_msgs::msg::NetworkOfPoses& ros_graph,
 	[[maybe_unused]] mrpt::graphs::CNetworkOfPoses3DInf& mrpt_graph)
 {
 	THROW_EXCEPTION("Conversion not implemented yet");
@@ -238,12 +237,12 @@ void mrpt_msgs_bridge::fromROS(
 }
 
 void mrpt_msgs_bridge::fromROS(
-	const mrpt_msgs::NetworkOfPoses& ros_graph,
+	const mrpt_msgs::msg::NetworkOfPoses& ros_graph,
 	mrpt::graphs::CNetworkOfPoses2DInf_NA& mrpt_graph)
 {
 	MRPT_START
 	using namespace mrpt::poses;
-	using namespace mrpt_msgs;
+	using namespace mrpt_msgs::msg;
 	using namespace std;
 
 	using nodes_cit_t = NetworkOfPoses::_nodes_type::_vec_type::const_iterator;
@@ -261,7 +260,7 @@ void mrpt_msgs_bridge::fromROS(
 	{
 		// set the nodeID/pose
 		mrpt_graph_pose_t mrpt_node =
-			mrpt::ros1bridge::fromROS(nodes_cit->pose);
+			mrpt::ros2bridge::fromROS(nodes_cit->pose);
 
 		// set the MR-SLAM fields
 		mrpt_node.agent_ID_str = nodes_cit->str_id.data;
@@ -282,7 +281,7 @@ void mrpt_msgs_bridge::fromROS(
 
 		// constraint value
 		const auto mrpt_constr = mrpt::poses::CPosePDFGaussianInf(
-			mrpt::ros1bridge::fromROS(constr_cit->constraint));
+			mrpt::ros2bridge::fromROS(constr_cit->constraint));
 
 		mrpt_graph.edges.insert(make_pair(constr_ends, mrpt_constr));
 	}
@@ -293,7 +292,7 @@ void mrpt_msgs_bridge::fromROS(
 }
 
 void convert(
-	[[maybe_unused]] mrpt_msgs::NetworkOfPoses& ros_graph,
+	[[maybe_unused]] mrpt_msgs::msg::NetworkOfPoses& ros_graph,
 	[[maybe_unused]] const mrpt::graphs::CNetworkOfPoses3DInf_NA& mrpt_graph)
 {
 	THROW_EXCEPTION("Conversion not implemented yet");

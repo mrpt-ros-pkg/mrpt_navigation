@@ -2,17 +2,14 @@
    |                     Mobile Robot Programming Toolkit (MRPT)            |
    |                          http://www.mrpt.org/                          |
    |                                                                        |
-   | Copyright (c) 2005-2018, Individual contributors, see AUTHORS file     |
+   | Copyright (c) 2005-2023, Individual contributors, see AUTHORS file     |
    | See: http://www.mrpt.org/Authors - All rights reserved.                |
    | Released under BSD License. See details in http://www.mrpt.org/License |
    +------------------------------------------------------------------------+ */
+#include <mrpt_msgs_bridge/beacon.hpp>
+#include <mrpt/ros2bridge/pose.h>
+#include <mrpt/ros2bridge/time.h>
 
-#include <geometry_msgs/Pose.h>
-#include <mrpt/obs/CObservationBeaconRanges.h>
-#include <mrpt/ros1bridge/pose.h>
-#include <mrpt/ros1bridge/time.h>
-#include <mrpt_msgs/ObservationRangeBeacon.h>
-#include <mrpt_msgs_bridge/beacon.h>
 
 #include "tf2/LinearMath/Matrix3x3.h"
 #include "tf2/transform_datatypes.h"
@@ -20,10 +17,10 @@
 using namespace mrpt::obs;
 
 bool mrpt_msgs_bridge::fromROS(
-	const mrpt_msgs::ObservationRangeBeacon& _msg,
+	const mrpt_msgs::msg::ObservationRangeBeacon _msg,
 	const mrpt::poses::CPose3D& _pose, CObservationBeaconRanges& _obj)
 {
-	_obj.timestamp = mrpt::ros1bridge::fromROS(_msg.header.stamp);
+	_obj.timestamp = mrpt::ros2bridge::fromROS(_msg.header.stamp);
 	mrpt::poses::CPose3D cpose_obj;
 
 	_obj.stdError = _msg.sensor_std_range;
@@ -33,7 +30,7 @@ bool mrpt_msgs_bridge::fromROS(
 
 	if (_pose.empty())
 	{
-		cpose_obj = mrpt::ros1bridge::fromROS(_msg.sensor_pose_on_robot);
+		cpose_obj = mrpt::ros2bridge::fromROS(_msg.sensor_pose_on_robot);
 		_obj.setSensorPose(cpose_obj);
 	}
 	else
@@ -56,13 +53,13 @@ bool mrpt_msgs_bridge::fromROS(
 
 bool mrpt_msgs_bridge::toROS(
 	const CObservationBeaconRanges& _obj,
-	mrpt_msgs::ObservationRangeBeacon& _msg)
+	mrpt_msgs::msg::ObservationRangeBeacon& _msg)
 {
 	mrpt::poses::CPose3D cpose_obj;
 
-	_msg.header.stamp = mrpt::ros1bridge::toROS(_obj.timestamp);
+	_msg.header.stamp = mrpt::ros2bridge::toROS(_obj.timestamp);
 	_obj.getSensorPose(cpose_obj);
-	_msg.sensor_pose_on_robot = mrpt::ros1bridge::toROS_Pose(cpose_obj);
+	_msg.sensor_pose_on_robot = mrpt::ros2bridge::toROS_Pose(cpose_obj);
 
 	_msg.sensor_std_range = _obj.stdError;
 	_msg.header.frame_id = _obj.sensorLabel;
@@ -84,11 +81,11 @@ bool mrpt_msgs_bridge::toROS(
 
 bool mrpt_msgs_bridge::toROS(
 	const CObservationBeaconRanges& _obj,
-	mrpt_msgs::ObservationRangeBeacon& _msg, geometry_msgs::Pose& _pose)
+	mrpt_msgs::msg::ObservationRangeBeacon& _msg, geometry_msgs::msg::Pose& _pose)
 {
 	toROS(_obj, _msg);
 	mrpt::poses::CPose3D pose;
 	_obj.getSensorPose(pose);
-	_pose = mrpt::ros1bridge::toROS_Pose(pose);
+	_pose = mrpt::ros2bridge::toROS_Pose(pose);
 	return true;
 }

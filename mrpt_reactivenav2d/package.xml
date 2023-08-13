@@ -1,33 +1,34 @@
 <?xml version="1.0"?>
-<package format="2">
+<package format="3">
   <name>mrpt_reactivenav2d</name>
   <version>1.0.3</version>
   <description>Reactive navigation for 2D robots using MRPT navigation algorithms (TP-Space)</description>
 
   <maintainer email="jlblanco@ual.es">Jose-Luis Blanco-Claraco</maintainer>
+  <maintainer email="shravansomashekara.rai@gmail.com">Shravan S Rai</maintainer>
+
+  <author email="jlblanco@ual.es">Jose-Luis Blanco-Claraco</author>
 
   <license>BSD</license>
 
   <url type="website">https://wiki.ros.org/mrpt_reactivenav2d</url>
 
-  <author email="jlblanco@ual.es">Jose-Luis Blanco-Claraco</author>
-
-
-  <buildtool_depend>catkin</buildtool_depend>
+  <buildtool_depend>ament_cmake</buildtool_depend>
 
   <depend>mrpt2</depend>
 
-  <depend>actionlib</depend>
-  <depend>actionlib_msgs</depend>
-  <depend>dynamic_reconfigure</depend>
+  <depend>rclcpp</depend>
+  <depend>rclcpp_components</depend>
+  <depend>nav_msgs</depend>
+  <depend>sensor_msgs</depend>
   <depend>geometry_msgs</depend>
-  <depend>roscpp</depend>
+  <depend>mrpt_msgs</depend>
   <depend>tf2</depend>
   <depend>tf2_ros</depend>
   <depend>tf2_geometry_msgs</depend>
   <depend>visualization_msgs</depend>
 
-
   <export>
+    <build_type>ament_cmake</build_type>
   </export>
 </package>
