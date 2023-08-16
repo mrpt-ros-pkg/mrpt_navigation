@@ -35,34 +35,36 @@
 
 #include <mrpt/config/CConfigFile.h>
 #include <mrpt/maps/CMultiMetricMap.h>
+#include "nav_msgs/msg/occupancy_grid.hpp"
+#include "nav_msgs/srv/get_map.hpp"
+#include "nav_msgs/msg/map_meta_data.hpp"
+#include "rclcpp/rclcpp.hpp"
 
-#include "nav_msgs/GetMap.h"
-#include "nav_msgs/MapMetaData.h"
-#include "ros/ros.h"
-
-class MapServer
+class MapServer : public rclcpp::Node
 {
-   public:
-	MapServer(ros::NodeHandle& n);
-	~MapServer();
-	void init();
-	void loop();
+public:
+  MapServer();
+  ~MapServer();
+  void init();
+  void loop();
 
-   private:
-	ros::NodeHandle n_;
-	ros::NodeHandle n_param_{"~"};
-	double frequency_{0};
-	unsigned long loop_count_{0};
-	bool debug_{true};
-	ros::Publisher pub_map_ros_;
-	ros::Publisher pub_metadata_;
-	ros::ServiceServer service_map_;
-	nav_msgs::GetMap::Response resp_ros_;
+private:
+  double m_frequency{0};
+  unsigned long m_loop_count{0};
+  bool m_debug{true};
+  std::string m_pub_metadata_str;
+  std::string m_pub_map_ros_str;
+  rclcpp::Publisher<nav_msgs::msg::OccupancyGrid>::SharedPtr m_pub_map_ros;
+  rclcpp::Publisher<nav_msgs::msg::MapMetaData>::SharedPtr m_pub_metadata;
+  rclcpp::Service<nav_msgs::srv::GetMap>::SharedPtr m_service_map;
+  nav_msgs::srv::GetMap::Response m_response_ros;
 
-	mrpt::maps::CMultiMetricMap::Ptr metric_map_;
+  mrpt::maps::CMultiMetricMap::Ptr m_metric_map;
 
-	void publishMap();
+  void publish_map();
 
-	bool mapCallback(
-		nav_msgs::GetMap::Request& req, nav_msgs::GetMap::Response& res);
+  bool map_callback(
+      const std::shared_ptr<rmw_request_id_t> request_header,
+      const std::shared_ptr<nav_msgs::srv::GetMap::Request> req,
+      const std::shared_ptr<nav_msgs::srv::GetMap::Response> res);
 };

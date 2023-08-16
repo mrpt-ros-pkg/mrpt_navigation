@@ -1,19 +1,25 @@
-cmake_minimum_required(VERSION 3.1)
+cmake_minimum_required(VERSION 3.5)
 project(mrpt_map)
 
-## Find catkin macros and libraries
-## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
-## is used, also find other catkin packages
-find_package(catkin REQUIRED 
-	COMPONENTS
-		roscpp
-		nav_msgs
-	)
+# find dependencies
+find_package(ament_cmake REQUIRED)
+find_package(rclcpp REQUIRED)
+find_package(rclcpp_components REQUIRED)
+find_package(nav_msgs REQUIRED)
+# find_package(tf2 REQUIRED)
 
 find_package(mrpt-maps REQUIRED)
-find_package(mrpt-ros1bridge REQUIRED)
+find_package(mrpt-ros2bridge REQUIRED)
 
 message(STATUS "MRPT_VERSION: ${MRPT_VERSION}")
+
+if(NOT CMAKE_C_STANDARD)
+  set(CMAKE_C_STANDARD 99)
+endif()
+
+if(NOT CMAKE_CXX_STANDARD)
+  set(CMAKE_CXX_STANDARD 17)
+endif()
 
 if (CMAKE_COMPILER_IS_GNUCXX)
 	# High level of warnings.
@@ -29,61 +35,57 @@ IF(CMAKE_COMPILER_IS_GNUCXX AND NOT CMAKE_BUILD_TYPE MATCHES "Debug")
   add_compile_options(-O3)
 ENDIF()
 
-###################################
-## catkin specific configuration ##
-###################################
-## The catkin_package macro generates cmake config files for your package
-## Declare things to be passed to dependent projects
-## INCLUDE_DIRS: uncomment this if you package contains header files
-## LIBRARIES: libraries you create in this project that dependent projects also need
-## CATKIN_DEPENDS: catkin_packages dependent projects also need
-## DEPENDS: system dependencies of this project that dependent projects also need
-catkin_package(
-  CATKIN_DEPENDS 
-		roscpp
-		nav_msgs
-#  DEPENDS mrpt
-)
-
 ###########
 ## Build ##
 ###########
 
-## Specify additional locations of header files
-## Your package locations should be listed before other locations
-include_directories(include ${catkin_INCLUDE_DIRS})
-
 ## Declare a cpp executable
-add_executable(map_server_node src/map_server_node.cpp)
+add_executable(map_server_node
+				src/map_server_node.cpp
+				include/${PROJECT_NAME}/map_server_node.hpp)
+
+target_include_directories(map_server_node
+				PUBLIC
+				$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+				$<INSTALL_INTERFACE:include>
+)
 
 ## Specify libraries to link a library or executable target against
 target_link_libraries(map_server_node
   mrpt::maps
-  mrpt::ros1bridge
-  ${catkin_LIBRARIES}
+  mrpt::ros2bridge
+)
+
+ament_target_dependencies(
+	map_server_node
+	"rclcpp"
+  	"rclcpp_components"
+  	"nav_msgs"
 )
 
 #############
 ## Install ##
 #############
 
-# all install targets should use catkin DESTINATION variables
-# See http://ros.org/doc/api/catkin/html/adv_user_guide/variables.html
-
-# Mark executables and/or libraries for installation
 install(TARGETS map_server_node
-  ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+	DESTINATION lib/${PROJECT_NAME}
 )
 
-# Mark other files for installation (e.g. launch and bag files, etc.)
 install(DIRECTORY
   launch
   tutorial
-  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
+  DESTINATION shared/${PROJECT_NAME}
 )
 
-#############
-## Testing ##
-#############
+if(BUILD_TESTING)
+  find_package(ament_lint_auto REQUIRED)
+  # the following line skips the linter which checks for copyrights
+  # uncomment the line when a copyright and license is not present in all source files
+  #set(ament_cmake_copyright_FOUND TRUE)
+  # the following line skips cpplint (only works in a git repo)
+  # uncomment the line when this package is not in a git repo
+  #set(ament_cmake_cpplint_FOUND TRUE)
+  ament_lint_auto_find_test_dependencies()
+endif()
+
+ament_package()

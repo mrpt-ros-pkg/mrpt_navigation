@@ -1,6 +1,6 @@
 /***********************************************************************************
  * Revised BSD License *
- * Copyright (c) 2014, Markus Bader <markus.bader@tuwien.ac.at> *
+ * Copyright (c) 2014-2023, Markus Bader <markus.bader@tuwien.ac.at> *
  * All rights reserved. *
  *                                                                                 *
  * Redistribution and use in source and binary forms, with or without *
@@ -30,142 +30,128 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. *
  ***********************************************************************************/
 
-#include <map_server_node.h>
+#include "mrpt_map/map_server_node.hpp"
 #include <mrpt/config/CConfigFile.h>
 #include <mrpt/maps/CMultiMetricMap.h>
 #include <mrpt/maps/COccupancyGridMap2D.h>
-#include <mrpt/ros1bridge/map.h>
-#include <mrpt/system/filesystem.h>	 // ASSERT_FILE_EXISTS_()
+#include <mrpt/ros2bridge/map.h>
+#include <mrpt/system/filesystem.h> // ASSERT_FILE_EXISTS_()
+#include <nav_msgs/msg/occupancy_grid.hpp>
 
 using namespace mrpt::config;
 using mrpt::maps::CMultiMetricMap;
 using mrpt::maps::COccupancyGridMap2D;
 
-MapServer::MapServer(ros::NodeHandle& n) : n_(n) {}
+MapServer::MapServer() : Node("mrpt_map_server")
+{
+}
 
 MapServer::~MapServer() {}
 
 void MapServer::init()
 {
-	n_param_.param<bool>("debug", debug_, true);
-	ROS_INFO("debug: %s", (debug_ ? "true" : "false"));
+	this->declare_parameter<bool>("debug", false);
+	this->get_parameter("debug", m_debug);
+  	RCLCPP_INFO(this->get_logger(), "debug: %s",  m_debug?"true":"false");
 
 	mrpt::maps::COccupancyGridMap2D::Ptr grid;
+	std::string map_yaml_file;
+	this->declare_parameter<std::string>("map_yaml_file", "");
+	this->get_parameter("map_yaml_file", map_yaml_file);
+  	RCLCPP_INFO(this->get_logger(), "map_yaml_file name: %s", map_yaml_file.c_str());
 
-	if (auto yamlFile = n_param_.param<std::string>("map_yaml_file", "");
-		!yamlFile.empty())
+	if(!map_yaml_file.empty())
 	{
-		ROS_INFO("map_yaml_file: %s", yamlFile.c_str());
-
 		grid = mrpt::maps::COccupancyGridMap2D::Create();
-		grid->loadFromROSMapServerYAML(yamlFile);
+		grid->loadFromROSMapServerYAML(map_yaml_file);
 	}
 	else
 	{
 		std::string ini_file;
 		std::string map_file;
-		n_param_.param<std::string>("ini_file", ini_file, "map.ini");
 
-		n_param_.param<std::string>("map_file", map_file, "map.simplemap");
+		this->declare_parameter<std::string>("ini_file", "map.ini");
+		this->get_parameter("ini_file", ini_file);
+  		RCLCPP_INFO(this->get_logger(), "map_ini_file name: %s", ini_file.c_str());
 
-		ROS_INFO("ini_file: %s", ini_file.c_str());
-		ROS_INFO("map_file: %s", map_file.c_str());
+		this->declare_parameter<std::string>("map_file", "map.simplemap");
+		this->get_parameter("map_file", map_file);
+  		RCLCPP_INFO(this->get_logger(), "map_file name: %s", map_file.c_str());
 
 		ASSERT_FILE_EXISTS_(ini_file);
 		ASSERT_FILE_EXISTS_(map_file);
 		CConfigFile config_file;
 		config_file.setFileName(ini_file);
 
-		metric_map_ = CMultiMetricMap::Create();
+		m_metric_map = CMultiMetricMap::Create();
 
-		mrpt::ros1bridge::MapHdl::loadMap(
-			*metric_map_, config_file, map_file, "metricMap", debug_);
+		mrpt::ros2bridge::MapHdl::loadMap(
+			*m_metric_map, config_file, map_file, "metricMap", m_debug);
 
-		grid = metric_map_->mapByClass<COccupancyGridMap2D>();
+		grid = m_metric_map->mapByClass<COccupancyGridMap2D>();
 	}
 
 	ASSERT_(grid);
 
-	n_param_.param<std::string>(
-		"frame_id", resp_ros_.map.header.frame_id, "map");
-	ROS_INFO("frame_id: %s", resp_ros_.map.header.frame_id.c_str());
-	n_param_.param<double>("frequency", frequency_, 0.1);
-	ROS_INFO("frequency: %f", frequency_);
+	this->declare_parameter<std::string>("frame_id", "map");
+	this->get_parameter("frame_id", m_response_ros.map.header.frame_id);
+  	RCLCPP_INFO(this->get_logger(), "frame_id: %s", m_response_ros.map.header.frame_id.c_str());
 
-	pub_map_ros_ = n_.advertise<nav_msgs::OccupancyGrid>("map", 1, true);
-	pub_metadata_ =
-		n_.advertise<nav_msgs::MapMetaData>("map_metadata", 1, true);
-	service_map_ =
-		n_.advertiseService("static_map", &MapServer::mapCallback, this);
+	this->declare_parameter<double>("frequency", 0.1);
+	this->get_parameter("frequency", m_frequency);
+  	RCLCPP_INFO(this->get_logger(), "frequency: %f", m_frequency);
 
-	if (debug_)
-		printf(
-			"gridMap[0]:  %i x %i @ %4.3fm/p, %4.3f, %4.3f, %4.3f, %4.3f\n",
-			grid->getSizeX(), grid->getSizeY(), grid->getResolution(),
-			grid->getXMin(), grid->getYMin(), grid->getXMax(), grid->getYMax());
+	this->declare_parameter<std::string>("pub_map_ros", "map");
+	this->get_parameter("pub_map_ros", m_pub_map_ros_str);
+  	RCLCPP_INFO(this->get_logger(), "pub_map_ros: %s", m_pub_map_ros_str.c_str());
 
-	mrpt::ros1bridge::toROS(*grid, resp_ros_.map);
+	this->declare_parameter<std::string>("pub_metadata", "map_metadata");
+	this->get_parameter("pub_metadata", m_pub_metadata_str);
+  	RCLCPP_INFO(this->get_logger(), "pub_metadata: %s", m_pub_metadata_str.c_str());
 
-	if (debug_)
-		printf(
-			"msg:         %i x %i @ %4.3fm/p, %4.3f, %4.3f, %4.3f, %4.3f\n",
-			resp_ros_.map.info.width, resp_ros_.map.info.height,
-			resp_ros_.map.info.resolution, resp_ros_.map.info.origin.position.x,
-			resp_ros_.map.info.origin.position.y,
-			resp_ros_.map.info.width * resp_ros_.map.info.resolution +
-				resp_ros_.map.info.origin.position.x,
-			resp_ros_.map.info.height * resp_ros_.map.info.resolution +
-				resp_ros_.map.info.origin.position.y);
+
 }
 
-bool MapServer::mapCallback(
-	nav_msgs::GetMap::Request& req, nav_msgs::GetMap::Response& res)
+bool MapServer::map_callback(
+    const std::shared_ptr<rmw_request_id_t> request_header,
+    const std::shared_ptr<nav_msgs::srv::GetMap::Request> req,
+    const std::shared_ptr<nav_msgs::srv::GetMap::Response> res)
 {
-	ROS_INFO("mapCallback: service requested!\n");
-	res = resp_ros_;
-	return true;
+  RCLCPP_INFO(this->get_logger(), "mapCallback: service requested");
+  *res = m_response_ros;
+  return true;
 }
 
-void MapServer::publishMap()
+void MapServer::publish_map()
 {
-	resp_ros_.map.header.stamp = ros::Time::now();
-	resp_ros_.map.header.seq = loop_count_;
-	if (pub_map_ros_.getNumSubscribers() > 0)
-	{
-		pub_map_ros_.publish(resp_ros_.map);
-	}
-	if (pub_metadata_.getNumSubscribers() > 0)
-	{
-		pub_metadata_.publish(resp_ros_.map.info);
-	}
+  
 }
 
 void MapServer::loop()
 {
-	if (frequency_ > 0)
-	{
-		ros::Rate rate(frequency_);
-		for (loop_count_ = 0; ros::ok(); loop_count_++)
-		{
-			publishMap();
-			ros::spinOnce();
-			rate.sleep();
-		}
-	}
-	else
-	{
-		publishMap();
-		ros::spin();
-	}
+  if (m_frequency > 0)
+  {
+    rclcpp::Rate rate(m_frequency);
+    while (rclcpp::ok())
+    {
+      publish_map();
+      rclcpp::spin_some(shared_from_this());
+      rate.sleep();
+    }
+  }
+  else
+  {
+    publish_map();
+    rclcpp::spin(shared_from_this());
+  }
 }
 
-int main(int argc, char** argv)
+int main(int argc, char **argv)
 {
-	// Initialize ROS
-	ros::init(argc, argv, "mrpt_map_server");
-	ros::NodeHandle node;
-	MapServer my_node(node);
-	my_node.init();
-	my_node.loop();
-	return 0;
+  rclcpp::init(argc, argv);
+  auto node = std::make_shared<MapServer>();
+  node->init();
+  node->loop();
+  rclcpp::shutdown();
+  return 0;
 }

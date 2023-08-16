@@ -1,20 +1,26 @@
 <?xml version="1.0"?>
-<package format="2">
+<package format="3">
   <name>mrpt_map</name>
   <version>1.0.3</version>
   <description>The mrpt_map is able to publish a mrpt map as ros occupancy grid like the map_server</description>
 
   <maintainer email="markus.bader@tuwien.ac.at">Markus Bader</maintainer>
   <maintainer email="joseluisblancoc@gmail.com">Jose Luis Blanco-Claraco</maintainer>
+  <maintainer email="shravansomashekara.rai@gmail.com">Shravan S Rai</maintainer>
 
   <license>BSD</license>
-  <url>https://wiki.ros.org/mrpt_map</url>
+  <url type="website">https://wiki.ros.org/mrpt_map</url>
 
-  <buildtool_depend>catkin</buildtool_depend>
+  <buildtool_depend>ament_cmake</buildtool_depend>
 
   <depend>mrpt2</depend>
-
-  <depend>roscpp</depend>
+  <depend>rclcpp</depend>
+  <depend>rclcpp_components</depend>
   <depend>nav_msgs</depend>
+  <depend>tf2</depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
 
 </package>
