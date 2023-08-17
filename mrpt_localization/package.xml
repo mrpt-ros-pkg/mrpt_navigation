@@ -7,12 +7,11 @@
    but supports different particle-filter algorithms, several grid maps at
    different heights, range-only localization, etc.</description>
 
-  <url type="website">http://www.mrpt.org/</url>
+  <url type="website">https://www.mrpt.org/</url>
   <maintainer email="markus.bader@tuwien.ac.at">Markus Bader</maintainer>
   <maintainer email="joseluisblancoc@gmail.com">Jose Luis Blanco-Claraco</maintainer>
   <author>Markus Bader</author>
   <author email="raffi.z@gmail.com">Raphael Zack</author>
-  <license>BSD</license>
 
   <license>BSD</license>
   <url>https://wiki.ros.org/mrpt_localization</url>
