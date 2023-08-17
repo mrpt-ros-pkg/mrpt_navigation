@@ -1,31 +1,25 @@
 <?xml version="1.0"?>
-<package format="2">
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
   <name>mrpt_rawlog</name>
   <version>1.0.3</version>
-  <description>This package provides nodes to record and play MRPT rawlogs.</description>
+  <description>This package provides nodes and programs to record and play MRPT rawlogs.</description>
 
   <maintainer email="markus.bader@tuwien.ac.at">Markus Bader</maintainer>
   <maintainer email="joseluisblancoc@gmail.com">Jose Luis Blanco-Claraco</maintainer>
 
-  <url>https://wiki.ros.org/mrpt_rawlog</url>
-
   <license>BSD</license>
 
-  <buildtool_depend>catkin</buildtool_depend>
+  <buildtool_depend>cmake</buildtool_depend>
+  <buildtool_depend>ament_cmake</buildtool_depend>
 
   <depend>mrpt2</depend>
-
-  <depend>roscpp</depend>
-  <depend>tf2</depend>
   <depend>tf2_ros</depend>
-  <depend>tf2_geometry_msgs</depend>
-  <depend>sensor_msgs</depend>
-  <depend>nav_msgs</depend>
-  <depend>mrpt_msgs</depend>
-  <depend>mrpt_msgs_bridge</depend>
-  <depend>dynamic_reconfigure</depend>
-  <depend>rosbag</depend>
-  <depend>marker_msgs</depend>
+  <depend>rosbag2_cpp</depend>
+  <depend>tf2_msgs</depend>
 
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
 
 </package>

@@ -1,169 +1,68 @@
-cmake_minimum_required(VERSION 3.1)
+cmake_minimum_required(VERSION 3.8)
 project(mrpt_rawlog)
 
-## Find catkin macros and libraries
-## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
-## is used, also find other catkin packages
-find_package(catkin REQUIRED 
-   COMPONENTS
-   roscpp
-   tf2
-   tf2_ros
-   tf2_geometry_msgs
-   nav_msgs
-   sensor_msgs
-   mrpt_msgs
-   mrpt_msgs_bridge
-   dynamic_reconfigure
-   marker_msgs
-   rosbag
-   )
+# find dependencies
+find_package(ament_cmake REQUIRED)
 
-find_package(mrpt-gui REQUIRED)
-find_package(mrpt-obs REQUIRED)
-find_package(mrpt-ros1bridge REQUIRED)
+find_package(tf2_ros REQUIRED)
+find_package(nav_msgs REQUIRED)
+find_package(sensor_msgs REQUIRED)
+find_package(rosbag2_cpp REQUIRED)
 
+find_package(mrpt-ros2bridge REQUIRED)
 message(STATUS "MRPT_VERSION: ${MRPT_VERSION}")
 
 if (CMAKE_COMPILER_IS_GNUCXX)
-	# High level of warnings.
-	# The -Wno-long-long is required in 64bit systems when including sytem headers.
-	# The -Wno-variadic-macros was needed for Eigen3, StdVector.h
-	add_compile_options(-Wall -Wno-long-long -Wno-variadic-macros)
-	# Workaround: Eigen <3.4 produces *tons* of warnings in GCC >=6. See http://eigen.tuxfamily.org/bz/show_bug.cgi?id=1221
-	if (NOT ${CMAKE_CXX_COMPILER_VERSION} LESS "6.0")
-		add_compile_options(-Wno-ignored-attributes -Wno-int-in-bool-context)
-	endif()
+	add_compile_options(-Wall)
 endif()
 
 IF(CMAKE_COMPILER_IS_GNUCXX AND NOT CMAKE_BUILD_TYPE MATCHES "Debug")
   add_compile_options(-O3)
 ENDIF()
 
-# add dynamic reconfigure api
-generate_dynamic_reconfigure_options(
-  cfg/RawLogRecord.cfg
+######################
+## rosbag2rawlog    ##
+######################
+find_package(mrpt-tclap REQUIRED)
+
+add_executable(rosbag2rawlog
+              src/rosbag2rawlog.cpp)
+
+target_link_libraries(
+  rosbag2rawlog
+  mrpt::ros2bridge
+  mrpt::tclap
 )
 
-###################################
-## catkin specific configuration ##
-###################################
-## The catkin_package macro generates cmake config files for your package
-## Declare things to be passed to dependent projects
-## INCLUDE_DIRS: uncomment this if you package contains header files
-## LIBRARIES: libraries you create in this project that dependent projects also need
-## CATKIN_DEPENDS: catkin_packages dependent projects also need
-## DEPENDS: system dependencies of this project that dependent projects also need
-catkin_package(
-#  INCLUDE_DIRS include
-  LIBRARIES rawlog_record rawlog_play
-  CATKIN_DEPENDS 
-   roscpp
-   tf2
-   tf2_ros
-   tf2_geometry_msgs
-   nav_msgs
-   sensor_msgs
-   mrpt_msgs
-   mrpt_msgs_bridge
-   marker_msgs
-   dynamic_reconfigure
-#   DEPENDS mrpt
+ament_target_dependencies(
+  rosbag2rawlog
+  #mrpt2
+  rclcpp
+  tf2
+  nav_msgs
+  sensor_msgs
+  rosbag2_cpp
+  tf2_msgs
 )
 
-###########
-## Build ##
-###########
-
-## Specify additional locations of header files
-## Your package locations should be listed before other locations
-include_directories(include ${catkin_INCLUDE_DIRS})
-
-## Declare a cpp library
-add_library(rawlog_record
-   src/mrpt_rawlog_record/rawlog_record.cpp
-)
-target_link_libraries(rawlog_record
-  ${catkin_LIBRARIES}
-   mrpt::obs
-   mrpt::gui
-   mrpt::ros1bridge
+install(TARGETS rosbag2rawlog
+  DESTINATION lib/${PROJECT_NAME}
 )
 
-add_library(rawlog_play
-   src/mrpt_rawlog_play/rawlog_play.cpp
-   src/mrpt_rawlog_play/rawlog_play_parameters.cpp
-)
-target_link_libraries(rawlog_play
-   ${catkin_LIBRARIES}
-   mrpt::obs
-   mrpt::gui
-   mrpt::ros1bridge
+install(
+  DIRECTORY launch
+  DESTINATION share/${PROJECT_NAME}
 )
 
-## Declare a cpp executable
-add_executable(rawlog_record_node
-   src/rawlog_record_node.cpp
-   src/rawlog_record_node_parameters.cpp
-)
+if(BUILD_TESTING)
+  find_package(ament_lint_auto REQUIRED)
+  # the following line skips the linter which checks for copyrights
+  # uncomment the line when a copyright and license is not present in all source files
+  #set(ament_cmake_copyright_FOUND TRUE)
+  # the following line skips cpplint (only works in a git repo)
+  # uncomment the line when this package is not in a git repo
+  #set(ament_cmake_cpplint_FOUND TRUE)
+  ament_lint_auto_find_test_dependencies()
+endif()
 
-add_executable(rawlog_play_node
-   src/rawlog_play_node.cpp
-   src/rawlog_play_node_parameters.cpp
-)
-
-## Add cmake target dependencies of the executable/library
-## as an example, message headers may need to be generated before nodes
-# add_dependencies(template_node template_generate_messages_cpp)
-add_dependencies(rawlog_record_node
-   mrpt_msgs_generate_messages_cpp
-   ${PROJECT_NAME}_gencfg
-)
-
-add_dependencies(rawlog_play_node
-   mrpt_msgs_generate_messages_cpp
-   ${PROJECT_NAME}_gencfg
-)
-
-## Specify libraries to link a library or executable target against
-target_link_libraries(rawlog_record_node
-   ${catkin_LIBRARIES}
-   mrpt::obs
-   mrpt::gui
-   mrpt::ros1bridge
-   rawlog_record
-)
-
-target_link_libraries(rawlog_play_node
-   ${catkin_LIBRARIES}
-   mrpt::obs
-   mrpt::gui
-   mrpt::ros1bridge
-   rawlog_play
-)
-
-
-#############
-## Install ##
-#############
-
-# all install targets should use catkin DESTINATION variables
-# See http://ros.org/doc/api/catkin/html/adv_user_guide/variables.html
-
-# Mark executables and/or libraries for installation
-install(TARGETS rawlog_record_node rawlog_play_node rawlog_record rawlog_play
-  ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-)
-
-# Mark other files for installation (e.g. launch and bag files, etc.)
-install(DIRECTORY
-   tutorial
-   launch
-   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
-)
-
-#############
-## Testing ##
-#############
+ament_package()
