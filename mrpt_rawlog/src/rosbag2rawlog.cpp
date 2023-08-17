@@ -99,15 +99,14 @@ using Obs = std::list<mrpt::serialization::CSerializable::Ptr>;
 using CallbackFunction =
 	std::function<Obs(const rosbag2_storage::SerializedBagMessage&)>;
 
-#if 0
 template <typename... Args>
 class RosSynchronizer
 	: public std::enable_shared_from_this<RosSynchronizer<Args...>>
 {
    public:
-	using Tuple = std::tuple<boost::shared_ptr<Args>...>;
+	using Tuple = std::tuple<std::shared_ptr<Args>...>;
 
-	using Callback = std::function<Obs(const boost::shared_ptr<Args>&...)>;
+	using Callback = std::function<Obs(const std::shared_ptr<Args>&...)>;
 
 	RosSynchronizer(
 		std::string_view rootFrame, std::shared_ptr<tf2::BufferCore> tfBuffer,
@@ -128,6 +127,7 @@ class RosSynchronizer
 
 	Obs signal()
 	{
+#if 0
 		auto& frame = std::get<0>(m_cache)->header.frame_id;
 		auto& stamp = std::get<0>(m_cache)->header.stamp;
 		if (m_tfBuffer->canTransform(m_rootFrame, frame, stamp))
@@ -163,6 +163,7 @@ class RosSynchronizer
 			obs.push_front(acts);
 			return obs;
 		}
+#endif
 		return {};
 	}
 
@@ -188,9 +189,30 @@ class RosSynchronizer
 		return [=](const rosbag2_storage::SerializedBagMessage& rosmsg) {
 			if (!std::get<i>(ptr->m_cache))
 			{
-				std::get<i>(ptr->m_cache) =
-					rosmsg.instantiate<typename std::tuple_element<
-						i, Tuple>::type::element_type>();
+				/* ROS 1:
+				 * 	auto pts = rosmsg.instantiate<sensor_msgs::PointCloud2>();
+				 *
+				 * ROS 2:
+				 *  rclcpp::SerializedMessage serMsg(rosmsg->serialized_data);
+				 *  auto topic = serialized_message->topic_name;
+				 *  static rclcpp::Serialization<tf2_msgs::msg::TFMessage>
+				 * serializer;
+				 *  tf2_msgs::msg::TFMessage msg;
+				 *  serializer.deserialize_message(&serMsg, &msg);
+				 */
+
+				using msg_t =
+					typename std::tuple_element<i, Tuple>::type::element_type;
+
+				// Deserialize:
+				rclcpp::SerializedMessage serMsg(*rosmsg.serialized_data);
+				static rclcpp::Serialization<msg_t> serializer;
+
+				std::shared_ptr<msg_t> msg = std::make_shared<msg_t>();
+
+				serializer.deserialize_message(&serMsg, msg.get());
+
+				std::get<i>(ptr->m_cache) = msg;
 				return ptr->checkAndSignal();
 			}
 			return Obs();
@@ -214,16 +236,21 @@ class RosSynchronizer
 	Callback m_callback;
 };
 
-Obs toPointCloud2(std::string_view msg, const rosbag2_storage::SerializedBagMessage& rosmsg)
+Obs toPointCloud2(
+	std::string_view msg, const rosbag2_storage::SerializedBagMessage& rosmsg)
 {
-	auto pts = rosmsg.instantiate<sensor_msgs::PointCloud2>();
+	rclcpp::SerializedMessage serMsg(*rosmsg.serialized_data);
+	static rclcpp::Serialization<sensor_msgs::msg::PointCloud2> serializer;
+
+	sensor_msgs::msg::PointCloud2 pts;
+	serializer.deserialize_message(&serMsg, &msg);
 
 	auto ptsObs = mrpt::obs::CObservationPointCloud::Create();
 	ptsObs->sensorLabel = msg;
-	ptsObs->timestamp = mrpt::ros2bridge::fromROS(pts->header.stamp);
+	ptsObs->timestamp = mrpt::ros2bridge::fromROS(pts.header.stamp);
 
 	// Convert points:
-	std::set<std::string> fields = mrpt::ros2bridge::extractFields(*pts);
+	std::set<std::string> fields = mrpt::ros2bridge::extractFields(pts);
 
 	// We need X Y Z:
 	if (!fields.count("x") || !fields.count("y") || !fields.count("z"))
@@ -235,7 +262,7 @@ Obs toPointCloud2(std::string_view msg, const rosbag2_storage::SerializedBagMess
 		auto mrptPts = mrpt::maps::CPointsMapXYZI::Create();
 		ptsObs->pointcloud = mrptPts;
 
-		if (!mrpt::ros2bridge::fromROS(*pts, *mrptPts))
+		if (!mrpt::ros2bridge::fromROS(pts, *mrptPts))
 		{
 			thread_local bool warn1st = false;
 			if (!warn1st)
@@ -251,7 +278,7 @@ Obs toPointCloud2(std::string_view msg, const rosbag2_storage::SerializedBagMess
 		// XYZ
 		auto mrptPts = mrpt::maps::CSimplePointsMap::Create();
 		ptsObs->pointcloud = mrptPts;
-		if (!mrpt::ros2bridge::fromROS(*pts, *mrptPts))
+		if (!mrpt::ros2bridge::fromROS(pts, *mrptPts))
 			THROW_EXCEPTION(
 				"Could not convert pointcloud from ROS to "
 				"CSimplePointsMap");
@@ -260,6 +287,7 @@ Obs toPointCloud2(std::string_view msg, const rosbag2_storage::SerializedBagMess
 	return {ptsObs};
 }
 
+#if 0
 Obs toLidar2D(std::string_view msg, const rosbag2_storage::SerializedBagMessage& rosmsg)
 {
 	auto scan = rosmsg.instantiate<sensor_msgs::LaserScan>();
@@ -493,7 +521,9 @@ class Transcriber
 				m_lookup[sensor.at("image_topic").as<std::string>()]
 					.emplace_back(callback);
 			}
-			else if (sensorType == "CObservationPointCloud")
+			else
+#endif
+			if (sensorType == "CObservationPointCloud")
 			{
 				auto callback =
 					[=](const rosbag2_storage::SerializedBagMessage& m) {
@@ -503,6 +533,7 @@ class Transcriber
 					callback);
 				// m_lookup["/tf"].emplace_back(sync->bindTfSync());
 			}
+#if 0
 			else if (sensorType == "CObservation2DRangeScan")
 			{
 				auto callback =
@@ -649,7 +680,7 @@ int main(int argc, char** argv)
 			// serialized data
 			auto serialized_message = reader.read_next();
 #if 0
-			rclcpp::SerializedMessage extracted_serialized_msg(
+			rclcpp::SerializedMessage serMsg(
 				*serialized_message->serialized_data);
 			auto topic = serialized_message->topic_name;
 			if (topic.find("tf") != std::string::npos)
@@ -659,7 +690,7 @@ int main(int argc, char** argv)
 
 				tf2_msgs::msg::TFMessage msg;
 				tfSerializer.deserialize_message(
-					&extracted_serialized_msg, &msg);
+					&serMsg, &msg);
 
 				// tf2_msgs::msg::to_block_style_yaml(msg, std::cout);
 			}
