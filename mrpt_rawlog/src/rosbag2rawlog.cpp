@@ -125,47 +125,7 @@ class RosSynchronizer
 		return ptr;
 	}
 
-	Obs signal()
-	{
-#if 0
-		auto& frame = std::get<0>(m_cache)->header.frame_id;
-		auto& stamp = std::get<0>(m_cache)->header.stamp;
-		if (m_tfBuffer->canTransform(m_rootFrame, frame, stamp))
-		{
-			auto t = m_tfBuffer->lookupTransform(m_rootFrame, frame, stamp);
-			mrpt::obs::CActionRobotMovement3D odom_move;
-
-			auto& translate = t.transform.translation;
-			double x = translate.x;
-			double y = translate.y;
-			double z = translate.z;
-
-			auto& q = t.transform.rotation;
-			mrpt::math::CQuaternion<double> quat{q.w, q.x, q.y, q.z};
-
-			mrpt::poses::CPose3DQuat poseQuat(x, y, z, quat);
-			mrpt::poses::CPose3D currentPose(poseQuat);
-
-			mrpt::poses::CPose3D incOdoPose(0, 0, 0, 0, 0, 0);
-			if (m_poseValid)
-			{
-				incOdoPose = currentPose - m_lastPose;
-			}
-			m_lastPose = currentPose;
-			m_poseValid = true;
-			mrpt::obs::CActionRobotMovement3D::TMotionModelOptions model;
-			odom_move.computeFromOdometry(incOdoPose, model);
-
-			auto acts = mrpt::obs::CActionCollection::Create();
-			acts->insert(odom_move);
-
-			auto obs = signal(std::make_index_sequence<sizeof...(Args)>{});
-			obs.push_front(acts);
-			return obs;
-		}
-#endif
-		return {};
-	}
+	Obs signal() { return {}; }
 
 	template <std::size_t... N>
 	bool check(std::index_sequence<N...>)
@@ -243,7 +203,7 @@ Obs toPointCloud2(
 	static rclcpp::Serialization<sensor_msgs::msg::PointCloud2> serializer;
 
 	sensor_msgs::msg::PointCloud2 pts;
-	serializer.deserialize_message(&serMsg, &msg);
+	serializer.deserialize_message(&serMsg, &pts);
 
 	auto ptsObs = mrpt::obs::CObservationPointCloud::Create();
 	ptsObs->sensorLabel = msg;
@@ -333,43 +293,55 @@ Obs toRotatingScan(std::string_view msg, const rosbag2_storage::SerializedBagMes
 
 	return {obsRotScan};
 }
+#endif
 
-Obs toIMU(std::string_view msg, const rosbag2_storage::SerializedBagMessage& rosmsg)
+Obs toIMU(
+	std::string_view msg, const rosbag2_storage::SerializedBagMessage& rosmsg)
 {
-	auto pts = rosmsg.instantiate<sensor_msgs::Imu>();
+	rclcpp::SerializedMessage serMsg(*rosmsg.serialized_data);
+	static rclcpp::Serialization<sensor_msgs::msg::Imu> serializer;
+
+	sensor_msgs::msg::Imu imu;
+	serializer.deserialize_message(&serMsg, &imu);
 
 	auto mrptObs = mrpt::obs::CObservationIMU::Create();
 
 	mrptObs->sensorLabel = msg;
-	mrptObs->timestamp = mrpt::ros2bridge::fromROS(pts->header.stamp);
+	mrptObs->timestamp = mrpt::ros2bridge::fromROS(imu.header.stamp);
 
 	// Convert data:
-	mrpt::ros2bridge::fromROS(*pts, *mrptObs);
+	mrpt::ros2bridge::fromROS(imu, *mrptObs);
 
 	return {mrptObs};
 }
 
-Obs toOdometry(std::string_view msg, const rosbag2_storage::SerializedBagMessage& rosmsg)
+Obs toOdometry(
+	std::string_view msg, const rosbag2_storage::SerializedBagMessage& rosmsg)
 {
-	auto odo = rosmsg.instantiate<nav_msgs::Odometry>();
+	rclcpp::SerializedMessage serMsg(*rosmsg.serialized_data);
+	static rclcpp::Serialization<nav_msgs::msg::Odometry> serializer;
+
+	nav_msgs::msg::Odometry odo;
+	serializer.deserialize_message(&serMsg, &odo);
 
 	auto mrptObs = mrpt::obs::CObservationOdometry::Create();
 
 	mrptObs->sensorLabel = msg;
-	mrptObs->timestamp = mrpt::ros2bridge::fromROS(odo->header.stamp);
+	mrptObs->timestamp = mrpt::ros2bridge::fromROS(odo.header.stamp);
 
 	// Convert data:
-	const auto pose = mrpt::ros2bridge::fromROS(odo->pose);
+	const auto pose = mrpt::ros2bridge::fromROS(odo.pose);
 	mrptObs->odometry = {pose.mean.x(), pose.mean.y(), pose.mean.yaw()};
 
 	mrptObs->hasVelocities = true;
-	mrptObs->velocityLocal.vx = odo->twist.twist.linear.x;
-	mrptObs->velocityLocal.vy = odo->twist.twist.linear.y;
-	mrptObs->velocityLocal.omega = odo->twist.twist.angular.z;
+	mrptObs->velocityLocal.vx = odo.twist.twist.linear.x;
+	mrptObs->velocityLocal.vy = odo.twist.twist.linear.y;
+	mrptObs->velocityLocal.omega = odo.twist.twist.angular.z;
 
 	return {mrptObs};
 }
 
+#if 0
 Obs toRangeImage(
 	std::string_view msg, const sensor_msgs::Image::Ptr& image,
 	const sensor_msgs::CameraInfo::Ptr& cameraInfo, bool rangeIsDepth)
@@ -553,6 +525,7 @@ class Transcriber
 				m_lookup[sensor.at("topic").as<std::string>()].emplace_back(
 					callback);
 			}
+#endif
 			else if (sensorType == "CObservationIMU")
 			{
 				auto callback =
@@ -573,7 +546,6 @@ class Transcriber
 					callback);
 			}
 			// TODO: Handle more cases?
-#endif
 		}
 	}
 
