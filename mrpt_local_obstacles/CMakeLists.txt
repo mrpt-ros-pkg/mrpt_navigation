@@ -40,10 +40,17 @@ IF(CMAKE_COMPILER_IS_GNUCXX AND NOT CMAKE_BUILD_TYPE MATCHES "Debug")
 ENDIF()
 
 # TODO: Remove and move as an independent ROS package:
-add_subdirectory(submodules/mola-common)
-set(mola-common_DIR ${CMAKE_BINARY_DIR} CACHE PATH "path to mola-common-config.cmake" FORCE)
+find_package(mola_common QUIET)
+if (NOT mola_common_FOUND)
+  add_subdirectory(submodules/mola-common)
+  set(mola-common_DIR ${CMAKE_BINARY_DIR} CACHE PATH "path to mola-common-config.cmake" FORCE)
+endif()
 
-add_subdirectory(submodules/mp2p_icp)
+find_package(mp2p_icp QUIET)
+find_package(mp2p_icp_filters QUIET)
+if (NOT mp2p_icp_FOUND)
+  add_subdirectory(submodules/mp2p_icp)
+endif()
 
 add_executable(${PROJECT_NAME}_node
               src/mrpt_local_obstacles_node.cpp
