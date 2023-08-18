@@ -22,7 +22,6 @@
   <depend>mrpt2</depend>
   <depend>mp2p_icp</depend>
 
-  <depend>dynamic_reconfigure</depend>
   <depend>rclcpp</depend>
   <depend>rclcpp_components</depend>
   <depend>nav_msgs</depend>
