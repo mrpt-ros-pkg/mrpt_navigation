@@ -16,7 +16,6 @@
 
   <build_depend>ros_environment</build_depend>
   <buildtool_depend>ament_cmake</buildtool_depend>
-  <buildtool_depend>catkin</buildtool_depend>
 
   <depend>mrpt2</depend>
   
@@ -27,7 +26,7 @@
   <depend>tf2</depend>
 
   <export>
-    <build_type condition="$ROS_VERSION == 2">ament_cmake</build_type>
+    <build_type>ament_cmake</build_type>
   </export>
 
 </package>
