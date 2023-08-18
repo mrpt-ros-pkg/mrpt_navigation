@@ -30,6 +30,16 @@ General documentation
   * `ros2`: The most recent, active branch for modern ROS 2 distributions.
   * `ros1`: Intended for ROS 1. No further development will happen there.
 
+Contributing
+----------------------------------
+* Code formatting: We use clang-format to ensure formatting consistency in the
+  code base. Set up your IDE to automatically use clang-format-11,
+  use `git clang-format-11`, or invoke it manually from the root directory as:
+  
+      find . -iname *.hpp -o -iname *.cpp -o -iname *.h | xargs clang-format-11 -i
+
+
+
 Demo videos
 ------------
 

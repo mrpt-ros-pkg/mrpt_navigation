@@ -29,7 +29,6 @@
 #include <mrpt/system/string_utils.h>
 
 /* ros2 deps */
-#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 #include <tf2_ros/buffer.h>
 #include <tf2_ros/transform_listener.h>
 
@@ -40,6 +39,7 @@
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/laser_scan.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 
 using namespace mrpt::system;
 using namespace mrpt::config;
