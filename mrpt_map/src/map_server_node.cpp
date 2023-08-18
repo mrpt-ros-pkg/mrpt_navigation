@@ -38,6 +38,8 @@
 #include <mrpt/system/filesystem.h> // ASSERT_FILE_EXISTS_()
 #include <nav_msgs/msg/occupancy_grid.hpp>
 
+#include <chrono>
+
 using namespace mrpt::config;
 using mrpt::maps::CMultiMetricMap;
 using mrpt::maps::COccupancyGridMap2D;
@@ -109,11 +111,42 @@ void MapServer::init()
 	this->get_parameter("pub_metadata", m_pub_metadata_str);
   	RCLCPP_INFO(this->get_logger(), "pub_metadata: %s", m_pub_metadata_str.c_str());
 
+	this->declare_parameter<std::string>("service_map", "static_map");
+	this->get_parameter("service_map", m_service_map_str);
+  	RCLCPP_INFO(this->get_logger(), "service_map: %s", m_service_map_str.c_str());
+
+	m_pub_map_ros = this->create_publisher<nav_msgs::msg::OccupancyGrid>(m_pub_map_ros_str, 1);
+    m_pub_metadata = this->create_publisher<nav_msgs::msg::MapMetaData>(m_pub_metadata_str, 1);
+    m_service_map = this->create_service<nav_msgs::srv::GetMap>(m_service_map_str, 
+						[this]( const nav_msgs::srv::GetMap::Request::SharedPtr req,
+								const nav_msgs::srv::GetMap::Response::SharedPtr res)
+						{this-> map_callback(req, res);});
+
+	if(m_debug)
+	{
+		RCLCPP_INFO(this->get_logger(), "gridMap[0]:  %i x %i @ %4.3fm/p, %4.3f, %4.3f, %4.3f, %4.3f\n",
+			grid->getSizeX(), grid->getSizeY(), grid->getResolution(),
+			grid->getXMin(), grid->getYMin(), grid->getXMax(), grid->getYMax());
+	}
+
+	mrpt::ros2bridge::toROS(*grid, m_response_ros.map);
+
+	if(m_debug)
+	{
+		RCLCPP_INFO(this->get_logger(), 
+		"msg:         %i x %i @ %4.3fm/p, %4.3f, %4.3f, %4.3f, %4.3f\n",
+			m_response_ros.map.info.width, m_response_ros.map.info.height,
+			m_response_ros.map.info.resolution, m_response_ros.map.info.origin.position.x,
+			m_response_ros.map.info.origin.position.y,
+			m_response_ros.map.info.width * m_response_ros.map.info.resolution +
+				m_response_ros.map.info.origin.position.x,
+			m_response_ros.map.info.height * m_response_ros.map.info.resolution +
+				m_response_ros.map.info.origin.position.y);
+	}
 
 }
 
 bool MapServer::map_callback(
-    const std::shared_ptr<rmw_request_id_t> request_header,
     const std::shared_ptr<nav_msgs::srv::GetMap::Request> req,
     const std::shared_ptr<nav_msgs::srv::GetMap::Response> res)
 {
@@ -124,7 +157,17 @@ bool MapServer::map_callback(
 
 void MapServer::publish_map()
 {
-  
+	auto now = std::chrono::system_clock::now();
+	
+	m_response_ros.map.header.stamp = rclcpp::Time(now.time_since_epoch().count(), RCL_ROS_TIME);
+	if (m_pub_map_ros->get_subscription_count() > 0)
+	{
+		m_pub_map_ros->publish(m_response_ros.map);
+	}
+	if (m_pub_metadata->get_subscription_count() > 0)
+	{
+		m_pub_metadata->publish(m_response_ros.map.info);
+	} 
 }
 
 void MapServer::loop()
