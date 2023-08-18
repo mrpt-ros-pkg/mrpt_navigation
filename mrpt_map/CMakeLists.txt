@@ -74,7 +74,7 @@ install(TARGETS map_server_node
 install(DIRECTORY
   launch
   tutorial
-  DESTINATION shared/${PROJECT_NAME}
+  DESTINATION share/${PROJECT_NAME}
 )
 
 if(BUILD_TESTING)
