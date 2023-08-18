@@ -1,19 +1,18 @@
 /* +------------------------------------------------------------------------+
-   |                     Mobile Robot Programming Toolkit (MRPT)            |
-   |                          http://www.mrpt.org/                          |
+   |                             mrpt_navigation                            |
    |                                                                        |
-   | Copyright (c) 2005-2023, Individual contributors, see AUTHORS file     |
-   | See: http://www.mrpt.org/Authors - All rights reserved.                |
-   | Released under BSD License. See details in http://www.mrpt.org/License |
+   | Copyright (c) 2014-2023, Individual contributors, see commit authors   |
+   | See: https://github.com/mrpt-ros-pkg/mrpt_navigation                   |
+   | All rights reserved. Released under BSD 3-Clause license. See LICENSE  |
    +------------------------------------------------------------------------+ */
+
+#include <mrpt/graphs/TNodeID.h>
+#include <mrpt/ros2bridge/pose.h>
 
 #include <geometry_msgs/msg/pose.hpp>
 #include <geometry_msgs/msg/pose_with_covariance.hpp>
-#include <mrpt/graphs/TNodeID.h>
-#include <mrpt/ros2bridge/pose.h>
-#include <mrpt_msgs_bridge/network_of_poses.hpp>
-
 #include <iostream>	 // for debugging reasons
+#include <mrpt_msgs_bridge/network_of_poses.hpp>
 
 using mrpt::graphs::TNodeID;
 

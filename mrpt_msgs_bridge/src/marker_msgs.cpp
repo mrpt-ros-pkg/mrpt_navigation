@@ -1,10 +1,9 @@
 /* +------------------------------------------------------------------------+
-   |                     Mobile Robot Programming Toolkit (MRPT)            |
-   |                          https://www.mrpt.org/                         |
+   |                             mrpt_navigation                            |
    |                                                                        |
-   | Copyright (c) 2005-2023, Individual contributors, see AUTHORS file     |
-   | See: https://www.mrpt.org/Authors - All rights reserved.               |
-   | Released under BSD License. See: https://www.mrpt.org/License          |
+   | Copyright (c) 2014-2023, Individual contributors, see commit authors   |
+   | See: https://github.com/mrpt-ros-pkg/mrpt_navigation                   |
+   | All rights reserved. Released under BSD 3-Clause license. See LICENSE  |
    +------------------------------------------------------------------------+ */
 
 /**
@@ -14,8 +13,9 @@
  * @brief  Funtions to convert marker_msgs to mrpt msgs
  **/
 
-#include <mrpt_msgs_bridge/marker_msgs.hpp>
 #include <mrpt/ros2bridge/time.h>
+
+#include <mrpt_msgs_bridge/marker_msgs.hpp>
 
 bool mrpt_msgs_bridge::fromROS(
 	const marker_msgs::msg::MarkerDetection& src,

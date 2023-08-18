@@ -1,34 +1,11 @@
-/***********************************************************************************
- * Revised BSD License *
- * Copyright (c) 2014-2023, Jose-Luis Blanco <jlblanco@ual.es> *
- * All rights reserved. *
- *                                                                                 *
- * Redistribution and use in source and binary forms, with or without *
- * modification, are permitted provided that the following conditions are met: *
- *     * Redistributions of source code must retain the above copyright *
- *       notice, this list of conditions and the following disclaimer. *
- *     * Redistributions in binary form must reproduce the above copyright *
- *       notice, this list of conditions and the following disclaimer in the *
- *       documentation and/or other materials provided with the distribution. *
- *     * Neither the name of the Vienna University of Technology nor the *
- *       names of its contributors may be used to endorse or promote products *
- *       derived from this software without specific prior written permission. *
- *                                                                                 *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
- *AND *
- * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- **
- * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE *
- * DISCLAIMED. IN NO EVENT SHALL Markus Bader BE LIABLE FOR ANY *
- * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES *
- * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- **
- * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND *
- * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT *
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- **
- * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. *
- ***********************************************************************************/
+/* +------------------------------------------------------------------------+
+   |                             mrpt_navigation                            |
+   |                                                                        |
+   | Copyright (c) 2014-2023, Individual contributors, see commit authors   |
+   | See: https://github.com/mrpt-ros-pkg/mrpt_navigation                   |
+   | All rights reserved. Released under BSD 3-Clause license. See LICENSE  |
+   +------------------------------------------------------------------------+ */
+
 #pragma once
 
 #include <mrpt/config/CConfigFile.h>
@@ -44,23 +21,22 @@
 #include <mrpt/system/CTimeLogger.h>
 #include <mrpt/system/filesystem.h>
 #include <mrpt/system/os.h>
-#include <mrpt_msgs/msg/waypoint_sequence.hpp> 
-#include <mrpt_msgs/msg/waypoint.hpp>
-
-#include <rclcpp/rclcpp.hpp>
-#include <sensor_msgs/msg/laser_scan.hpp>
-#include <sensor_msgs/msg/point_cloud2.hpp>
-#include <geometry_msgs/msg/polygon.hpp>
-#include <geometry_msgs/msg/pose_stamped.hpp>
-#include <nav_msgs/msg/odometry.hpp>
+#include <tf2/LinearMath/Matrix3x3.h>
+#include <tf2/LinearMath/Quaternion.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 #include <tf2_ros/buffer.h>
 #include <tf2_ros/transform_listener.h>
-#include <tf2/LinearMath/Matrix3x3.h>
-#include <tf2/LinearMath/Quaternion.h>
 
-#include <mutex>
 #include <chrono>
+#include <geometry_msgs/msg/polygon.hpp>
+#include <geometry_msgs/msg/pose_stamped.hpp>
+#include <mrpt_msgs/msg/waypoint.hpp>
+#include <mrpt_msgs/msg/waypoint_sequence.hpp>
+#include <mutex>
+#include <nav_msgs/msg/odometry.hpp>
+#include <rclcpp/rclcpp.hpp>
+#include <sensor_msgs/msg/laser_scan.hpp>
+#include <sensor_msgs/msg/point_cloud2.hpp>
 
 using namespace mrpt::nav;
 using mrpt::maps::CSimplePointsMap;
@@ -68,42 +44,51 @@ using namespace mrpt::system;
 using namespace mrpt::config;
 
 // The ROS node
-class ReactiveNav2DNode: public rclcpp::Node
+class ReactiveNav2DNode : public rclcpp::Node
 {
-    public: 
-    /* Ctor*/
-    explicit ReactiveNav2DNode(const rclcpp::NodeOptions& options = rclcpp::NodeOptions());
-    /* Dtor*/
-    ~ReactiveNav2DNode(){}
+   public:
+	/* Ctor*/
+	explicit ReactiveNav2DNode(
+		const rclcpp::NodeOptions& options = rclcpp::NodeOptions());
+	/* Dtor*/
+	~ReactiveNav2DNode() {}
 
    private:
-   // methods 
-   void read_parameters();
-   void navigate_to(const mrpt::math::TPose2D& target);
-   void on_do_navigation();
-   void on_goal_received(const geometry_msgs::msg::PoseStamped::SharedPtr& trg_ptr);
-   void on_local_obstacles(const sensor_msgs::msg::PointCloud2::SharedPtr& obs);
-   void on_set_robot_shape(const geometry_msgs::msg::Polygon::SharedPtr& newShape);
-   void on_odometry_received(const nav_msgs::msg::Odometry::SharedPtr& odom);
-   void update_waypoint_sequence(const mrpt_msgs::msg::WaypointSequence::SharedPtr& wp);
-   void on_waypoint_seq_received(const mrpt_msgs::msg::WaypointSequence::SharedPtr& wps);
-
+	// methods
+	void read_parameters();
+	void navigate_to(const mrpt::math::TPose2D& target);
+	void on_do_navigation();
+	void on_goal_received(
+		const geometry_msgs::msg::PoseStamped::SharedPtr& trg_ptr);
+	void on_local_obstacles(
+		const sensor_msgs::msg::PointCloud2::SharedPtr& obs);
+	void on_set_robot_shape(
+		const geometry_msgs::msg::Polygon::SharedPtr& newShape);
+	void on_odometry_received(const nav_msgs::msg::Odometry::SharedPtr& odom);
+	void update_waypoint_sequence(
+		const mrpt_msgs::msg::WaypointSequence::SharedPtr& wp);
+	void on_waypoint_seq_received(
+		const mrpt_msgs::msg::WaypointSequence::SharedPtr& wps);
 
    private:
 	/** @name ROS pubs/subs
 	 *  @{ */
-    rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr m_sub_odometry;
-    rclcpp::Subscription<mrpt_msgs::msg::WaypointSequence>::SharedPtr m_sub_wp_seq;
-	rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr m_sub_nav_goal;
-	rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr m_sub_local_obs;
-	rclcpp::Subscription<geometry_msgs::msg::Polygon>::SharedPtr m_sub_robot_shape;
+	rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr m_sub_odometry;
+	rclcpp::Subscription<mrpt_msgs::msg::WaypointSequence>::SharedPtr
+		m_sub_wp_seq;
+	rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr
+		m_sub_nav_goal;
+	rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr
+		m_sub_local_obs;
+	rclcpp::Subscription<geometry_msgs::msg::Polygon>::SharedPtr
+		m_sub_robot_shape;
 	rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr m_pub_cmd_vel;
 
 	std::shared_ptr<tf2_ros::Buffer> m_tf_buffer;
-    std::shared_ptr<tf2_ros::TransformListener> m_tf_listener;
+	std::shared_ptr<tf2_ros::TransformListener> m_tf_listener;
 	/** @} */
 
-    CTimeLogger m_profiler;
+	CTimeLogger m_profiler;
 	bool m_1st_time_init;  //!< Reactive initialization done?
 	double m_target_allowed_distance;
 	double m_nav_period;
@@ -114,13 +99,13 @@ class ReactiveNav2DNode: public rclcpp::Node
 	std::string m_sub_topic_wp_seq = "reactive_nav_waypoints";
 	std::string m_sub_topic_odometry = "odom";
 
-    std::string m_pub_topic_cmd_vel = "cmd_vel";
+	std::string m_pub_topic_cmd_vel = "cmd_vel";
 
 	std::string m_frameid_reference = "map";
 	std::string m_frameid_robot = "base_link";
 
-    std::string m_plugin_file;
-    std::string m_cfg_file_reactive;
+	std::string m_plugin_file;
+	std::string m_cfg_file_reactive;
 
 	bool m_save_nav_log;
 
@@ -153,7 +138,7 @@ class ReactiveNav2DNode: public rclcpp::Node
 			CTimeLoggerEntry tle(
 				m_parent.m_profiler, "getCurrentPoseAndSpeeds");
 
-			//rclcpp::Duration timeout(0.1);
+			// rclcpp::Duration timeout(0.1);
 			rclcpp::Duration timeout(std::chrono::milliseconds(100));
 
 			geometry_msgs::msg::TransformStamped tfGeom;
@@ -165,7 +150,8 @@ class ReactiveNav2DNode: public rclcpp::Node
 
 				tfGeom = m_parent.m_tf_buffer->lookupTransform(
 					m_parent.m_frameid_reference, m_parent.m_frameid_robot,
-					tf2::TimePointZero, tf2::durationFromSec(timeout.seconds()));
+					tf2::TimePointZero,
+					tf2::durationFromSec(timeout.seconds()));
 			}
 			catch (const tf2::TransformException& ex)
 			{
@@ -187,7 +173,8 @@ class ReactiveNav2DNode: public rclcpp::Node
 
 			curV = curW = 0;
 			MRPT_TODO("Retrieve current speeds from /odom topic?");
-			RCLCPP_DEBUG(m_parent.get_logger(),
+			RCLCPP_DEBUG(
+				m_parent.get_logger(),
 				"[getCurrentPoseAndSpeeds] Latest pose: %s",
 				curPose.asString().c_str());
 
@@ -212,7 +199,8 @@ class ReactiveNav2DNode: public rclcpp::Node
 
 			const double v = vel_cmd_diff_driven->lin_vel;
 			const double w = vel_cmd_diff_driven->ang_vel;
-			RCLCPP_DEBUG(m_parent.get_logger(),
+			RCLCPP_DEBUG(
+				m_parent.get_logger(),
 				"changeSpeeds: v=%7.4f m/s  w=%8.3f deg/s", v,
 				w * 180.0f / M_PI);
 			geometry_msgs::msg::Twist cmd;

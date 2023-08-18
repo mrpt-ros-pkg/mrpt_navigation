@@ -1,10 +1,9 @@
 /* +------------------------------------------------------------------------+
-   |                     Mobile Robot Programming Toolkit (MRPT)            |
-   |                          https://www.mrpt.org/                         |
+   |                             mrpt_navigation                            |
    |                                                                        |
-   | Copyright (c) 2005-2023, Individual contributors, see AUTHORS file     |
-   | See: https://www.mrpt.org/Authors - All rights reserved.               |
-   | Released under BSD License. See: https://www.mrpt.org/License          |
+   | Copyright (c) 2014-2023, Individual contributors, see commit authors   |
+   | See: https://github.com/mrpt-ros-pkg/mrpt_navigation                   |
+   | All rights reserved. Released under BSD 3-Clause license. See LICENSE  |
    +------------------------------------------------------------------------+ */
 
 /**
@@ -16,14 +15,14 @@
 
 #pragma once
 
-#include <geometry_msgs/msg/pose.hpp>
-#include <marker_msgs/msg/marker_detection.hpp>
-
 #include <mrpt/obs/CObservation2DRangeScan.h>
 #include <mrpt/obs/CObservationBeaconRanges.h>
 #include <mrpt/obs/CObservationBearingRange.h>
 #include <mrpt/obs/CObservationRange.h>
 #include <mrpt/poses/CPose3D.h>
+
+#include <geometry_msgs/msg/pose.hpp>
+#include <marker_msgs/msg/marker_detection.hpp>
 
 namespace mrpt_msgs_bridge
 {
