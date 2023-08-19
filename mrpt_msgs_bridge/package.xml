@@ -21,9 +21,10 @@
   
   <depend>geometry_msgs</depend>
   <depend>visualization_msgs</depend>
-  <depend>marker_msgs</depend>
   <depend>mrpt_msgs</depend>
   <depend>tf2</depend>
+
+  <!-- <depend>marker_msgs</depend> -->  <!-- Re-enable when available in all ROS 2 distros -->
 
   <export>
     <build_type>ament_cmake</build_type>

@@ -8,7 +8,14 @@ find_package(geometry_msgs REQUIRED)
 find_package(tf2 REQUIRED)
 find_package(mrpt_msgs REQUIRED)
 find_package(visualization_msgs REQUIRED)
-find_package(marker_msgs REQUIRED)
+
+# Optional:
+find_package(marker_msgs QUIET)
+if (marker_msgs_FOUND)
+    set(MARKER_SRC src/marker_msgs.cpp)
+    set(MARKER_DEP marker_msgs)
+endif()
+
 
 find_package(mrpt-ros2bridge REQUIRED)
 find_package(mrpt-obs REQUIRED)
@@ -41,7 +48,7 @@ include_directories(include ${catkin_INCLUDE_DIRS})
 # Declare a cpp library
 add_library(${PROJECT_NAME}
    src/beacon.cpp
-   src/marker_msgs.cpp
+   ${MARKER_SRC}
    src/landmark.cpp
    src/network_of_poses.cpp
 )
@@ -74,7 +81,7 @@ ament_target_dependencies(${PROJECT_NAME}
   visualization_msgs
   tf2
   mrpt_msgs
-  marker_msgs
+  ${MARKER_DEP}
 )
 
 #ament_copyright()
