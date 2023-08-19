@@ -38,9 +38,3 @@ Contributing
   
       find . -iname *.hpp -o -iname *.cpp -o -iname *.h | xargs clang-format-11 -i
 
-
-
-Demo videos
-------------
-
-* Localization with particle filters: http://youtu.be/b5glQhT2Zac
