@@ -3,7 +3,7 @@
 <package format="3">
   <name>mrpt_rawlog</name>
   <version>1.0.3</version>
-  <description>This package provides nodes and programs to record and play MRPT rawlogs.</description>
+  <description>Nodes and programs to record and play MRPT rawlogs or to transform between rosbags and rawlogs.</description>
 
   <maintainer email="markus.bader@tuwien.ac.at">Markus Bader</maintainer>
   <maintainer email="joseluisblancoc@gmail.com">Jose Luis Blanco-Claraco</maintainer>

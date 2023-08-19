@@ -39,16 +39,15 @@ IF(CMAKE_COMPILER_IS_GNUCXX AND NOT CMAKE_BUILD_TYPE MATCHES "Debug")
   add_compile_options(-O3)
 ENDIF()
 
-# TODO: Remove and move as an independent ROS package:
-find_package(mola_common QUIET)
-if (NOT mola_common_FOUND)
-  add_subdirectory(submodules/mola-common)
-  set(mola-common_DIR ${CMAKE_BINARY_DIR} CACHE PATH "path to mola-common-config.cmake" FORCE)
-endif()
 
 find_package(mp2p_icp QUIET)
 find_package(mp2p_icp_filters QUIET)
 if (NOT mp2p_icp_FOUND)
+  find_package(mola_common QUIET)
+  if (NOT mola_common_FOUND)
+    add_subdirectory(submodules/mola-common)
+    set(mola-common_DIR ${CMAKE_BINARY_DIR} CACHE PATH "path to mola-common-config.cmake" FORCE)
+  endif()
   add_subdirectory(submodules/mp2p_icp)
 endif()
 
