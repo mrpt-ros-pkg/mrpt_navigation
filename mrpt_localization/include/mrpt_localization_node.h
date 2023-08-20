@@ -8,27 +8,25 @@
 
 #pragma once
 
-#include <dynamic_reconfigure/server.h>
-#include <geometry_msgs/PoseWithCovarianceStamped.h>
 #include <mrpt/obs/CObservationOdometry.h>
-#include <nav_msgs/GetMap.h>
-#include <nav_msgs/MapMetaData.h>
-#include <nav_msgs/OccupancyGrid.h>
-#include <nav_msgs/Odometry.h>
-#include <ros/ros.h>
-#include <sensor_msgs/LaserScan.h>
-#include <std_msgs/Header.h>
+#include <tf2_ros/buffer.h>
+#include <tf2_ros/transform_broadcaster.h>
+#include <tf2_ros/transform_listener.h>
 
 #include <cstring>	// size_t
+#include <geometry_msgs/msg/pose_with_covariance_stamped.hpp>
+#include <geometry_msgs/msg/transform_stamped.hpp>
+#include <mrpt_msgs/msg/observation_range_beacon.hpp>
+#include <nav_msgs/msg/map_meta_data.hpp>
+#include <nav_msgs/msg/occupancy_grid.hpp>
+#include <nav_msgs/msg/odometry.hpp>
+#include <nav_msgs/srv/get_map.hpp>
+#include <rclcpp/rclcpp.hpp>
+#include <sensor_msgs/msg/laser_scan.hpp>
+#include <std_msgs/msg/header.hpp>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 
-#include "geometry_msgs/TransformStamped.h"
-#include "mrpt_localization/MotionConfig.h"
 #include "mrpt_localization/mrpt_localization.h"
-#include "mrpt_msgs/ObservationRangeBeacon.h"
-#include "tf2_geometry_msgs/tf2_geometry_msgs.hpp"
-#include "tf2_ros/buffer.h"
-#include "tf2_ros/transform_broadcaster.h"
-#include "tf2_ros/transform_listener.h"
 
 using mrpt::obs::CObservationOdometry;
 
@@ -41,13 +39,8 @@ class PFLocalizationNode : public PFLocalization
 		static const int MOTION_MODEL_GAUSSIAN = 0;
 		static const int MOTION_MODEL_THRUN = 1;
 		Parameters(PFLocalizationNode* p);
-		ros::NodeHandle node;
-		void callbackParameters(
-			mrpt_localization::MotionConfig& config, uint32_t level);
-		dynamic_reconfigure::Server<mrpt_localization::MotionConfig>
-			reconfigure_server_;
-		dynamic_reconfigure::Server<
-			mrpt_localization::MotionConfig>::CallbackType reconfigure_cb_;
+		rclcpp::Node node;
+
 		void update(const unsigned long& loop_count);
 		double rate;
 		double transform_tolerance;	 ///< projection into the future added to
@@ -70,38 +63,44 @@ class PFLocalizationNode : public PFLocalization
 		bool first_map_only;
 	};
 
-	PFLocalizationNode(ros::NodeHandle& n);
+	PFLocalizationNode(rclcpp::Node& n);
 	virtual ~PFLocalizationNode();
 	void init();
 	void loop();
-	void callbackLaser(const sensor_msgs::LaserScan&);
-	void callbackBeacon(const mrpt_msgs::ObservationRangeBeacon&);
-	void callbackRobotPose(const geometry_msgs::PoseWithCovarianceStamped&);
+	void callbackLaser(const sensor_msgs::msg::LaserScan&);
+	void callbackBeacon(const mrpt_msgs::msg::ObservationRangeBeacon&);
+	void callbackRobotPose(
+		const geometry_msgs::msg::PoseWithCovarianceStamped&);
 	void odometryForCallback(
-		CObservationOdometry::Ptr&, const std_msgs::Header&);
-	void callbackInitialpose(const geometry_msgs::PoseWithCovarianceStamped&);
-	void callbackOdometry(const nav_msgs::Odometry&);
-	void callbackMap(const nav_msgs::OccupancyGrid&);
-	void updateMap(const nav_msgs::OccupancyGrid&);
+		CObservationOdometry::Ptr&, const std_msgs::msg::Header&);
+	void callbackInitialpose(
+		const geometry_msgs::msg::PoseWithCovarianceStamped&);
+	void callbackOdometry(const nav_msgs::msg::Odometry&);
+	void callbackMap(const nav_msgs::msg::OccupancyGrid&);
+	void updateMap(const nav_msgs::msg::OccupancyGrid&);
 	void publishTF();
 	void publishPose();
 
    private:
-	ros::NodeHandle nh_;
+	rclcpp::Node nh_;
 	bool first_map_received_;
-	ros::Time time_last_input_;
+	rclcpp::Time time_last_input_;
 	unsigned long long loop_count_;
-	nav_msgs::GetMap::Response resp_;
-	ros::Subscriber sub_init_pose_;
-	ros::Subscriber sub_odometry_;
-	std::vector<ros::Subscriber> sub_sensors_;
-	ros::Subscriber sub_map_;
-	ros::ServiceClient client_map_;
-	ros::Publisher pub_particles_;
-	ros::Publisher pub_map_;
-	ros::Publisher pub_metadata_;
-	ros::Publisher pub_pose_;
-	ros::ServiceServer service_map_;
+	nav_msgs::srv::GetMap::Response resp_;
+
+	rclcpp::Subscription<geometry_msgs::msg::PoseWithCovarianceStamped>::
+		SharedPtr sub_init_pose_;
+	// rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr m_pub_cmd_vel;
+
+	rclcpp::Subscriber sub_odometry_;
+	std::vector<rclcpp::Subscriber> sub_sensors_;
+	rclcpp::Subscriber sub_map_;
+	rclcpp::ServiceClient client_map_;
+	rclcpp::Publisher pub_particles_;
+	rclcpp::Publisher pub_map_;
+	rclcpp::Publisher pub_metadata_;
+	rclcpp::Publisher pub_pose_;
+	rclcpp::ServiceServer service_map_;
 
 	tf2_ros::Buffer tf_buffer_;
 	tf2_ros::TransformListener tf_listener_{tf_buffer_};
@@ -122,7 +121,7 @@ class PFLocalizationNode : public PFLocalization
 	bool waitForTransform(
 		mrpt::poses::CPose3D& des, const std::string& target_frame,
 		const std::string& source_frame, const ros::Time& time,
-		const ros::Duration& timeout,
+		const int& timeoutMilliseconds,
 		const ros::Duration& polling_sleep_duration = ros::Duration(0.01));
 	bool mapCallback(
 		nav_msgs::GetMap::Request& req, nav_msgs::GetMap::Response& res);

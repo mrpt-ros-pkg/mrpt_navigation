@@ -10,47 +10,47 @@
 #include "mrpt_localization_node_defaults.h"
 
 PFLocalizationNode::Parameters::Parameters(PFLocalizationNode* p)
-	: PFLocalization::Parameters(p), node("~")
+	: PFLocalization::Parameters(p)
 {
 	node.param<double>("transform_tolerance", transform_tolerance, 0.1);
-	ROS_INFO("transform_tolerance: %f", transform_tolerance);
+	MRPT_LOG_INFO_FMT("transform_tolerance: %f", transform_tolerance);
 	node.param<double>("no_update_tolerance", no_update_tolerance, 1.0);
-	ROS_INFO("no_update_tolerance: %f", no_update_tolerance);
+	MRPT_LOG_INFO_FMT("no_update_tolerance: %f", no_update_tolerance);
 	node.param<double>(
 		"no_inputs_tolerance", no_inputs_tolerance,
 		std::numeric_limits<double>::infinity());
-	ROS_INFO(
+	MRPT_LOG_INFO_FMT(
 		"no_inputs_tolerance: %f", no_inputs_tolerance);  // disabled by default
 	node.param<double>("rate", rate, MRPT_LOCALIZATION_NODE_DEFAULT_RATE);
-	ROS_INFO("rate: %f", rate);
+	MRPT_LOG_INFO_FMT("rate: %f", rate);
 	node.getParam("gui_mrpt", gui_mrpt);
-	ROS_INFO("gui_mrpt: %s", gui_mrpt ? "true" : "false");
+	MRPT_LOG_INFO_FMT("gui_mrpt: %s", gui_mrpt ? "true" : "false");
 	node.param<int>(
 		"parameter_update_skip", parameter_update_skip,
 		MRPT_LOCALIZATION_NODE_DEFAULT_PARAMETER_UPDATE_SKIP);
-	ROS_INFO("parameter_update_skip: %i", parameter_update_skip);
+	MRPT_LOG_INFO_FMT("parameter_update_skip: %i", parameter_update_skip);
 	node.getParam("ini_file", ini_file);
-	ROS_INFO("ini_file: %s", ini_file.c_str());
+	MRPT_LOG_INFO_FMT("ini_file: %s", ini_file.c_str());
 	node.getParam("map_file", map_file);
-	ROS_INFO("map_file: %s", map_file.c_str());
+	MRPT_LOG_INFO_FMT("map_file: %s", map_file.c_str());
 	node.getParam("sensor_sources", sensor_sources);
-	ROS_INFO("sensor_sources: %s", sensor_sources.c_str());
+	MRPT_LOG_INFO_FMT("sensor_sources: %s", sensor_sources.c_str());
 	node.param<std::string>("global_frame_id", global_frame_id, "map");
-	ROS_INFO("global_frame_id: %s", global_frame_id.c_str());
+	MRPT_LOG_INFO_FMT("global_frame_id: %s", global_frame_id.c_str());
 	node.param<std::string>("odom_frame_id", odom_frame_id, "odom");
-	ROS_INFO("odom_frame_id: %s", odom_frame_id.c_str());
+	MRPT_LOG_INFO_FMT("odom_frame_id: %s", odom_frame_id.c_str());
 	node.param<std::string>("base_frame_id", base_frame_id, "base_link");
-	ROS_INFO("base_frame_id: %s", base_frame_id.c_str());
+	MRPT_LOG_INFO_FMT("base_frame_id: %s", base_frame_id.c_str());
 	node.param<bool>("pose_broadcast", pose_broadcast, false);
-	ROS_INFO("pose_broadcast: %s", pose_broadcast ? "true" : "false");
+	MRPT_LOG_INFO_FMT("pose_broadcast: %s", pose_broadcast ? "true" : "false");
 	node.param<bool>("tf_broadcast", tf_broadcast, true);
-	ROS_INFO("tf_broadcast: %s", tf_broadcast ? "true" : "false");
+	MRPT_LOG_INFO_FMT("tf_broadcast: %s", tf_broadcast ? "true" : "false");
 	node.param<bool>("use_map_topic", use_map_topic, false);
-	ROS_INFO("use_map_topic: %s", use_map_topic ? "true" : "false");
+	MRPT_LOG_INFO_FMT("use_map_topic: %s", use_map_topic ? "true" : "false");
 	node.param<bool>("first_map_only", first_map_only, false);
-	ROS_INFO("first_map_only: %s", first_map_only ? "true" : "false");
+	MRPT_LOG_INFO_FMT("first_map_only: %s", first_map_only ? "true" : "false");
 	node.param<bool>("debug", debug, true);
-	ROS_INFO("debug: %s", debug ? "true" : "false");
+	MRPT_LOG_INFO_FMT("debug: %s", debug ? "true" : "false");
 
 	reconfigure_cb_ = boost::bind(
 		&PFLocalizationNode::Parameters::callbackParameters, this, _1, _2);
@@ -61,14 +61,15 @@ void PFLocalizationNode::Parameters::update(const unsigned long& loop_count)
 {
 	if (loop_count % parameter_update_skip) return;
 	node.getParam("debug", debug);
-	if (loop_count == 0) ROS_INFO("debug: %s", debug ? "true" : "false");
+	if (loop_count == 0)
+		MRPT_LOG_INFO_FMT("debug: %s", debug ? "true" : "false");
 	{
 		int v = particlecloud_update_skip;
 		node.param<int>(
 			"particlecloud_update_skip", particlecloud_update_skip,
 			MRPT_LOCALIZATION_NODE_DEFAULT_PARTICLECLOUD_UPDATE_SKIP);
 		if (v != particlecloud_update_skip)
-			ROS_INFO(
+			MRPT_LOG_INFO_FMT(
 				"particlecloud_update_skip: %i", particlecloud_update_skip);
 	}
 	{
@@ -77,7 +78,7 @@ void PFLocalizationNode::Parameters::update(const unsigned long& loop_count)
 			"map_update_skip", map_update_skip,
 			MRPT_LOCALIZATION_NODE_DEFAULT_MAP_UPDATE_SKIP);
 		if (v != map_update_skip)
-			ROS_INFO("map_update_skip: %i", map_update_skip);
+			MRPT_LOG_INFO_FMT("map_update_skip: %i", map_update_skip);
 	}
 }
 
@@ -96,43 +97,45 @@ void PFLocalizationNode::Parameters::callbackParameters(
 		motion_model_options->gaussianModel.minStdXY = config.gaussian_alpha_xy;
 		motion_model_options->gaussianModel.minStdPHI =
 			config.gaussian_alpha_phi;
-		ROS_INFO("gaussianModel.type: gaussian");
-		ROS_INFO(
+		MRPT_LOG_INFO_FMT("gaussianModel.type: gaussian");
+		MRPT_LOG_INFO_FMT(
 			"gaussianModel.a1: %f", motion_model_options->gaussianModel.a1);
-		ROS_INFO(
+		MRPT_LOG_INFO_FMT(
 			"gaussianModel.a2: %f", motion_model_options->gaussianModel.a2);
-		ROS_INFO(
+		MRPT_LOG_INFO_FMT(
 			"gaussianModel.a3: %f", motion_model_options->gaussianModel.a3);
-		ROS_INFO(
+		MRPT_LOG_INFO_FMT(
 			"gaussianModel.a4: %f", motion_model_options->gaussianModel.a4);
-		ROS_INFO(
+		MRPT_LOG_INFO_FMT(
 			"gaussianModel.minStdXY: %f",
 			motion_model_options->gaussianModel.minStdXY);
-		ROS_INFO(
+		MRPT_LOG_INFO_FMT(
 			"gaussianModel.minStdPHI: %f",
 			motion_model_options->gaussianModel.minStdPHI);
 	}
 	else
 	{
-		ROS_INFO("We support at the moment only gaussian motion models");
+		MRPT_LOG_INFO_FMT(
+			"We support at the moment only gaussian motion models");
 	}
 	*use_motion_model_default_options = config.use_default_motion;
-	ROS_INFO(
+	MRPT_LOG_INFO_FMT(
 		"use_motion_model_default_options: %s",
 		use_motion_model_default_options ? "true" : "false");
 	motion_model_default_options->gaussianModel.minStdXY =
 		config.default_noise_xy;
-	ROS_INFO(
+	MRPT_LOG_INFO_FMT(
 		"default_noise_xy: %f",
 		motion_model_default_options->gaussianModel.minStdXY);
 	motion_model_default_options->gaussianModel.minStdPHI =
 		config.default_noise_phi;
-	ROS_INFO(
+	MRPT_LOG_INFO_FMT(
 		"default_noise_phi: %f",
 		motion_model_default_options->gaussianModel.minStdPHI);
 	update_while_stopped = config.update_while_stopped;
-	ROS_INFO(
+	MRPT_LOG_INFO_FMT(
 		"update_while_stopped: %s", update_while_stopped ? "true" : "false");
 	update_sensor_pose = config.update_sensor_pose;
-	ROS_INFO("update_sensor_pose: %s", update_sensor_pose ? "true" : "false");
+	MRPT_LOG_INFO_FMT(
+		"update_sensor_pose: %s", update_sensor_pose ? "true" : "false");
 }

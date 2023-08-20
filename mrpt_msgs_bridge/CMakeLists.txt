@@ -69,13 +69,13 @@ install(TARGETS ${PROJECT_NAME}
 )
 
 # Mark cpp header files for installation
-install(DIRECTORY include/${PROJECT_NAME}/
+install(DIRECTORY include/${PROJECT_NAME}
   DESTINATION include
   FILES_MATCHING PATTERN "*.hpp"
 )
 
 #############
-ament_target_dependencies(${PROJECT_NAME} 
+ament_target_dependencies(${PROJECT_NAME}
   rclcpp
   tf2
   mrpt_msgs
@@ -86,14 +86,24 @@ ament_target_dependencies(${PROJECT_NAME}
 #find_package(ament_cmake_gtest REQUIRED)
 #ament_add_gtest(${PROJECT_NAME}-test test/test_pose_cov_ops.cpp)
 
-ament_export_dependencies()
 
 # Export old-style CMake variables
 #ament_export_include_directories("include/${PROJECT_NAME}")
-#ament_export_libraries(${PROJECT_NAME})
+#ament_export_libraries(${PROJECT_NAME}_export HAS_LIBRARY_TARGET)
 
 # Export modern CMake targets
-#ament_export_targets(export_${PROJECT_NAME})
+ament_export_targets(${PROJECT_NAME})
+
+ament_export_dependencies()
+
+install(
+  TARGETS ${PROJECT_NAME}
+  EXPORT ${PROJECT_NAME}
+  ARCHIVE DESTINATION lib
+  LIBRARY DESTINATION lib
+  RUNTIME DESTINATION bin
+  INCLUDES DESTINATION include
+)
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)

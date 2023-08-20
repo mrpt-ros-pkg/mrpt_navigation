@@ -10,11 +10,10 @@
 #include <mrpt/maps/CSimplePointsMap.h>
 #include <mrpt/opengl/CEllipsoid2D.h>
 #include <mrpt/opengl/CPointCloud.h>
-#include <mrpt/ros1bridge/map.h>
+#include <mrpt/ros2bridge/map.h>
 #include <mrpt/system/filesystem.h>
 #include <mrpt_localization/mrpt_localization.h>
 #include <mrpt_localization/mrpt_localization_defaults.h>
-#include <ros/console.h>
 
 #include <chrono>
 #include <thread>
@@ -44,16 +43,15 @@ PFLocalization::PFLocalization(Parameters* param)
 
 void PFLocalization::init()
 {
-	ROS_INFO_STREAM("ini_file ready " << param_->ini_file);
+	MRPT_LOG_INFO_STREAM("ini_file ready " << param_->ini_file);
 	ASSERT_FILE_EXISTS_(param_->ini_file);
-	ROS_INFO_STREAM("ASSERT_FILE_EXISTS_ " << param_->ini_file);
+	MRPT_LOG_INFO_STREAM("ASSERT_FILE_EXISTS_ " << param_->ini_file);
 	CConfigFile ini_file;
 	ini_file.setFileName(param_->ini_file);
-	ROS_INFO_STREAM("CConfigFile: " << param_->ini_file);
+	MRPT_LOG_INFO_STREAM("CConfigFile: " << param_->ini_file);
 
-	std::vector<int>
-		particles_count;  // Number of initial particles (if size>1, run
-	// the experiments N times)
+	// Number of initial particles (if size>1, run the experiments N times)
+	std::vector<int> particles_count;
 
 	// Load configuration:
 	// -----------------------------------------
@@ -120,7 +118,7 @@ void PFLocalization::init()
 	p.x() = init_PDF_min_x + cov(0, 0) / 2.0;
 	p.y() = init_PDF_min_y + cov(1, 1) / 2.0;
 	p.phi() = min_phi + cov(2, 2) / 2.0;
-	ROS_DEBUG(
+	MRPT_LOG_DEBUG_FMT(
 		"----------- phi: %4.3f: %4.3f <-> %4.3f, %4.3f\n", p.phi(), min_phi,
 		max_phi, cov(2, 2));
 	initial_pose_ = mrpt::poses::CPosePDFGaussian(p, cov);
@@ -131,7 +129,7 @@ void PFLocalization::init()
 
 	ASSERT_(metric_map_);
 
-	if (!mrpt::ros1bridge::MapHdl::loadMap(
+	if (!mrpt::ros2bridge::MapHdl::loadMap(
 			*metric_map_, ini_file, param_->map_file, "metricMap",
 			param_->debug))
 	{
@@ -170,7 +168,7 @@ void PFLocalization::configureFilter(const CConfigFile& _configFile)
 
 void PFLocalization::init3DDebug()
 {
-	ROS_INFO("init3DDebug");
+	MRPT_LOG_INFO("init3DDebug");
 	if (!SHOW_PROGRESS_3D_REAL_TIME_) return;
 	if (!win3D_)
 	{
@@ -194,11 +192,11 @@ void PFLocalization::init3DDebug()
 			grid_info.effectiveMappedArea = (init_PDF_max_x - init_PDF_min_x) *
 											(init_PDF_max_y - init_PDF_min_y);
 		}
-		ROS_INFO(
+		MRPT_LOG_INFO_FMT(
 			"The gridmap has %.04fm2 observed area, %u observed cells\n",
 			grid_info.effectiveMappedArea,
 			(unsigned)grid_info.effectiveMappedCells);
-		ROS_INFO(
+		MRPT_LOG_INFO_FMT(
 			"Initial PDF: %f particles/m2\n",
 			initial_particle_count_ / grid_info.effectiveMappedArea);
 
@@ -217,7 +215,7 @@ void PFLocalization::init3DDebug()
 		}
 	}  // Show 3D?
 	if (param_->debug)
-		ROS_INFO(" --------------------------- init3DDebug done \n");
+		MRPT_LOG_INFO(" --------------------------- init3DDebug done \n");
 	if (param_->debug) fflush(stdout);
 }
 

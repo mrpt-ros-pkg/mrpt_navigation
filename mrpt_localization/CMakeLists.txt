@@ -39,49 +39,39 @@ ENDIF()
 ## Build ##
 ###########
 
-## Specify additional locations of header files
-## Your package locations should be listed before other locations
-include_directories(include ${catkin_INCLUDE_DIRS})
-
-## Declare a cpp library
-add_library(${PROJECT_NAME}_core
-   src/${PROJECT_NAME}/${PROJECT_NAME}_core.cpp
-)
-
-add_library(${PROJECT_NAME}
-   src/${PROJECT_NAME}/${PROJECT_NAME}.cpp
-   src/${PROJECT_NAME}/${PROJECT_NAME}_parameters.cpp
-)
-
 ## Declare a cpp executable
 add_executable(${PROJECT_NAME}_node
     src/${PROJECT_NAME}_node.cpp
     src/${PROJECT_NAME}_node_parameters.cpp
+    src/${PROJECT_NAME}/${PROJECT_NAME}_core.cpp
+    src/${PROJECT_NAME}/${PROJECT_NAME}.cpp
+    src/${PROJECT_NAME}/${PROJECT_NAME}_parameters.cpp
+    include/${PROJECT_NAME}/${PROJECT_NAME}_core.h
+    include/${PROJECT_NAME}_node.h
 )
 
-ament_target_dependencies(
-  ${PROJECT_NAME}_core
+ament_target_dependencies(${PROJECT_NAME}_node
     rclcpp
     geometry_msgs
+    mrpt_msgs
+    mrpt_msgs_bridge
     nav_msgs
+    pose_cov_ops
     sensor_msgs
     tf2
     tf2_geometry_msgs
 )
 
+target_include_directories(${PROJECT_NAME}_node
+    PRIVATE
+    include
+)
+
 ## Specify libraries to link a library or executable target against
-target_link_libraries(${PROJECT_NAME}_core
+target_link_libraries(${PROJECT_NAME}_node
   mrpt::gui
   mrpt::slam
   mrpt::ros2bridge
-)
-
-target_link_libraries(${PROJECT_NAME}
-  ${PROJECT_NAME}_core
-)
-
-target_link_libraries(${PROJECT_NAME}_node
-  ${PROJECT_NAME}
 )
 
 #############
@@ -90,9 +80,7 @@ target_link_libraries(${PROJECT_NAME}_node
 
 install(
   TARGETS
-    ${PROJECT_NAME}_core
     ${PROJECT_NAME}_node
-    ${PROJECT_NAME}
   DESTINATION
     lib/${PROJECT_NAME}
 )
@@ -107,13 +95,6 @@ install(
 #ament_add_gtest(${PROJECT_NAME}-test test/test_pose_cov_ops.cpp)
 
 ament_export_dependencies()
-
-# Export old-style CMake variables
-ament_export_include_directories("include/${PROJECT_NAME}")
-ament_export_libraries(${PROJECT_NAME})
-
-# Export modern CMake targets
-#ament_export_targets(export_${PROJECT_NAME})
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)

@@ -9,6 +9,7 @@
 #pragma once
 
 #include <mrpt/bayes/CParticleFilter.h>
+#include <mrpt/core/Clock.h>
 #include <mrpt/maps/CMultiMetricMap.h>
 #include <mrpt/obs/CActionCollection.h>
 #include <mrpt/obs/CActionRobotMovement2D.h>
@@ -17,14 +18,13 @@
 #include <mrpt/poses/CPose2D.h>
 #include <mrpt/poses/CPosePDFGaussian.h>
 #include <mrpt/slam/CMonteCarloLocalization2D.h>
+#include <mrpt/system/COutputLogger.h>
 #include <mrpt/system/CTicTac.h>
 #include <stdint.h>
 
 #include <iostream>
-using namespace mrpt::maps;
-using namespace mrpt::obs;
 
-class PFLocalizationCore
+class PFLocalizationCore : public mrpt::system::COutputLogger
 {
    public:
 	enum PFStates
@@ -35,8 +35,8 @@ class PFLocalizationCore
 		IDLE
 	};
 
-	PFLocalizationCore();
-	~PFLocalizationCore();
+	PFLocalizationCore() = default;
+	~PFLocalizationCore() = default;
 
 	/**
 	 * Initializes the parameter with common values to acive a working filter
@@ -52,33 +52,40 @@ class PFLocalizationCore
 	 * @param _odometry the odom data can also be NULL
 	 **/
 	void observation(
-		CSensoryFrame::Ptr _sf, CObservationOdometry::Ptr _odometry);
+		mrpt::obs::CSensoryFrame::Ptr _sf,
+		mrpt::obs::CObservationOdometry::Ptr _odometry);
 
    protected:
 	bool use_motion_model_default_options_;	 ///< used default odom_params
-	CActionRobotMovement2D::TMotionModelOptions
+	mrpt::obs::CActionRobotMovement2D::TMotionModelOptions
 		motion_model_default_options_;	///< used if there are is not odom
-	CActionRobotMovement2D::TMotionModelOptions
+	mrpt::obs::CActionRobotMovement2D::TMotionModelOptions
 		motion_model_options_;	///< used with odom value motion noise
-	CMultiMetricMap::Ptr metric_map_ = CMultiMetricMap::Create();  ///< map
-	mrpt::bayes::CParticleFilter
-		pf_;  ///< common interface for particle filters
-	mrpt::bayes::CParticleFilter::TParticleFilterStats
-		pf_stats_;	///< filter statistics
+	mrpt::maps::CMultiMetricMap::Ptr metric_map_ =
+		mrpt::maps::CMultiMetricMap::Create();
+	mrpt::bayes::CParticleFilter pf_;  ///< interface for particle filters
+	mrpt::bayes::CParticleFilter::TParticleFilterStats pf_stats_;
 	mrpt::slam::CMonteCarloLocalization2D pdf_;	 ///< the filter
-	mrpt::poses::CPosePDFGaussian
-		initial_pose_;	///< initial posed used in initializeFilter()
-	int initial_particle_count_;  ///< number of particles for initialization
-	mrpt::system::TTimeStamp time_last_update_;	 ///< time of the last update
+
+	/// initial posed used in initializeFilter()
+	mrpt::poses::CPosePDFGaussian initial_pose_;
+	/// number of particles for initialization
+	int initial_particle_count_;
+
+	mrpt::Clock::time_point time_last_update_;	///< time of the last update
 	mrpt::system::CTicTac tictac_;	///< timer to measure performance
-	size_t update_counter_;	 ///< internal counter to count the number of filter
-	/// updates
-	PFStates state_;  ///< filter states to perform things like init on the
-	/// correct time
-	mrpt::poses::CPose2D
-		odom_last_observation_;	 ///< pose at the last observation
-	bool init_PDF_mode;	 ///< Initial PDF mode: 0 for free space cells, 1 for
-	/// any cell
+
+	/// internal counter to count the number of filter updates
+	size_t update_counter_;
+
+	/// filter states to perform things like init on the correct time
+	PFStates state_ = NA;
+
+	/// pose at the last observation
+	mrpt::poses::CPose2D odom_last_observation_;
+
+	/// Initial PDF mode: 0 for free space cells, 1 for any cell
+	bool init_PDF_mode;
 	float init_PDF_min_x;  ///< Initial PDF boundaries
 	float init_PDF_max_x;
 	float init_PDF_min_y;
@@ -93,5 +100,7 @@ class PFLocalizationCore
 	 **/
 	void initializeFilter();
 
-	void updateFilter(CActionCollection::Ptr _action, CSensoryFrame::Ptr _sf);
+	void updateFilter(
+		mrpt::obs::CActionCollection::Ptr _action,
+		mrpt::obs::CSensoryFrame::Ptr _sf);
 };

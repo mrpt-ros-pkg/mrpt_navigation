@@ -9,7 +9,6 @@
 #include <mrpt/maps/CLandmarksMap.h>
 #include <mrpt/maps/COccupancyGridMap2D.h>
 #include <mrpt_localization/mrpt_localization_core.h>
-#include <ros/console.h>
 
 using namespace mrpt;
 using namespace mrpt::slam;
@@ -21,8 +20,6 @@ using namespace std;
 using mrpt::maps::CLandmarksMap;
 using mrpt::maps::COccupancyGridMap2D;
 
-PFLocalizationCore::~PFLocalizationCore() {}
-PFLocalizationCore::PFLocalizationCore() : state_(NA) {}
 void PFLocalizationCore::init()
 {
 	mrpt::math::CMatrixDouble33 cov;
@@ -32,7 +29,7 @@ void PFLocalizationCore::init()
 	initial_particle_count_ = 1000;
 
 	motion_model_default_options_.modelSelection =
-		CActionRobotMovement2D::mmGaussian;
+		mrpt::obs::CActionRobotMovement2D::mmGaussian;
 	motion_model_default_options_.gaussianModel.minStdXY = 0.10;
 	motion_model_default_options_.gaussianModel.minStdPHI = 2.0;
 }
@@ -41,9 +38,10 @@ void PFLocalizationCore::initializeFilter()
 {
 	const auto [cov, mean_point] = initial_pose_.getCovarianceAndMean();
 
-	ROS_INFO(
+	MRPT_LOG_INFO_FMT(
 		"InitializeFilter: %4.3fm, %4.3fm, %4.3frad ", mean_point.x(),
 		mean_point.y(), mean_point.phi());
+
 	float min_x = mean_point.x() - cov(0, 0);
 	float max_x = mean_point.x() + cov(0, 0);
 	float min_y = mean_point.y() - cov(1, 1);
@@ -68,7 +66,8 @@ void PFLocalizationCore::initializeFilter()
 }
 
 void PFLocalizationCore::updateFilter(
-	CActionCollection::Ptr _action, CSensoryFrame::Ptr _sf)
+	mrpt::obs::CActionCollection::Ptr _action,
+	mrpt::obs::CSensoryFrame::Ptr _sf)
 {
 	if (state_ == INIT) initializeFilter();
 	tictac_.Tic();
@@ -78,10 +77,11 @@ void PFLocalizationCore::updateFilter(
 }
 
 void PFLocalizationCore::observation(
-	CSensoryFrame::Ptr _sf, CObservationOdometry::Ptr _odometry)
+	mrpt::obs::CSensoryFrame::Ptr _sf,
+	mrpt::obs::CObservationOdometry::Ptr _odometry)
 {
-	auto action = CActionCollection::Create();
-	CActionRobotMovement2D odom_move;
+	auto action = mrpt::obs::CActionCollection::Create();
+	mrpt::obs::CActionRobotMovement2D odom_move;
 	odom_move.timestamp = _sf->getObservationByIndex(0)->timestamp;
 	if (_odometry)
 	{
@@ -100,7 +100,7 @@ void PFLocalizationCore::observation(
 	{
 		if (use_motion_model_default_options_)
 		{
-			ROS_INFO_STREAM(
+			MRPT_LOG_INFO_STREAM(
 				"No odometry at update " << update_counter_
 										 << " -> using dummy");
 			odom_move.computeFromOdometry(
@@ -110,7 +110,7 @@ void PFLocalizationCore::observation(
 		}
 		else
 		{
-			ROS_INFO_STREAM(
+			MRPT_LOG_INFO_STREAM(
 				"No odometry at update " << update_counter_
 										 << " -> skipping observation");
 		}

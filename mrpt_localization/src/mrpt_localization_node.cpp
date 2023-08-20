@@ -6,18 +6,19 @@
    | All rights reserved. Released under BSD 3-Clause license. See LICENSE  |
    +------------------------------------------------------------------------+ */
 
-#include <geometry_msgs/PoseArray.h>
 #include <mrpt/obs/CObservationBeaconRanges.h>
 #include <mrpt/obs/CObservationRobotPose.h>
-#include <mrpt/ros1bridge/laser_scan.h>
-#include <mrpt/ros1bridge/map.h>
-#include <mrpt/ros1bridge/pose.h>
-#include <mrpt/ros1bridge/time.h>
+#include <mrpt/ros2bridge/laser_scan.h>
+#include <mrpt/ros2bridge/map.h>
+#include <mrpt/ros2bridge/pose.h>
+#include <mrpt/ros2bridge/time.h>
 #include <mrpt/system/COutputLogger.h>
-#include <mrpt_msgs_bridge/beacon.h>
 #include <pose_cov_ops/pose_cov_ops.h>
 
-#include <boost/interprocess/sync/scoped_lock.hpp>
+#include <mrpt_msgs_bridge/beacon.hpp>
+
+//#include <boost/interprocess/sync/scoped_lock.hpp>
+#include <geometry_msgs/msg/pose_array.hpp>
 
 using namespace mrpt::obs;
 using namespace mrpt::system;
@@ -95,7 +96,7 @@ void PFLocalizationNode::init()
 	{
 		if (metric_map_->countMapsByClass<COccupancyGridMap2D>())
 		{
-			mrpt::ros1bridge::toROS(
+			mrpt::ros2bridge::toROS(
 				*metric_map_->mapByClass<COccupancyGridMap2D>(), resp_.map);
 		}
 		pub_map_ = nh_.advertise<nav_msgs::OccupancyGrid>("map", 1, true);
@@ -113,7 +114,7 @@ void PFLocalizationNode::init()
 
 void PFLocalizationNode::loop()
 {
-	ROS_INFO("loop");
+	MRPT_LOG_INFO_FMT("loop");
 	for (ros::Rate rate(param()->rate); ros::ok(); loop_count_++)
 	{
 		param()->update(loop_count_);
@@ -134,36 +135,34 @@ void PFLocalizationNode::loop()
 bool PFLocalizationNode::waitForTransform(
 	mrpt::poses::CPose3D& des, const std::string& target_frame,
 	const std::string& source_frame, const ros::Time& time,
-	const ros::Duration& timeout, const ros::Duration& polling_sleep_duration)
+	const int& timeoutMilliseconds, const ros::Duration& polling_sleep_duration)
 {
-	geometry_msgs::TransformStamped transform;
+	rclcpp::Duration timeout(std::chrono::milliseconds(timeoutMilliseconds));
 	try
 	{
-		transform = tf_buffer_.lookupTransform(
-			target_frame, source_frame, time, timeout);
+		geometry_msgs::msg::TransformStamped ref_to_trgFrame =
+			tf_buffer_->lookupTransform(
+				target_frame, source_frame, tf2::TimePointZero,
+				tf2::durationFromSec(timeout.seconds()));
+
+		des = mrpt::ros2bridge::fromROS(ref_to_trgFrame.transform);
+		return true;
 	}
-	catch (const tf2::TransformException& e)
+	catch (const tf2::TransformException& ex)
 	{
-		ROS_WARN(
-			"Failed to get transform target_frame (%s) to source_frame (%s): "
-			"%s",
-			target_frame.c_str(), source_frame.c_str(), e.what());
+		RCLCPP_ERROR(nh_->get_logger(), "%s", ex.what());
 		return false;
 	}
-	tf2::Transform tx;
-	tf2::fromMsg(transform.transform, tx);
-	des = mrpt::ros1bridge::fromROS(tx);
-	return true;
 }
 
-void PFLocalizationNode::callbackLaser(const sensor_msgs::LaserScan& _msg)
+void PFLocalizationNode::callbackLaser(const sensor_msgs::msg::LaserScan& _msg)
 {
 	using namespace mrpt::maps;
 	using namespace mrpt::obs;
 
 	time_last_input_ = ros::Time::now();
 
-	// ROS_INFO("callbackLaser");
+	// MRPT_LOG_INFO_FMT("callbackLaser");
 	auto laser = CObservation2DRangeScan::Create();
 
 	// printf("callbackLaser %s\n", _msg.header.frame_id.c_str());
@@ -179,9 +178,10 @@ void PFLocalizationNode::callbackLaser(const sensor_msgs::LaserScan& _msg)
 			updateSensorPose(_msg.header.frame_id);
 		}
 		// mrpt::poses::CPose3D pose = laser_poses_[_msg.header.frame_id];
-		// ROS_INFO("LASER POSE %4.3f, %4.3f, %4.3f, %4.3f, %4.3f, %4.3f",
-		// pose.x(), pose.y(), pose.z(), pose.roll(), pose.pitch(), pose.yaw());
-		mrpt::ros1bridge::fromROS(
+		// MRPT_LOG_INFO_FMT("LASER POSE %4.3f, %4.3f, %4.3f, %4.3f, %4.3f,
+		// %4.3f", pose.x(), pose.y(), pose.z(), pose.roll(), pose.pitch(),
+		// pose.yaw());
+		mrpt::ros2bridge::fromROS(
 			_msg, laser_poses_[_msg.header.frame_id], *laser);
 
 		auto sf = CSensoryFrame::Create();
@@ -196,14 +196,14 @@ void PFLocalizationNode::callbackLaser(const sensor_msgs::LaserScan& _msg)
 }
 
 void PFLocalizationNode::callbackBeacon(
-	const mrpt_msgs::ObservationRangeBeacon& _msg)
+	const mrpt_msgs::msg::ObservationRangeBeacon& _msg)
 {
 	using namespace mrpt::maps;
 	using namespace mrpt::obs;
 
 	time_last_input_ = ros::Time::now();
 
-	// ROS_INFO("callbackBeacon");
+	// MRPT_LOG_INFO_FMT("callbackBeacon");
 	auto beacon = CObservationBeaconRanges::Create();
 	// printf("callbackBeacon %s\n", _msg.header.frame_id.c_str());
 	if (beacon_poses_.find(_msg.header.frame_id) == beacon_poses_.end())
@@ -218,8 +218,9 @@ void PFLocalizationNode::callbackBeacon(
 			updateSensorPose(_msg.header.frame_id);
 		}
 		// mrpt::poses::CPose3D pose = beacon_poses_[_msg.header.frame_id];
-		// ROS_INFO("BEACON POSE %4.3f, %4.3f, %4.3f, %4.3f, %4.3f, %4.3f",
-		// pose.x(), pose.y(), pose.z(), pose.roll(), pose.pitch(), pose.yaw());
+		// MRPT_LOG_INFO_FMT("BEACON POSE %4.3f, %4.3f, %4.3f, %4.3f, %4.3f,
+		// %4.3f", pose.x(), pose.y(), pose.z(), pose.roll(), pose.pitch(),
+		// pose.yaw());
 		mrpt_msgs_bridge::fromROS(
 			_msg, beacon_poses_[_msg.header.frame_id], *beacon);
 
@@ -235,7 +236,7 @@ void PFLocalizationNode::callbackBeacon(
 }
 
 void PFLocalizationNode::callbackRobotPose(
-	const geometry_msgs::PoseWithCovarianceStamped& _msg)
+	const geometry_msgs::msg::PoseWithCovarianceStamped& _msg)
 {
 	using namespace mrpt::maps;
 	using namespace mrpt::obs;
@@ -294,8 +295,8 @@ void PFLocalizationNode::callbackRobotPose(
 	auto feature = CObservationRobotPose::Create();
 
 	feature->sensorLabel = _msg.header.frame_id;
-	feature->timestamp = mrpt::ros1bridge::fromROS(_msg.header.stamp);
-	feature->pose = mrpt::ros1bridge::fromROS(obs_pose_world.pose);
+	feature->timestamp = mrpt::ros2bridge::fromROS(_msg.header.stamp);
+	feature->pose = mrpt::ros2bridge::fromROS(obs_pose_world.pose);
 
 	auto sf = CSensoryFrame::Create();
 	CObservationOdometry::Ptr odometry;
@@ -308,7 +309,8 @@ void PFLocalizationNode::callbackRobotPose(
 }
 
 void PFLocalizationNode::odometryForCallback(
-	CObservationOdometry::Ptr& _odometry, const std_msgs::Header& _msg_header)
+	CObservationOdometry::Ptr& _odometry,
+	const std_msgs::msg::Header& _msg_header)
 {
 	std::string base_frame_id = param()->base_frame_id;
 	std::string odom_frame_id = param()->odom_frame_id;
@@ -336,11 +338,11 @@ bool PFLocalizationNode::waitForMap()
 	{
 		sub_map_ =
 			nh_.subscribe("map", 1, &PFLocalizationNode::callbackMap, this);
-		ROS_INFO("Subscribed to map topic.");
+		MRPT_LOG_INFO_FMT("Subscribed to map topic.");
 
 		while (!first_map_received_ && ros::ok() && wait_counter < wait_limit)
 		{
-			ROS_INFO("waiting for map callback..");
+			MRPT_LOG_INFO_FMT("waiting for map callback..");
 			ros::Duration(0.5).sleep();
 			ros::spinOnce();
 			wait_counter++;
@@ -356,14 +358,14 @@ bool PFLocalizationNode::waitForMap()
 		nav_msgs::GetMap srv;
 		while (!client_map_.call(srv) && ros::ok() && wait_counter < wait_limit)
 		{
-			ROS_INFO("waiting for map service!");
+			MRPT_LOG_INFO_FMT("waiting for map service!");
 			ros::Duration(0.5).sleep();
 			wait_counter++;
 		}
 		client_map_.shutdown();
 		if (wait_counter != wait_limit)
 		{
-			ROS_INFO_STREAM("Map service complete.");
+			MRPT_LOG_INFO_STREAM("Map service complete.");
 			updateMap(srv.response.map);
 			return true;
 		}
@@ -373,14 +375,14 @@ bool PFLocalizationNode::waitForMap()
 	return false;
 }
 
-void PFLocalizationNode::callbackMap(const nav_msgs::OccupancyGrid& msg)
+void PFLocalizationNode::callbackMap(const nav_msgs::msg::OccupancyGrid& msg)
 {
 	if (param()->first_map_only && first_map_received_)
 	{
 		return;
 	}
 
-	ROS_INFO_STREAM("Map received.");
+	MRPT_LOG_INFO_STREAM("Map received.");
 	updateMap(msg);
 
 	first_map_received_ = true;
@@ -432,19 +434,19 @@ void PFLocalizationNode::updateSensorPose(std::string _frame_id)
 }
 
 void PFLocalizationNode::callbackInitialpose(
-	const geometry_msgs::PoseWithCovarianceStamped& _msg)
+	const geometry_msgs::msg::PoseWithCovarianceStamped& _msg)
 {
 	const geometry_msgs::PoseWithCovariance& pose = _msg.pose;
 
 	// SE(3) -> SE(2) explicit conversion:
 	initial_pose_ =
-		mrpt::poses::CPosePDFGaussian(mrpt::ros1bridge::fromROS(pose));
+		mrpt::poses::CPosePDFGaussian(mrpt::ros2bridge::fromROS(pose));
 
 	update_counter_ = 0;
 	state_ = INIT;
 }
 
-void PFLocalizationNode::callbackOdometry(const nav_msgs::Odometry& _msg)
+void PFLocalizationNode::callbackOdometry(const nav_msgs::msg::Odometry& _msg)
 {
 	// We always update the filter if update_while_stopped is true, regardless
 	// robot is moving or
@@ -469,17 +471,17 @@ void PFLocalizationNode::callbackOdometry(const nav_msgs::Odometry& _msg)
 	}
 }
 
-void PFLocalizationNode::updateMap(const nav_msgs::OccupancyGrid& _msg)
+void PFLocalizationNode::updateMap(const nav_msgs::msg::OccupancyGrid& _msg)
 {
 	ASSERT_(metric_map_->countMapsByClass<COccupancyGridMap2D>());
-	mrpt::ros1bridge::fromROS(
+	mrpt::ros2bridge::fromROS(
 		_msg, *metric_map_->mapByClass<COccupancyGridMap2D>());
 }
 
 bool PFLocalizationNode::mapCallback(
 	nav_msgs::GetMap::Request& req, nav_msgs::GetMap::Response& res)
 {
-	ROS_INFO("mapCallback: service requested!\n");
+	MRPT_LOG_INFO_FMT("mapCallback: service requested!\n");
 	res = resp_;
 	return true;
 }
@@ -511,7 +513,7 @@ void PFLocalizationNode::publishParticles()
 		for (size_t i = 0; i < pdf_.particlesCount(); i++)
 		{
 			const auto p = mrpt::math::TPose3D(pdf_.getParticlePose(i));
-			poseArray.poses[i] = mrpt::ros1bridge::toROS_Pose(p);
+			poseArray.poses[i] = mrpt::ros2bridge::toROS_Pose(p);
 		}
 		mrpt::poses::CPose2D p;
 		pub_particles_.publish(poseArray);
@@ -533,12 +535,12 @@ void PFLocalizationNode::publishTF()
 	}();
 
 	tf2::Transform baseOnMap_tf;
-	tf2::fromMsg(mrpt::ros1bridge::toROS_Pose(robotPoseFromPF), baseOnMap_tf);
+	tf2::fromMsg(mrpt::ros2bridge::toROS_Pose(robotPoseFromPF), baseOnMap_tf);
 
 	ros::Time time_last_update(0.0);
 	if (state_ == RUN)
 	{
-		time_last_update = mrpt::ros1bridge::toROS(time_last_update_);
+		time_last_update = mrpt::ros2bridge::toROS(time_last_update_);
 
 		// Last update time can be too far in the past if we where not updating
 		// filter, due to robot stopped or no
@@ -561,7 +563,7 @@ void PFLocalizationNode::publishTF()
 			}
 			else
 			{
-				ROS_DEBUG_THROTTLE(
+				MRPT_LOG_DEBUG_FMT_THROTTLE(
 					2.0,
 					"No filter updates for %.2fs (tolerance %.2fs); probably "
 					"robot stopped for a while",
@@ -638,11 +640,11 @@ void PFLocalizationNode::publishPose()
 	}
 	else
 	{
-		p.header.stamp = mrpt::ros1bridge::toROS(time_last_update_);
+		p.header.stamp = mrpt::ros2bridge::toROS(time_last_update_);
 	}
 
 	// Copy in the pose
-	p.pose.pose = mrpt::ros1bridge::toROS_Pose(mean);
+	p.pose.pose = mrpt::ros2bridge::toROS_Pose(mean);
 
 	// Copy in the covariance, converting from 3-D to 6-D
 	for (int i = 0; i < 3; i++)
