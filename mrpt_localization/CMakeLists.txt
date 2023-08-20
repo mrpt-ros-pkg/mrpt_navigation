@@ -35,33 +35,6 @@ IF(CMAKE_COMPILER_IS_GNUCXX AND NOT CMAKE_BUILD_TYPE MATCHES "Debug")
   add_compile_options(-O3)
 ENDIF()
 
-###################################
-## catkin specific configuration ##
-###################################
-## The catkin_package macro generates cmake config files for your package
-## Declare things to be passed to dependent projects
-## INCLUDE_DIRS: uncomment this if you package contains header files
-## LIBRARIES: libraries you create in this project that dependent projects also need
-## CATKIN_DEPENDS: catkin_packages dependent projects also need
-## DEPENDS: system dependencies of this project that dependent projects also need
-catkin_package(
-  INCLUDE_DIRS include
-  LIBRARIES ${PROJECT_NAME} ${PROJECT_NAME}_core
-  CATKIN_DEPENDS
-    roscpp
-    tf2
-    tf2_ros
-    tf2_geometry_msgs
-    std_msgs
-    nav_msgs
-    sensor_msgs
-    mrpt_msgs
-    mrpt_msgs_bridge
-    pose_cov_ops
-    dynamic_reconfigure
-#  DEPENDS mrpt
-)
-
 ###########
 ## Build ##
 ###########
@@ -92,24 +65,12 @@ ament_target_dependencies(
     geometry_msgs
     nav_msgs
     sensor_msgs
-    visualization_msgs
     tf2
     tf2_geometry_msgs
 )
 
-
-
-## Add cmake target dependencies of the executable/library
-## as an example, message headers may need to be generated before nodes
-add_dependencies(${PROJECT_NAME}
-   mrpt_msgs_generate_messages_cpp
-   ${catkin_EXPORTED_TARGETS}
-   ${PROJECT_NAME}_gencfg
-)
-
 ## Specify libraries to link a library or executable target against
 target_link_libraries(${PROJECT_NAME}_core
-  PUBLIC
   mrpt::gui
   mrpt::slam
   mrpt::ros2bridge
@@ -120,7 +81,6 @@ target_link_libraries(${PROJECT_NAME}
 )
 
 target_link_libraries(${PROJECT_NAME}_node
-  PRIVATE
   ${PROJECT_NAME}
 )
 
@@ -128,40 +88,20 @@ target_link_libraries(${PROJECT_NAME}_node
 ## Install ##
 #############
 
-# all install targets should use catkin DESTINATION variables
-# See http://ros.org/doc/api/catkin/html/adv_user_guide/variables.html
-
-set(CATKIN_PACKAGE_LIB_DESTINATION lib)
-set(CATKIN_PACKAGE_BIN_DESTINATION lib/${PROJECT_NAME})
-set(CATKIN_PACKAGE_INCLUDE_DESTINATION include)
-set(CATKIN_PACKAGE_SHARE_DESTINATION share/${PROJECT_NAME})
-
-# Mark executables and/or libraries for installation
-install(TARGETS ${PROJECT_NAME}_node ${PROJECT_NAME}_core ${PROJECT_NAME}
-  ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+install(
+  TARGETS
+    ${PROJECT_NAME}_core
+    ${PROJECT_NAME}_node
+    ${PROJECT_NAME}
+  DESTINATION
+    lib/${PROJECT_NAME}
 )
 
-# Mark cpp header files for installation
-install(DIRECTORY include/${PROJECT_NAME}/
-  DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
-  FILES_MATCHING PATTERN "*.h"
+install(
+  DIRECTORY launch tutorial
+  DESTINATION share/${PROJECT_NAME}
 )
 
-# Mark other files for installation (e.g. launch and bag files, etc.)
-install(DIRECTORY
-  launch
-  tutorial
-  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
-)
-
-find_package(ament_cmake_xmllint REQUIRED)
-
-#ament_copyright()
-#ament_cpplint()
-#ament_lint_cmake()
-ament_xmllint()
 
 #find_package(ament_cmake_gtest REQUIRED)
 #ament_add_gtest(${PROJECT_NAME}-test test/test_pose_cov_ops.cpp)
@@ -173,10 +113,11 @@ ament_export_include_directories("include/${PROJECT_NAME}")
 ament_export_libraries(${PROJECT_NAME})
 
 # Export modern CMake targets
-ament_export_targets(export_${PROJECT_NAME})
+#ament_export_targets(export_${PROJECT_NAME})
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
+
   # the following line skips the linter which checks for copyrights
   # uncomment the line when a copyright and license is not present in all source files
   #set(ament_cmake_copyright_FOUND TRUE)

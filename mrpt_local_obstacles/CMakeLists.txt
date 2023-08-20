@@ -9,7 +9,6 @@ find_package(nav_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(tf2 REQUIRED)
 find_package(tf2_geometry_msgs REQUIRED)
-find_package(visualization_msgs REQUIRED)
 
 ## System dependencies are found with CMake's conventions
 find_package(mrpt-maps REQUIRED)
@@ -78,7 +77,6 @@ ament_target_dependencies(
   "sensor_msgs"
   "tf2"
   "tf2_geometry_msgs"
-  "visualization_msgs"
 )
 
 

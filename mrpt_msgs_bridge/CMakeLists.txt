@@ -7,7 +7,6 @@ find_package(ament_cmake REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(tf2 REQUIRED)
 find_package(mrpt_msgs REQUIRED)
-find_package(visualization_msgs REQUIRED)
 
 # Optional:
 find_package(marker_msgs QUIET)
@@ -78,16 +77,11 @@ install(DIRECTORY include/${PROJECT_NAME}/
 #############
 ament_target_dependencies(${PROJECT_NAME} 
   rclcpp
-  visualization_msgs
   tf2
   mrpt_msgs
   ${MARKER_DEP}
 )
 
-#ament_copyright()
-#ament_cpplint()
-#ament_lint_cmake()
-#ament_xmllint()
 
 #find_package(ament_cmake_gtest REQUIRED)
 #ament_add_gtest(${PROJECT_NAME}-test test/test_pose_cov_ops.cpp)
@@ -103,6 +97,11 @@ ament_export_dependencies()
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
+  find_package(ament_cmake_copyright REQUIRED)
+  find_package(ament_cmake_cpplint REQUIRED)
+  find_package(ament_cmake_lint_cmake REQUIRED)
+  find_package(ament_cmake_xmllint REQUIRED)
+
   # the following line skips the linter which checks for copyrights
   # uncomment the line when a copyright and license is not present in all source files
   #set(ament_cmake_copyright_FOUND TRUE)

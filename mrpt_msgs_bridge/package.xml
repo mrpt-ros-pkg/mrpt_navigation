@@ -20,7 +20,6 @@
   <depend>mrpt2</depend>
   
   <depend>geometry_msgs</depend>
-  <depend>visualization_msgs</depend>
   <depend>mrpt_msgs</depend>
   <depend>tf2</depend>
 
