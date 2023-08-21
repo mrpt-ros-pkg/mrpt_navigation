@@ -6,14 +6,14 @@
    | All rights reserved. Released under BSD 3-Clause license. See LICENSE  |
    +------------------------------------------------------------------------+ */
 
+#include <mrpt/maps/CLandmarksMap.h>
 #include <mrpt/maps/COccupancyGridMap2D.h>
 #include <mrpt/maps/CSimplePointsMap.h>
 #include <mrpt/opengl/CEllipsoid2D.h>
 #include <mrpt/opengl/CPointCloud.h>
 #include <mrpt/ros2bridge/map.h>
 #include <mrpt/system/filesystem.h>
-#include <mrpt_pf_localization/mrpt_pf_localization.h>
-#include <mrpt_pf_localization/mrpt_localization_defaults.h>
+#include <mrpt_pf_localization/mrpt_pf_localization_core.h>
 
 #include <chrono>
 #include <thread>
@@ -21,27 +21,119 @@
 using namespace mrpt;
 using namespace mrpt::slam;
 using namespace mrpt::opengl;
-using namespace mrpt::gui;
 using namespace mrpt::math;
 using namespace mrpt::system;
+using namespace mrpt::gui;
 using namespace mrpt::bayes;
 using namespace mrpt::poses;
-using namespace std;
 using namespace mrpt::maps;
 using namespace mrpt::obs;
 using namespace mrpt::img;
 using namespace mrpt::config;
+using namespace std;
 
+using mrpt::maps::CLandmarksMap;
 using mrpt::maps::COccupancyGridMap2D;
 using mrpt::maps::CSimplePointsMap;
 
-PFLocalization::~PFLocalization() {}
-PFLocalization::PFLocalization(Parameters* param)
-	: PFLocalizationCore(), param_(param)
+PFLocalizationCore::PFLocalizationCore()
 {
+	mrpt::math::CMatrixDouble33 cov;
+	cov(0, 0) = 1, cov(1, 1) = 1, cov(2, 2) = mrpt::square(1 * M_PI);
+	initial_pose_ =
+		mrpt::poses::CPosePDFGaussian(mrpt::poses::CPose2D(0, 0, 0), cov);
+	initial_particle_count_ = 1000;
+
+	motion_model_default_options_.modelSelection =
+		mrpt::obs::CActionRobotMovement2D::mmGaussian;
+	motion_model_default_options_.gaussianModel.minStdXY = 0.10;
+	motion_model_default_options_.gaussianModel.minStdPHI = 2.0;
 }
 
-void PFLocalization::init()
+void PFLocalizationCore::initializeFilter()
+{
+	const auto [cov, mean_point] = initial_pose_.getCovarianceAndMean();
+
+	MRPT_LOG_INFO_FMT(
+		"InitializeFilter: %4.3fm, %4.3fm, %4.3frad ", mean_point.x(),
+		mean_point.y(), mean_point.phi());
+
+	float min_x = mean_point.x() - cov(0, 0);
+	float max_x = mean_point.x() + cov(0, 0);
+	float min_y = mean_point.y() - cov(1, 1);
+	float max_y = mean_point.y() + cov(1, 1);
+	float min_phi = mean_point.phi() - cov(2, 2);
+	float max_phi = mean_point.phi() + cov(2, 2);
+
+	if (metric_map_->countMapsByClass<COccupancyGridMap2D>() && !init_PDF_mode)
+	{
+		pdf_.resetUniformFreeSpace(
+			metric_map_->mapByClass<COccupancyGridMap2D>().get(), 0.7f,
+			initial_particle_count_, min_x, max_x, min_y, max_y, min_phi,
+			max_phi);
+	}
+	else if (metric_map_->countMapsByClass<CLandmarksMap>() || init_PDF_mode)
+	{
+		pdf_.resetUniform(
+			min_x, max_x, min_y, max_y, min_phi, max_phi,
+			initial_particle_count_);
+	}
+	state_ = RUN;
+}
+
+void PFLocalizationCore::updateFilter(
+	mrpt::obs::CActionCollection::Ptr _action,
+	mrpt::obs::CSensoryFrame::Ptr _sf)
+{
+	if (state_ == INIT) initializeFilter();
+	tictac_.Tic();
+	pf_.executeOn(pdf_, _action.get(), _sf.get(), &pf_stats_);
+	time_last_update_ = _sf->getObservationByIndex(0)->timestamp;
+	update_counter_++;
+}
+
+void PFLocalizationCore::observation(
+	mrpt::obs::CSensoryFrame::Ptr _sf,
+	mrpt::obs::CObservationOdometry::Ptr _odometry)
+{
+	auto action = mrpt::obs::CActionCollection::Create();
+	mrpt::obs::CActionRobotMovement2D odom_move;
+	odom_move.timestamp = _sf->getObservationByIndex(0)->timestamp;
+	if (_odometry)
+	{
+		if (odom_last_observation_.empty())
+		{
+			odom_last_observation_ = _odometry->odometry;
+		}
+		mrpt::poses::CPose2D incOdoPose =
+			_odometry->odometry - odom_last_observation_;
+		odom_last_observation_ = _odometry->odometry;
+		odom_move.computeFromOdometry(incOdoPose, motion_model_options_);
+		action->insert(odom_move);
+		updateFilter(action, _sf);
+	}
+	else
+	{
+		if (use_motion_model_default_options_)
+		{
+			MRPT_LOG_INFO_STREAM(
+				"No odometry at update " << update_counter_
+										 << " -> using dummy");
+			odom_move.computeFromOdometry(
+				mrpt::poses::CPose2D(0, 0, 0), motion_model_default_options_);
+			action->insert(odom_move);
+			updateFilter(action, _sf);
+		}
+		else
+		{
+			MRPT_LOG_INFO_STREAM(
+				"No odometry at update " << update_counter_
+										 << " -> skipping observation");
+		}
+	}
+}
+
+void PFLocalizationCore::init()
 {
 	MRPT_LOG_INFO_STREAM("ini_file ready " << param_->ini_file);
 	ASSERT_FILE_EXISTS_(param_->ini_file);
@@ -76,8 +168,6 @@ void PFLocalization::init()
 
 	SHOW_PROGRESS_3D_REAL_TIME_ =
 		ini_file.read_bool(iniSectionName, "SHOW_PROGRESS_3D_REAL_TIME", false);
-	SHOW_PROGRESS_3D_REAL_TIME_DELAY_MS_ = ini_file.read_int(
-		iniSectionName, "SHOW_PROGRESS_3D_REAL_TIME_DELAY_MS", 1);
 
 #if !MRPT_HAS_WXWIDGETS
 	SHOW_PROGRESS_3D_REAL_TIME_ = false;
@@ -141,7 +231,7 @@ void PFLocalization::init()
 	if (param_->gui_mrpt) init3DDebug();
 }
 
-void PFLocalization::configureFilter(const CConfigFile& _configFile)
+void PFLocalizationCore::configureFilter(const CConfigFile& _configFile)
 {
 	// PF-algorithm Options:
 	// ---------------------------
@@ -166,7 +256,7 @@ void PFLocalization::configureFilter(const CConfigFile& _configFile)
 	pf_.m_options = pfOptions;
 }
 
-void PFLocalization::init3DDebug()
+void PFLocalizationCore::init3DDebug()
 {
 	MRPT_LOG_INFO("init3DDebug");
 	if (!SHOW_PROGRESS_3D_REAL_TIME_) return;
@@ -219,7 +309,7 @@ void PFLocalization::init3DDebug()
 	if (param_->debug) fflush(stdout);
 }
 
-void PFLocalization::show3DDebug(CSensoryFrame::Ptr _observations)
+void PFLocalizationCore::show3DDebug(CSensoryFrame::Ptr _observations)
 {
 	// Create 3D window if requested:
 	if (SHOW_PROGRESS_3D_REAL_TIME_)

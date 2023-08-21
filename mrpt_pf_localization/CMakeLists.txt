@@ -42,10 +42,7 @@ ENDIF()
 ## Declare a cpp executable
 add_executable(${PROJECT_NAME}_node
     src/${PROJECT_NAME}_node.cpp
-    src/${PROJECT_NAME}_node_parameters.cpp
     src/${PROJECT_NAME}/${PROJECT_NAME}_core.cpp
-    src/${PROJECT_NAME}/${PROJECT_NAME}.cpp
-    src/${PROJECT_NAME}/${PROJECT_NAME}_parameters.cpp
     include/${PROJECT_NAME}/${PROJECT_NAME}_core.h
     include/${PROJECT_NAME}_node.h
 )

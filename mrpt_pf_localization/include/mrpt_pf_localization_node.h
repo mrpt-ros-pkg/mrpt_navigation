@@ -21,40 +21,59 @@
 #include <nav_msgs/msg/occupancy_grid.hpp>
 #include <nav_msgs/msg/odometry.hpp>
 #include <nav_msgs/srv/get_map.hpp>
+#include <rclcpp/node.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/laser_scan.hpp>
 #include <std_msgs/msg/header.hpp>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 
-#include "mrpt_pf_localization/mrpt_pf_localization.h"
+#include "mrpt_pf_localization/mrpt_pf_localization_core.h"
+
+#define MRPT_LOCALIZATION_NODE_DEFAULT_RATE 10.0
+#define MRPT_LOCALIZATION_NODE_DEFAULT_PARAMETER_UPDATE_SKIP 1
+#define MRPT_LOCALIZATION_NODE_DEFAULT_PARTICLECLOUD_UPDATE_SKIP 5
+#define MRPT_LOCALIZATION_NODE_DEFAULT_MAP_UPDATE_SKIP 2
 
 using mrpt::obs::CObservationOdometry;
 
 /// ROS Node
-class PFLocalizationNode : public PFLocalization
+class PFLocalizationNode : public PFLocalization, public rclcpp::Node
 {
    public:
-	struct Parameters : public PFLocalization::Parameters
+	struct NodeParameters
 	{
-		static const int MOTION_MODEL_GAUSSIAN = 0;
-		static const int MOTION_MODEL_THRUN = 1;
-		Parameters(PFLocalizationNode* p);
-		rclcpp::Node node;
+		// static const int MOTION_MODEL_GAUSSIAN = 0;
+		// static const int MOTION_MODEL_THRUN = 1;
+		NodeParameters();
 
 		void update(const unsigned long& loop_count);
+
 		double rate;
-		double transform_tolerance;	 ///< projection into the future added to
-		/// the published tf to extend its validity
-		double no_update_tolerance;	 ///< maximum time without updating we keep
-		/// using filter time instead of Time::now
-		double no_inputs_tolerance;	 ///< maximum time without any observation
-		/// we wait before start complaining
+
+		/// projection into the future added to the published tf to extend its
+		/// validity
+		double transform_tolerance;
+
+		/// maximum time without updating we keep using filter time instead of
+		/// Time::now
+		double no_update_tolerance;
+
+		/// maximum time without any observation before start complaining
+		double no_inputs_tolerance;
+
+		///
 		int parameter_update_skip;
+
 		int particlecloud_update_skip;
+
 		int map_update_skip;
+
 		std::string base_frame_id;
+
 		std::string odom_frame_id;
+
 		std::string global_frame_id;
+
 		bool update_while_stopped;
 		bool update_sensor_pose;
 		bool pose_broadcast;
@@ -83,9 +102,13 @@ class PFLocalizationNode : public PFLocalization
 
    private:
 	rclcpp::Node nh_;
-	bool first_map_received_;
+
+	bool first_map_received_ = false;
+
 	rclcpp::Time time_last_input_;
-	unsigned long long loop_count_;
+
+	unsigned long long loop_count_ = 0;
+
 	nav_msgs::srv::GetMap::Response resp_;
 
 	rclcpp::Subscription<geometry_msgs::msg::PoseWithCovarianceStamped>::
@@ -111,7 +134,6 @@ class PFLocalizationNode : public PFLocalization
 	std::map<std::string, mrpt::poses::CPose3D> beacon_poses_;
 
 	// methods
-	Parameters* param();
 	void update();
 	void updateSensorPose(std::string frame_id);
 
