@@ -12,8 +12,8 @@
 #include <mrpt/opengl/CPointCloud.h>
 #include <mrpt/ros2bridge/map.h>
 #include <mrpt/system/filesystem.h>
-#include <mrpt_localization/mrpt_localization.h>
-#include <mrpt_localization/mrpt_localization_defaults.h>
+#include <mrpt_pf_localization/mrpt_pf_localization.h>
+#include <mrpt_pf_localization/mrpt_localization_defaults.h>
 
 #include <chrono>
 #include <thread>

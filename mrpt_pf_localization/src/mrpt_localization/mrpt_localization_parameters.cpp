@@ -6,8 +6,8 @@
    | All rights reserved. Released under BSD 3-Clause license. See LICENSE  |
    +------------------------------------------------------------------------+ */
 
-#include <mrpt_localization/mrpt_localization.h>
-#include <mrpt_localization/mrpt_localization_defaults.h>
+#include <mrpt_pf_localization/mrpt_pf_localization.h>
+#include <mrpt_pf_localization/mrpt_localization_defaults.h>
 
 PFLocalization::Parameters::Parameters(PFLocalization* p)
 	: debug(MRPT_LOCALIZATION_DEFAULT_DEBUG),

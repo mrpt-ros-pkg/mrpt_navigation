@@ -10,9 +10,9 @@
 
 #include <mrpt/config/CConfigFile.h>
 #include <mrpt/gui/CDisplayWindow3D.h>
-#include <mrpt/opengl/COpenGLScene.h>
 #include <mrpt/io/CFileGZInputStream.h>
-#include <mrpt_localization/mrpt_localization_core.h>
+#include <mrpt/opengl/COpenGLScene.h>
+#include <mrpt_pf_localization/mrpt_pf_localization.h>
 #include <stdint.h>
 
 #include <iostream>
@@ -31,7 +31,8 @@ class PFLocalization : public PFLocalizationCore
 		//! to subscribe to for sensory data. Split
 		//! with "," (e.g. "laser1,laser2")
 		bool* use_motion_model_default_options;
-		mrpt::obs::CActionRobotMovement2D::TMotionModelOptions* motion_model_options;
+		mrpt::obs::CActionRobotMovement2D::TMotionModelOptions*
+			motion_model_options;
 		mrpt::obs::CActionRobotMovement2D::TMotionModelOptions*
 			motion_model_default_options;
 	};

@@ -25,7 +25,7 @@ using namespace mrpt::system;
 
 #include <mrpt/maps/COccupancyGridMap2D.h>
 
-#include "mrpt_localization_node.h"
+#include "mrpt_pf_localization_node.h"
 using mrpt::maps::COccupancyGridMap2D;
 
 int main(int argc, char** argv)
@@ -674,7 +674,7 @@ void PFLocalizationNode::useROSLogLevel()
 	if (loggers.find("ros.roscpp") != loggers.end())
 		pdf_.setVerbosityLevel(
 			static_cast<VerbosityLevel>(loggers["ros.roscpp"]));
-	if (loggers.find("ros.mrpt_localization") != loggers.end())
+	if (loggers.find("ros.mrpt_pf_localization") != loggers.end())
 		pdf_.setVerbosityLevel(
-			static_cast<VerbosityLevel>(loggers["ros.mrpt_localization"]));
+			static_cast<VerbosityLevel>(loggers["ros.mrpt_pf_localization"]));
 }

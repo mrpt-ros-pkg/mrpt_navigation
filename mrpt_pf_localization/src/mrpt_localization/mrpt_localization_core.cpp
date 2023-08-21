@@ -8,7 +8,7 @@
 
 #include <mrpt/maps/CLandmarksMap.h>
 #include <mrpt/maps/COccupancyGridMap2D.h>
-#include <mrpt_localization/mrpt_localization_core.h>
+#include <mrpt_pf_localization/mrpt_pf_localization.h>
 
 using namespace mrpt;
 using namespace mrpt::slam;

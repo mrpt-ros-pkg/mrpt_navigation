@@ -18,7 +18,7 @@ Documentation for each package
 ----------------------------------
 
 * [mrpt_local_obstacles](mrpt_local_obstacles): A node that maintains a local obstacle map.
-* [mrpt_localization](mrpt_localization): A node for particle filter-based localization of a robot from any kind of metric map (gridmap, points, range-only sensors, ...).
+* [mrpt_pf_localization](mrpt_pf_localization): A node for particle filter-based localization of a robot from any kind of metric map (gridmap, points, range-only sensors, ...).
 * [mrpt_map](mrpt_map): A node that loads a ROS standard gridmap or an MRPT map and publishes it to a topic.
 * ...
 

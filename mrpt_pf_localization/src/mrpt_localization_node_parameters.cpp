@@ -6,8 +6,8 @@
    | All rights reserved. Released under BSD 3-Clause license. See LICENSE  |
    +------------------------------------------------------------------------+ */
 
-#include "mrpt_localization_node.h"
 #include "mrpt_localization_node_defaults.h"
+#include "mrpt_pf_localization_node.h"
 
 PFLocalizationNode::Parameters::Parameters(PFLocalizationNode* p)
 	: PFLocalization::Parameters(p)
@@ -83,7 +83,7 @@ void PFLocalizationNode::Parameters::update(const unsigned long& loop_count)
 }
 
 void PFLocalizationNode::Parameters::callbackParameters(
-	mrpt_localization::MotionConfig& config, uint32_t level)
+	mrpt_pf_localization::MotionConfig& config, uint32_t level)
 {
 	if (config.motion_noise_type == MOTION_MODEL_GAUSSIAN)
 	{

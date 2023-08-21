@@ -26,7 +26,7 @@
 #include <std_msgs/msg/header.hpp>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 
-#include "mrpt_localization/mrpt_localization.h"
+#include "mrpt_pf_localization/mrpt_pf_localization.h"
 
 using mrpt::obs::CObservationOdometry;
 

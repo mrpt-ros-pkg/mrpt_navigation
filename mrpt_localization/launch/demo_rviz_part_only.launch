@@ -1,6 +1,0 @@
-<launch>
-
-   <node pkg="rviz" type="rviz" name="rviz" args="-d $(find mrpt_localization)/launch/demo_rviz.rviz"/>
-  
-</launch>
-

@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.8)
-project(mrpt_localization)
+project(mrpt_pf_localization)
 
 # find dependencies
 find_package(ament_cmake REQUIRED)

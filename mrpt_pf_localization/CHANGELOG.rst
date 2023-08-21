@@ -1,5 +1,5 @@
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-Changelog for package mrpt_localization
+Changelog for package mrpt_pf_localization
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 1.0.3 (2022-06-25)
@@ -71,11 +71,11 @@ Changelog for package mrpt_localization
 * Adapted CMakeLists to new mrpt
 * Ported to a new version of MRPT
 * Merge pull request `#74 <https://github.com/mrpt-ros-pkg/mrpt_navigation/issues/74>`_ from bergercookie/devel
-  Use C++11 in mrpt_bridge, mrpt_localization
+  Use C++11 in mrpt_bridge, mrpt_pf_localization
 * Merge pull request `#77 <https://github.com/mrpt-ros-pkg/mrpt_navigation/issues/77>`_ from corot/master
   Allow using maps from topic
 * Allow using maps from topic
-* Use C++11 in mrpt_bridge, mrpt_localization
+* Use C++11 in mrpt_bridge, mrpt_pf_localization
 * Merge pull request `#72 <https://github.com/mrpt-ros-pkg/mrpt_navigation/issues/72>`_ from bergercookie/devel
   Add more conversion methods for CNetworkOfPoses classes
 * Correct include guard
@@ -119,11 +119,11 @@ Changelog for package mrpt_localization
 * Adapted CMakeLists to new mrpt
 * Ported to a new version of MRPT
 * Merge pull request `#74 <https://github.com/mrpt-ros-pkg/mrpt_navigation/issues/74>`_ from bergercookie/devel
-  Use C++11 in mrpt_bridge, mrpt_localization
+  Use C++11 in mrpt_bridge, mrpt_pf_localization
 * Merge pull request `#77 <https://github.com/mrpt-ros-pkg/mrpt_navigation/issues/77>`_ from corot/master
   Allow using maps from topic
 * Allow using maps from topic
-* Use C++11 in mrpt_bridge, mrpt_localization
+* Use C++11 in mrpt_bridge, mrpt_pf_localization
 * Merge pull request `#72 <https://github.com/mrpt-ros-pkg/mrpt_navigation/issues/72>`_ from bergercookie/devel
   Add more conversion methods for CNetworkOfPoses classes
 * Correct include guard
@@ -173,7 +173,7 @@ Changelog for package mrpt_localization
   If not, they contain wall time, what when working on simulation prevents robot_localization fusion to work.
   Other than that, the change is innocuous
 * PR `#33 <https://github.com/mrpt-ros-pkg/mrpt_navigation/issues/33>`_ prevented pose initialization with the robot stopped; fix it!
-* Stop mrpt_localization updating when robot is not moving (odom twist is zero)
+* Stop mrpt_pf_localization updating when robot is not moving (odom twist is zero)
 * Contributors: Jorge Santos, Jorge Santos Simón, Jose-Luis Blanco-Claraco
 
 0.1.14 (2016-09-12)
