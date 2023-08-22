@@ -6,6 +6,7 @@
    | All rights reserved. Released under BSD 3-Clause license. See LICENSE  |
    +------------------------------------------------------------------------+ */
 
+#include <mrpt/core/lock_helper.h>
 #include <mrpt/maps/CLandmarksMap.h>
 #include <mrpt/maps/COccupancyGridMap2D.h>
 #include <mrpt/maps/CSimplePointsMap.h>
@@ -36,18 +37,39 @@ using mrpt::maps::CLandmarksMap;
 using mrpt::maps::COccupancyGridMap2D;
 using mrpt::maps::CSimplePointsMap;
 
-PFLocalizationCore::PFLocalizationCore()
+PFLocalizationCore::Parameters::Parameters()
 {
 	mrpt::math::CMatrixDouble33 cov;
 	cov(0, 0) = 1, cov(1, 1) = 1, cov(2, 2) = mrpt::square(1 * M_PI);
-	initial_pose_ =
+	initial_pose =
 		mrpt::poses::CPosePDFGaussian(mrpt::poses::CPose2D(0, 0, 0), cov);
-	initial_particle_count_ = 1000;
 
-	motion_model_default_options_.modelSelection =
+	// Without odometry: use a large uncertainty for each time step:
+	motion_model_default_options.modelSelection =
 		mrpt::obs::CActionRobotMovement2D::mmGaussian;
-	motion_model_default_options_.gaussianModel.minStdXY = 0.10;
-	motion_model_default_options_.gaussianModel.minStdPHI = 2.0;
+	motion_model_default_options.gaussianModel.minStdXY = 0.10;
+	motion_model_default_options.gaussianModel.minStdPHI = 2.0;
+}
+
+void PFLocalizationCore::on_observation(const mrpt::obs::CObservation::Ptr& obs)
+{
+	auto lck = mrpt::lockHelper(state_.pendingObsMtx_);
+	state_.pendingObs.push_back(obs);
+}
+
+// The main API call: executes one PF step, taking into account all the
+// parameters and observations gathered so far, updates the optional GUI, etc.
+void PFLocalizationCore::step()
+{
+	auto lck = mrpt::lockHelper(stateMtx_);
+	//
+}
+
+/** Reset the object to the initial state as if created from scratch */
+void PFLocalizationCore::reset()
+{
+	auto lck = mrpt::lockHelper(stateMtx_);
+	//
 }
 
 void PFLocalizationCore::initializeFilter()
@@ -259,181 +281,141 @@ void PFLocalizationCore::configureFilter(const CConfigFile& _configFile)
 void PFLocalizationCore::init3DDebug()
 {
 	MRPT_LOG_INFO("init3DDebug");
-	if (!SHOW_PROGRESS_3D_REAL_TIME_) return;
-	if (!win3D_)
-	{
-		win3D_ = CDisplayWindow3D::Create(
-			"pf-localization - The MRPT project", 1000, 600);
-		win3D_->setCameraZoom(20);
-		win3D_->setCameraAzimuthDeg(-45);
-		// win3D_->waitForKey();
 
-		// Create the 3D scene and get the map only once, later we'll modify
-		// only the particles, etc..
-		COccupancyGridMap2D::TEntropyInfo grid_info;
-		// The gridmap:
-		if (metric_map_->countMapsByClass<COccupancyGridMap2D>())
-		{
-			metric_map_->mapByClass<COccupancyGridMap2D>()->computeEntropy(
-				grid_info);
-		}
-		else
-		{
-			grid_info.effectiveMappedArea = (init_PDF_max_x - init_PDF_min_x) *
-											(init_PDF_max_y - init_PDF_min_y);
-		}
-		MRPT_LOG_INFO_FMT(
-			"The gridmap has %.04fm2 observed area, %u observed cells\n",
-			grid_info.effectiveMappedArea,
-			(unsigned)grid_info.effectiveMappedCells);
-		MRPT_LOG_INFO_FMT(
-			"Initial PDF: %f particles/m2\n",
-			initial_particle_count_ / grid_info.effectiveMappedArea);
+	if (!params_.gui_enable) return;
+	if (win3D_) return;	 // already done.
 
-		auto plane = metric_map_->getVisualization();
-		scene_.insert(plane);
+	win3D_ = CDisplayWindow3D::Create(
+		"pf-localization - The MRPT project", 1000, 600);
+	win3D_->setCameraZoom(20);
+	win3D_->setCameraAzimuthDeg(-45);
 
-		if (SHOW_PROGRESS_3D_REAL_TIME_)
-		{
-			COpenGLScene::Ptr ptr_scene = win3D_->get3DSceneAndLock();
+	auto glMap = metric_map_->getVisualization();
 
-			ptr_scene->insert(plane);
-
-			ptr_scene->enableFollowCamera(true);
-
-			win3D_->unlockAccess3DScene();
-		}
-	}  // Show 3D?
-	if (param_->debug)
-		MRPT_LOG_INFO(" --------------------------- init3DDebug done \n");
-	if (param_->debug) fflush(stdout);
+	COpenGLScene::Ptr ptr_scene = win3D_->get3DSceneAndLock();
+	ptr_scene->insert(glMap);
+	ptr_scene->enableFollowCamera(params_.gui_camera_follow_robot);
+	win3D_->unlockAccess3DScene();
 }
 
 void PFLocalizationCore::show3DDebug(CSensoryFrame::Ptr _observations)
 {
 	// Create 3D window if requested:
-	if (SHOW_PROGRESS_3D_REAL_TIME_)
+	if (!SHOW_PROGRESS_3D_REAL_TIME_) return;
+
+	TTimeStamp cur_obs_timestamp = INVALID_TIMESTAMP;
+	if (_observations->size() > 0)
+		cur_obs_timestamp = _observations->getObservationByIndex(0)->timestamp;
+
+	const auto [cov, meanPose] = pdf_.getCovarianceAndMean();
+
+	COpenGLScene::Ptr ptr_scene = win3D_->get3DSceneAndLock();
+
+	win3D_->setCameraPointingToPoint(meanPose.x(), meanPose.y(), 0);
+
+	mrpt::opengl::TFontParams fp;
+	fp.color = TColorf(.8f, .8f, .8f);
+	fp.vfont_name = "mono";
+	fp.vfont_scale = 15;
+
+	win3D_->addTextMessage(
+		10, 10,
+		mrpt::format(
+			"timestamp: %s",
+			cur_obs_timestamp != INVALID_TIMESTAMP
+				? mrpt::system::dateTimeLocalToString(cur_obs_timestamp).c_str()
+				: "(none)"),
+		6001, fp);
+
+	win3D_->addTextMessage(
+		10, 33,
+		mrpt::format("#particles= %7u", static_cast<unsigned int>(pdf_.size())),
+		6002, fp);
+
+	win3D_->addTextMessage(
+		10, 55,
+		mrpt::format(
+			"mean pose (x y phi_deg)= %s", meanPose.asString().c_str()),
+		6003, fp);
+
+	// The particles:
 	{
-		TTimeStamp cur_obs_timestamp = INVALID_TIMESTAMP;
-		if (_observations->size() > 0)
-			cur_obs_timestamp =
-				_observations->getObservationByIndex(0)->timestamp;
+		CRenderizable::Ptr parts = ptr_scene->getByName("particles");
+		if (parts) ptr_scene->removeObject(parts);
 
-		const auto [cov, meanPose] = pdf_.getCovarianceAndMean();
-
-		COpenGLScene::Ptr ptr_scene = win3D_->get3DSceneAndLock();
-
-		win3D_->setCameraPointingToPoint(meanPose.x(), meanPose.y(), 0);
-
-		mrpt::opengl::TFontParams fp;
-		fp.color = TColorf(.8f, .8f, .8f);
-		fp.vfont_name = "mono";
-		fp.vfont_scale = 15;
-
-		win3D_->addTextMessage(
-			10, 10,
-			mrpt::format(
-				"timestamp: %s",
-				cur_obs_timestamp != INVALID_TIMESTAMP
-					? mrpt::system::dateTimeLocalToString(cur_obs_timestamp)
-						  .c_str()
-					: "(none)"),
-			6001, fp);
-
-		win3D_->addTextMessage(
-			10, 33,
-			mrpt::format(
-				"#particles= %7u", static_cast<unsigned int>(pdf_.size())),
-			6002, fp);
-
-		win3D_->addTextMessage(
-			10, 55,
-			mrpt::format(
-				"mean pose (x y phi_deg)= %s", meanPose.asString().c_str()),
-			6003, fp);
-
-		// The particles:
-		{
-			CRenderizable::Ptr parts = ptr_scene->getByName("particles");
-			if (parts) ptr_scene->removeObject(parts);
-
-			CSetOfObjects::Ptr p = pdf_.getAs3DObject<CSetOfObjects::Ptr>();
-			p->setName("particles");
-			ptr_scene->insert(p);
-		}
-
-		// The particles' cov:
-		{
-			CRenderizable::Ptr ellip = ptr_scene->getByName("parts_cov");
-			if (!ellip)
-			{
-				auto o = CEllipsoid2D::Create();
-				ellip = o;
-				ellip->setName("parts_cov");
-				ellip->setColor(1, 0, 0, 0.6);
-
-				o->setLineWidth(2);
-				o->setQuantiles(3);
-				o->set2DsegmentsCount(60);
-				ptr_scene->insert(ellip);
-			}
-			ellip->setLocation(meanPose.x(), meanPose.y(), 0.05);
-			dynamic_cast<CEllipsoid2D*>(ellip.get())
-				->setCovMatrix(cov.blockCopy<2, 2>());
-		}
-
-		// The laser scan:
-		{
-			CRenderizable::Ptr scan_pts = ptr_scene->getByName("scan");
-			if (!scan_pts)
-			{
-				auto o = CPointCloud::Create();
-				scan_pts = o;
-				scan_pts->setName("scan");
-				scan_pts->setColor(1, 0, 0, 0.9);
-				o->enableColorFromZ(false);
-				o->setPointSize(4);
-				ptr_scene->insert(scan_pts);
-			}
-
-			CSimplePointsMap map;
-			static CSimplePointsMap last_map;
-
-			CPose3D robot_pose_3D(meanPose);
-
-			map.clear();
-			_observations->insertObservationsInto(map);
-
-			dynamic_cast<CPointCloud*>(scan_pts.get())
-				->loadFromPointsMap(&last_map);
-			dynamic_cast<CPointCloud*>(scan_pts.get())->setPose(robot_pose_3D);
-			last_map = map;
-		}
-
-		// The camera:
-		ptr_scene->enableFollowCamera(true);
-
-		// Views:
-		COpenGLViewport::Ptr view1 = ptr_scene->getViewport("main");
-		{
-			CCamera& cam = view1->getCamera();
-			cam.setAzimuthDegrees(-90);
-			cam.setElevationDegrees(90);
-			cam.setPointingAt(meanPose);
-			cam.setZoomDistance(5);
-			cam.setOrthogonal();
-		}
-
-		win3D_->unlockAccess3DScene();
-
-		// Move camera:
-		// win3D_->setCameraPointingToPoint( curRobotPose.x, curRobotPose.y,
-		// curRobotPose.z );
-
-		// Update:
-		win3D_->forceRepaint();
-
-		std::this_thread::sleep_for(
-			std::chrono::milliseconds(SHOW_PROGRESS_3D_REAL_TIME_DELAY_MS_));
+		CSetOfObjects::Ptr p = pdf_.getAs3DObject<CSetOfObjects::Ptr>();
+		p->setName("particles");
+		ptr_scene->insert(p);
 	}
+
+	// The particles' cov:
+	{
+		CRenderizable::Ptr ellip = ptr_scene->getByName("parts_cov");
+		if (!ellip)
+		{
+			auto o = CEllipsoid2D::Create();
+			ellip = o;
+			ellip->setName("parts_cov");
+			ellip->setColor(1, 0, 0, 0.6);
+
+			o->setLineWidth(2);
+			o->setQuantiles(3);
+			o->set2DsegmentsCount(60);
+			ptr_scene->insert(ellip);
+		}
+		ellip->setLocation(meanPose.x(), meanPose.y(), 0.05);
+		dynamic_cast<CEllipsoid2D*>(ellip.get())
+			->setCovMatrix(cov.blockCopy<2, 2>());
+	}
+
+	// The laser scan:
+	{
+		CRenderizable::Ptr scan_pts = ptr_scene->getByName("scan");
+		if (!scan_pts)
+		{
+			auto o = CPointCloud::Create();
+			scan_pts = o;
+			scan_pts->setName("scan");
+			scan_pts->setColor(1, 0, 0, 0.9);
+			o->enableColorFromZ(false);
+			o->setPointSize(4);
+			ptr_scene->insert(scan_pts);
+		}
+
+		CSimplePointsMap map;
+		static CSimplePointsMap last_map;
+
+		CPose3D robot_pose_3D(meanPose);
+
+		map.clear();
+		_observations->insertObservationsInto(map);
+
+		dynamic_cast<CPointCloud*>(scan_pts.get())
+			->loadFromPointsMap(&last_map);
+		dynamic_cast<CPointCloud*>(scan_pts.get())->setPose(robot_pose_3D);
+		last_map = map;
+	}
+
+	// The camera:
+	ptr_scene->enableFollowCamera(true);
+
+	// Views:
+	COpenGLViewport::Ptr view1 = ptr_scene->getViewport("main");
+	{
+		CCamera& cam = view1->getCamera();
+		cam.setAzimuthDegrees(-90);
+		cam.setElevationDegrees(90);
+		cam.setPointingAt(meanPose);
+		cam.setZoomDistance(5);
+		cam.setOrthogonal();
+	}
+
+	win3D_->unlockAccess3DScene();
+
+	// Move camera:
+	// win3D_->setCameraPointingToPoint( curRobotPose.x, curRobotPose.y,
+	// curRobotPose.z );
+
+	// Update:
+	win3D_->forceRepaint();
 }
