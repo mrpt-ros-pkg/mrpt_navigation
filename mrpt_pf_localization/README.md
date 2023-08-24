@@ -1,5 +1,15 @@
 # mrpt_pf_localization
 
+* [mrpt_pf_localization](#mrpt_pf_localization)
+   * [Overview](#overview)
+   * [Related papers](#related-papers)
+   * [Demos](#demos)
+   * [Node: mrpt_pf_localization](#node-mrpt_pf_localization)
+      * [Working rationale](#working-rationale)
+      * [ROS-related documentation](#ros-related-documentation)
+
+
+
 ## Overview
 This package provides a ROS 2 node for self-localization using 2D or 3D (SE(2) or SE(3))
 particle filter-based algorithms and a number of different metric maps as reference maps
