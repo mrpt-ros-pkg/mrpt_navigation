@@ -21,7 +21,7 @@
 #include <mrpt/slam/CMonteCarloLocalization2D.h>
 #include <mrpt/slam/CMonteCarloLocalization3D.h>
 #include <mrpt/system/COutputLogger.h>
-#include <mrpt/system/CTicTac.h>
+#include <mrpt/system/CTimeLogger.h>
 
 #include <mutex>
 #include <optional>
@@ -77,7 +77,7 @@ class PFLocalizationCore : public mrpt::system::COutputLogger
 			motion_model_default_options;
 
 		/** initial pose used to intialize the filter */
-		mrpt::poses::CPosePDFGaussian initial_pose;
+		mrpt::poses::CPose3DPDFGaussian initial_pose;
 
 		/** All the PF parameters: algorithm, number of samples, dynamic
 		 * samples, etc.
@@ -101,10 +101,10 @@ class PFLocalizationCore : public mrpt::system::COutputLogger
 		/// parameters and map(s) are correctly loaded.
 		TO_BE_INITIALIZED,
 		/// Running as usual, the robot is moving.
-		RUN,
+		RUNNING_MOVING,
 		/// Special case: the robot is known to be stopped, do not update the
 		/// particles.
-		IDLE
+		RUNNING_STILL
 	};
 
 	/** Must be called for each new observation that arrives from the robot:
@@ -156,12 +156,15 @@ class PFLocalizationCore : public mrpt::system::COutputLogger
 		 *  This field is protected by an independent mutex.
 		 */
 		std::vector<mrpt::obs::CObservation::Ptr> pendingObs;
-		std::mutex pendingObsMtx_;
 	};
 
    private:
 	InternalState state_;
 	std::mutex stateMtx_;
+	std::mutex pendingObsMtx_;
+
+	mrpt::system::CTimeLogger profiler_{
+		true /*enabled*/, "mrpt_pf_localization" /*name*/};
 
 	mrpt::gui::CDisplayWindow3D::Ptr win3D_;
 

@@ -53,7 +53,7 @@ PFLocalizationCore::Parameters::Parameters()
 
 void PFLocalizationCore::on_observation(const mrpt::obs::CObservation::Ptr& obs)
 {
-	auto lck = mrpt::lockHelper(state_.pendingObsMtx_);
+	auto lck = mrpt::lockHelper(pendingObsMtx_);
 	state_.pendingObs.push_back(obs);
 }
 
@@ -62,30 +62,69 @@ void PFLocalizationCore::on_observation(const mrpt::obs::CObservation::Ptr& obs)
 void PFLocalizationCore::step()
 {
 	auto lck = mrpt::lockHelper(stateMtx_);
-	//
+
+	switch (state_.fsm_state)
+	{
+		case State::UNINITIALIZED:
+			// We don't have parameters / map yet. Do nothing.
+			MRPT_LOG_THROTTLE_WARN(
+				3.0,
+				"[step] Doing nothing, since state is UNINITIALIZED yet. "
+				"Probably parameters or the map has not been loaded yet. Refer "
+				"to package documentation.");
+			break;
+		case State::TO_BE_INITIALIZED:
+			initializeFilter();
+			break;
+		case State::RUNNING_STILL:
+			break;
+		case State::RUNNING_MOVING:
+			break;
+
+		default:
+			THROW_EXCEPTION("Invalid internal FSM state (!?)");
+	}
 }
 
 /** Reset the object to the initial state as if created from scratch */
 void PFLocalizationCore::reset()
 {
 	auto lck = mrpt::lockHelper(stateMtx_);
-	//
+	state_ = InternalState();
 }
 
 void PFLocalizationCore::initializeFilter()
 {
-	const auto [cov, mean_point] = initial_pose_.getCovarianceAndMean();
+	// Profiler report:
+	profiler_.setLoggerName(profiler_.getName());
 
-	MRPT_LOG_INFO_FMT(
-		"InitializeFilter: %4.3fm, %4.3fm, %4.3frad ", mean_point.x(),
-		mean_point.y(), mean_point.phi());
+	// Reset state:
+	state_ = InternalState();
 
-	float min_x = mean_point.x() - cov(0, 0);
-	float max_x = mean_point.x() + cov(0, 0);
-	float min_y = mean_point.y() - cov(1, 1);
-	float max_y = mean_point.y() + cov(1, 1);
-	float min_phi = mean_point.phi() - cov(2, 2);
-	float max_phi = mean_point.phi() + cov(2, 2);
+	// Create the 2D or 3D particle filter object:
+	if (params_.use_se3_pf)
+	{
+		MRPT_LOG_INFO_STREAM("[initializeFilter] Initializing in SE(3) mode");
+		state_.pdf3d_.emplace();
+	}
+	else
+	{
+		MRPT_LOG_INFO_STREAM("[initializeFilter] Initializing in SE(2) mode");
+		state_.pdf2d_.emplace();
+	}
+
+	// Get desired initial pose uncertainty:
+	MRPT_LOG_INFO_STREAM(
+		"[initializeFilter] Initial pose: " << params_.initial_pose);
+
+	const auto [pCov, pMean] = params_.initial_pose.getCovarianceAndMean();
+
+	const double stdX = std::sqrt(pCov(0, 0));
+	const double stdY = std::sqrt(pCov(1, 1));
+	const double stdZ = std::sqrt(pCov(2, 2));
+	const double stdYaw = std::sqrt(pCov(3, 3));
+	const double stdPitch = std::sqrt(pCov(4, 4));
+	const double stdRoll = std::sqrt(pCov(5, 5));
 
 	if (metric_map_->countMapsByClass<COccupancyGridMap2D>() && !init_PDF_mode)
 	{
