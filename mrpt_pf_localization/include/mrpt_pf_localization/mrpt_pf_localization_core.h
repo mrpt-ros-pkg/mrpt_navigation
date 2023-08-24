@@ -54,7 +54,7 @@ class PFLocalizationCore : public mrpt::system::COutputLogger
 
 		/** If false (default), will use 2D (SE(2)) particle filter. Otherwise,
 		 * the 3D mode (SE(3)) is enabled.
-		 * It is read upon filter initialization.
+		 * Can be changed while state = UNINITIALIZED.
 		 */
 		bool use_se3_pf = false;
 
@@ -81,7 +81,7 @@ class PFLocalizationCore : public mrpt::system::COutputLogger
 
 		/** All the PF parameters: algorithm, number of samples, dynamic
 		 * samples, etc.
-		 * It is read upon filter initialization.
+		 * Can be changed while state = UNINITIALIZED.
 		 */
 		mrpt::bayes::CParticleFilter::TParticleFilterOptions pf_options;
 
@@ -89,6 +89,13 @@ class PFLocalizationCore : public mrpt::system::COutputLogger
 		 * Can be changed at any moment.
 		 */
 		mrpt::slam::TKLDParams kld_options;
+
+		/** Number of particles upon initialization.
+		 *  Can be changed while state = UNINITIALIZED.
+		 */
+		unsigned int initial_particle_count = 2000;
+
+		mrpt::maps::CMultiMetricMap::Ptr metric_map;  //!< Empty=uninitialized
 	};
 
 	/// The state of the particle filter. The "loop()" method will look at this
@@ -135,22 +142,18 @@ class PFLocalizationCore : public mrpt::system::COutputLogger
 
 		State fsm_state = State::UNINITIALIZED;
 
-		mrpt::maps::CMultiMetricMap::Ptr metric_map =
-			mrpt::maps::CMultiMetricMap::Create();
+		mrpt::maps::CMultiMetricMap::Ptr metric_map;  //!< Empty=uninitialized
 
-		mrpt::bayes::CParticleFilter pf_;  ///< interface for particle filters
+		mrpt::bayes::CParticleFilter pf;  ///< interface for particle filters
 
-		mrpt::bayes::CParticleFilter::TParticleFilterStats pf_stats_;
+		mrpt::bayes::CParticleFilter::TParticleFilterStats pf_stats;
 
 		/// The filter:
-		std::optional<mrpt::slam::CMonteCarloLocalization2D> pdf2d_;
-		std::optional<mrpt::slam::CMonteCarloLocalization3D> pdf3d_;
+		std::optional<mrpt::slam::CMonteCarloLocalization2D> pdf2d;
+		std::optional<mrpt::slam::CMonteCarloLocalization3D> pdf3d;
 
-		// mrpt::Clock::time_point time_last_update_;	///< time of the last
-		// update
-
-		/// internal counter to count the number of filter updates
-		// size_t update_counter_;
+		/// Timestamp of the last update (default=INVALID)
+		mrpt::Clock::time_point time_last_update;
 
 		/** Observations in the queue since the last run.
 		 *  This field is protected by an independent mutex.
@@ -168,30 +171,15 @@ class PFLocalizationCore : public mrpt::system::COutputLogger
 
 	mrpt::gui::CDisplayWindow3D::Ptr win3D_;
 
-	void init3DDebug();
-	void show3DDebug(mrpt::obs::CSensoryFrame::Ptr _observations);
-
-	/**
-	 * preprocesses an observation and calls the update
-	 *PFLocalizationCore::updateFilter
-	 * If the odom data is null the function will assume a dummy odometry
-	 *distribution around the last pose
-	 * @param _sf sensor observation
-	 * @param _odometry the odom data can also be NULL
+	/** To be called only when state=TO_BE_INITIALIZED.
+	 * Initializes the filter at pose initial_pose with initial_particle_count.
 	 **/
-	void observation(
-		mrpt::obs::CSensoryFrame::Ptr _sf,
-		mrpt::obs::CObservationOdometry::Ptr _odometry);
+	void onStateToBeInitialized();
 
-	/** To be called only
-	 * Initializes the filter at pose PFLocalizationCore::initial_pose_ with
-	 *PFLocalizationCore::initial_particle_count_
-	 * it is called by the PFLocalizationCore::updateFilter if the state_ ==
-	 *INIT
-	 **/
-	void initializeFilter();
+	void onStateRunningMoving();
 
-	void updateFilter(
-		mrpt::obs::CActionCollection::Ptr _action,
-		mrpt::obs::CSensoryFrame::Ptr _sf);
+	void onStateRunningStill();
+	
+	void init_gui();
+	void update_gui(const mrpt::obs::CSensoryFrame& sf);
 };
