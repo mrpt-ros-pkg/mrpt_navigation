@@ -166,6 +166,7 @@ class PFLocalizationCore : public mrpt::system::COutputLogger
 		const std::string& simplemap_file);
 
 	// TODO: Getters
+	State getState() const { return state_.fsm_state; }
 
 	/** @} */
 

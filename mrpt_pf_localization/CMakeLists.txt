@@ -40,10 +40,24 @@ ENDIF()
 ###########
 
 ## Declare a cpp executable
-add_executable(${PROJECT_NAME}_node
-    src/${PROJECT_NAME}_node.cpp
+add_library(${PROJECT_NAME}_core
     src/${PROJECT_NAME}/${PROJECT_NAME}_core.cpp
     include/${PROJECT_NAME}/${PROJECT_NAME}_core.h
+)
+
+target_include_directories(${PROJECT_NAME}_core
+    PUBLIC
+    include
+)
+
+target_link_libraries(${PROJECT_NAME}_core
+  mrpt::gui
+  mrpt::slam
+  mrpt::ros2bridge
+)
+
+add_executable(${PROJECT_NAME}_node
+    src/${PROJECT_NAME}_node.cpp
     include/${PROJECT_NAME}_node.h
 )
 
@@ -66,6 +80,7 @@ target_include_directories(${PROJECT_NAME}_node
 
 ## Specify libraries to link a library or executable target against
 target_link_libraries(${PROJECT_NAME}_node
+  ${PROJECT_NAME}_core
   mrpt::gui
   mrpt::slam
   mrpt::ros2bridge
@@ -77,6 +92,7 @@ target_link_libraries(${PROJECT_NAME}_node
 
 install(
   TARGETS
+    ${PROJECT_NAME}_core
     ${PROJECT_NAME}_node
   DESTINATION
     lib/${PROJECT_NAME}
@@ -88,12 +104,16 @@ install(
 )
 
 
-#find_package(ament_cmake_gtest REQUIRED)
-#ament_add_gtest(${PROJECT_NAME}-test test/test_pose_cov_ops.cpp)
-
 ament_export_dependencies()
 
 if(BUILD_TESTING)
+  find_package(ament_cmake_gtest REQUIRED)
+  ament_add_gtest(
+    ${PROJECT_NAME}-test test/test_pf_localization.cpp
+    APPEND_ENV MRPT_LOCALIZATION_SOURCE_DIR=${CMAKE_SOURCE_DIR}
+  )
+  target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME}_core)
+
   find_package(ament_lint_auto REQUIRED)
 
   # the following line skips the linter which checks for copyrights
