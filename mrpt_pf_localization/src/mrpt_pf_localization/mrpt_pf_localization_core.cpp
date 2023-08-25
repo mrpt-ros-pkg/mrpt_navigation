@@ -10,6 +10,7 @@
 #include <mrpt/maps/CLandmarksMap.h>
 #include <mrpt/maps/COccupancyGridMap2D.h>
 #include <mrpt/maps/CSimplePointsMap.h>
+#include <mrpt/obs/CActionCollection.h>
 #include <mrpt/opengl/CEllipsoid2D.h>
 #include <mrpt/opengl/CEllipsoid3D.h>
 #include <mrpt/opengl/CPointCloud.h>
@@ -47,10 +48,24 @@ PFLocalizationCore::Parameters::Parameters()
 		mrpt::poses::CPose3DPDFGaussian(mrpt::poses::CPose3D(0, 0, 0), cov);
 
 	// Without odometry: use a large uncertainty for each time step:
-	motion_model_default_options.modelSelection =
+	// 2D mode:
+	motion_model_no_odom_2d.modelSelection =
 		mrpt::obs::CActionRobotMovement2D::mmGaussian;
-	motion_model_default_options.gaussianModel.minStdXY = 0.10;
-	motion_model_default_options.gaussianModel.minStdPHI = 2.0;
+	motion_model_no_odom_2d.gaussianModel.minStdXY = 0.10;
+	motion_model_no_odom_2d.gaussianModel.minStdPHI = 2.0;
+
+	// 3D mode:
+	motion_model_no_odom_3d.modelSelection =
+		mrpt::obs::CActionRobotMovement3D::mmGaussian;
+	// TODO: Params that make more sense?
+}
+
+void PFLocalizationCore::Parameters::load_from(
+	const mrpt::containers::yaml& params)
+{
+	MCP_LOAD_OPT(params, gui_enable);
+	MCP_LOAD_REQ(params, use_se3_pf);
+	MCP_LOAD_OPT(params, gui_camera_follow_robot);
 }
 
 void PFLocalizationCore::on_observation(const mrpt::obs::CObservation::Ptr& obs)
@@ -81,8 +96,10 @@ void PFLocalizationCore::step()
 			onStateToBeInitialized();
 			break;
 		case State::RUNNING_STILL:
+			onStateRunningStill();
 			break;
 		case State::RUNNING_MOVING:
+			onStateRunningMoving();
 			break;
 
 		default:
@@ -176,10 +193,11 @@ void PFLocalizationCore::onStateToBeInitialized()
 	}
 }
 
-void PFLocalizationCore::onStateRunningMoving()
+void PFLocalizationCore::onStateRunning()
 {
-	auto tle =
-		mrpt::system::CTimeLoggerEntry(profiler_, "onStateRunningMoving");
+	auto tle = mrpt::system::CTimeLoggerEntry(profiler_, "onStateRunning");
+
+	MRPT_TODO("handle the 'still' FSM state");
 
 	// Collect observations since last execution and build "action" and
 	// "observations" for the Bayes filter:
@@ -201,6 +219,9 @@ void PFLocalizationCore::onStateRunningMoving()
 	{
 		MRPT_LOG_THROTTLE_WARN(
 			2.0, "No observation in the input queue at all...");
+
+		// Default timestamp to "now":
+		sfLastTimeStamp = mrpt::Clock::now();
 	}
 
 	// "Action"
@@ -216,38 +237,62 @@ void PFLocalizationCore::onStateRunningMoving()
 	}
 
 	mrpt::obs::CActionCollection actions;
-	mrpt::obs::CActionRobotMovement2D odom_move;
-	odom_move.timestamp = sfLastTimeStamp;
-	if (_odometry)
+
+	const bool is_3D = state_.pdf3d.has_value();
+
+	std::optional<mrpt::obs::CActionRobotMovement2D::Ptr> odomMove2D;
+	std::optional<mrpt::obs::CActionRobotMovement3D::Ptr> odomMove3D;
+
+	if (is_3D)
 	{
-		if (odom_last_observation_.empty())
-		{
-			odom_last_observation_ = _odometry->odometry;
-		}
-		mrpt::poses::CPose2D incOdoPose =
-			_odometry->odometry - odom_last_observation_;
-		odom_last_observation_ = _odometry->odometry;
-		odom_move.computeFromOdometry(incOdoPose, motion_model_options_);
-		action->insert(odom_move);
-		updateFilter(action, _sf);
+		odomMove3D.emplace(mrpt::obs::CActionRobotMovement3D::Create());
+		odomMove3D.value()->timestamp = sfLastTimeStamp;
+		actions.insertPtr(*odomMove3D);
 	}
 	else
 	{
-		if (use_motion_model_default_options_)
+		odomMove2D.emplace(mrpt::obs::CActionRobotMovement2D::Create());
+		odomMove2D.value()->timestamp = sfLastTimeStamp;
+		actions.insertPtr(*odomMove2D);
+	}
+
+	// Use real odometry increments, or fake odom instead:
+	if (odomObs)
+	{
+		const mrpt::poses::CPose2D incOdoPose =
+			state_.last_odom ? odomObs->odometry - state_.last_odom->odometry
+							 : mrpt::poses::CPose2D::Identity();
+
+		state_.last_odom = odomObs;
+
+		if (odomMove2D.has_value())
 		{
-			MRPT_LOG_INFO_STREAM(
-				"No odometry at update " << update_counter_
-										 << " -> using dummy");
-			odom_move.computeFromOdometry(
-				mrpt::poses::CPose2D(0, 0, 0), motion_model_default_options_);
-			action->insert(odom_move);
-			updateFilter(action, _sf);
+			odomMove2D.value()->computeFromOdometry(
+				incOdoPose, params_.motion_model_2d);
 		}
 		else
 		{
-			MRPT_LOG_INFO_STREAM(
-				"No odometry at update " << update_counter_
-										 << " -> skipping observation");
+			// TODO: Use 3D odometry observations?
+			// Does it make sense for some application?
+
+			odomMove3D.value()->computeFromOdometry(
+				mrpt::poses::CPose3D(incOdoPose), params_.motion_model_3d);
+		}
+	}
+	else
+	{
+		// Use fake "null movement" motion model with the special uncertainty:
+		if (odomMove2D.has_value())
+		{
+			odomMove2D.value()->computeFromOdometry(
+				mrpt::poses::CPose2D::Identity(),
+				params_.motion_model_no_odom_2d);
+		}
+		else
+		{
+			odomMove3D.value()->computeFromOdometry(
+				mrpt::poses::CPose3D::Identity(),
+				params_.motion_model_no_odom_3d);
 		}
 	}
 
@@ -269,28 +314,18 @@ void PFLocalizationCore::onStateRunningMoving()
 	if (params_.gui_enable) update_gui(sf);
 }
 
-void PFLocalizationCore::onStateRunningStill()
+/* Load all params from a YAML source.
+ *  This method loads all required params and put the system from
+ * UNINITIALIZED into TO_BE_INITIALIZED.
+ */
+void PFLocalizationCore::init_from_yaml(const mrpt::containers::yaml& params)
 {
-	auto tle = mrpt::system::CTimeLoggerEntry(profiler_, "onStateRunningStill");
-}
+	MRPT_LOG_INFO("Called init_from_yaml()");
 
-void PFLocalizationCore::init()
-{
-	MRPT_LOG_INFO_STREAM("ini_file ready " << param_->ini_file);
-	ASSERT_FILE_EXISTS_(param_->ini_file);
-	MRPT_LOG_INFO_STREAM("ASSERT_FILE_EXISTS_ " << param_->ini_file);
-	CConfigFile ini_file;
-	ini_file.setFileName(param_->ini_file);
-	MRPT_LOG_INFO_STREAM("CConfigFile: " << param_->ini_file);
-
-	// Number of initial particles (if size>1, run the experiments N times)
-	std::vector<int> particles_count;
+	params_.load_from(params);
 
 	// Load configuration:
 	// -----------------------------------------
-	string iniSectionName("LocalizationExperiment");
-	update_counter_ = 0;
-
 	// Mandatory entries:
 	ini_file.read_vector(
 		iniSectionName, "particles_count", std::vector<int>(1, 0),

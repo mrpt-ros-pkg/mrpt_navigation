@@ -9,11 +9,12 @@
 #pragma once
 
 #include <mrpt/bayes/CParticleFilter.h>
+#include <mrpt/containers/yaml.h>
 #include <mrpt/core/Clock.h>
 #include <mrpt/gui/CDisplayWindow3D.h>
 #include <mrpt/maps/CMultiMetricMap.h>
-#include <mrpt/obs/CActionCollection.h>
 #include <mrpt/obs/CActionRobotMovement2D.h>
+#include <mrpt/obs/CActionRobotMovement3D.h>
 #include <mrpt/obs/CObservationOdometry.h>
 #include <mrpt/obs/CSensoryFrame.h>
 #include <mrpt/poses/CPose2D.h>
@@ -64,17 +65,27 @@ class PFLocalizationCore : public mrpt::system::COutputLogger
 		 */
 		bool gui_camera_follow_robot = true;
 
-		/** Uncertainty motion model for regular odometry-based motion:
-		 * Can be changed at any moment.
+		/** For SE(2) mode: Uncertainty motion model for regular odometry-based
+		 * motion. Can be changed at any moment.
 		 */
-		mrpt::obs::CActionRobotMovement2D::TMotionModelOptions
-			motion_model_options;
+		mrpt::obs::CActionRobotMovement2D::TMotionModelOptions motion_model_2d;
 
-		/** Uncertainty motion model to use when NO odometry has been received
-		 * Can be changed at any moment.
+		/** For SE(2) mode: Uncertainty motion model to use when NO odometry has
+		 * been received. Can be changed at any moment.
 		 */
 		mrpt::obs::CActionRobotMovement2D::TMotionModelOptions
-			motion_model_default_options;
+			motion_model_no_odom_2d;
+
+		/** For SE(3) mode: Uncertainty motion model for regular odometry-based
+		 * motion. Can be changed at any moment.
+		 */
+		mrpt::obs::CActionRobotMovement3D::TMotionModelOptions motion_model_3d;
+
+		/** For SE(3) mode: Uncertainty motion model to use when NO odometry has
+		 * been received. Can be changed at any moment.
+		 */
+		mrpt::obs::CActionRobotMovement3D::TMotionModelOptions
+			motion_model_no_odom_3d;
 
 		/** initial pose used to intialize the filter */
 		mrpt::poses::CPose3DPDFGaussian initial_pose;
@@ -96,6 +107,8 @@ class PFLocalizationCore : public mrpt::system::COutputLogger
 		unsigned int initial_particle_count = 2000;
 
 		mrpt::maps::CMultiMetricMap::Ptr metric_map;  //!< Empty=uninitialized
+
+		void load_from(const mrpt::containers::yaml& params);
 	};
 
 	/// The state of the particle filter. The "loop()" method will look at this
@@ -113,6 +126,15 @@ class PFLocalizationCore : public mrpt::system::COutputLogger
 		/// particles.
 		RUNNING_STILL
 	};
+
+	/** @name Main API
+	 *  @{ */
+
+	/** Load all params from a YAML source.
+	 *  This method loads all required params and put the system from
+	 * UNINITIALIZED into TO_BE_INITIALIZED.
+	 */
+	void init_from_yaml(const mrpt::containers::yaml& params);
 
 	/** Must be called for each new observation that arrives from the robot:
 	 *  odometry, 2D or 3D lidar, GPS, etc.
@@ -132,6 +154,8 @@ class PFLocalizationCore : public mrpt::system::COutputLogger
 	void reset();
 
 	// TODO: Getters
+
+	/** @} */
 
    protected:
 	Parameters params_;
@@ -155,6 +179,8 @@ class PFLocalizationCore : public mrpt::system::COutputLogger
 		/// Timestamp of the last update (default=INVALID)
 		mrpt::Clock::time_point time_last_update;
 
+		mrpt::obs::CObservationOdometry::Ptr last_odom;
+
 		/** Observations in the queue since the last run.
 		 *  This field is protected by an independent mutex.
 		 */
@@ -176,10 +202,8 @@ class PFLocalizationCore : public mrpt::system::COutputLogger
 	 **/
 	void onStateToBeInitialized();
 
-	void onStateRunningMoving();
+	void onStateRunning();
 
-	void onStateRunningStill();
-	
 	void init_gui();
 	void update_gui(const mrpt::obs::CSensoryFrame& sf);
 };
