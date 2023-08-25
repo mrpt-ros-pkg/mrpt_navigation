@@ -87,8 +87,10 @@ class PFLocalizationCore : public mrpt::system::COutputLogger
 		mrpt::obs::CActionRobotMovement3D::TMotionModelOptions
 			motion_model_no_odom_3d;
 
-		/** initial pose used to intialize the filter */
-		mrpt::poses::CPose3DPDFGaussian initial_pose;
+		/** initial pose used to intialize the filter.
+		 *  Empty=not set yet.
+		 */
+		std::optional<mrpt::poses::CPose3DPDFGaussian> initial_pose;
 
 		/** All the PF parameters: algorithm, number of samples, dynamic
 		 * samples, etc.
@@ -108,6 +110,8 @@ class PFLocalizationCore : public mrpt::system::COutputLogger
 
 		mrpt::maps::CMultiMetricMap::Ptr metric_map;  //!< Empty=uninitialized
 
+		/// This method loads all parameters from the YAML, except the
+		/// metric_map (handled in parent class):
 		void load_from(const mrpt::containers::yaml& params);
 	};
 
@@ -153,6 +157,14 @@ class PFLocalizationCore : public mrpt::system::COutputLogger
 	/** Reset the object to the initial state as if created from scratch */
 	void reset();
 
+	/** Defines the map to use from a pair of files: an MRPT metric map
+	 * definition INI file, and a .simplemap file with sensor observations.
+	 *  \return true on success, false on any error.
+	 */
+	bool set_map_from_simple_map(
+		const std::string& map_config_ini_file,
+		const std::string& simplemap_file);
+
 	// TODO: Getters
 
 	/** @} */
@@ -196,6 +208,12 @@ class PFLocalizationCore : public mrpt::system::COutputLogger
 		true /*enabled*/, "mrpt_pf_localization" /*name*/};
 
 	mrpt::gui::CDisplayWindow3D::Ptr win3D_;
+
+	/** To be called only when state=UNINITIALIZED.
+	 * Checks if the minimum set of params are set, then move state to
+	 *TO_BE_INITIALIZED
+	 **/
+	void onStateUninitialized();
 
 	/** To be called only when state=TO_BE_INITIALIZED.
 	 * Initializes the filter at pose initial_pose with initial_particle_count.

@@ -6,6 +6,7 @@
    | All rights reserved. Released under BSD 3-Clause license. See LICENSE  |
    +------------------------------------------------------------------------+ */
 
+#include <mrpt/config/CConfigFile.h>
 #include <mrpt/core/lock_helper.h>
 #include <mrpt/maps/CLandmarksMap.h>
 #include <mrpt/maps/COccupancyGridMap2D.h>
@@ -39,6 +40,13 @@ using mrpt::maps::CLandmarksMap;
 using mrpt::maps::COccupancyGridMap2D;
 using mrpt::maps::CSimplePointsMap;
 
+template <typename T>
+void getOptParam(
+	const mrpt::containers::yaml& p, T& var, const std::string& name)
+{
+	var = p.getOrDefault(name, var);
+}
+
 PFLocalizationCore::Parameters::Parameters()
 {
 	auto cov = mrpt::math::CMatrixDouble66::Identity();
@@ -66,6 +74,90 @@ void PFLocalizationCore::Parameters::load_from(
 	MCP_LOAD_OPT(params, gui_enable);
 	MCP_LOAD_REQ(params, use_se3_pf);
 	MCP_LOAD_OPT(params, gui_camera_follow_robot);
+
+	// motion_model_2d
+
+	// motion_model_no_odom_2d
+
+	// motion_model_3d
+
+	// motion_model_no_odom_3d
+
+	// initial_pose: check minimum required fields, if given via YAML.
+	if (params.has("initial_pose"))
+	{
+		using mrpt::square;
+
+		ASSERT_(params["initial_pose"].isMap());
+		ASSERT_(params["initial_pose"]["mean"].isMap());
+		ASSERT_(params["initial_pose"]["mean"]["x"].isScalar());
+		ASSERT_(params["initial_pose"]["mean"]["y"].isScalar());
+		ASSERT_(params["initial_pose"]["std_x"].isScalar());
+		ASSERT_(params["initial_pose"]["std_y"].isScalar());
+
+		auto ipP = params["initial_pose"];
+		auto m = ipP["mean"];
+		auto& ip = initial_pose;
+		ip.emplace();
+		ip->mean.x(m["x"].as<double>());
+		ip->mean.y(m["y"].as<double>());
+		if (m.has("z")) ip->mean.z(m["z"].as<double>());
+
+		double yaw = 0, pitch = 0, roll = 0;
+		if (m.has("yaw")) yaw = m["yaw"].as<double>();
+		if (m.has("pitch")) pitch = m["pitch"].as<double>();
+		if (m.has("roll")) roll = m["roll"].as<double>();
+
+		ip->mean.setYawPitchRoll(yaw, pitch, roll);
+
+		// Defaults:
+		ip->cov.setDiagonal(0.0);
+
+		// params:
+		ip->cov(0, 0) = square(ipP["std_x"].as<double>());
+		ip->cov(1, 1) = square(ipP["std_y"].as<double>());
+		ip->cov(2, 2) = square(ipP.getOrDefault("std_z", 0.0));
+		ip->cov(3, 3) = square(ipP.getOrDefault("std_yaw", 2.0 * M_PI));
+		ip->cov(4, 4) = square(ipP.getOrDefault("std_pitch", 0.0));
+		ip->cov(5, 5) = square(ipP.getOrDefault("std_roll", 0.0));
+	}
+
+	// pf_options:
+	ASSERT_(params.has("pf_options"));
+	auto& pfo = params["pf_options"];
+	getOptParam(pfo, pf_options.BETA, "BETA");
+	getOptParam(pfo, pf_options.PF_algorithm, "PF_algorithm");
+	getOptParam(pfo, pf_options.adaptiveSampleSize, "adaptiveSampleSize");
+	getOptParam(
+		pfo, pf_options.pfAuxFilterOptimal_MaximumSearchSamples,
+		"pfAuxFilterOptimal_MaximumSearchSamples");
+	getOptParam(pfo, pf_options.powFactor, "powFactor");
+	getOptParam(pfo, pf_options.resamplingMethod, "resamplingMethod");
+	getOptParam(
+		pfo, pf_options.max_loglikelihood_dyn_range,
+		"max_loglikelihood_dyn_range");
+	getOptParam(
+		pfo, pf_options.pfAuxFilterStandard_FirstStageWeightsMonteCarlo,
+		"pfAuxFilterStandard_FirstStageWeightsMonteCarlo");
+	getOptParam(
+		pfo, pf_options.pfAuxFilterOptimal_MLE, "pfAuxFilterOptimal_MLE");
+
+	// kld_options:
+	ASSERT_(params.has("kld_options"));
+	auto& kldo = params["kld_options"];
+	getOptParam(kldo, kld_options.KLD_binSize_XY, "KLD_binSize_XY");
+	getOptParam(kldo, kld_options.KLD_binSize_PHI, "KLD_binSize_PHI");
+	getOptParam(kldo, kld_options.KLD_delta, "KLD_delta");
+	getOptParam(kldo, kld_options.KLD_epsilon, "KLD_epsilon");
+	getOptParam(kldo, kld_options.KLD_maxSampleSize, "KLD_maxSampleSize");
+	getOptParam(kldo, kld_options.KLD_minSampleSize, "KLD_minSampleSize");
+	getOptParam(kldo, kld_options.KLD_minSamplesPerBin, "KLD_minSamplesPerBin");
+
+	//
+	MCP_LOAD_OPT(params, initial_particle_count);
+
+	// optional definition of metric map via .simplemap or .metricmap file or
+	// .yaml (ROS occupancy grid) map:
 }
 
 void PFLocalizationCore::on_observation(const mrpt::obs::CObservation::Ptr& obs)
@@ -85,21 +177,16 @@ void PFLocalizationCore::step()
 	switch (state_.fsm_state)
 	{
 		case State::UNINITIALIZED:
-			// We don't have parameters / map yet. Do nothing.
-			MRPT_LOG_THROTTLE_WARN(
-				3.0,
-				"[step] Doing nothing, since state is UNINITIALIZED yet. "
-				"Probably parameters or the map has not been loaded yet. Refer "
-				"to package documentation.");
+			onStateUninitialized();
 			break;
 		case State::TO_BE_INITIALIZED:
 			onStateToBeInitialized();
 			break;
 		case State::RUNNING_STILL:
-			onStateRunningStill();
+			onStateRunning();
 			break;
 		case State::RUNNING_MOVING:
-			onStateRunningMoving();
+			onStateRunning();
 			break;
 
 		default:
@@ -112,6 +199,28 @@ void PFLocalizationCore::reset()
 {
 	auto lck = mrpt::lockHelper(stateMtx_);
 	state_ = InternalState();
+}
+
+void PFLocalizationCore::onStateUninitialized()
+{
+	// Check if we have everything we need to get going:
+	if (params_.initial_pose.has_value() && params_.metric_map)
+	{
+		// Move:
+		state_.fsm_state = State::TO_BE_INITIALIZED;
+
+		MRPT_LOG_WARN(
+			"Required configuration has been set, changing to "
+			"'State::TO_BE_INITIALIZED'");
+		return;
+	}
+
+	// We don't have parameters / map yet. Do nothing:
+	MRPT_LOG_THROTTLE_WARN(
+		3.0,
+		"Doing nothing, since state is UNINITIALIZED yet. "
+		"Probably parameters or the map has not been loaded yet. Refer "
+		"to package documentation.");
 }
 
 void PFLocalizationCore::onStateToBeInitialized()
@@ -149,9 +258,9 @@ void PFLocalizationCore::onStateToBeInitialized()
 
 	// Get desired initial pose uncertainty:
 	MRPT_LOG_INFO_STREAM(
-		"[onStateToBeInitialized] Initial pose: " << params_.initial_pose);
+		"[onStateToBeInitialized] Initial pose: " << *params_.initial_pose);
 
-	const auto [pCov, pMean] = params_.initial_pose.getCovarianceAndMean();
+	const auto [pCov, pMean] = params_.initial_pose->getCovarianceAndMean();
 
 	const double stdX = std::sqrt(pCov(0, 0));
 	const double stdY = std::sqrt(pCov(1, 1));
@@ -296,13 +405,32 @@ void PFLocalizationCore::onStateRunning()
 		}
 	}
 
+	// Make sure params are up-to-date in the PF
+	// (they may change on-the-fly by users):
+	// -----------------------------------------
+	state_.pf.m_options = params_.pf_options;
+	TMonteCarloLocalizationParams pdfPredictionOptions;
+	pdfPredictionOptions.KLD_params = params_.kld_options;
+
+	if (state_.pdf2d)
+	{
+		state_.pdf2d->options = pdfPredictionOptions;
+		state_.pdf2d->options.metricMap = params_.metric_map;
+	}
+	else
+	{
+		state_.pdf3d->options = pdfPredictionOptions;
+		state_.pdf3d->options.metricMap = params_.metric_map;
+	}
+
 	// Process PF
 	// ------------------------
-	state_.pf.executeOn(
+	mrpt::bayes::CParticleFilterCapable& pfc =
 		state_.pdf2d
 			? static_cast<mrpt::bayes::CParticleFilterCapable&>(*state_.pdf2d)
-			: static_cast<mrpt::bayes::CParticleFilterCapable&>(*state_.pdf3d),
-		&actions, &sf, &state_.pf_stats);
+			: static_cast<mrpt::bayes::CParticleFilterCapable&>(*state_.pdf3d);
+
+	state_.pf.executeOn(pfc, &actions, &sf, &state_.pf_stats);
 
 	// Collect further output stats:
 	// ------------------------------
@@ -314,6 +442,24 @@ void PFLocalizationCore::onStateRunning()
 	if (params_.gui_enable) update_gui(sf);
 }
 
+bool PFLocalizationCore::set_map_from_simple_map(
+	const std::string& map_config_ini_file, const std::string& simplemap_file)
+{
+	auto lck = mrpt::lockHelper(stateMtx_);
+
+	ASSERT_FILE_EXISTS_(map_config_ini_file);
+	ASSERT_FILE_EXISTS_(simplemap_file);
+
+	mrpt::config::CConfigFile cfg(map_config_ini_file);
+
+	params_.metric_map = mrpt::maps::CMultiMetricMap::Create();
+
+	bool ok = mrpt::ros2bridge::MapHdl::loadMap(
+		*params_.metric_map, cfg, simplemap_file, "metricMap");
+
+	return ok;
+}
+
 /* Load all params from a YAML source.
  *  This method loads all required params and put the system from
  * UNINITIALIZED into TO_BE_INITIALIZED.
@@ -322,112 +468,20 @@ void PFLocalizationCore::init_from_yaml(const mrpt::containers::yaml& params)
 {
 	MRPT_LOG_INFO("Called init_from_yaml()");
 
+	auto lck = mrpt::lockHelper(stateMtx_);
+
+	// Load all required and optional params:
 	params_.load_from(params);
 
-	// Load configuration:
-	// -----------------------------------------
-	// Mandatory entries:
-	ini_file.read_vector(
-		iniSectionName, "particles_count", std::vector<int>(1, 0),
-		particles_count,
-		/*Fail if not found*/ true);
+	// Now, parse the map, if given in the YAML in any of the supported
+	// formats:
 
-	if (param_->map_file.empty())
-	{
-		param_->map_file = ini_file.read_string(iniSectionName, "map_file", "");
-	}
+	// if (0)
+	// set_map_from_simple_map();
 
-	// Non-mandatory entries:
-	SCENE3D_FREQ_ = ini_file.read_int(iniSectionName, "3DSceneFrequency", 10);
-	SCENE3D_FOLLOW_ =
-		ini_file.read_bool(iniSectionName, "3DSceneFollowRobot", true);
+	// set_map_from_metric_map_file();
 
-	SHOW_PROGRESS_3D_REAL_TIME_ =
-		ini_file.read_bool(iniSectionName, "SHOW_PROGRESS_3D_REAL_TIME", false);
-
-#if !MRPT_HAS_WXWIDGETS
-	SHOW_PROGRESS_3D_REAL_TIME_ = false;
-#endif
-
-	// Default odometry uncertainty parameters in "odom_params_default_"
-	// depending on how fast the robot moves, etc...
-	//  Only used for observations-only rawlogs:
-	motion_model_default_options_.modelSelection =
-		CActionRobotMovement2D::mmGaussian;
-
-	motion_model_default_options_.gaussianModel.minStdXY =
-		ini_file.read_double("DummyOdometryParams", "minStdXY", 0.04);
-	motion_model_default_options_.gaussianModel.minStdPHI = DEG2RAD(
-		ini_file.read_double("DefaultOdometryParams", "minStdPHI", 2.0));
-
-	// Read initial particles distribution; fail if any parameter is not found
-	init_PDF_mode =
-		ini_file.read_bool(iniSectionName, "init_PDF_mode", false, true);
-	init_PDF_min_x =
-		ini_file.read_float(iniSectionName, "init_PDF_min_x", 0, true);
-	init_PDF_max_x =
-		ini_file.read_float(iniSectionName, "init_PDF_max_x", 0, true);
-	init_PDF_min_y =
-		ini_file.read_float(iniSectionName, "init_PDF_min_y", 0, true);
-	init_PDF_max_y =
-		ini_file.read_float(iniSectionName, "init_PDF_max_y", 0, true);
-	float min_phi = DEG2RAD(
-		ini_file.read_float(iniSectionName, "init_PDF_min_phi_deg", -180));
-	float max_phi = DEG2RAD(
-		ini_file.read_float(iniSectionName, "init_PDF_max_phi_deg", 180));
-	mrpt::poses::CPose2D p;
-	mrpt::math::CMatrixDouble33 cov;
-	cov(0, 0) = fabs(init_PDF_max_x - init_PDF_min_x);
-	cov(1, 1) = fabs(init_PDF_max_y - init_PDF_min_y);
-	cov(2, 2) =
-		min_phi < max_phi ? max_phi - min_phi : (max_phi + 2 * M_PI) - min_phi;
-	p.x() = init_PDF_min_x + cov(0, 0) / 2.0;
-	p.y() = init_PDF_min_y + cov(1, 1) / 2.0;
-	p.phi() = min_phi + cov(2, 2) / 2.0;
-	MRPT_LOG_DEBUG_FMT(
-		"----------- phi: %4.3f: %4.3f <-> %4.3f, %4.3f\n", p.phi(), min_phi,
-		max_phi, cov(2, 2));
-	initial_pose_ = mrpt::poses::CPosePDFGaussian(p, cov);
-	state_ = INIT;
-
-	configureFilter(ini_file);
-	// Metric map options:
-
-	ASSERT_(metric_map_);
-
-	if (!mrpt::ros2bridge::MapHdl::loadMap(
-			*metric_map_, ini_file, param_->map_file, "metricMap",
-			param_->debug))
-	{
-		waitForMap();
-	}
-
-	initial_particle_count_ = *particles_count.begin();
-}
-
-void PFLocalizationCore::configureFilter(const CConfigFile& _configFile)
-{
-	// PF-algorithm Options:
-	// ---------------------------
-	CParticleFilter::TParticleFilterOptions pfOptions;
-	pfOptions.loadFromConfigFile(_configFile, "PF_options");
-	pfOptions.dumpToConsole();
-
-	// PDF Options:
-	// ------------------
-	TMonteCarloLocalizationParams pdfPredictionOptions;
-	pdfPredictionOptions.KLD_params.loadFromConfigFile(
-		_configFile, "KLD_options");
-
-	pdf_.clear();
-
-	// PDF Options:
-	pdf_.options = pdfPredictionOptions;
-
-	pdf_.options.metricMap = metric_map_;
-
-	// Create the PF object:
-	pf_.m_options = pfOptions;
+	// set_map_from_ros_yaml();
 }
 
 void PFLocalizationCore::init_gui()
@@ -455,6 +509,10 @@ void PFLocalizationCore::init_gui()
 void PFLocalizationCore::update_gui(const CSensoryFrame& sf)
 {
 	auto tle = mrpt::system::CTimeLoggerEntry(profiler_, "show3DDebug");
+
+#if !MRPT_HAS_WXWIDGETS
+	return;	 // we don't have built-in GUI!
+#endif
 
 	if (!params_.gui_enable) return;
 
