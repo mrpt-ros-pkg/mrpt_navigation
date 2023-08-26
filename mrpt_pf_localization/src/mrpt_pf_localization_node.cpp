@@ -117,18 +117,58 @@ void PFLocalizationNode::reload_params_from_ros()
 
 	// Unify all ROS params into a in-memory YAML block and pass it to the core
 	// object:
-	mrpt::containers::yaml paramsBlock;
+	mrpt::containers::yaml paramsBlock = mrpt::containers::yaml::Map();
 
 	const auto& paramsIf = this->get_node_parameters_interface();
 	const auto& allParams = paramsIf->get_parameter_overrides();
 
 	for (const auto& kv : allParams)
 	{
-		const auto& name = kv.first;
-		const std::string valueStr = kv.second.get<std::string>();
-		RCLCPP_INFO(
-			get_logger(), "PARAM: '%s'->'%s'", name.c_str(), valueStr.c_str());
+		// Get param name:
+		std::string name = kv.first;
+
+		// ROS2 param names may be nested. Convert that back into YAML nodes:
+		// e.g. "foo.bar" -> ["foo"]["bar"].
+		mrpt::containers::yaml::map_t* targetYamlNode =
+			&paramsBlock.node().asMap();
+
+		for (auto pos = name.find("."); pos != std::string::npos;
+			 pos = name.find("."))
+		{
+			// Split:
+			const std::string parentKey = name.substr(0, pos);
+			const std::string childKey = name.substr(pos + 1);
+			name = childKey;
+
+			// Create YAML node:
+			(*targetYamlNode)[parentKey] = mrpt::containers::yaml::Map();
+			targetYamlNode = &(*targetYamlNode)[parentKey].asMap();
+		}
+
+		// Get param value:
+		switch (kv.second.get_type())
+		{
+			case rclcpp::ParameterType::PARAMETER_BOOL:
+				(*targetYamlNode)[name] = kv.second.get<bool>();
+				break;
+			case rclcpp::ParameterType::PARAMETER_DOUBLE:
+				(*targetYamlNode)[name] = kv.second.get<double>();
+				break;
+			case rclcpp::ParameterType::PARAMETER_INTEGER:
+				(*targetYamlNode)[name] = kv.second.get<int>();
+				break;
+			case rclcpp::ParameterType::PARAMETER_STRING:
+				(*targetYamlNode)[name] = kv.second.get<std::string>();
+				break;
+			default:
+				RCLCPP_WARN(
+					get_logger(), "ROS2 parameter not handled: '%s'",
+					name.c_str());
+				break;
+		}
 	}
+
+	paramsBlock.printAsYAML();
 
 	core_.init_from_yaml(paramsBlock);
 
