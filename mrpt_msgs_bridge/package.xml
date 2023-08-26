@@ -4,7 +4,7 @@
   <version>1.0.3</version>
   <description>C++ library to convert between custom mrpt_msgs messages and native MRPT classes</description>
 
-  <url type="website">https://www.mrpt.org/</url>
+  <url type="website">https://github.com/mrpt-ros-pkg/mrpt_navigation</url>
   <maintainer email="joseluisblancoc@gmail.com">José Luis Blanco-Claraco</maintainer>
   <maintainer email="shravansomashekara.rai@gmail.com">Shravan S Rai</maintainer>
 

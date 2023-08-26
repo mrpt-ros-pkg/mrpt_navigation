@@ -8,7 +8,7 @@
    but supports different particle-filter algorithms, several grid maps at
    different heights, range-only localization, etc.</description>
 
-  <url type="website">https://www.mrpt.org/</url>
+  <url type="website">https://github.com/mrpt-ros-pkg/mrpt_navigation</url>
   <maintainer email="markus.bader@tuwien.ac.at">Markus Bader</maintainer>
   <maintainer email="joseluisblancoc@gmail.com">Jose Luis Blanco-Claraco</maintainer>
   <author>Markus Bader</author>
@@ -33,6 +33,8 @@
   <depend>pose_cov_ops</depend>
 
   <depend>ament_lint_common</depend>
+
+  <test_depend>mrpt_tutorials</test_depend>
 
   <export>
     <build_type>ament_cmake</build_type>

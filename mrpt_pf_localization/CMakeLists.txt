@@ -99,7 +99,7 @@ install(
 )
 
 install(
-  DIRECTORY launch tutorial
+  DIRECTORY launch params
   DESTINATION share/${PROJECT_NAME}
 )
 

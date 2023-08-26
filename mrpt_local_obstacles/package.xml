@@ -14,7 +14,7 @@
 
   <license>BSD</license>
 
-  <url type="website">https://wiki.ros.org/mrpt_local_obstacles</url>
+  <url type="website">https://github.com/mrpt-ros-pkg/mrpt_navigation</url>
 
 
   <buildtool_depend>ament_cmake</buildtool_depend>
