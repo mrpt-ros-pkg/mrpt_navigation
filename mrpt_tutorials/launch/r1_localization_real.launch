@@ -7,7 +7,7 @@
   <arg name="map_file" default="$(find mrpt_tutorials)/maps/gh25_real_top_laser.simplemap" />
   
   <group ns="$(arg robot_name)">
-    <node pkg="mrpt_localization" type="mrpt_localization_node" name="r1_localization" output="screen">
+    <node pkg="mrpt_pf_localization" type="mrpt_pf_localization_node" name="r1_localization" output="screen">
       <remap from="scan" to="$(arg scan)"/>
       <!-- DEPRECATED, REMOVED 
         <param name="tf_prefix" value="$(arg robot_name)"/>   

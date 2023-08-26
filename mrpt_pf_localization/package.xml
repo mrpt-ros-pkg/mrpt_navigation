@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
-  <name>mrpt_localization</name>
+  <name>mrpt_pf_localization</name>
   <version>1.0.3</version>
   <description>Package for robot 2D self-localization using dynamic or static (MRPT or ROS) maps.
 	The interface is similar to amcl (https://wiki.ros.org/amcl)
@@ -15,7 +15,7 @@
   <author email="raffi.z@gmail.com">Raphael Zack</author>
 
   <license>BSD</license>
-  <url>https://wiki.ros.org/mrpt_localization</url>
+  <url>https://wiki.ros.org/mrpt_pf_localization</url>
 
   <!-- BUILD TOOLS -->
   <buildtool_depend>cmake</buildtool_depend>
