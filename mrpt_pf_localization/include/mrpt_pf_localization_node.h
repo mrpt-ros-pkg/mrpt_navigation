@@ -38,19 +38,23 @@ using mrpt::obs::CObservationOdometry;
 class PFLocalizationNode : public rclcpp::Node
 {
    public:
+	PFLocalizationNode();
+	~PFLocalizationNode();
+
 	struct NodeParameters
 	{
-		NodeParameters();
+		NodeParameters() = default;
+		~NodeParameters() = default;
 
 		double rate_hz = 10.0;	//!< Execution rate in Hz
 
 		/// projection into the future added to the published tf to extend its
 		/// validity
-		double transform_tolerance;
+		double transform_tolerance = 0.1;
 
 		/// maximum time without updating we keep using filter time instead of
 		/// Time::now
-		double no_update_tolerance;
+		double no_update_tolerance = 1.0;
 
 		/// maximum time without any observation before start complaining
 		double no_inputs_tolerance;
@@ -76,8 +80,7 @@ class PFLocalizationNode : public rclcpp::Node
 		bool first_map_only;
 	};
 
-	PFLocalizationNode();
-	virtual ~PFLocalizationNode();
+   private:
 	void init();
 	void loop();
 	void callbackLaser(const sensor_msgs::msg::LaserScan&);
@@ -93,9 +96,6 @@ class PFLocalizationNode : public rclcpp::Node
 	void updateMap(const nav_msgs::msg::OccupancyGrid&);
 	void publishTF();
 	void publishPose();
-
-   private:
-	rclcpp::Node nh_;
 
 	bool first_map_received_ = false;
 
