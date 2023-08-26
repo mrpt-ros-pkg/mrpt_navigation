@@ -1,0 +1,80 @@
+# This file defines parameters to configure the settings of the class
+# PFLocalizationCore inside the ROS 2 package mrpt_pf_localization.
+# Refer to the package README.md and the comments below for the meaning of each
+# parameter.
+#
+# The two top-level entries are there so we can use this file as a ROS 2
+# parameter YAML file, but it can be also used directly to feed the internal
+# PFLocalizationCore class skipping those two top-level YAML maps, as done
+# in the unit tests (see "test/*.cpp")
+#
+mrpt_pf_localization_node:
+  ros__parameters:
+    # If false (default), will use 2D (SE(2)) particle filter.
+    # Otherwise,the 3D mode (SE(3)) is enabled.
+    use_se3_pf: false
+    
+    # Number of particles upon initialization.
+    initial_particle_count: 2500
+    
+    # Shows a live 3D window with the state of the PF, the map, sensors, etc.
+    gui_enable: true
+    gui_camera_follow_robot: true
+    
+    # For SE(2) mode: Uncertainty motion model for regular odometry-based motion
+    motion_model_2d:
+      ~
+    
+    # For SE(2) mode: Uncertainty motion model to use when NO odometry has
+    # been received.
+    motion_model_no_odom_2d:
+      ~
+    
+    # For SE(3) mode: Uncertainty motion model for regular odometry-based motion
+    motion_model_3d:
+      ~
+    
+    # For SE(3) mode: Uncertainty motion model to use when NO odometry has
+    # been received.
+    motion_model_no_odom_3d:
+      ~
+    
+    # Particle filter options:
+    # Refer to docs for: [TParticleFilterOptions](https://docs.mrpt.org/reference/latest/struct_mrpt_bayes_CParticleFilter_TParticleFilterOptions.html)
+    # -----------------------------------------------
+    pf_options:
+      # Perform adaptive sample size? (KLD algorithm)
+      adaptiveSampleSize: true
+      
+      # Resampling of particles will be performed when ESS < BETA. [0.0, 1.0]
+      BETA: 0.5
+      
+      # Options: pfStandardProposal | pfAuxiliaryPFStandard | pfOptimalProposal | pfAuxiliaryPFOptimal
+      PF_algorithm: pfStandardProposal
+      
+      # Options: prMultinomial | prResidual | prStratified | prSystematic
+      resamplingMethod: prMultinomial
+      
+      # For the next params, refer to the upstream docs above for TParticleFilterOptions
+      # (probably no need to change them)
+      pfAuxFilterOptimal_MaximumSearchSamples: 100
+      powFactor: 1.0
+      max_loglikelihood_dyn_range: 15
+      pfAuxFilterStandard_FirstStageWeightsMonteCarlo: false
+      pfAuxFilterOptimal_MLE: false
+    
+    # Dynamic sample size options.
+    # Refer to docs for [mrpt::slam::TKLDParams](https://docs.mrpt.org/reference/latest/class_mrpt_slam_TKLDParams.html)
+    # and to Dieter Fox's paper: 
+    #    Fox, D. (2003). Adapting the sample size in particle filters through
+    #    KLD-sampling. The international Journal of robotics research, 22(12), 985-1003.
+    # -----------------------------------------------------------------------------------
+    kld_options:
+      KLD_minSampleSize: 250
+      KLD_maxSampleSize: 5000
+      KLD_binSize_XY: 0.15    # [meters]
+      KLD_binSize_PHI: 0.17   # [radians]
+      KLD_delta: 0.01
+      KLD_epsilon: 0.02
+      KLD_minSamplesPerBin: 0
+    

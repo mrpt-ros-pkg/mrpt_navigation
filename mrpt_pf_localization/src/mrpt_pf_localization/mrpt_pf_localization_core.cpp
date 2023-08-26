@@ -76,6 +76,7 @@ void PFLocalizationCore::Parameters::load_from(
 	MCP_LOAD_OPT(params, gui_camera_follow_robot);
 
 	// motion_model_2d
+	MRPT_TODO("Load motion model params!");
 
 	// motion_model_no_odom_2d
 
@@ -126,13 +127,26 @@ void PFLocalizationCore::Parameters::load_from(
 	ASSERT_(params.has("pf_options"));
 	auto& pfo = params["pf_options"];
 	getOptParam(pfo, pf_options.BETA, "BETA");
-	getOptParam(pfo, pf_options.PF_algorithm, "PF_algorithm");
+
+	{
+		// Define these temporary variables to exploit the automatic conversion
+		// to/from enums in MCP_LOAD_OPT():
+		mrpt::bayes::CParticleFilter::TParticleFilterAlgorithm PF_algorithm =
+			pf_options.PF_algorithm;
+		MCP_LOAD_OPT(pfo, PF_algorithm);
+		pf_options.PF_algorithm = PF_algorithm;
+
+		mrpt::bayes::CParticleFilter::TParticleResamplingAlgorithm
+			resamplingMethod = pf_options.resamplingMethod;
+		MCP_LOAD_OPT(pfo, resamplingMethod);
+		pf_options.resamplingMethod = resamplingMethod;
+	}
+
 	getOptParam(pfo, pf_options.adaptiveSampleSize, "adaptiveSampleSize");
 	getOptParam(
 		pfo, pf_options.pfAuxFilterOptimal_MaximumSearchSamples,
 		"pfAuxFilterOptimal_MaximumSearchSamples");
 	getOptParam(pfo, pf_options.powFactor, "powFactor");
-	getOptParam(pfo, pf_options.resamplingMethod, "resamplingMethod");
 	getOptParam(
 		pfo, pf_options.max_loglikelihood_dyn_range,
 		"max_loglikelihood_dyn_range");
@@ -156,8 +170,8 @@ void PFLocalizationCore::Parameters::load_from(
 	//
 	MCP_LOAD_OPT(params, initial_particle_count);
 
-	// optional definition of metric map via .simplemap or .metricmap file or
-	// .yaml (ROS occupancy grid) map:
+	// The map is not loaded here, but from independent methods in the parent
+	// class.
 }
 
 void PFLocalizationCore::on_observation(const mrpt::obs::CObservation::Ptr& obs)
@@ -182,10 +196,7 @@ void PFLocalizationCore::step()
 		case State::TO_BE_INITIALIZED:
 			onStateToBeInitialized();
 			break;
-		case State::RUNNING_STILL:
-			onStateRunning();
-			break;
-		case State::RUNNING_MOVING:
+		case State::RUNNING:
 			onStateRunning();
 			break;
 
@@ -209,7 +220,7 @@ void PFLocalizationCore::onStateUninitialized()
 		// Move:
 		state_.fsm_state = State::TO_BE_INITIALIZED;
 
-		MRPT_LOG_WARN(
+		MRPT_LOG_INFO(
 			"Required configuration has been set, changing to "
 			"'State::TO_BE_INITIALIZED'");
 		return;
@@ -236,7 +247,7 @@ void PFLocalizationCore::onStateToBeInitialized()
 	_ = InternalState();
 
 	// fsm:
-	_.fsm_state = State::RUNNING_MOVING;
+	_.fsm_state = State::RUNNING;
 
 	// the map to use:
 	ASSERT_(params_.metric_map);
@@ -306,21 +317,50 @@ void PFLocalizationCore::onStateRunning()
 {
 	auto tle = mrpt::system::CTimeLoggerEntry(profiler_, "onStateRunning");
 
-	MRPT_TODO("handle the 'still' FSM state");
-
 	// Collect observations since last execution and build "action" and
 	// "observations" for the Bayes filter:
 	mrpt::obs::CSensoryFrame sf;  // sorted, and thread-safe copy of all obs.
 	mrpt::Clock::time_point sfLastTimeStamp;
 	{
+		// If we have multiple observations of the same sensor for this single
+		// PF step, discard all but the latest one.
+		// Temporary storage of observations:
+		std::map<std::string, mrpt::obs::CObservation::Ptr> obsByLabel;
+		std::map<std::string, std::string> obsClassByLabel;
+
 		auto lck = mrpt::lockHelper(pendingObsMtx_);
 		for (auto& o : state_.pendingObs)
 		{
 			if (!o) continue;  // who knows...users may be evil :-)
-			sf.insert(o);
 			sfLastTimeStamp = o->getTimeStamp();
+
+			const std::string thisObsClass = o->GetRuntimeClass()->className;
+
+			if (auto it = obsClassByLabel.find(o->sensorLabel);
+				it == obsClassByLabel.end())
+			{
+				obsByLabel[o->sensorLabel] = o;
+				obsClassByLabel[o->sensorLabel] = thisObsClass;
+			}
+			else
+			{
+				// Sanity check:
+				if (it->second != thisObsClass)
+				{
+					THROW_EXCEPTION_FMT(
+						"ERROR: Received two observations with "
+						"sensorLabel='%s' and different classes: '%s' vs '%s'",
+						o->sensorLabel.c_str(), it->second.c_str(),
+						thisObsClass.c_str());
+				}
+				// All is correct. Update last obs of this type:
+				obsByLabel[o->sensorLabel] = o;
+			}
 		}
 		state_.pendingObs.clear();
+
+		// Insert the last obs only for each type:
+		for (const auto& kv : obsByLabel) sf.insert(kv.second);
 	}
 
 	// Do we have *any* observation?
@@ -332,6 +372,8 @@ void PFLocalizationCore::onStateRunning()
 		// Default timestamp to "now":
 		sfLastTimeStamp = mrpt::Clock::now();
 	}
+
+	// --------------------------------------------
 
 	// "Action"
 	// ------------------------
@@ -345,8 +387,6 @@ void PFLocalizationCore::onStateRunning()
 		odomObs = o;
 	}
 
-	mrpt::obs::CActionCollection actions;
-
 	const bool is_3D = state_.pdf3d.has_value();
 
 	std::optional<mrpt::obs::CActionRobotMovement2D::Ptr> odomMove2D;
@@ -356,13 +396,11 @@ void PFLocalizationCore::onStateRunning()
 	{
 		odomMove3D.emplace(mrpt::obs::CActionRobotMovement3D::Create());
 		odomMove3D.value()->timestamp = sfLastTimeStamp;
-		actions.insertPtr(*odomMove3D);
 	}
 	else
 	{
 		odomMove2D.emplace(mrpt::obs::CActionRobotMovement2D::Create());
 		odomMove2D.value()->timestamp = sfLastTimeStamp;
-		actions.insertPtr(*odomMove2D);
 	}
 
 	// Use real odometry increments, or fake odom instead:
@@ -404,6 +442,12 @@ void PFLocalizationCore::onStateRunning()
 				params_.motion_model_no_odom_3d);
 		}
 	}
+
+	mrpt::obs::CActionCollection actions;
+	if (is_3D)
+		actions.insertPtr(*odomMove3D);
+	else
+		actions.insertPtr(*odomMove2D);
 
 	// Make sure params are up-to-date in the PF
 	// (they may change on-the-fly by users):

@@ -79,9 +79,8 @@ the main functionality. It features an internal finite state machine (FSM) with 
 * ``TO_BE_INITIALIZED``: Once the parameters have been loaded, and a map has been loaded 
   (or if subscribed to a map topic, the topic data has been received), the ``PFLocalizationCore`` 
   is put into this state by the node. Upon next "loop", the particles and data structures will be initialized.
-* ``RUNNING_MOVING``: Normal state. At each "loop", odometry (if present) is used together with sensors to
+* ``RUNNING``: Normal state. At each "loop", odometry (if present) is used together with sensors to
   localize the robot.
-* ``RUNNING_STILL``: If xxxx is set, the particles are not updated while odometry says the robot is not moving at all.
 
 
 ### ROS-related documentation

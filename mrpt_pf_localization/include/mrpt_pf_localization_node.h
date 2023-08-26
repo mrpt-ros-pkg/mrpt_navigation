@@ -9,6 +9,7 @@
 #pragma once
 
 #include <mrpt/obs/CObservationOdometry.h>
+#include <mrpt_pf_localization/mrpt_pf_localization_core.h>
 #include <tf2_ros/buffer.h>
 #include <tf2_ros/transform_broadcaster.h>
 #include <tf2_ros/transform_listener.h>
@@ -27,9 +28,6 @@
 #include <std_msgs/msg/header.hpp>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 
-#include "mrpt_pf_localization/mrpt_pf_localization_core.h"
-
-#define MRPT_LOCALIZATION_NODE_DEFAULT_RATE 10.0
 #define MRPT_LOCALIZATION_NODE_DEFAULT_PARAMETER_UPDATE_SKIP 1
 #define MRPT_LOCALIZATION_NODE_DEFAULT_PARTICLECLOUD_UPDATE_SKIP 5
 #define MRPT_LOCALIZATION_NODE_DEFAULT_MAP_UPDATE_SKIP 2
@@ -37,18 +35,14 @@
 using mrpt::obs::CObservationOdometry;
 
 /// ROS Node
-class PFLocalizationNode : public PFLocalization, public rclcpp::Node
+class PFLocalizationNode : public rclcpp::Node
 {
    public:
 	struct NodeParameters
 	{
-		// static const int MOTION_MODEL_GAUSSIAN = 0;
-		// static const int MOTION_MODEL_THRUN = 1;
 		NodeParameters();
 
-		void update(const unsigned long& loop_count);
-
-		double rate;
+		double rate_hz = 10.0;	//!< Execution rate in Hz
 
 		/// projection into the future added to the published tf to extend its
 		/// validity
@@ -68,11 +62,11 @@ class PFLocalizationNode : public PFLocalization, public rclcpp::Node
 
 		int map_update_skip;
 
-		std::string base_frame_id;
+		std::string base_frame_id = "base_link";
 
-		std::string odom_frame_id;
+		std::string odom_frame_id = "odom";
 
-		std::string global_frame_id;
+		std::string global_frame_id = "map";
 
 		bool update_while_stopped;
 		bool update_sensor_pose;
@@ -82,7 +76,7 @@ class PFLocalizationNode : public PFLocalization, public rclcpp::Node
 		bool first_map_only;
 	};
 
-	PFLocalizationNode(rclcpp::Node& n);
+	PFLocalizationNode();
 	virtual ~PFLocalizationNode();
 	void init();
 	void loop();

@@ -110,9 +110,9 @@ if(BUILD_TESTING)
   find_package(ament_cmake_gtest REQUIRED)
   ament_add_gtest(
     ${PROJECT_NAME}-test test/test_pf_localization.cpp
-    APPEND_ENV MRPT_LOCALIZATION_SOURCE_DIR=${CMAKE_SOURCE_DIR}
   )
   target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME}_core)
+  target_compile_definitions(${PROJECT_NAME}-test PRIVATE MRPT_LOCALIZATION_SOURCE_DIR=\"${CMAKE_SOURCE_DIR}\")
 
   find_package(ament_lint_auto REQUIRED)
 

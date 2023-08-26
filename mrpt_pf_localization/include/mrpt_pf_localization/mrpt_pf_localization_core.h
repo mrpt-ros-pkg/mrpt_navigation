@@ -48,6 +48,13 @@ class PFLocalizationCore : public mrpt::system::COutputLogger
 		Parameters();
 		~Parameters() = default;
 
+		/** initial pose used to intialize the filter.
+		 *  Empty=not set yet.
+		 */
+		std::optional<mrpt::poses::CPose3DPDFGaussian> initial_pose;
+
+		mrpt::maps::CMultiMetricMap::Ptr metric_map;  //!< Empty=uninitialized
+
 		/** Shows a custom MRPT GUI with the PF and map state
 		 *  Can be changed at any moment.
 		 */
@@ -87,11 +94,6 @@ class PFLocalizationCore : public mrpt::system::COutputLogger
 		mrpt::obs::CActionRobotMovement3D::TMotionModelOptions
 			motion_model_no_odom_3d;
 
-		/** initial pose used to intialize the filter.
-		 *  Empty=not set yet.
-		 */
-		std::optional<mrpt::poses::CPose3DPDFGaussian> initial_pose;
-
 		/** All the PF parameters: algorithm, number of samples, dynamic
 		 * samples, etc.
 		 * Can be changed while state = UNINITIALIZED.
@@ -108,8 +110,6 @@ class PFLocalizationCore : public mrpt::system::COutputLogger
 		 */
 		unsigned int initial_particle_count = 2000;
 
-		mrpt::maps::CMultiMetricMap::Ptr metric_map;  //!< Empty=uninitialized
-
 		/// This method loads all parameters from the YAML, except the
 		/// metric_map (handled in parent class):
 		void load_from(const mrpt::containers::yaml& params);
@@ -124,8 +124,8 @@ class PFLocalizationCore : public mrpt::system::COutputLogger
 		/// Next iteration must create samples at the initial pose PDF. All
 		/// parameters and map(s) are correctly loaded.
 		TO_BE_INITIALIZED,
-		/// Running as usual, the robot is moving.
-		RUNNING_MOVING,
+		/// Running as usual, the robot can move and particles will update.
+		RUNNING,
 		/// Special case: the robot is known to be stopped, do not update the
 		/// particles.
 		RUNNING_STILL
@@ -167,6 +167,9 @@ class PFLocalizationCore : public mrpt::system::COutputLogger
 
 	// TODO: Getters
 	State getState() const { return state_.fsm_state; }
+
+	/** Returns a *copy* (it is intentional) of the parameters at this moment */
+	const Parameters getParams() { return params_; }
 
 	/** @} */
 
