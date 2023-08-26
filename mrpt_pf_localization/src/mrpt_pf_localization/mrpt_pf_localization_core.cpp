@@ -174,6 +174,11 @@ void PFLocalizationCore::Parameters::load_from(
 	// class.
 }
 
+PFLocalizationCore::PFLocalizationCore()
+	: mrpt::system::COutputLogger("mrpt_pf_localization")
+{
+}
+
 void PFLocalizationCore::on_observation(const mrpt::obs::CObservation::Ptr& obs)
 {
 	auto tle = mrpt::system::CTimeLoggerEntry(profiler_, "on_observation");

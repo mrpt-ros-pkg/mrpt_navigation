@@ -99,7 +99,7 @@ PFLocalizationNode::PFLocalizationNode(const rclcpp::NodeOptions& options)
 
 	// Create timer:
 	// ------------------------------------------
-	this->create_wall_timer(
+	timer_ = this->create_wall_timer(
 		std::chrono::microseconds(mrpt::round(1.0e6 / nodeParams_.rate_hz)),
 		[this]() { this->loop(); });
 }
@@ -140,9 +140,17 @@ void PFLocalizationNode::reload_params_from_ros()
 			const std::string childKey = name.substr(pos + 1);
 			name = childKey;
 
-			// Create YAML node:
-			(*targetYamlNode)[parentKey] = mrpt::containers::yaml::Map();
-			targetYamlNode = &(*targetYamlNode)[parentKey].asMap();
+			// Use subnode:
+			if (auto it = targetYamlNode->find(parentKey);
+				it == targetYamlNode->end())
+			{  // create new:
+				(*targetYamlNode)[parentKey] = mrpt::containers::yaml::Map();
+				targetYamlNode = &(*targetYamlNode)[parentKey].asMap();
+			}
+			else
+			{  // reuse
+				targetYamlNode = &it->second.asMap();
+			}
 		}
 
 		// Get param value:

@@ -88,6 +88,8 @@ class PFLocalizationNode : public rclcpp::Node
    private:
 	PFLocalizationCore core_;
 
+	rclcpp::TimerBase::SharedPtr timer_;
+
 	///
 	void reload_params_from_ros();
 

@@ -36,7 +36,7 @@
 class PFLocalizationCore : public mrpt::system::COutputLogger
 {
    public:
-	PFLocalizationCore() = default;
+	PFLocalizationCore();
 	virtual ~PFLocalizationCore() = default;
 
 	/** Parameters the filter will use to initialize or to run.
