@@ -727,3 +727,12 @@ void PFLocalizationCore::update_gui(const CSensoryFrame& sf)
 	// Update:
 	win3D_->forceRepaint();
 }
+
+void PFLocalizationCore::relocalize_here(
+	const mrpt::poses::CPose3DPDFGaussian& pose)
+{
+	auto lck = mrpt::lockHelper(stateMtx_);
+
+	params_.initial_pose.emplace(pose);
+	state_.fsm_state = State::TO_BE_INITIALIZED;
+}

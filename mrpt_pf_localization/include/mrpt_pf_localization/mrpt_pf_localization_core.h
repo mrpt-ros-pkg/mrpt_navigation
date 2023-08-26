@@ -165,6 +165,8 @@ class PFLocalizationCore : public mrpt::system::COutputLogger
 		const std::string& map_config_ini_file,
 		const std::string& simplemap_file);
 
+	void relocalize_here(const mrpt::poses::CPose3DPDFGaussian& pose);
+
 	// TODO: Getters
 	State getState() const { return state_.fsm_state; }
 
