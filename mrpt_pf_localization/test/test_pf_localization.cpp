@@ -8,12 +8,13 @@
 
 #include <gtest/gtest.h>
 #include <mrpt/containers/yaml.h>
+#include <mrpt/core/get_env.h>
 #include <mrpt/obs/CRawlog.h>
 #include <mrpt_pf_localization/mrpt_pf_localization_core.h>
 
 #include <thread>
 
-//#define RUN_TESTS_WITH_GUI
+const bool RUN_TESTS_WITH_GUI = mrpt::get_env("RUN_TESTS_WITH_GUI", false);
 
 const char* TEST_PARAMS_YAML_FILE =
 	MRPT_LOCALIZATION_SOURCE_DIR "/params/default.config.yaml";
@@ -21,11 +22,11 @@ const char* TEST_PARAMS_YAML_FILE =
 const char* TEST_MAP_CONFIG_FILE =
 	MRPT_LOCALIZATION_SOURCE_DIR "/params/map-occgrid2d.ini";
 
-const char* TEST_SIMPLEMAP_FILE =
-	MRPT_LOCALIZATION_SOURCE_DIR "/tutorial/map.simplemap";
+const char* TEST_SIMPLEMAP_FILE = MRPT_LOCALIZATION_SOURCE_DIR
+	"/../mrpt_tutorials/maps/gh25_simulated.simplemap";
 
-const char* TEST_RAWLOG_FILE =
-	MRPT_LOCALIZATION_SOURCE_DIR "/tutorial/driving_in_office_obs.rawlog";
+const char* TEST_RAWLOG_FILE = MRPT_LOCALIZATION_SOURCE_DIR
+	"/../mrpt_tutorials/datasets/driving_in_office_obs.rawlog";
 
 TEST(PF_Localization, InitState)
 {
@@ -44,12 +45,13 @@ TEST(PF_Localization, RunRealDataset)
 
 	auto p = mrpt::containers::yaml::FromFile(TEST_PARAMS_YAML_FILE);
 	mrpt::containers::yaml params =
-		p["mrpt_pf_localization_node"]["ros__parameters"];
+		p["mrpt_pf_localization"]["ros__parameters"];
 
-#if !defined(RUN_TESTS_WITH_GUI)
-	// For running tests, disable GUI (comment out to see the GUI live):
-	params["gui_enable"] = false;
-#endif
+	if (!RUN_TESTS_WITH_GUI)
+	{
+		// For running tests, disable GUI (comment out to see the GUI live):
+		params["gui_enable"] = false;
+	}
 
 	// Load params:
 	loc.init_from_yaml(params);
