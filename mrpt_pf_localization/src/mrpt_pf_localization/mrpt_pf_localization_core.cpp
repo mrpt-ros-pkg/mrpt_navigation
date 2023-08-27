@@ -90,14 +90,14 @@ void PFLocalizationCore::Parameters::load_from(
 		using mrpt::square;
 
 		ASSERT_(params["initial_pose"].isMap());
-		ASSERT_(params["initial_pose"]["mean"].isMap());
+		ASSERT_(params["initial_pose"].has("mean"));
 		ASSERT_(params["initial_pose"]["mean"]["x"].isScalar());
 		ASSERT_(params["initial_pose"]["mean"]["y"].isScalar());
 		ASSERT_(params["initial_pose"]["std_x"].isScalar());
 		ASSERT_(params["initial_pose"]["std_y"].isScalar());
 
-		auto ipP = params["initial_pose"];
-		auto m = ipP["mean"];
+		const auto& ipP = params["initial_pose"];
+		const auto& m = ipP["mean"];
 		auto& ip = initial_pose;
 		ip.emplace();
 		ip->mean.x(m["x"].as<double>());

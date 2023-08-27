@@ -45,7 +45,7 @@ TEST(PF_Localization, RunRealDataset)
 
 	auto p = mrpt::containers::yaml::FromFile(TEST_PARAMS_YAML_FILE);
 	mrpt::containers::yaml params =
-		p["mrpt_pf_localization"]["ros__parameters"];
+		p["mrpt_pf_localization_node"]["ros__parameters"];
 
 	if (!RUN_TESTS_WITH_GUI)
 	{

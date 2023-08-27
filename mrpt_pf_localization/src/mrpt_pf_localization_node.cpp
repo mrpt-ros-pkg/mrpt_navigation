@@ -36,6 +36,32 @@ PFLocalizationNode::PFLocalizationNode(const rclcpp::NodeOptions& options)
 {
 	using std::placeholders::_1;
 
+	// Redirect MRPT logger to ROS logger:
+	core_.logging_enable_console_output = false;  // No console, go thru ROS
+	core_.logRegisterCallback(
+		[this](
+			std::string_view msg, const mrpt::system::VerbosityLevel level,
+			[[maybe_unused]] std::string_view loggerName,
+			[[maybe_unused]] const mrpt::Clock::time_point timestamp) {
+			switch (level)
+			{
+				case mrpt::system::LVL_DEBUG:
+					RCLCPP_DEBUG_STREAM(this->get_logger(), msg);
+					break;
+				case mrpt::system::LVL_INFO:
+					RCLCPP_INFO_STREAM(this->get_logger(), msg);
+					break;
+				case mrpt::system::LVL_WARN:
+					RCLCPP_WARN_STREAM(this->get_logger(), msg);
+					break;
+				case mrpt::system::LVL_ERROR:
+					RCLCPP_ERROR_STREAM(this->get_logger(), msg);
+					break;
+				default:
+					break;
+			};
+		});
+
 	// Create all publishers and subscribers:
 	// ------------------------------------------
 	sub_init_pose_ = this->create_subscription<
@@ -176,7 +202,7 @@ void PFLocalizationNode::reload_params_from_ros()
 		}
 	}
 
-	paramsBlock.printAsYAML();
+	// paramsBlock.printAsYAML();
 
 	core_.init_from_yaml(paramsBlock);
 

@@ -90,9 +90,16 @@ the main functionality. It features an internal finite state machine (FSM) with 
 
 
 ### ROS 2 parameters
-* ``initial_pose``: The initial pose mean and covariance. If using an occupancy gridmap, particles will be distributed
-  along free space cells only.
-* xxx
+
+There is a core set of parameters to configure the particle filter algorithm itself,
+which is self-documented in the provided template parameters yaml file:
+[params/default.config.yaml](params/default.config.yaml).
+Please, read that file and its comments for details.
+
+If the ``initial_pose`` parameter is provided, and there is an occupancy gridmap, particles will be distributed
+along free space cells only. Otherwise, they will be distributed in the box that circumscribes the confidence interval
+of mean ±1 sigma of the uncertainty.
+
 
 ### Subscribed topics
 * xxx
