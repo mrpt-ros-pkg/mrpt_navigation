@@ -6,8 +6,11 @@
    * [Demos](#demos)
    * [Node: mrpt_pf_localization](#node-mrpt_pf_localization)
       * [Working rationale](#working-rationale)
-      * [ROS-related documentation](#ros-related-documentation)
+      * [ROS 2 parameters:](#ros-2-parameters)
+      * [Subscribed topics:](#subscribed-topics)
+      * [Published topics:](#published-topics)
 
+<!-- Created by https://github.com/ekalinin/github-markdown-toc -->
 
 
 ## Overview
@@ -83,16 +86,14 @@ the main functionality. It features an internal finite state machine (FSM) with 
   localize the robot.
 
 
-### ROS-related documentation
-
-Parameters:
+### ROS 2 parameters:
 * ``initial_pose``: The initial pose mean and covariance. If using an occupancy gridmap, particles will be distributed
   along free space cells only.
 * xxx
 
-Subscribed topics:
+### Subscribed topics:
 * xxx
 
-Published topics:
+### Published topics:
 * xxx
 
