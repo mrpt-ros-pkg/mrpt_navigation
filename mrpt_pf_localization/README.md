@@ -4,14 +4,17 @@
    * [Overview](#overview)
    * [Related papers](#related-papers)
    * [Demos](#demos)
+      * [2D LIDAR localization with a gridmap](#2d-lidar-localization-with-a-gridmap)
+      * [Range-only (RO) localization with a set of fixed, known radio beacons](#range-only-ro-localization-with-a-set-of-fixed-known-radio-beacons)
    * [Node: mrpt_pf_localization](#node-mrpt_pf_localization)
       * [Working rationale](#working-rationale)
-      * [ROS 2 parameters:](#ros-2-parameters)
-      * [Subscribed topics:](#subscribed-topics)
-      * [Published topics:](#published-topics)
+      * [ROS 2 parameters](#ros-2-parameters)
+      * [Subscribed topics](#subscribed-topics)
+      * [Published topics](#published-topics)
+      * [Template ROS 2 launch files](#template-ros-2-launch-files)
 
 <!-- Created by https://github.com/ekalinin/github-markdown-toc -->
-
+<!-- Regenerate with: gh-md-toc README.md -->
 
 ## Overview
 This package provides a ROS 2 node for self-localization using 2D or 3D (SE(2) or SE(3))
@@ -86,14 +89,17 @@ the main functionality. It features an internal finite state machine (FSM) with 
   localize the robot.
 
 
-### ROS 2 parameters:
+### ROS 2 parameters
 * ``initial_pose``: The initial pose mean and covariance. If using an occupancy gridmap, particles will be distributed
   along free space cells only.
 * xxx
 
-### Subscribed topics:
+### Subscribed topics
 * xxx
 
-### Published topics:
+### Published topics
+* xxx
+
+### Template ROS 2 launch files
 * xxx
 
