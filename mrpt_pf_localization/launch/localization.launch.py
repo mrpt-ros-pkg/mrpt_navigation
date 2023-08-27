@@ -2,7 +2,9 @@
 # ROS 2 launch file for mrpt_pf_localization
 #
 # This launch file has the following configurable launch arguments:
-# - 
+# - mrpt_map_config_file
+# - mrpt_simplemap_file
+# - pf_params_file
 #
 
 

@@ -108,5 +108,15 @@ of mean ±1 sigma of the uncertainty.
 * xxx
 
 ### Template ROS 2 launch files
-* xxx
+
+This package provides [launch/localization.launch.py](launch/localization.launch.py):
+
+    ros2 launch mrpt_pf_localization localization.launch.py
+
+which can be used in user projects to launch the MRPT PF localization node, by setting this [launch arguments](https://docs.ros.org/en/rolling/Tutorials/Intermediate/Launch/Using-Substitutions.html):
+
+* ``mrpt_map_config_file`` and ``mrpt_simplemap_file``: If used together, they select an MRPT map to be loaded using option 2 in the documentation above.
+* ``pf_params_file`` (Default: [params/default.config.yaml](params/default.config.yaml)): If defined, overrides the default
+particle filter algorithm. Note that probabilistic likelihood models for the metric maps are in an independent file (``mrpt_map_config_file``).
+
 
