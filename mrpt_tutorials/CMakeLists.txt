@@ -10,6 +10,7 @@ install(DIRECTORY
   gazebo
   launch
   maps
+  rviz2
   DESTINATION share/${PROJECT_NAME}
 )
 

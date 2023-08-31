@@ -73,7 +73,7 @@ install(TARGETS map_server_node
 
 install(DIRECTORY
   launch
-  tutorial
+  params
   DESTINATION share/${PROJECT_NAME}
 )
 

@@ -1,4 +1,3 @@
-
 # ROS 2 launch file for mrpt_pf_localization
 #
 # See the docs on the configurable launch arguments for this file in:
@@ -26,6 +25,9 @@ def generate_launch_description():
     mrpt_simplemap_file_launch_arg = DeclareLaunchArgument(
         "mrpt_simplemap_file", default_value='')
 
+    mrpt_metricmap_file_launch_arg = DeclareLaunchArgument(
+        "mrpt_metricmap_file", default_value='')
+
     pf_params_file_launch_arg = DeclareLaunchArgument(
         "pf_params_file", default_value=TextSubstitution(
             text=os.path.join(pfLocDir, 'params', 'default.config.yaml')))
@@ -40,12 +42,14 @@ def generate_launch_description():
             {
                 "mrpt_map_config_file": LaunchConfiguration('mrpt_map_config_file'),
                 "mrpt_simplemap_file": LaunchConfiguration('mrpt_simplemap_file'),
+                "mrpt_metricmap_file": LaunchConfiguration('mrpt_metricmap_file'),
             }]
     )
 
     return LaunchDescription([
         mrpt_map_config_file_launch_arg,
         mrpt_simplemap_file_launch_arg,
+        mrpt_metricmap_file_launch_arg,
         pf_params_file_launch_arg,
         pf_localization_node
     ])

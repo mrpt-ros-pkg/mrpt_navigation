@@ -60,5 +60,20 @@ None.
 * ``pub_metadata`` (``nav_msgs::msg::MapMetaData``)
 
 ### Template ROS 2 launch files
-* xxx
 
+This package provides [launch/mrpt_map_server.launch.py](launch/mrpt_map_server.launch.py):
+
+    ros2 launch mrpt_map mrpt_map_server.launch.py
+
+which can be used in user projects to launch the MRPT map server node, by setting these [launch arguments](https://docs.ros.org/en/rolling/Tutorials/Intermediate/Launch/Using-Substitutions.html):
+
+* ``xxx``
+
+
+## Demos
+
+Launch an map server from a ROS yaml gridmap ([launch file](../mrpt_tutorials/launch/demo_map_server_gridmap_from_yaml.launch.py)):
+
+```bash
+ros2 launch mrpt_tutorials demo_map_server_gridmap_from_yaml.launch.py
+```

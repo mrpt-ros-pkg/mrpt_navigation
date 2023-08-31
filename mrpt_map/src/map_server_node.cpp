@@ -29,14 +29,14 @@ void MapServer::init()
 {
 	this->declare_parameter<bool>("debug", false);
 	this->get_parameter("debug", m_debug);
-	RCLCPP_INFO(this->get_logger(), "debug: %s", m_debug ? "true" : "false");
+	RCLCPP_INFO(this->get_logger(), "debug: '%s'", m_debug ? "true" : "false");
 
 	mrpt::maps::COccupancyGridMap2D::Ptr grid;
 	std::string map_yaml_file;
 	this->declare_parameter<std::string>("map_yaml_file", "");
 	this->get_parameter("map_yaml_file", map_yaml_file);
 	RCLCPP_INFO(
-		this->get_logger(), "map_yaml_file name: %s", map_yaml_file.c_str());
+		this->get_logger(), "map_yaml_file name: '%s'", map_yaml_file.c_str());
 
 	if (!map_yaml_file.empty())
 	{
@@ -51,11 +51,12 @@ void MapServer::init()
 		this->declare_parameter<std::string>("ini_file", "map.ini");
 		this->get_parameter("ini_file", ini_file);
 		RCLCPP_INFO(
-			this->get_logger(), "map_ini_file name: %s", ini_file.c_str());
+			this->get_logger(), "map_ini_file name: '%s'", ini_file.c_str());
 
 		this->declare_parameter<std::string>("map_file", "map.simplemap");
 		this->get_parameter("map_file", map_file);
-		RCLCPP_INFO(this->get_logger(), "map_file name: %s", map_file.c_str());
+		RCLCPP_INFO(
+			this->get_logger(), "map_file name: '%s'", map_file.c_str());
 
 		ASSERT_FILE_EXISTS_(ini_file);
 		ASSERT_FILE_EXISTS_(map_file);
@@ -75,7 +76,7 @@ void MapServer::init()
 	this->declare_parameter<std::string>("frame_id", "map");
 	this->get_parameter("frame_id", m_response_ros.map.header.frame_id);
 	RCLCPP_INFO(
-		this->get_logger(), "frame_id: %s",
+		this->get_logger(), "frame_id: '%s'",
 		m_response_ros.map.header.frame_id.c_str());
 
 	this->declare_parameter<double>("frequency", 0.1);
@@ -85,17 +86,17 @@ void MapServer::init()
 	this->declare_parameter<std::string>("pub_map_ros", "map");
 	this->get_parameter("pub_map_ros", m_pub_map_ros_str);
 	RCLCPP_INFO(
-		this->get_logger(), "pub_map_ros: %s", m_pub_map_ros_str.c_str());
+		this->get_logger(), "pub_map_ros: '%s'", m_pub_map_ros_str.c_str());
 
 	this->declare_parameter<std::string>("pub_metadata", "map_metadata");
 	this->get_parameter("pub_metadata", m_pub_metadata_str);
 	RCLCPP_INFO(
-		this->get_logger(), "pub_metadata: %s", m_pub_metadata_str.c_str());
+		this->get_logger(), "pub_metadata: '%s'", m_pub_metadata_str.c_str());
 
 	this->declare_parameter<std::string>("service_map", "static_map");
 	this->get_parameter("service_map", m_service_map_str);
 	RCLCPP_INFO(
-		this->get_logger(), "service_map: %s", m_service_map_str.c_str());
+		this->get_logger(), "service_map: '%s'", m_service_map_str.c_str());
 
 	m_pub_map_ros = this->create_publisher<nav_msgs::msg::OccupancyGrid>(
 		m_pub_map_ros_str, 1);

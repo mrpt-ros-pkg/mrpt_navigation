@@ -1,3 +1,9 @@
+# ROS 2 launch file for mrpt_map
+#
+# See the docs on the configurable launch arguments for this file in:
+# https://github.com/mrpt-ros-pkg/mrpt_navigation/tree/ros2/mrpt_map#template-ros-2-launch-files
+#
+
 import os
 from launch import LaunchDescription
 from launch_ros.actions import Node
@@ -6,31 +12,32 @@ from launch.substitutions import LaunchConfiguration
 from ament_index_python.packages import get_package_share_directory
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 
+
 def generate_launch_description():
-    
+
     mrpt_map_pkg_dir = get_package_share_directory('mrpt_map')
     map_yaml_file_arg = DeclareLaunchArgument(
-        'map_yaml_file', 
-        default_value = ''
+        'map_yaml_file', default_value=''
     )
     ini_file_arg = DeclareLaunchArgument(
-        'ini_file', 
-        default_value=os.path.join(mrpt_map_pkg_dir, 'tutorial/map.ini')
+        'ini_file',
+        default_value=os.path.join(
+            mrpt_map_pkg_dir, 'params/metric-map-gridmap.ini')
     )
     map_file_arg = DeclareLaunchArgument(
-        'map_file', 
-        default_value=os.path.join(mrpt_map_pkg_dir, 'tutorial/map.simplemap')
+        'map_file',
+        default_value=''
     )
     frame_id_arg = DeclareLaunchArgument(
-        'frame_id', 
+        'frame_id',
         default_value='map'
     )
     frequency_arg = DeclareLaunchArgument(
-        'frequency', 
+        'frequency',
         default_value='1.0'
     )
     debug_arg = DeclareLaunchArgument(
-        'debug', 
+        'debug',
         default_value='False'
     )
 
@@ -49,7 +56,7 @@ def generate_launch_description():
             {'debug': LaunchConfiguration('debug')},
             {'pub_map_ros': '/map'},
             {'pub_metadata': '/map_metadata'},
-            {'service_map': 'static_map'}  
+            {'service_map': 'static_map'}
         ],
     )
 
