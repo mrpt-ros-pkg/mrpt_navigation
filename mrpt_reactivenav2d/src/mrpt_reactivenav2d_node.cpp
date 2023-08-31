@@ -236,7 +236,8 @@ void ReactiveNav2DNode::read_parameters()
 
 	this->declare_parameter<bool>("save_nav_log", false);
 	this->get_parameter("save_nav_log", m_save_nav_log);
-	RCLCPP_INFO(this->get_logger(), "save_nav_log: %b", m_save_nav_log);
+	RCLCPP_INFO(
+		this->get_logger(), "save_nav_log: %s", m_save_nav_log ? "yes" : "no");
 
 	this->declare_parameter<std::string>("ptg_plugin_files", "");
 	this->get_parameter("ptg_plugin_files", m_plugin_file);
