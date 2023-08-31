@@ -1,12 +1,9 @@
 
 # ROS 2 launch file for mrpt_pf_localization
 #
-# This launch file has the following configurable launch arguments:
-# - mrpt_map_config_file
-# - mrpt_simplemap_file
-# - pf_params_file
+# See the docs on the configurable launch arguments for this file in:
+# https://github.com/mrpt-ros-pkg/mrpt_navigation/tree/ros2/mrpt_pf_localization#template-ros-2-launch-files
 #
-
 
 from launch import LaunchDescription
 from launch.substitutions import TextSubstitution
@@ -19,14 +16,15 @@ import os
 
 def generate_launch_description():
     pfLocDir = get_package_share_directory("mrpt_pf_localization")
-    #print('pfLocDir       : ' + pfLocDir)
+    # print('pfLocDir       : ' + pfLocDir)
 
     # args that can be set from the command line or a default will be used
     mrpt_map_config_file_launch_arg = DeclareLaunchArgument(
         "mrpt_map_config_file", default_value=TextSubstitution(
             text=os.path.join(pfLocDir, 'params', 'map-occgrid2d.ini')))
 
-    mrpt_simplemap_file_launch_arg = DeclareLaunchArgument("mrpt_simplemap_file", default_value='')
+    mrpt_simplemap_file_launch_arg = DeclareLaunchArgument(
+        "mrpt_simplemap_file", default_value='')
 
     pf_params_file_launch_arg = DeclareLaunchArgument(
         "pf_params_file", default_value=TextSubstitution(

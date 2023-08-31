@@ -1,5 +1,17 @@
 # mrpt_map
 
+* [mrpt_map](#mrpt_map)
+   * [Overview](#overview)
+   * [Node: mrpt_map_server](#node-mrpt_map_server)
+      * [Working rationale](#working-rationale)
+      * [ROS Parameters](#ros-parameters)
+      * [Subscribed topics](#subscribed-topics)
+      * [Published topics](#published-topics)
+      * [Template ROS 2 launch files](#template-ros-2-launch-files)
+
+<!-- Created by https://github.com/ekalinin/github-markdown-toc -->
+<!-- Regenerate with: gh-md-toc README.md -->
+
 ## Overview
 This package provides a ROS 2 node that publishes a static **map** for other nodes to use it.
 Unlike classic ROS 1 ``map_server``, this node can publish a range of different metric maps, not only occupancy grids.

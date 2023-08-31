@@ -115,7 +115,8 @@ This package provides [launch/localization.launch.py](launch/localization.launch
 
 which can be used in user projects to launch the MRPT PF localization node, by setting this [launch arguments](https://docs.ros.org/en/rolling/Tutorials/Intermediate/Launch/Using-Substitutions.html):
 
-* ``mrpt_map_config_file`` and ``mrpt_simplemap_file``: If used together, they select an MRPT map to be loaded using option 2 in the documentation above.
+* ``mrpt_map_config_file`` and ``mrpt_simplemap_file``: If used together, they select an MRPT map to be loaded as
+  reference map for the localization algorithm. These two files work as described in ["format 2"](https://github.com/mrpt-ros-pkg/mrpt_navigation/tree/ros2/mrpt_map#working-rationale) in the docs for ``mrpt_map``.
 * ``pf_params_file`` (Default: [params/default.config.yaml](params/default.config.yaml)): If defined, overrides the default
 particle filter algorithm. Note that probabilistic likelihood models for the metric maps are in an independent file (``mrpt_map_config_file``).
 
