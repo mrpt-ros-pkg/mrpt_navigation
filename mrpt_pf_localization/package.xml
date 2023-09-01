@@ -33,6 +33,7 @@
   <depend>pose_cov_ops</depend>
 
   <depend>ament_lint_common</depend>
+  <depend>ament_lint_auto</depend>
 
   <test_depend>mrpt_tutorials</test_depend>
 

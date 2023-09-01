@@ -26,6 +26,7 @@
   <!-- <depend>marker_msgs</depend> -->  <!-- Re-enable when available in all ROS 2 distros -->
 
   <depend>ament_lint_common</depend>
+  <depend>ament_lint_auto</depend>
 
   <export>
     <build_type>ament_cmake</build_type>
