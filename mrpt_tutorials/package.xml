@@ -13,6 +13,7 @@
   <buildtool_depend>ament_cmake</buildtool_depend>
 
   <exec_depend>teleop_twist_keyboard</exec_depend>
+  <exec_depend>mvsim</exec_depend>
 
   <depend>ament_lint_common</depend>
 

@@ -20,13 +20,35 @@ def generate_launch_description():
     # Launch for pf_localization:
     pf_localization_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource([os.path.join(
-            get_package_share_directory('mrpt_pf_localization'), 'launch'),
-            'localization.launch.py']),
+            get_package_share_directory('mrpt_pf_localization'), 'launch',
+            'localization.launch.py')]),
         launch_arguments={
             'mrpt_metricmap_file': os.path.join(tutsDir, '', ''),
         }.items()
     )
 
+    mvsim_node = Node(
+        package='mvsim',
+        executable='mvsim_node',
+        name='mvsim',
+        output='screen',
+        parameters=[
+            os.path.join(tutsDir, 'params', 'mvsim_ros2_params.yaml'),
+            {
+                "world_file": os.path.join(tutsDir, 'mvsim', 'demo_world2.world.xml'),
+            }]
+    )
+
+    rviz2_node = Node(
+        package='rviz2',
+        executable='rviz2',
+        name='rviz2',
+        arguments=[
+                '-d', [os.path.join(tutsDir, 'rviz2', 'gridmap.rviz')]]
+    )
+
     return LaunchDescription([
-        pf_localization_launch
+        pf_localization_launch,
+        mvsim_node,
+        rviz2_node,
     ])

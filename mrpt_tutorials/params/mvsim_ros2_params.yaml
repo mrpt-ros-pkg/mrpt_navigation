@@ -1,0 +1,12 @@
+# ROS2 parameter files for same-name launch "*.launch.py"
+mvsim:
+  ros__parameters:
+    #world_file: overrdian via launch parameter
+    do_fake_localization: true     # publish tf odom -> base_link
+    publisher_history_len: 100     # history window length of publishers
+    show_gui: true
+    use_sim_time: false
+    #realtime_factor: 1.0
+    #base_watchdog_timeout: 0.5    # [s]
+    #gui_refresh_period: 100       # [ms]
+    #period_ms_publish_tf: 20      # [ms]
