@@ -50,16 +50,17 @@ automatically **fused together**.
 
 ## Demos
 
-### 2D LIDAR localization with a gridmap
+### 2D LIDAR localization with a gridmap and MVSim
 Run:
 
-    ros2 launch mrpt_pf_localization demo.launch
+    ros2 launch mrpt_tutorials demo_localization_pf_mvsim_2d_lidar.launch.py
 
 to start:
 
-* a rosbag including tf and laser scan data,
-* the mrpt localization with a mrpt map
-* RViz for visualization
+* ``mrpt_pf_localization`` with the map to be received via a ROS topic,
+* ``mrpt_map`` server loading and publishing a gridmap as reference map via an ROS-styled ``map.yaml`` file,
+* ``rviz2`` for visualization,
+* ``mvsim`` to simulate a live robot that can be teleoperated.
 
 ### Range-only (RO) localization with a set of fixed, known radio beacons
 Run:

@@ -21,7 +21,7 @@
 		<file>../maps/demo_world2.yaml</file>
 	</element>
 
-	<variable name="DEFS_DIR" value="$(ros2 pkg prefix mvsim)/share/mvsim/mvsim_tutorial/definitions"/>
+	<variable name="DEFS_DIR" value="$(ros2 pkg prefix mvsim)/share/mvsim/definitions"/>
 
 	<!-- =============================
 		   Vehicle classes definition

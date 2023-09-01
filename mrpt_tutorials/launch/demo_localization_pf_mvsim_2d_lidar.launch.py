@@ -27,6 +27,15 @@ def generate_launch_description():
         }.items()
     )
 
+    mrpt_map_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource([os.path.join(
+            get_package_share_directory('mrpt_map'), 'launch',
+            'mrpt_map_server.launch.py')]),
+        launch_arguments={
+            'map_yaml_file': os.path.join(tutsDir, 'maps', 'demo_world2.yaml'),
+        }.items()
+    )
+
     mvsim_node = Node(
         package='mvsim',
         executable='mvsim_node',
@@ -51,4 +60,5 @@ def generate_launch_description():
         pf_localization_launch,
         mvsim_node,
         rviz2_node,
+        mrpt_map_launch,
     ])

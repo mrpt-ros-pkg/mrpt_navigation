@@ -17,7 +17,6 @@ def generate_launch_description():
     tutsDir = get_package_share_directory("mrpt_tutorials")
     # print('tutsDir       : ' + tutsDir)
 
-    # Launch for pf_localization:
     mrpt_map_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource([os.path.join(
             get_package_share_directory('mrpt_map'), 'launch',
