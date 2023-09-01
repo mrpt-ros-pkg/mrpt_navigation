@@ -219,6 +219,8 @@ void PFLocalizationCore::reset()
 
 void PFLocalizationCore::onStateUninitialized()
 {
+	using namespace std::string_literals;
+
 	// Check if we have everything we need to get going:
 	if (params_.initial_pose.has_value() && params_.metric_map)
 	{
@@ -232,11 +234,15 @@ void PFLocalizationCore::onStateUninitialized()
 	}
 
 	// We don't have parameters / map yet. Do nothing:
+	std::string excuses;
+	if (!params_.initial_pose) excuses += "No initial pose. ";
+	if (!params_.metric_map) excuses += "No reference metric map. ";
+
 	MRPT_LOG_THROTTLE_WARN(
 		3.0,
-		"Doing nothing, since state is UNINITIALIZED yet. "
-		"Probably parameters or the map has not been loaded yet. Refer "
-		"to package documentation.");
+		"Doing nothing, state is UNINITIALIZED yet. "
+		"Excuses: "s +
+			excuses + "Refer to package documentation."s);
 }
 
 void PFLocalizationCore::onStateToBeInitialized()

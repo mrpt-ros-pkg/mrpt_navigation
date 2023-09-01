@@ -78,7 +78,7 @@ TEST(PF_Localization, RunRealDataset)
 	loc.step();
 	EXPECT_EQ(loc.getState(), PFLocalizationCore::State::RUNNING);
 
-	// TODO: Check that number of particles is high:
+	MRPT_TODO("Check that number of particles is high");
 
 	// Run for a small dataset:
 	mrpt::obs::CRawlog dataset;
@@ -104,6 +104,8 @@ TEST(PF_Localization, RunRealDataset)
 				std::this_thread::sleep_for(std::chrono::milliseconds(50));
 		}
 	}
+
+	MRPT_TODO("Check PF convergence to ground truth");
 }
 
 int main(int argc, char** argv)
