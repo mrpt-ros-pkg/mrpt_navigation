@@ -74,6 +74,7 @@ class PFLocalizationNode : public rclcpp::Node
 		std::string global_frame_id = "map";
 
 		std::string topic_initialpose = "/initialpose";
+		std::string topic_gridmap = "/map";
 
 		bool update_while_stopped;
 		bool update_sensor_pose;
@@ -113,6 +114,7 @@ class PFLocalizationNode : public rclcpp::Node
 	/** Sub for /initialpose */
 	rclcpp::Subscription<geometry_msgs::msg::PoseWithCovarianceStamped>::
 		SharedPtr sub_init_pose_;
+	rclcpp::Subscription<nav_msgs::msg::OccupancyGrid>::SharedPtr sub_gridmap_;
 
 	rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr sub_odometry_;
 
@@ -158,5 +160,4 @@ class PFLocalizationNode : public rclcpp::Node
 		nav_msgs::srv::GetMap::Request& req,
 		nav_msgs::srv::GetMap::Response& res);
 	void publishMap();
-	virtual bool waitForMap();
 };

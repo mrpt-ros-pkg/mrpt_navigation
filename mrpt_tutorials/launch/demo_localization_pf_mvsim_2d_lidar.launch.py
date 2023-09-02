@@ -24,6 +24,7 @@ def generate_launch_description():
             'localization.launch.py')]),
         launch_arguments={
             'mrpt_metricmap_file': os.path.join(tutsDir, '', ''),
+            'log_level': 'INFO',
         }.items()
     )
 

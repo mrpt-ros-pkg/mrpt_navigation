@@ -126,9 +126,6 @@ class PFLocalizationCore : public mrpt::system::COutputLogger
 		TO_BE_INITIALIZED,
 		/// Running as usual, the robot can move and particles will update.
 		RUNNING,
-		/// Special case: the robot is known to be stopped, do not update the
-		/// particles.
-		RUNNING_STILL
 	};
 
 	/** @name Main API
@@ -164,6 +161,12 @@ class PFLocalizationCore : public mrpt::system::COutputLogger
 	bool set_map_from_simple_map(
 		const std::string& map_config_ini_file,
 		const std::string& simplemap_file);
+
+	/** Defines the map to use from a multimetric map, which may contain
+	 * gridmaps, pointclouds, etc.
+	 */
+	void set_map_from_metric_map(
+		const mrpt::maps::CMultiMetricMap::Ptr& metricMap);
 
 	void relocalize_here(const mrpt::poses::CPose3DPDFGaussian& pose);
 

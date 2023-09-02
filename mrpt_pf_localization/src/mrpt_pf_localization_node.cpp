@@ -68,6 +68,11 @@ PFLocalizationNode::PFLocalizationNode(const rclcpp::NodeOptions& options)
 		geometry_msgs::msg::PoseWithCovarianceStamped>(
 		nodeParams_.topic_initialpose, 1,
 		std::bind(&PFLocalizationNode::callbackInitialpose, this, _1));
+
+	sub_gridmap_ = this->create_subscription<nav_msgs::msg::OccupancyGrid>(
+		nodeParams_.topic_gridmap, 1,
+		std::bind(&PFLocalizationNode::callbackMap, this, _1));
+
 #if 0
 	sub_odometry_ =
 		subscribe("odom", 1, &PFLocalizationNode::callbackOdometry, this);
@@ -452,66 +457,24 @@ void PFLocalizationNode::odometryForCallback(
 #endif
 }
 
-bool PFLocalizationNode::waitForMap()
-{
-#if 0
-	int wait_counter = 0;
-	int wait_limit = 10;
-
-	if (param()->use_map_topic)
-	{
-		sub_map_ = subscribe("map", 1, &PFLocalizationNode::callbackMap, this);
-		MRPT_LOG_INFO_FMT("Subscribed to map topic.");
-
-		while (!first_map_received_ && ros::ok() && wait_counter < wait_limit)
-		{
-			MRPT_LOG_INFO_FMT("waiting for map callback..");
-			ros::Duration(0.5).sleep();
-			ros::spinOnce();
-			wait_counter++;
-		}
-		if (wait_counter != wait_limit)
-		{
-			return true;
-		}
-	}
-	else
-	{
-		client_map_ = serviceClient<nav_msgs::GetMap>("static_map");
-		nav_msgs::GetMap srv;
-		while (!client_map_.call(srv) && ros::ok() && wait_counter < wait_limit)
-		{
-			MRPT_LOG_INFO_FMT("waiting for map service!");
-			ros::Duration(0.5).sleep();
-			wait_counter++;
-		}
-		client_map_.shutdown();
-		if (wait_counter != wait_limit)
-		{
-			MRPT_LOG_INFO_STREAM("Map service complete.");
-			updateMap(srv.response.map);
-			return true;
-		}
-	}
-
-	ROS_WARN_STREAM("No map received.");
-#endif
-	return false;
-}
-
 void PFLocalizationNode::callbackMap(const nav_msgs::msg::OccupancyGrid& msg)
 {
-#if 0
-	if (param()->first_map_only && first_map_received_)
+	RCLCPP_INFO(
+		get_logger(),
+		"[callbackMap] Just received an occupancy gridmap via a ROS topic");
+
+	auto mMap = mrpt::maps::CMultiMetricMap::Create();
+	auto grid = mrpt::maps::COccupancyGridMap2D::Create();
+
+	bool ok = mrpt::ros2bridge::fromROS(msg, *grid);
+	mMap->maps.push_back(grid);
+
+	if (!ok)
 	{
-		return;
+		RCLCPP_ERROR(get_logger(), "Error loading metric map from ROS topic.");
 	}
 
-	MRPT_LOG_INFO_STREAM("Map received.");
-	updateMap(msg);
-
-	first_map_received_ = true;
-#endif
+	core_.set_map_from_metric_map(mMap);
 }
 
 void PFLocalizationNode::updateSensorPose(std::string _frame_id)
@@ -810,18 +773,21 @@ void PFLocalizationNode::publishPose()
 
 void PFLocalizationNode::useROSLogLevel()
 {
-#if 0
-	// Set ROS log level also on MRPT internal log system; level enums are fully
-	// compatible
-	std::map<std::string, ros::console::levels::Level> loggers;
-	ros::console::get_loggers(loggers);
-	if (loggers.find("ros.roscpp") != loggers.end())
-		pdf_.setVerbosityLevel(
-			static_cast<VerbosityLevel>(loggers["ros.roscpp"]));
-	if (loggers.find("ros.mrpt_pf_localization") != loggers.end())
-		pdf_.setVerbosityLevel(
-			static_cast<VerbosityLevel>(loggers["ros.mrpt_pf_localization"]));
-#endif
+	const auto rosLogLevel =
+		rcutils_logging_get_logger_level(get_logger().get_name());
+
+	mrpt::system::VerbosityLevel lvl = core_.getMinLoggingLevel();
+
+	if (rosLogLevel <= RCUTILS_LOG_SEVERITY_DEBUG)	// 10
+		lvl = mrpt::system::LVL_DEBUG;
+	else if (rosLogLevel <= RCUTILS_LOG_SEVERITY_INFO)	// 20
+		lvl = mrpt::system::LVL_INFO;
+	else if (rosLogLevel <= RCUTILS_LOG_SEVERITY_WARN)	// 30
+		lvl = mrpt::system::LVL_WARN;
+	else if (rosLogLevel <= RCUTILS_LOG_SEVERITY_ERROR)	 // 40
+		lvl = mrpt::system::LVL_ERROR;
+
+	core_.setVerbosityLevel(lvl);
 }
 
 #if 0

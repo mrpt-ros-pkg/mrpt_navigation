@@ -303,17 +303,32 @@ void PFLocalizationCore::onStateToBeInitialized()
 		pMean.z() + nStds * stdZ, pMean.yaw() + nStds * stdYaw,
 		pMean.pitch() + nStds * stdPitch, pMean.roll() + nStds * stdRoll);
 
+	bool initDone = false;
+
 	if (auto gridMap = _.metric_map->mapByClass<COccupancyGridMap2D>();
 		gridMap && _.pdf2d)
 	{
 		// initialize over free space only:
-		const float gridFreenessThreshold = 0.7f;
-		_.pdf2d->resetUniformFreeSpace(
-			gridMap.get(), gridFreenessThreshold,
-			params_.initial_particle_count, pMin.x, pMax.x, pMin.y, pMax.y,
-			pMin.yaw, pMax.yaw);
+		try
+		{
+			const float gridFreenessThreshold = 0.7f;
+			_.pdf2d->resetUniformFreeSpace(
+				gridMap.get(), gridFreenessThreshold,
+				params_.initial_particle_count, pMin.x, pMax.x, pMin.y, pMax.y,
+				pMin.yaw, pMax.yaw);
+
+			initDone = true;
+		}
+		catch (const std::exception& e)
+		{
+			MRPT_LOG_ERROR_STREAM(
+				"Error trying to initialize over gridmap empty space, falling "
+				"back to provided initialPose. Error: "
+				<< e.what());
+		}
 	}
-	else
+
+	if (!initDone)
 	{
 		if (_.pdf2d)
 			_.pdf2d->resetUniform(
@@ -500,19 +515,48 @@ void PFLocalizationCore::onStateRunning()
 bool PFLocalizationCore::set_map_from_simple_map(
 	const std::string& map_config_ini_file, const std::string& simplemap_file)
 {
-	auto lck = mrpt::lockHelper(stateMtx_);
+	// No need to lock mutex, done in set_map_from_metric_map()
 
 	ASSERT_FILE_EXISTS_(map_config_ini_file);
 	ASSERT_FILE_EXISTS_(simplemap_file);
 
 	mrpt::config::CConfigFile cfg(map_config_ini_file);
 
-	params_.metric_map = mrpt::maps::CMultiMetricMap::Create();
+	auto newMap = mrpt::maps::CMultiMetricMap::Create();
 
 	bool ok = mrpt::ros2bridge::MapHdl::loadMap(
-		*params_.metric_map, cfg, simplemap_file, "metricMap");
+		*newMap, cfg, simplemap_file, "metricMap");
+
+	if (!ok)
+	{
+		MRPT_LOG_ERROR_STREAM(
+			"Error loading metric map from: map_config_ini_file='"
+			<< map_config_ini_file << "', simplemap_file='" << simplemap_file
+			<< "'");
+	}
+	else
+	{
+		MRPT_LOG_DEBUG_STREAM(
+			"Successful load of metric map from: map_config_ini_file='"
+			<< map_config_ini_file << "', simplemap_file='" << simplemap_file
+			<< "'");
+
+		// Actually switch/set the map:
+		set_map_from_metric_map(newMap);
+	}
 
 	return ok;
+}
+
+void PFLocalizationCore::set_map_from_metric_map(
+	const mrpt::maps::CMultiMetricMap::Ptr& metricMap)
+{
+	auto lck = mrpt::lockHelper(stateMtx_);
+
+	params_.metric_map = metricMap;
+
+	MRPT_LOG_DEBUG_STREAM(
+		"set_map_from_metric_map: Map contents: " << metricMap->asString());
 }
 
 /* Load all params from a YAML source.
@@ -533,9 +577,7 @@ void PFLocalizationCore::init_from_yaml(const mrpt::containers::yaml& params)
 
 	// if (0)
 	// set_map_from_simple_map();
-
-	// set_map_from_metric_map_file();
-
+	// set_map_from_metric_map();
 	// set_map_from_ros_yaml();
 }
 
@@ -745,5 +787,9 @@ void PFLocalizationCore::relocalize_here(
 	auto lck = mrpt::lockHelper(stateMtx_);
 
 	params_.initial_pose.emplace(pose);
-	state_.fsm_state = State::TO_BE_INITIALIZED;
+	// Only if we were already running, reset and restart with a relocalization:
+	if (state_.fsm_state == State::RUNNING)
+	{
+		state_.fsm_state = State::TO_BE_INITIALIZED;
+	}
 }
