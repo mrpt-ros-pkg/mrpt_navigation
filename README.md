@@ -40,3 +40,8 @@ Contributing
   
       find . -iname *.hpp -o -iname *.cpp -o -iname *.h | xargs clang-format-11 -i
 
+**Contributors**
+
+<a href="https://github.com/mrpt-ros-pkg/mrpt_navigation/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=mrpt-ros-pkg/mrpt_navigation" />
+</a>
