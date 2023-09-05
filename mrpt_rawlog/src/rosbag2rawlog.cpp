@@ -129,7 +129,7 @@ class RosSynchronizer
 	template <std::size_t... N>
 	bool check(std::index_sequence<N...>)
 	{
-		return (std::get<N>(m_cache) && ...);
+		return ((std::get<N>(m_cache).get() != nullptr) && ...);
 	}
 
 	Obs checkAndSignal()
@@ -246,23 +246,28 @@ Obs toPointCloud2(
 	return {ptsObs};
 }
 
-#if 0
-Obs toLidar2D(std::string_view msg, const rosbag2_storage::SerializedBagMessage& rosmsg)
+Obs toLidar2D(
+	std::string_view msg, const rosbag2_storage::SerializedBagMessage& rosmsg)
 {
-	auto scan = rosmsg.instantiate<sensor_msgs::LaserScan>();
+	rclcpp::SerializedMessage serMsg(*rosmsg.serialized_data);
+	static rclcpp::Serialization<sensor_msgs::msg::LaserScan> serializer;
+
+	sensor_msgs::msg::LaserScan scan;
+	serializer.deserialize_message(&serMsg, &scan);
 
 	auto scanObs = mrpt::obs::CObservation2DRangeScan::Create();
 
-	MRPT_TODO("Extract sensor pose from tf frames");
+	// Extract sensor pose from tf frames, if enabled:
 	mrpt::poses::CPose3D sensorPose;
-	mrpt::ros2bridge::fromROS(*scan, sensorPose, *scanObs);
+	mrpt::ros2bridge::fromROS(scan, sensorPose, *scanObs);
 
 	scanObs->sensorLabel = msg;
-	scanObs->timestamp = mrpt::ros2bridge::fromROS(scan->header.stamp);
+	scanObs->timestamp = mrpt::ros2bridge::fromROS(scan.header.stamp);
 
 	return {scanObs};
 }
 
+#if 0
 Obs toRotatingScan(std::string_view msg, const rosbag2_storage::SerializedBagMessage& rosmsg)
 {
 	auto pts = rosmsg.instantiate<sensor_msgs::PointCloud2>();
@@ -502,19 +507,38 @@ class Transcriber
 					};
 				m_lookup[sensor.at("topic").as<std::string>()].emplace_back(
 					callback);
-				// m_lookup["/tf"].emplace_back(sync->bindTfSync());
+
+#if 0  // WIP: get sensor poses from /tf.
+				auto callback =
+					[=, &tfBuffer](
+						const sensor_msgs::msg::PointCloud2::SharedPtr& m) {
+						tfBuffer->lookupTransform(
+							m->header.frame_id, base_link, m->header.stamp);
+
+						return toPointCloud2(sensorName, m);
+					};
+				using Synchronizer =
+					RosSynchronizer<sensor_msgs::msg::PointCloud2>;
+				auto sync = std::make_shared<Synchronizer>(
+					rootFrame, tfBuffer, callback);
+
+				m_lookup[sensor.at("topic").as<std::string>()].emplace_back(
+					sync->bind<0>());
+				m_lookup["/tf"].emplace_back(sync->bindTfSync());
+#endif
 			}
-#if 0
 			else if (sensorType == "CObservation2DRangeScan")
 			{
 				auto callback =
 					[=](const rosbag2_storage::SerializedBagMessage& m) {
 						return toLidar2D(sensorName, m);
 					};
+
 				m_lookup[sensor.at("topic").as<std::string>()].emplace_back(
 					callback);
 				// m_lookup["/tf"].emplace_back(sync->bindTfSync());
 			}
+#if 0
 			else if (sensorType == "CObservationRotatingScan")
 			{
 				auto callback =
