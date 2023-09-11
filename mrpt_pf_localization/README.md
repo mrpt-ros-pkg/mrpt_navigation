@@ -3,6 +3,8 @@
 * [mrpt_pf_localization](#mrpt_pf_localization)
    * [Overview](#overview)
    * [Related papers](#related-papers)
+   * [Configuration](#configuration)
+   * [Metric map conceptual model](#metric-map-conceptual-model)
    * [Demos](#demos)
       * [2D LIDAR localization with a gridmap](#2d-lidar-localization-with-a-gridmap)
       * [Range-only (RO) localization with a set of fixed, known radio beacons](#range-only-ro-localization-with-a-set-of-fixed-known-radio-beacons)
@@ -46,6 +48,20 @@ automatically **fused together**.
 * Range-Only localization:
 
     J. Gonzalez-Jimenez, J.L. Blanco, C. Galindo, A. Ortiz-de-Galisteo, J.A. Fernandez-Madrigal, F.A. Moreno, J. Martinez, "Mobile Robot Localization based on Ultra-Wide-Band Ranging: A Particle Filter Approach", Robotics and Autonomous Systems, vol. 57, no. 5, pp. 496--507, 2009. ([PDF](https://ingmec.ual.es/~jlblanco/papers/gonzalez2008mrl.pdf))
+
+## Configuration
+
+The provided algorithms have parameters that can be grouped into three conceptual topics:
+
+- **Algorithm**: Parameters affecting the particle filter itself or the adaptive sampling method. These parameters can be set in the main [config YAML file](params/default.config.yaml).
+- **Actions**: The motion model uncertainty. These parameters are also set in the main [config YAML file](params/default.config.yaml).
+- **Observations**: These parameters are spread in part in the observations themselves (e.g. each lidar/sonar should carry information about how noisy it is), and the metric maps. The latter are key parameters and in MRPT are called **likelihood options** in each available metric map.
+
+## Metric map conceptual model
+
+Since metric map **likelihood options** are key for tuning the localization system, these parameters are loaded into this node, despite the metric map **contents** are read from somewhere else.
+
+Write me!
 
 
 ## Demos
