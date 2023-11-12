@@ -46,7 +46,7 @@ ament_target_dependencies(
 )
 
 install(TARGETS rosbag2rawlog
-  DESTINATION lib/${PROJECT_NAME}
+  DESTINATION bin
 )
 
 install(
