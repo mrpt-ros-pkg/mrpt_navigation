@@ -267,13 +267,17 @@ Obs toLidar2D(
 	return {scanObs};
 }
 
-#if 0
-Obs toRotatingScan(std::string_view msg, const rosbag2_storage::SerializedBagMessage& rosmsg)
+Obs toRotatingScan(
+	std::string_view msg, const rosbag2_storage::SerializedBagMessage& rosmsg)
 {
-	auto pts = rosmsg.instantiate<sensor_msgs::PointCloud2>();
+	rclcpp::SerializedMessage serMsg(*rosmsg.serialized_data);
+	static rclcpp::Serialization<sensor_msgs::msg::PointCloud2> serializer;
+
+	sensor_msgs::msg::PointCloud2 pts;
+	serializer.deserialize_message(&serMsg, &pts);
 
 	// Convert points:
-	std::set<std::string> fields = mrpt::ros2bridge::extractFields(*pts);
+	std::set<std::string> fields = mrpt::ros2bridge::extractFields(pts);
 
 	// We need X Y Z:
 	if (!fields.count("x") || !fields.count("y") || !fields.count("z") ||
@@ -282,10 +286,10 @@ Obs toRotatingScan(std::string_view msg, const rosbag2_storage::SerializedBagMes
 
 	// As a structured 2D range images, if we have ring numbers:
 	auto obsRotScan = mrpt::obs::CObservationRotatingScan::Create();
-	MRPT_TODO("Extract sensor pose from tf frames");
+	// MRPT_TODO("Extract sensor pose from tf frames");
 	const mrpt::poses::CPose3D sensorPose;
 
-	if (!mrpt::ros2bridge::fromROS(*pts, *obsRotScan, sensorPose))
+	if (!mrpt::ros2bridge::fromROS(pts, *obsRotScan, sensorPose))
 	{
 		THROW_EXCEPTION(
 			"Could not convert pointcloud from ROS to "
@@ -293,11 +297,10 @@ Obs toRotatingScan(std::string_view msg, const rosbag2_storage::SerializedBagMes
 	}
 
 	obsRotScan->sensorLabel = msg;
-	obsRotScan->timestamp = mrpt::ros2bridge::fromROS(pts->header.stamp);
+	obsRotScan->timestamp = mrpt::ros2bridge::fromROS(pts.header.stamp);
 
 	return {obsRotScan};
 }
-#endif
 
 Obs toIMU(
 	std::string_view msg, const rosbag2_storage::SerializedBagMessage& rosmsg)
@@ -538,7 +541,6 @@ class Transcriber
 					callback);
 				// m_lookup["/tf"].emplace_back(sync->bindTfSync());
 			}
-#if 0
 			else if (sensorType == "CObservationRotatingScan")
 			{
 				auto callback =
@@ -548,7 +550,6 @@ class Transcriber
 				m_lookup[sensor.at("topic").as<std::string>()].emplace_back(
 					callback);
 			}
-#endif
 			else if (sensorType == "CObservationIMU")
 			{
 				auto callback =
