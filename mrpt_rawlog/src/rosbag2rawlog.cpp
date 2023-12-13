@@ -38,6 +38,7 @@
 #include <mrpt/system/filesystem.h>
 #include <mrpt/system/os.h>
 #include <mrpt/system/progress.h>
+#include <mrpt/version.h>
 #include <tf2/buffer_core.h>
 #include <tf2/exceptions.h>
 
@@ -48,7 +49,6 @@
 #include <rclcpp/serialization.hpp>
 #include <rosbag2_cpp/converter_options.hpp>
 #include <rosbag2_cpp/readers/sequential_reader.hpp>
-//#include <rosbag2_cpp/storage_options.hpp>
 #include <sensor_msgs/msg/camera_info.hpp>
 #include <sensor_msgs/msg/image.hpp>
 #include <sensor_msgs/msg/imu.hpp>
@@ -56,6 +56,8 @@
 #include <sensor_msgs/msg/point_cloud2.hpp>
 #include <std_msgs/msg/int32.hpp>
 #include <tf2_msgs/msg/tf_message.hpp>
+
+//#include <rosbag2_cpp/storage_options.hpp>
 
 using namespace mrpt;
 using namespace mrpt::io;
@@ -215,6 +217,25 @@ Obs toPointCloud2(
 	if (!fields.count("x") || !fields.count("y") || !fields.count("z"))
 		return {};
 
+#if MRPT_VERSION >= 0x020b04
+	if (fields.count("ring") || fields.count("time"))
+	{
+		// XYZIRT
+		auto mrptPts = mrpt::maps::CPointsMapXYZIRT::Create();
+		ptsObs->pointcloud = mrptPts;
+
+		if (!mrpt::ros2bridge::fromROS(pts, *mrptPts))
+		{
+			THROW_EXCEPTION(
+				"Could not convert pointcloud from ROS to CPointsMapXYZIRT");
+		}
+		else
+		{  // converted ok:
+			return {ptsObs};
+		}
+	}
+#endif
+
 	if (fields.count("intensity"))
 	{
 		// XYZI
@@ -228,8 +249,12 @@ Obs toPointCloud2(
 			{
 				warn1st = true;
 				std::cerr << "Could not convert pointcloud from ROS to "
-							 "CPointsMapXYZI. Trying another format.\n";
+							 "CPointsMapXYZI. Trying with XYZ.\n";
 			}
+		}
+		else
+		{  // converted ok:
+			return {ptsObs};
 		}
 	}
 
@@ -237,6 +262,7 @@ Obs toPointCloud2(
 		// XYZ
 		auto mrptPts = mrpt::maps::CSimplePointsMap::Create();
 		ptsObs->pointcloud = mrptPts;
+
 		if (!mrpt::ros2bridge::fromROS(pts, *mrptPts))
 			THROW_EXCEPTION(
 				"Could not convert pointcloud from ROS to "
