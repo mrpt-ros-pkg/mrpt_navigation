@@ -51,18 +51,29 @@ automatically **fused together**.
 
 ## Configuration
 
-The provided algorithms have parameters that can be grouped into three conceptual topics:
+The provided algorithms have **parameters** that can be grouped into three conceptual topics:
 
 - **Algorithm**: Parameters affecting the particle filter itself or the adaptive sampling method. These parameters can be set in the main [config YAML file](params/default.config.yaml).
-- **Actions**: The motion model uncertainty. These parameters are also set in the main [config YAML file](params/default.config.yaml).
+- **Actions**: The [motion model uncertainty](https://docs.mrpt.org/reference/latest/tutorial-motion-models.html). These parameters are also set in the main [config YAML file](params/default.config.yaml).
 - **Observations**: These parameters are spread in part in the observations themselves (e.g. each lidar/sonar should carry information about how noisy it is), and the metric maps. The latter are key parameters and in MRPT are called **likelihood options** in each available metric map.
 
 ## Metric map conceptual model
 
-Since metric map **likelihood options** are key for tuning the localization system, these parameters are loaded into this node, despite the metric map **contents** are read from somewhere else.
+Metric map **likelihood options** are key for tuning the localization system, as
+they tell how much to "trust" sensor readings, how much to downsample their rays, etc.
 
-Write me!
+When using as input a metric map that comes in MRPT native `mrpt::maps::CMetricMap` format
+(this includes `mp2p_icp`'s metric map `*.mm` files), the map already comes with
+its own set of likelihood parameters, defined at the time of creating the map in
+the source application.
 
+However, this `mrpt_pf_localization` node allows **overriding** the
+likelihood options to ease tuning and adjusting without touching the original map.
+
+When using non MRPT-native map sources (e.g. ROS gridmap yaml files),
+the only way to set these important options is via this overriding mechanism.
+
+Refer to node launch arguments for details.
 
 ## Demos
 
@@ -97,10 +108,10 @@ to start:
 The C++ ROS 2 node comprises an internal, independent ``PFLocalizationCore`` C++ class, which implements
 the main functionality. It features an internal finite state machine (FSM) with these states:
 
-* ``UNINITIALIZED``: The filter has been neither initialized nor parameters/map loaded. 
+* ``UNINITIALIZED``: The filter has been neither initialized nor parameters/map loaded.
   State after initialization. "Loops" in this state do nothing.
 * ``TO_BE_INITIALIZED``: Once the parameters have been loaded, and a map has been loaded 
-  (or if subscribed to a map topic, the topic data has been received), the ``PFLocalizationCore`` 
+  (or if subscribed to a map topic, the topic data has been received), the ``PFLocalizationCore``
   is put into this state by the node. Upon next "loop", the particles and data structures will be initialized.
 * ``RUNNING``: Normal state. At each "loop", odometry (if present) is used together with sensors to
   localize the robot.
