@@ -76,6 +76,10 @@ class PFLocalizationNode : public rclcpp::Node
 		std::string topic_initialpose = "/initialpose";
 		std::string topic_gridmap = "/map";
 
+		std::string topic_odometry = "/odom";
+
+		std::string topic_sensors_2d_scan = "/laser1";	// Remove!
+
 		bool update_while_stopped;
 		bool update_sensor_pose;
 		bool pose_broadcast;
@@ -95,7 +99,8 @@ class PFLocalizationNode : public rclcpp::Node
 	void reload_params_from_ros();
 
 	void loop();
-	void callbackLaser(const sensor_msgs::msg::LaserScan&);
+	void callbackLaser(
+		const sensor_msgs::msg::LaserScan& msg, const std::string& topicName);
 	void callbackBeacon(const mrpt_msgs::msg::ObservationRangeBeacon&);
 	void callbackRobotPose(
 		const geometry_msgs::msg::PoseWithCovarianceStamped&);
@@ -118,6 +123,7 @@ class PFLocalizationNode : public rclcpp::Node
 
 	rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr sub_odometry_;
 
+	// Sensors:
 	std::vector<rclcpp::Subscription<sensor_msgs::msg::LaserScan>::SharedPtr>
 		subs_2dlaser_;
 	std::vector<rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr>

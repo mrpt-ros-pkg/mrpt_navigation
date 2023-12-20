@@ -9,7 +9,10 @@
 #include "mrpt_pf_localization_node.h"
 
 #include <mrpt/maps/COccupancyGridMap2D.h>
+#include <mrpt/obs/CObservation2DRangeScan.h>
 #include <mrpt/obs/CObservationBeaconRanges.h>
+#include <mrpt/obs/CObservationOdometry.h>
+#include <mrpt/obs/CObservationPointCloud.h>
 #include <mrpt/obs/CObservationRobotPose.h>
 #include <mrpt/ros2bridge/laser_scan.h>
 #include <mrpt/ros2bridge/map.h>
@@ -69,29 +72,39 @@ PFLocalizationNode::PFLocalizationNode(const rclcpp::NodeOptions& options)
 		nodeParams_.topic_initialpose, 1,
 		std::bind(&PFLocalizationNode::callbackInitialpose, this, _1));
 
+	MRPT_TODO("Update to new mp2p_icp based metric maps!");
 	sub_gridmap_ = this->create_subscription<nav_msgs::msg::OccupancyGrid>(
 		nodeParams_.topic_gridmap, 1,
 		std::bind(&PFLocalizationNode::callbackMap, this, _1));
 
-#if 0
-	sub_odometry_ =
-		subscribe("odom", 1, &PFLocalizationNode::callbackOdometry, this);
+	sub_odometry_ = this->create_subscription<nav_msgs::msg::Odometry>(
+		nodeParams_.topic_odometry, 1,
+		std::bind(&PFLocalizationNode::callbackOdometry, this, _1));
 
 	// Subscribe to one or more laser sources:
-	std::vector<std::string> sources;
-	mrpt::system::tokenize(param()->sensor_sources, " ,\t\n", sources);
-	ROS_ASSERT_MSG(
-		!sources.empty(),
-		"*Fatal*: At least one sensor source must be provided in "
-		"~sensor_sources (e.g. \"scan\" or \"beacon\")");
-	sub_sensors_.resize(sources.size());
-	for (size_t i = 0; i < sources.size(); i++)
+	size_t numSensors = 0;
+
 	{
-		if (sources[i].find("scan") != std::string::npos)
+		std::vector<std::string> sources;
+		mrpt::system::tokenize(
+			nodeParams_.topic_sensors_2d_scan, " ,\t\n", sources);
+		for (const auto& topic : sources)
 		{
-			sub_sensors_[i] = subscribe(
-				sources[i], 1, &PFLocalizationNode::callbackLaser, this);
+			numSensors++;
+			subs_2dlaser_.push_back(
+				this->create_subscription<sensor_msgs::msg::LaserScan>(
+					topic, 1,
+					[topic, this](const sensor_msgs::msg::LaserScan& msg) {
+						callbackLaser(msg, topic);
+					}));
 		}
+	}
+
+	ASSERTMSG_(
+		numSensors > 0,
+		"At least one sensor input source must be defined! Refer to the "
+		"package documentation.");
+#if 0
 		else if (sources[i].find("beacon") != std::string::npos)
 		{
 			sub_sensors_[i] = subscribe(
@@ -102,7 +115,7 @@ PFLocalizationNode::PFLocalizationNode(const rclcpp::NodeOptions& options)
 			sub_sensors_[i] = subscribe(
 				sources[i], 1, &PFLocalizationNode::callbackRobotPose, this);
 		}
-	}
+
 	pub_particles_ =
 		advertise<geometry_msgs::PoseArray>("particlecloud", 1, true);
 
@@ -211,6 +224,8 @@ void PFLocalizationNode::reload_params_from_ros()
 
 	core_.init_from_yaml(paramsBlock);
 
+	MRPT_TODO("Load params of nodeParams_ too!");
+
 #if 0
 	if (!param()->map_file.empty())
 	{
@@ -275,46 +290,20 @@ bool PFLocalizationNode::waitForTransform(
 	}
 }
 
-void PFLocalizationNode::callbackLaser(const sensor_msgs::msg::LaserScan& _msg)
+void PFLocalizationNode::callbackLaser(
+	const sensor_msgs::msg::LaserScan& msg, const std::string& topicName)
 {
-#if 0
-	using namespace mrpt::maps;
-	using namespace mrpt::obs;
+	RCLCPP_DEBUG(get_logger(), "Received 2D scan (%s)", topicName.c_str());
 
-	time_last_input_ = ros::Time::now();
+	MRPT_TODO("ask tf for the actual pose");
+	mrpt::poses::CPose3D sensorPose;
 
-	// MRPT_LOG_INFO_FMT("callbackLaser");
-	auto laser = CObservation2DRangeScan::Create();
+	auto obs = mrpt::obs::CObservation2DRangeScan::Create();
+	mrpt::ros2bridge::fromROS(msg, sensorPose, *obs);
 
-	// printf("callbackLaser %s\n", _msg.header.frame_id.c_str());
-	if (laser_poses_.find(_msg.header.frame_id) == laser_poses_.end())
-	{
-		updateSensorPose(_msg.header.frame_id);
-	}
-	else if (state_ != IDLE)  // updating filter; we must be moving or
-	// update_while_stopped set to true
-	{
-		if (param()->update_sensor_pose)
-		{
-			updateSensorPose(_msg.header.frame_id);
-		}
-		// mrpt::poses::CPose3D pose = laser_poses_[_msg.header.frame_id];
-		// MRPT_LOG_INFO_FMT("LASER POSE %4.3f, %4.3f, %4.3f, %4.3f, %4.3f,
-		// %4.3f", pose.x(), pose.y(), pose.z(), pose.roll(), pose.pitch(),
-		// pose.yaw());
-		mrpt::ros2bridge::fromROS(
-			_msg, laser_poses_[_msg.header.frame_id], *laser);
+	obs->sensorLabel = topicName;
 
-		auto sf = CSensoryFrame::Create();
-		CObservationOdometry::Ptr odometry;
-		odometryForCallback(odometry, _msg.header);
-
-		CObservation::Ptr obs = CObservation::Ptr(laser);
-		sf->insert(obs);
-		observation(sf, odometry);
-		if (param()->gui_mrpt) show3DDebug(sf);
-	}
-#endif
+	core_.on_observation(obs);
 }
 
 void PFLocalizationNode::callbackBeacon(
@@ -538,31 +527,22 @@ void PFLocalizationNode::callbackInitialpose(
 	core_.relocalize_here(initial_pose);
 }
 
-void PFLocalizationNode::callbackOdometry(const nav_msgs::msg::Odometry& _msg)
+void PFLocalizationNode::callbackOdometry(const nav_msgs::msg::Odometry& msg)
 {
-#if 0
-	// We always update the filter if update_while_stopped is true, regardless
-	// robot is moving or
-	// not; otherwise, update filter if we are moving or at initialization (100
-	// first iterations)
-	bool moving = std::abs(_msg.twist.twist.linear.x) > 1e-3 ||
-				  std::abs(_msg.twist.twist.linear.y) > 1e-3 ||
-				  std::abs(_msg.twist.twist.linear.z) > 1e-3 ||
-				  std::abs(_msg.twist.twist.angular.x) > 1e-3 ||
-				  std::abs(_msg.twist.twist.angular.y) > 1e-3 ||
-				  std::abs(_msg.twist.twist.angular.z) > 1e-3;
-	if (param()->update_while_stopped || moving)
-	{
-		if (state_ == IDLE)
-		{
-			state_ = RUN;
-		}
-	}
-	else if (state_ == RUN && update_counter_ >= 100)
-	{
-		state_ = IDLE;
-	}
-#endif
+	auto obs = mrpt::obs::CObservationOdometry::Create();
+	obs->timestamp = mrpt::ros2bridge::fromROS(msg.header.stamp);
+	obs->sensorLabel = "odom";
+
+	obs->hasVelocities = true;
+	obs->velocityLocal = {
+		msg.twist.twist.linear.x, msg.twist.twist.linear.y,
+		msg.twist.twist.angular.z};
+
+	// SE(3) -> SE(2):
+	obs->odometry =
+		mrpt::poses::CPose2D(mrpt::ros2bridge::fromROS(msg.pose.pose));
+
+	core_.on_observation(obs);
 }
 
 void PFLocalizationNode::updateMap(const nav_msgs::msg::OccupancyGrid& _msg)
