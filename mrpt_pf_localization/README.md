@@ -78,7 +78,7 @@ Refer to node launch arguments for details.
 ## Demos
 
 ### 2D LIDAR localization with a gridmap and MVSim
-Run:
+[Demo video](https://mrpt.github.io/videos/pf_localization_demo_2dgrid_mvsim.mp4). Run:
 
     ros2 launch mrpt_tutorials demo_localization_pf_mvsim_2d_lidar.launch.py
 
@@ -88,6 +88,8 @@ to start:
 * ``mrpt_map`` server loading and publishing a gridmap as reference map via an ROS-styled ``map.yaml`` file,
 * ``rviz2`` for visualization,
 * ``mvsim`` to simulate a live robot that can be teleoperated.
+
+
 
 ### Range-only (RO) localization with a set of fixed, known radio beacons
 Run:
