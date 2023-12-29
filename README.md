@@ -11,16 +11,28 @@
 mrpt_navigation
 ===============
 
-This repository provides packages that wrap functionality in the Mobile Robot Programming Toolkit ([MRPT](https://github.com/MRPT/mrpt/)) related to localization and navigation. SLAM and sensor access are wrapped into [other ROS repositories](https://github.com/mrpt-ros-pkg/).
+This repository provides packages that wrap functionality in the Mobile Robot Programming Toolkit ([MRPT](https://github.com/MRPT/mrpt/)) related to localization and navigation. MRPT SLAM and sensor access are wrapped into [other ROS repositories](https://github.com/mrpt-ros-pkg/).
+
+The latest **SLAM framework**, whose maps are compatible with this repository for localization, is [MOLA](https://github.com/MOLAorg/).
 
 
 Documentation for each package
 ----------------------------------
 
-* [mrpt_local_obstacles](mrpt_local_obstacles): A node that maintains a local obstacle map.
+Related to localization:
+* [mrpt_map](mrpt_map): A node that loads a ROS standard gridmap or an MRPT or MP2P_ICP map and publishes it to a (set of) topic(s).
 * [mrpt_pf_localization](mrpt_pf_localization): A node for particle filter-based localization of a robot from any kind of metric map (gridmap, points, range-only sensors, ...).
-* [mrpt_map](mrpt_map): A node that loads a ROS standard gridmap or an MRPT map and publishes it to a topic.
-* ...
+
+Related to sensor pipelines:
+* [mrpt_local_obstacles](mrpt_local_obstacles): A node that maintains a local obstacle map, mostly needed for 2D lidars to keep a memory of obstacles that get out of the sensor field of view.
+
+Related to autonomous navigation:
+* [mrpt_reactivenav2d](mrpt_reactivenav2d): A pure reactive navigator for polygonal robots on 2D worlds.
+
+Others:
+* [mrpt_rawlog](mrpt_rawlog): Nodes and CLI tools to convert between MRPT rawlog format and ROS rosbag2.
+* [mrpt_tutorials](mrpt_tutorials): Launch and configuration files for the various examples provided for the other packages.
+* [mrpt_msgs_bridge](mrpt_msgs_bridge): C++ library to convert between custom [mrpt_msgs](https://github.com/mrpt-ros-pkg/mrpt_msgs) messages and native MRPT classes
 
 
 General documentation

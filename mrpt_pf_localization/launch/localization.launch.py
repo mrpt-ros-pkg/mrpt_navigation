@@ -22,12 +22,6 @@ def generate_launch_description():
         "mrpt_map_config_file", default_value=TextSubstitution(
             text=os.path.join(pfLocDir, 'params', 'map-occgrid2d.ini')))
 
-    mrpt_simplemap_file_launch_arg = DeclareLaunchArgument(
-        "mrpt_simplemap_file", default_value='')
-
-    mrpt_metricmap_file_launch_arg = DeclareLaunchArgument(
-        "mrpt_metricmap_file", default_value='')
-
     pf_params_file_launch_arg = DeclareLaunchArgument(
         "pf_params_file", default_value=TextSubstitution(
             text=os.path.join(pfLocDir, 'params', 'default.config.yaml')))
@@ -47,8 +41,6 @@ def generate_launch_description():
             LaunchConfiguration('pf_params_file'),
             {
                 "mrpt_map_config_file": LaunchConfiguration('mrpt_map_config_file'),
-                "mrpt_simplemap_file": LaunchConfiguration('mrpt_simplemap_file'),
-                "mrpt_metricmap_file": LaunchConfiguration('mrpt_metricmap_file'),
             }],
         arguments=['--ros-args', '--log-level',
                    LaunchConfiguration('log_level')]
@@ -56,8 +48,6 @@ def generate_launch_description():
 
     return LaunchDescription([
         mrpt_map_config_file_launch_arg,
-        mrpt_simplemap_file_launch_arg,
-        mrpt_metricmap_file_launch_arg,
         pf_log_level_launch_arg,
         pf_params_file_launch_arg,
         pf_localization_node,

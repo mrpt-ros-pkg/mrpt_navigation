@@ -23,7 +23,6 @@ def generate_launch_description():
             get_package_share_directory('mrpt_pf_localization'), 'launch',
             'localization.launch.py')]),
         launch_arguments={
-            'mrpt_metricmap_file': os.path.join(tutsDir, '', ''),
             'log_level': 'INFO',
         }.items()
     )
