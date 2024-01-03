@@ -10,6 +10,7 @@ find_package(nav_msgs REQUIRED)
 
 find_package(mrpt-maps REQUIRED)
 find_package(mrpt-ros2bridge REQUIRED)
+find_package(mp2p_icp_map REQUIRED)
 
 message(STATUS "MRPT_VERSION: ${MRPT_VERSION}")
 
@@ -54,6 +55,7 @@ target_include_directories(map_server_node
 target_link_libraries(map_server_node
   mrpt::maps
   mrpt::ros2bridge
+  mola::mp2p_icp_map
 )
 
 ament_target_dependencies(

@@ -1,10 +1,8 @@
 <?xml version="1.0"?>
 <package format="3">
-  <name>mrpt_local_obstacles</name>
+  <name>mrpt_pointcloud_pipeline</name>
   <version>1.0.3</version>
-  <description>Maintains a local obstacle map (point cloud,
-   voxels or occupancy grid) from recent sensor readings within a
-   configurable time window.</description>
+  <description>Maintains a local obstacle map from recent sensor readings, including optional point cloud pipeline filtering or processing.</description>
 
   <maintainer email="jlblanco@ual.es">Jose-Luis Blanco-Claraco</maintainer>
   <maintainer email="shravansomashekara.rai@gmail.com">Shravan S Rai</maintainer>
@@ -15,7 +13,6 @@
   <license>BSD</license>
 
   <url type="website">https://github.com/mrpt-ros-pkg/mrpt_navigation</url>
-
 
   <buildtool_depend>ament_cmake</buildtool_depend>
 

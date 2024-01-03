@@ -16,7 +16,7 @@
 
   <buildtool_depend>ament_cmake</buildtool_depend>
 
-  <depend>mrpt_local_obstacles</depend>
+  <depend>mrpt_pointcloud_pipeline</depend>
   <depend>mrpt_pf_localization</depend>
   <depend>mrpt_map</depend>
   <depend>mrpt_rawlog</depend>

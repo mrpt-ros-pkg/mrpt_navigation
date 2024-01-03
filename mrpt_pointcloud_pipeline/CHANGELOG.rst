@@ -1,5 +1,5 @@
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-Changelog for package mrpt_local_obstacles
+Changelog for package mrpt_pointcloud_pipeline
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 1.0.3 (2022-06-25)
@@ -129,7 +129,7 @@ Changelog for package mrpt_local_obstacles
 
 0.1.5 (2015-04-29)
 ------------------
-* mrpt_local_obstacles: Fix wrong report of number of scan sources
+* mrpt_pointcloud_pipeline: Fix wrong report of number of scan sources
 * Fix build against mrpt 1.3.0
 * Contributors: Jose Luis Blanco
 

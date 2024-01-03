@@ -6,7 +6,8 @@
    | All rights reserved. Released under BSD 3-Clause license. See LICENSE  |
    +------------------------------------------------------------------------+ */
 
-#include <mrpt_local_obstacles/mrpt_local_obstacles_node.hpp>
+#include <mrpt_pointcloud_pipeline/mrpt_pointcloud_pipeline_node.h>
+
 #include <sstream>
 
 #include "rclcpp_components/register_node_macro.hpp"
@@ -18,7 +19,7 @@ using namespace mrpt::maps;
 using namespace mrpt::obs;
 
 LocalObstaclesNode::LocalObstaclesNode(const rclcpp::NodeOptions& options)
-	: Node("mrpt_local_obstacles", options)
+	: Node("mrpt_pointcloud_pipeline", options)
 {
 	read_parameters();
 

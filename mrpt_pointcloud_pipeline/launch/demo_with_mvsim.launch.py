@@ -35,10 +35,10 @@ def generate_launch_description():
     )
 
     # Node: Local obstacles builder
-    mrpt_local_obstacles_node = Node(
-        package='mrpt_local_obstacles',
-        executable='mrpt_local_obstacles_node',
-        name='mrpt_local_obstacles_node',
+    mrpt_pointcloud_pipeline_node = Node(
+        package='mrpt_pointcloud_pipeline',
+        executable='mrpt_pointcloud_pipeline_node',
+        name='mrpt_pointcloud_pipeline_node',
         output='screen',
         parameters=[
             {'source_topics_2dscan': LaunchConfiguration('lidar_topic_name')},
@@ -70,5 +70,5 @@ def generate_launch_description():
         time_window_arg,
         filter_yaml_file_arg,
         filter_output_layer_name_arg,
-        mrpt_local_obstacles_node
+        mrpt_pointcloud_pipeline_node
     ])

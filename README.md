@@ -24,7 +24,9 @@ Related to localization:
 * [mrpt_pf_localization](mrpt_pf_localization): A node for particle filter-based localization of a robot from any kind of metric map (gridmap, points, range-only sensors, ...).
 
 Related to sensor pipelines:
-* [mrpt_local_obstacles](mrpt_local_obstacles): A node that maintains a local obstacle map, mostly needed for 2D lidars to keep a memory of obstacles that get out of the sensor field of view.
+* [mrpt_pointcloud_pipeline](mrpt_pointcloud_pipeline): A node that maintains a local obstacle map from recent sensor readings, including optional point cloud pipeline filtering or processing. For example,
+  - For 3D LIDARs, to filter by a volume or area, downsample the number of points, etc.
+  - For 2D laser scanners, to keep a memory of obstacles that get out of the sensor field of view.
 
 Related to autonomous navigation:
 * [mrpt_reactivenav2d](mrpt_reactivenav2d): A pure reactive navigator for polygonal robots on 2D worlds.

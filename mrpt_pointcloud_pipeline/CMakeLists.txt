@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.5)
-project(mrpt_local_obstacles)
+project(mrpt_pointcloud_pipeline)
 
 # find dependencies
 find_package(ament_cmake REQUIRED)
@@ -39,12 +39,11 @@ IF(CMAKE_COMPILER_IS_GNUCXX AND NOT CMAKE_BUILD_TYPE MATCHES "Debug")
 ENDIF()
 
 
-find_package(mp2p_icp REQUIRED)
 find_package(mp2p_icp_filters REQUIRED)
 
 add_executable(${PROJECT_NAME}_node
-              src/mrpt_local_obstacles_node.cpp
-              include/mrpt_local_obstacles/mrpt_local_obstacles_node.hpp)
+              src/mrpt_pointcloud_pipeline_node.cpp
+              include/mrpt_pointcloud_pipeline/mrpt_pointcloud_pipeline_node.h)
 
 target_include_directories(${PROJECT_NAME}_node
                            PUBLIC
@@ -58,7 +57,7 @@ target_link_libraries(
   mrpt::obs
   mrpt::gui
   mrpt::ros2bridge
-  mp2p_icp_filters
+  mola::mp2p_icp_filters
 )
 
 ament_target_dependencies(

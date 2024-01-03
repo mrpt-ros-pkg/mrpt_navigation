@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <launch>
 	<!-- Node: Local obstacles builder -->
-	<node pkg="mrpt_local_obstacles" type="mrpt_local_obstacles_node" name="mrpt_local_obstacles_node" output="screen">
+	<node pkg="mrpt_pointcloud_pipeline" type="mrpt_pointcloud_pipeline_node" name="mrpt_pointcloud_pipeline_node" output="screen">
 		<param name="source_topics_2dscan" value="laser1,laser2"/> 
 	</node>
 
