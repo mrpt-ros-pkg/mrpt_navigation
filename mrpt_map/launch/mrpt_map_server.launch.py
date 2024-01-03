@@ -9,23 +9,18 @@ from launch import LaunchDescription
 from launch_ros.actions import Node
 from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
 from launch.substitutions import LaunchConfiguration
-from ament_index_python.packages import get_package_share_directory
+# from ament_index_python.packages import get_package_share_directory
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 
 
 def generate_launch_description():
+    # mrpt_map_pkg_dir = get_package_share_directory('mrpt_map')
 
-    mrpt_map_pkg_dir = get_package_share_directory('mrpt_map')
     map_yaml_file_arg = DeclareLaunchArgument(
         'map_yaml_file', default_value=''
     )
-    ini_file_arg = DeclareLaunchArgument(
-        'ini_file',
-        default_value=os.path.join(
-            mrpt_map_pkg_dir, 'params/metric-map-gridmap.ini')
-    )
-    map_file_arg = DeclareLaunchArgument(
-        'map_file',
+    mm_file_arg = DeclareLaunchArgument(
+        'mm_file',
         default_value=''
     )
     frame_id_arg = DeclareLaunchArgument(
@@ -49,8 +44,7 @@ def generate_launch_description():
         output='screen',
         parameters=[
             {'map_yaml_file': LaunchConfiguration('map_yaml_file')},
-            {'ini_file': LaunchConfiguration('ini_file')},
-            {'map_file': LaunchConfiguration('map_file')},
+            {'mm_file': LaunchConfiguration('mm_file')},
             {'frame_id': LaunchConfiguration('frame_id')},
             {'frequency': LaunchConfiguration('frequency')},
             {'debug': LaunchConfiguration('debug')},
@@ -62,8 +56,7 @@ def generate_launch_description():
 
     return LaunchDescription([
         map_yaml_file_arg,
-        ini_file_arg,
-        map_file_arg,
+        mm_file_arg,
         frame_id_arg,
         frequency_arg,
         debug_arg,

@@ -8,6 +8,7 @@
 
 #pragma once
 
+#include <mp2p_icp/metricmap.h>
 #include <mrpt/config/CConfigFile.h>
 #include <mrpt/maps/CMultiMetricMap.h>
 
@@ -42,8 +43,8 @@ class MapServer : public rclcpp::Node
 	nav_msgs::srv::GetMap::Response
 		m_response_ros;	 //!< response from the map server
 
-	mrpt::maps::CMultiMetricMap::Ptr
-		m_metric_map;  //!< DS to hold the map in MRPT world
+	/// metric map: will be used whatever is the incoming map format.
+	mp2p_icp::metric_map_t theMap_;
 
 	void publish_map();
 

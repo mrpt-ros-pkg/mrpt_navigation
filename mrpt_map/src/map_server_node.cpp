@@ -31,6 +31,11 @@ void MapServer::init()
 	this->get_parameter("debug", m_debug);
 	RCLCPP_INFO(this->get_logger(), "debug: '%s'", m_debug ? "true" : "false");
 
+	// See:
+	// https://github.com/mrpt-ros-pkg/mrpt_navigation/blob/ros2/mrpt_map/README.md
+
+	// MAP FORMAT 2: "legacy" ROS1 grid maps:
+	// -------------------------------------------
 	mrpt::maps::COccupancyGridMap2D::Ptr grid;
 	std::string map_yaml_file;
 	this->declare_parameter<std::string>("map_yaml_file", "");
@@ -45,30 +50,22 @@ void MapServer::init()
 	}
 	else
 	{
-		std::string ini_file;
-		std::string map_file;
+		// MAP FORMAT 1: MP2P_ICP "*.mm" metric maps
+		// -------------------------------------------
+		std::string mm_file;
 
-		this->declare_parameter<std::string>("ini_file", "map.ini");
-		this->get_parameter("ini_file", ini_file);
-		RCLCPP_INFO(
-			this->get_logger(), "map_ini_file name: '%s'", ini_file.c_str());
+		this->declare_parameter<std::string>("mm_file", "map.mm");
+		this->get_parameter("mm_file", mm_file);
+		RCLCPP_INFO(this->get_logger(), "mm_file: '%s'", mm_file.c_str());
 
-		this->declare_parameter<std::string>("map_file", "map.simplemap");
-		this->get_parameter("map_file", map_file);
-		RCLCPP_INFO(
-			this->get_logger(), "map_file name: '%s'", map_file.c_str());
+		ASSERT_FILE_EXISTS_(mm_file);
 
-		ASSERT_FILE_EXISTS_(ini_file);
-		ASSERT_FILE_EXISTS_(map_file);
-		CConfigFile config_file;
-		config_file.setFileName(ini_file);
+		bool mapReadOk = theMap_.load_from_file(mm_file);
+		ASSERT_(mapReadOk);
 
-		m_metric_map = CMultiMetricMap::Create();
-
-		mrpt::ros2bridge::MapHdl::loadMap(
-			*m_metric_map, config_file, map_file, "metricMap", m_debug);
-
-		grid = m_metric_map->mapByClass<COccupancyGridMap2D>();
+		RCLCPP_INFO_STREAM(
+			this->get_logger(),
+			"Loaded map contents: " << theMap_.contents_summary());
 	}
 
 	ASSERT_(grid);
