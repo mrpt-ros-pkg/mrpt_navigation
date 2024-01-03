@@ -20,7 +20,7 @@ Documentation for each package
 ----------------------------------
 
 Related to localization:
-* [mrpt_map](mrpt_map): A node that loads a ROS standard gridmap or an MRPT or MP2P_ICP map and publishes it to a (set of) topic(s).
+* [mrpt_map_server](mrpt_map_server): A node that loads a ROS standard gridmap or an MRPT or MP2P_ICP map and publishes it to a (set of) topic(s).
 * [mrpt_pf_localization](mrpt_pf_localization): A node for particle filter-based localization of a robot from any kind of metric map (gridmap, points, range-only sensors, ...).
 
 Related to sensor pipelines:

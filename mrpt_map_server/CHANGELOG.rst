@@ -1,5 +1,5 @@
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-Changelog for package mrpt_map
+Changelog for package mrpt_map_server
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 1.0.3 (2022-06-25)

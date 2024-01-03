@@ -6,7 +6,7 @@
    | All rights reserved. Released under BSD 3-Clause license. See LICENSE  |
    +------------------------------------------------------------------------+ */
 
-#include "mrpt_map/map_server_node.hpp"
+#include "mrpt_map_server/map_server_node.h"
 
 #include <mrpt/config/CConfigFile.h>
 #include <mrpt/maps/CMultiMetricMap.h>
@@ -32,7 +32,7 @@ void MapServer::init()
 	RCLCPP_INFO(this->get_logger(), "debug: '%s'", m_debug ? "true" : "false");
 
 	// See:
-	// https://github.com/mrpt-ros-pkg/mrpt_navigation/blob/ros2/mrpt_map/README.md
+	// https://github.com/mrpt-ros-pkg/mrpt_navigation/blob/ros2/mrpt_map_server/README.md
 
 	// MAP FORMAT 2: "legacy" ROS1 grid maps:
 	// -------------------------------------------

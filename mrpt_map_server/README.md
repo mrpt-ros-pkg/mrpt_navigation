@@ -1,16 +1,14 @@
-# mrpt_map
+# mrpt_map_server
 
-* [mrpt_map](#mrpt_map)
-   * [Overview](#overview)
-   * [Node: mrpt_map_server](#node-mrpt_map_server)
-      * [Working rationale](#working-rationale)
-      * [ROS Parameters](#ros-parameters)
-      * [Subscribed topics](#subscribed-topics)
-      * [Published topics](#published-topics)
-      * [Template ROS 2 launch files](#template-ros-2-launch-files)
-
-<!-- Created by https://github.com/ekalinin/github-markdown-toc -->
-<!-- Regenerate with: gh-md-toc README.md -->
+# Table of Contents
+* [Overview](#Overview)
+* [Node: mrpt_map_server](#Node:-mrpt_map_server)
+	* [Working rationale](#Working-rationale)
+	* [ROS Parameters](#ROS-Parameters)
+	* [Subscribed topics](#Subscribed-topics)
+	* [Published topics](#Published-topics)
+	* [Template ROS 2 launch files](#Template-ROS-2-launch-files)
+* [Demos](#Demos)
 
 ## Overview
 This package provides a ROS 2 node that publishes a static **map** for other nodes to use it.
@@ -50,7 +48,7 @@ of usage of each of these methods.
 
 #### Related to ROS published topics:
 * ``frame_id`` (Default=``map``): TF frame.
-* `pub_mm_topic` (Default=`mrpt_map/metric_map`). Despite the map source, it will be eventually stored as a `mp2p_icp`'s `metric_map_t` (`*.mm`) structure, then each layer will be published using its **layer name** as a **topic name** and with the appropriate type
+* `pub_mm_topic` (Default=`mrpt_map_server/metric_map`). Despite the map source, it will be eventually stored as a `mp2p_icp`'s `metric_map_t` (`*.mm`) structure, then each layer will be published using its **layer name** as a **topic name** and with the appropriate type
 (e.g. PointCloud2, OccupancyGrid,...). Also, the whole metric map is published as a generic serialized object to the topic defined by the 
 parameter `pub_mm_topic`.
 
@@ -58,8 +56,8 @@ parameter `pub_mm_topic`.
 None.
 
 ### Published topics
-* ``mrpt_map/metric_map`` (``mrpt_msgs::msg::GenericObject``) (topic name can be changed with parameter `pub_mm_topic`).
-* ``mrpt_map/<LAYER_NAME>`` (``nav_msgs::msg::OccupancyGrid``, ``sensors_msgs::msg::PointCloud2``, ...), one per map layer.
+* ``mrpt_map_server/metric_map`` (``mrpt_msgs::msg::GenericObject``) (topic name can be changed with parameter `pub_mm_topic`).
+* ``mrpt_map_server/<LAYER_NAME>`` (``nav_msgs::msg::OccupancyGrid``, ``sensors_msgs::msg::PointCloud2``, ...), one per map layer.
 
 If using options 2 or 3 above, there will be just one layer named `map`.
 
@@ -67,7 +65,7 @@ If using options 2 or 3 above, there will be just one layer named `map`.
 
 This package provides [launch/mrpt_map_server.launch.py](launch/mrpt_map_server.launch.py):
 
-    ros2 launch mrpt_map mrpt_map_server.launch.py
+    ros2 launch mrpt_map_server mrpt_map_server.launch.py
 
 which can be used in user projects to launch the MRPT map server node, by setting these [launch arguments](https://docs.ros.org/en/rolling/Tutorials/Intermediate/Launch/Using-Substitutions.html):
 

@@ -1,7 +1,7 @@
-# ROS 2 launch file for mrpt_map
+# ROS 2 launch file for mrpt_map_server
 #
 # See the docs on the configurable launch arguments for this file in:
-# https://github.com/mrpt-ros-pkg/mrpt_navigation/tree/ros2/mrpt_map#template-ros-2-launch-files
+# https://github.com/mrpt-ros-pkg/mrpt_navigation/tree/ros2/mrpt_map_server#template-ros-2-launch-files
 #
 
 import os
@@ -14,7 +14,7 @@ from launch.launch_description_sources import PythonLaunchDescriptionSource
 
 
 def generate_launch_description():
-    # mrpt_map_pkg_dir = get_package_share_directory('mrpt_map')
+    # mrpt_map_pkg_dir = get_package_share_directory('mrpt_map_server')
 
     map_yaml_file_arg = DeclareLaunchArgument(
         'map_yaml_file', default_value=''
@@ -38,7 +38,7 @@ def generate_launch_description():
 
     # Node: Local obstacles builder
     mrpt_map_server_node = Node(
-        package='mrpt_map',
+        package='mrpt_map_server',
         executable='map_server_node',
         name='map_server_node',
         output='screen',

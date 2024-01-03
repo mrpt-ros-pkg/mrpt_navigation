@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.5)
-project(mrpt_map)
+project(mrpt_map_server)
 
 # find dependencies
 find_package(ament_cmake REQUIRED)
@@ -43,7 +43,7 @@ ENDIF()
 ## Declare a cpp executable
 add_executable(map_server_node
 				src/map_server_node.cpp
-				include/${PROJECT_NAME}/map_server_node.hpp)
+				include/${PROJECT_NAME}/map_server_node.h)
 
 target_include_directories(map_server_node
 				PUBLIC

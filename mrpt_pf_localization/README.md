@@ -85,7 +85,7 @@ Refer to node launch arguments for details.
 to start:
 
 * ``mrpt_pf_localization`` with the map to be received via a ROS topic,
-* ``mrpt_map`` server loading and publishing a gridmap as reference map via an ROS-styled ``map.yaml`` file,
+* ``mrpt_map_server`` server loading and publishing a gridmap as reference map via an ROS-styled ``map.yaml`` file,
 * ``rviz2`` for visualization,
 * ``mvsim`` to simulate a live robot that can be teleoperated.
 
@@ -146,7 +146,7 @@ This package provides [launch/localization.launch.py](launch/localization.launch
 which can be used in user projects to launch the MRPT PF localization node, by setting these [launch arguments](https://docs.ros.org/en/rolling/Tutorials/Intermediate/Launch/Using-Substitutions.html):
 
 * ``mrpt_map_config_file``: Path to an INI file with metric map (mrpt::maps::CMetricMap) parameters to override the incoming map `likelihoodOptions`. 
-  If this optional parameter is not provided, likelihood options will be taken from the map sent by the [mrpt_map](https://github.com/mrpt-ros-pkg/mrpt_navigation/tree/ros2/mrpt_map) node.
+  If this optional parameter is not provided, likelihood options will be taken from the map sent by the [mrpt_map_server](https://github.com/mrpt-ros-pkg/mrpt_navigation/tree/ros2/mrpt_map_server) node.
 * ``pf_params_file`` (Default: [params/default.config.yaml](params/default.config.yaml)): If defined, overrides the default
 particle filter algorithm. Note that probabilistic likelihood models for the metric maps are in an independent file (``mrpt_map_config_file``).
 

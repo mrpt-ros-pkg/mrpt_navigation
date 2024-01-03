@@ -29,7 +29,7 @@ def generate_launch_description():
 
     mrpt_map_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource([os.path.join(
-            get_package_share_directory('mrpt_map'), 'launch',
+            get_package_share_directory('mrpt_map_server'), 'launch',
             'mrpt_map_server.launch.py')]),
         launch_arguments={
             'map_yaml_file': os.path.join(tutsDir, 'maps', 'demo_world2.yaml'),
