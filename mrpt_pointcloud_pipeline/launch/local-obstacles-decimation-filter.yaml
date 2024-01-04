@@ -1,5 +1,6 @@
 - class_name: mp2p_icp_filters::FilterDecimateVoxels
   params:
+    input_pointcloud_layer: 'raw'
     output_pointcloud_layer: 'decimated_pre'
     voxel_filter_resolution: 0.05  # [m]
     use_voxel_average: true
