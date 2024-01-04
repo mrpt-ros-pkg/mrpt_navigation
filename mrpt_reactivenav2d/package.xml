@@ -2,7 +2,7 @@
 <package format="3">
   <name>mrpt_reactivenav2d</name>
   <version>1.0.3</version>
-  <description>Reactive navigation for 2D robots using MRPT navigation algorithms (TP-Space)</description>
+  <description>Reactive navigation for wheeled robots using MRPT navigation algorithms (TP-Space)</description>
 
   <maintainer email="jlblanco@ual.es">Jose-Luis Blanco-Claraco</maintainer>
   <maintainer email="shravansomashekara.rai@gmail.com">Shravan S Rai</maintainer>
