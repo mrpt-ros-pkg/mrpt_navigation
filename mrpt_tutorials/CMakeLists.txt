@@ -7,7 +7,6 @@ find_package(ament_cmake REQUIRED)
 # Mark other files for installation (e.g. launch and bag files, etc.)
 install(DIRECTORY
   datasets
-  gazebo
   launch
   maps
   mvsim

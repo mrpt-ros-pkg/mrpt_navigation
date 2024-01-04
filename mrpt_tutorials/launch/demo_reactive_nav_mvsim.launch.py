@@ -1,6 +1,9 @@
-import os
-import sys
+# ROS 2 launch file for example in mrpt_tutorials
+#
+# See repo online: https://github.com/mrpt-ros-pkg/mrpt_navigation
+#
 
+import os
 from launch import LaunchDescription
 from ament_index_python.packages import get_package_share_directory
 from launch_ros.actions import Node
@@ -42,7 +45,7 @@ def generate_launch_description():
         parameters=[
             {
                 # 2D lidar sources:
-                'source_topics_2dscan': 'scanner1',
+                'source_topics_2d_scans': 'scanner1',
                 # 3D lidar sources:
                 'source_topics_pointclouds': 'lidar1_points',
                 'filter_yaml_file': LaunchConfiguration('filter_yaml_file'),

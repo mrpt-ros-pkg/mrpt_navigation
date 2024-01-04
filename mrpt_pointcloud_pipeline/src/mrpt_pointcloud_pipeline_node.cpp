@@ -52,10 +52,14 @@ LocalObstaclesNode::LocalObstaclesNode(const rclcpp::NodeOptions& options)
 		static_cast<unsigned int>(nSubsTotal));
 
 	if (!(nSubsTotal > 0))
+	{
 		RCLCPP_ERROR(
 			get_logger(),
 			"*Error* It is mandatory to set at least one source topic for "
 			"sensory information!");
+
+		rclcpp::shutdown();
+	}
 
 	// Local map params:
 	m_localmap_pts->insertionOptions.minDistBetweenLaserPoints = 0;
@@ -513,10 +517,10 @@ void LocalObstaclesNode::read_parameters()
 		m_topic_local_map_pointcloud.c_str());
 
 	this->declare_parameter<std::string>(
-		"source_topics_2dscan", "scan, laser1");
-	this->get_parameter("source_topics_2dscan", m_topics_source_2dscan);
+		"source_topics_2d_scans", "scan, laser1");
+	this->get_parameter("source_topics_2d_scans", m_topics_source_2dscan);
 	RCLCPP_INFO(
-		get_logger(), "source_topics_2dscan: %s",
+		get_logger(), "source_topics_2d_scans: %s",
 		m_topics_source_2dscan.c_str());
 
 	this->declare_parameter<std::string>("source_topics_pointclouds", "");
