@@ -185,62 +185,78 @@ ReactiveNav2DNode::ReactiveNav2DNode(const rclcpp::NodeOptions& options)
 
 void ReactiveNav2DNode::read_parameters()
 {
-	this->declare_parameter<std::string>(
+	declare_parameter<std::string>(
 		"cfg_file_reactive", "reactive2d_config.ini");
-	this->get_parameter("cfg_file_reactive", m_cfg_file_reactive);
+	get_parameter("cfg_file_reactive", m_cfg_file_reactive);
 	RCLCPP_INFO(
 		this->get_logger(), "cfg_file_reactive %s",
 		m_cfg_file_reactive.c_str());
 
-	this->declare_parameter<double>("target_allowed_distance", 0.40);
-	this->get_parameter("target_allowed_distance", m_target_allowed_distance);
+	declare_parameter<double>(
+		"target_allowed_distance", m_target_allowed_distance);
+	get_parameter("target_allowed_distance", m_target_allowed_distance);
 	RCLCPP_INFO(
 		this->get_logger(), "target_allowed_distance: %f",
 		m_target_allowed_distance);
 
-	this->declare_parameter<double>("nav_period", 0.10);
-	this->get_parameter("nav_period", m_nav_period);
+	declare_parameter<double>("nav_period", m_nav_period);
+	get_parameter("nav_period", m_nav_period);
 	RCLCPP_INFO(this->get_logger(), "nav_period: %f", m_nav_period);
 
-	this->declare_parameter<std::string>("frameid_reference", "odom");
-	this->get_parameter("frameid_reference", m_frameid_reference);
+	declare_parameter<std::string>("frameid_reference", m_frameid_reference);
+	get_parameter("frameid_reference", m_frameid_reference);
 	RCLCPP_INFO(
 		this->get_logger(), "frameid_reference: %s",
 		m_frameid_reference.c_str());
 
-	this->declare_parameter<std::string>("frameid_robot", "base_link");
-	this->get_parameter("frameid_robot", m_frameid_robot);
+	declare_parameter<std::string>("frameid_robot", m_frameid_robot);
+	get_parameter("frameid_robot", m_frameid_robot);
 	RCLCPP_INFO(
 		this->get_logger(), "frameid_robot: %s", m_frameid_robot.c_str());
 
-	this->declare_parameter<std::string>("topic_wp_seq", "waypointsequence");
-	this->get_parameter("topic_wp_seq", m_sub_topic_wp_seq);
+	declare_parameter<std::string>("topic_wp_seq", m_sub_topic_wp_seq);
+	get_parameter("topic_wp_seq", m_sub_topic_wp_seq);
 	RCLCPP_INFO(
 		this->get_logger(), "topic_wp_seq: %s", m_sub_topic_wp_seq.c_str());
 
-	this->declare_parameter<std::string>("topic_odometry", "/odometry");
-	this->get_parameter("topic_odometry", m_sub_topic_odometry);
+	declare_parameter<std::string>(
+		"topic_reactive_nav_goal", m_sub_topic_reactive_nav_goal);
+	get_parameter("topic_reactive_nav_goal", m_sub_topic_reactive_nav_goal);
+	RCLCPP_INFO(
+		this->get_logger(), "topic_reactive_nav_goal: %s",
+		m_sub_topic_reactive_nav_goal.c_str());
+
+	declare_parameter<std::string>("topic_odometry", m_sub_topic_odometry);
+	get_parameter("topic_odometry", m_sub_topic_odometry);
 	RCLCPP_INFO(
 		this->get_logger(), "topic_odometry: %s", m_sub_topic_odometry.c_str());
 
-	this->declare_parameter<std::string>("topic_cmd_vel", "/cmd_vel");
-	this->get_parameter("topic_cmd_vel", m_pub_topic_cmd_vel);
+	declare_parameter<std::string>("topic_cmd_vel", m_pub_topic_cmd_vel);
+	get_parameter("topic_cmd_vel", m_pub_topic_cmd_vel);
 	RCLCPP_INFO(
 		this->get_logger(), "topic_cmd_vel: %s", m_pub_topic_cmd_vel.c_str());
 
-	this->declare_parameter<std::string>("topic_obstacles", "/pointcloud");
-	this->get_parameter("topic_obstacles", m_sub_topic_local_obstacles);
+	declare_parameter<std::string>(
+		"topic_obstacles", m_sub_topic_local_obstacles);
+	get_parameter("topic_obstacles", m_sub_topic_local_obstacles);
 	RCLCPP_INFO(
 		this->get_logger(), "topic_obstacles: %s",
 		m_sub_topic_local_obstacles.c_str());
 
-	this->declare_parameter<bool>("save_nav_log", false);
-	this->get_parameter("save_nav_log", m_save_nav_log);
+	declare_parameter<std::string>(
+		"topic_robot_shape", m_sub_topic_robot_shape);
+	get_parameter("topic_robot_shape", m_sub_topic_robot_shape);
+	RCLCPP_INFO(
+		this->get_logger(), "topic_robot_shape: %s",
+		m_sub_topic_robot_shape.c_str());
+
+	declare_parameter<bool>("save_nav_log", false);
+	get_parameter("save_nav_log", m_save_nav_log);
 	RCLCPP_INFO(
 		this->get_logger(), "save_nav_log: %s", m_save_nav_log ? "yes" : "no");
 
-	this->declare_parameter<std::string>("ptg_plugin_files", "");
-	this->get_parameter("ptg_plugin_files", m_plugin_file);
+	declare_parameter<std::string>("ptg_plugin_files", "");
+	get_parameter("ptg_plugin_files", m_plugin_file);
 	RCLCPP_INFO(
 		this->get_logger(), "ptg_plugin_files: %s", m_plugin_file.c_str());
 

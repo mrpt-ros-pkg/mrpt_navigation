@@ -17,7 +17,7 @@ def generate_launch_description():
 
     default_rnav_cfg_file = os.path.join(
         get_package_share_directory('mrpt_reactivenav2d'),
-        'tutorial', 'reactive2d_config.ini')
+        'params', 'reactive2d_default.ini')
 
     arg_world_file_launch = DeclareLaunchArgument(
         name='world_file',
@@ -27,7 +27,11 @@ def generate_launch_description():
     filter_yaml_file_arg = DeclareLaunchArgument(
         'filter_yaml_file',
         default_value=os.path.join(get_package_share_directory(
-            'mrpt_pointcloud_pipeline'), 'launch', 'local-obstacles-decimation-filter.yaml')
+            'mrpt_pointcloud_pipeline'), 'params', 'local-obstacles-decimation-filter.yaml')
+    )
+    filter_output_layer_name_arg = DeclareLaunchArgument(
+        'filter_output_layer_name',
+        default_value='output'
     )
 
     node_pointcloud_pipeline_launch = Node(
@@ -42,9 +46,10 @@ def generate_launch_description():
                 # 3D lidar sources:
                 'source_topics_pointclouds': 'lidar1_points',
                 'filter_yaml_file': LaunchConfiguration('filter_yaml_file'),
+                'filter_output_layer_name': LaunchConfiguration('filter_output_layer_name'),
             },
             {
-                'show_gui': False
+                'show_gui': True
             }
         ]
     )
@@ -83,7 +88,9 @@ def generate_launch_description():
                 'cfg_file_reactive': default_rnav_cfg_file,
             },
             {
-                'topic_robot_shape': '/chassis_polygon'
+                'topic_robot_shape': '/chassis_polygon',  # from MVSim
+                'topic_obstacles': '/local_map_pointcloud',
+                'topic_reactive_nav_goal': '/goal_pose',
             }
         ]
     )
@@ -91,6 +98,7 @@ def generate_launch_description():
     return LaunchDescription([
         arg_world_file_launch,
         filter_yaml_file_arg,
+        filter_output_layer_name_arg,
         node_pointcloud_pipeline_launch,
         node_mvsim_launch,
         node_rviz2_launch,

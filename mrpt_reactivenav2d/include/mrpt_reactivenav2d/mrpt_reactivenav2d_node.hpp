@@ -90,16 +90,16 @@ class ReactiveNav2DNode : public rclcpp::Node
 
 	CTimeLogger m_profiler;
 	bool m_1st_time_init;  //!< Reactive initialization done?
-	double m_target_allowed_distance;
-	double m_nav_period;
+	double m_target_allowed_distance = 0.40;
+	double m_nav_period = 0.10;
 
 	std::string m_sub_topic_reactive_nav_goal = "reactive_nav_goal";
 	std::string m_sub_topic_local_obstacles = "local_map_pointcloud";
-	std::string m_sub_topic_robot_shape{};
+	std::string m_sub_topic_robot_shape;
 	std::string m_sub_topic_wp_seq = "reactive_nav_waypoints";
-	std::string m_sub_topic_odometry = "odom";
+	std::string m_sub_topic_odometry = "/odom";
 
-	std::string m_pub_topic_cmd_vel = "cmd_vel";
+	std::string m_pub_topic_cmd_vel = "/cmd_vel";
 
 	std::string m_frameid_reference = "map";
 	std::string m_frameid_robot = "base_link";

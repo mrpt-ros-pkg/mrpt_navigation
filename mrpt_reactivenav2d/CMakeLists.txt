@@ -96,7 +96,7 @@ install(TARGETS ${PROJECT_NAME}_node
 ## Mark other files for installation (e.g. launch and bag files, etc.)
 install(DIRECTORY
   launch
-  tutorial
+  params
   DESTINATION share/${PROJECT_NAME}
 )
 
