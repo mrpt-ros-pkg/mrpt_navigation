@@ -117,10 +117,11 @@ class LocalObstaclesNode : public rclcpp::Node
 		"scan, laser1";	 //!< Default: "scan, laser1"
 	std::string m_topics_source_pointclouds = "";
 
-	double m_time_window = 0.20;  //!< In secs (default: 0.2). Can't be smaller
-								  //!< than m_publish_period
-	double m_publish_period =
-		0.05;  //!< In secs (default: 0.05). Can't be larger than m_time_window
+	//!< In secs (default: 0.2). Can't be smaller than m_publish_period
+	double m_time_window = 0.20;
+
+	//!< In secs (default: 0.05). Can't be larger than m_time_window
+	double m_publish_period = 0.05;
 
 	rclcpp::TimerBase::SharedPtr m_timer_publish;
 
@@ -140,6 +141,7 @@ class LocalObstaclesNode : public rclcpp::Node
 	CSimplePointsMap::Ptr m_localmap_pts = CSimplePointsMap::Create();
 
 	mrpt::gui::CDisplayWindow3D::Ptr m_gui_win;
+	bool m_visible_raw = true, m_visible_output = true;
 
 	/// Used for example to run voxel grid decimation, etc.
 	/// Refer to mp2p_icp docs

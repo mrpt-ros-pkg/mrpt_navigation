@@ -10,28 +10,40 @@ def generate_launch_description():
     
         
     lidar_topic_name_arg = DeclareLaunchArgument(
-        'lidar_topic_name', 
+        'lidar_topic_name',
         default_value='/laser1, /laser2'
     )
     points_topic_name_arg = DeclareLaunchArgument(
-        'points_topic_name', 
-        default_value='/particlecloud'
+        'points_topic_name',
+        default_value='/ouster/points, /camera1_points'
     )
     show_gui_arg = DeclareLaunchArgument(
-        'show_gui', 
+        'show_gui',
         default_value='True'
     )
     time_window_arg = DeclareLaunchArgument(
-        'time_window', 
-        default_value='0.2'
+        'time_window',
+        default_value='0.20'
     )
     filter_yaml_file_arg = DeclareLaunchArgument(
-        'filter_yaml_file', 
+        'filter_yaml_file',
         default_value= os.path.join(os.path.dirname(__file__), 'local-obstacles-decimation-filter.yaml')
     )
     filter_output_layer_name_arg = DeclareLaunchArgument(
-        'filter_output_layer_name', 
-        default_value='decimated'
+        'filter_output_layer_name',
+        default_value='output'
+    )
+    filter_output_topic_arg = DeclareLaunchArgument(
+        'filter_output_topic_name',
+        default_value='/local_map_pointcloud'
+    )
+    frameid_reference_arg = DeclareLaunchArgument(
+        'frameid_reference',
+        default_value='odom'
+    )
+    frameid_robot_arg = DeclareLaunchArgument(
+        'frameid_robot',
+        default_value='base_link'
     )
 
     # Node: Local obstacles builder
@@ -47,7 +59,9 @@ def generate_launch_description():
             {'filter_yaml_file': LaunchConfiguration('filter_yaml_file')},
             {'filter_output_layer_name': LaunchConfiguration('filter_output_layer_name')},
             {'time_window': LaunchConfiguration('time_window')},
-            {'topic_local_map_pointcloud': '/local_map_pointcloud'},
+            {'topic_local_map_pointcloud': LaunchConfiguration('filter_output_topic_name')},
+            {'frameid_reference': LaunchConfiguration('frameid_reference')},
+            {'frameid_robot': LaunchConfiguration('frameid_robot')},
         ],
     )
 
@@ -70,5 +84,8 @@ def generate_launch_description():
         time_window_arg,
         filter_yaml_file_arg,
         filter_output_layer_name_arg,
+        filter_output_topic_arg,
+        frameid_reference_arg,
+        frameid_robot_arg,
         mrpt_pointcloud_pipeline_node
     ])

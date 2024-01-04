@@ -1,7 +1,10 @@
-# ROS 2 launch file for mrpt_pf_localization
+# ROS 2 launch file for mrpt_pf_localization, intended to be included in user's
+# launch files.
 #
 # See the docs on the configurable launch arguments for this file in:
 # https://github.com/mrpt-ros-pkg/mrpt_navigation/tree/ros2/mrpt_pf_localization#template-ros-2-launch-files
+#
+# For ready-to-launch demos, see: https://github.com/mrpt-ros-pkg/mrpt_navigation/tree/ros2/mrpt_tutorials
 #
 
 from launch import LaunchDescription

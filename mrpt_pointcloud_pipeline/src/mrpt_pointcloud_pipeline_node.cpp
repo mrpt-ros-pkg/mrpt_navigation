@@ -6,11 +6,13 @@
    | All rights reserved. Released under BSD 3-Clause license. See LICENSE  |
    +------------------------------------------------------------------------+ */
 
+#include <mrpt/ros2bridge/time.h>
 #include <mrpt_pointcloud_pipeline/mrpt_pointcloud_pipeline_node.h>
 
 #include <sstream>
 
-#include "rclcpp_components/register_node_macro.hpp"
+// for now, not needed (node=executable)
+// #include "rclcpp_components/register_node_macro.hpp"
 
 using namespace mrpt::system;
 using namespace mrpt::config;
@@ -21,6 +23,8 @@ using namespace mrpt::obs;
 LocalObstaclesNode::LocalObstaclesNode(const rclcpp::NodeOptions& options)
 	: Node("mrpt_pointcloud_pipeline", options)
 {
+	m_profiler.setName(Node::get_name());
+
 	read_parameters();
 
 	// Create publisher for local map point cloud
@@ -118,8 +122,7 @@ void LocalObstaclesNode::on_do_publish()
 		{
 			geometry_msgs::msg::TransformStamped tx;
 			tx = m_tf_buffer->lookupTransform(
-				m_frameid_reference, m_frameid_robot, tf2::TimePointZero,
-				tf2::durationFromSec(timeout.seconds()));
+				m_frameid_reference, m_frameid_robot, tf2::TimePointZero);
 
 			tf2::Transform tfx;
 			tf2::fromMsg(tx.transform, tfx);
@@ -139,19 +142,14 @@ void LocalObstaclesNode::on_do_publish()
 
 		// For each observation: compute relative robot pose & insert obs
 		// into map:
-		for (TListObservations::const_iterator it = obs.begin();
-			 it != obs.end(); ++it)
+		for (const auto& [timestamp, ipt] : obs)
 		{
-			const TInfoPerTimeStep& ipt = it->second;
-
 			// Relative pose in the past:
-			mrpt::poses::CPose3D relPose(mrpt::poses::UNINITIALIZED_POSE);
-			relPose.inverseComposeFrom(ipt.robot_pose, curRobotPose);
+			const mrpt::poses::CPose3D relPose = ipt.robot_pose - curRobotPose;
 
 			// Insert obs:
 			m_localmap_pts->insertObservationPtr(ipt.observation, relPose);
-
-		}  // end for
+		}
 	}
 
 	// Filtering:
@@ -159,6 +157,9 @@ void LocalObstaclesNode::on_do_publish()
 
 	if (!m_filter_pipeline.empty())
 	{
+		CTimeLoggerEntry tleFilter(
+			m_profiler, "on_do_publish.apply_filter_pipeline");
+
 		mp2p_icp::metric_map_t mm;
 		mm.layers[mp2p_icp::metric_map_t::PT_LAYER_RAW] = m_localmap_pts;
 		mp2p_icp_filters::apply_filter_pipeline(m_filter_pipeline, mm);
@@ -175,8 +176,14 @@ void LocalObstaclesNode::on_do_publish()
 	{
 		sensor_msgs::msg::PointCloud2 msg_pts;
 		msg_pts.header.frame_id = m_frameid_robot;
-		msg_pts.header.stamp = rclcpp::Time(obs.rbegin()->first);
 
+		// Publish using the timestamp of the *latest* observation:
+		msg_pts.header.stamp = mrpt::ros2bridge::toROS(
+			mrpt::Clock::fromDouble(obs.rbegin()->first));
+
+		// TODO(jlbc): We could add an if-else chain if XYZI / XYZIRT point
+		// clouds are desired as output too, but it seems not likely for this
+		// kind of filtering node.
 		auto simplPts = std::dynamic_pointer_cast<mrpt::maps::CSimplePointsMap>(
 			filteredPts);
 		ASSERT_(simplPts);
@@ -210,17 +217,41 @@ void LocalObstaclesNode::on_do_publish()
 
 			auto gl_pts = mrpt::opengl::CPointCloud::Create();
 			gl_pts->setName("final_points");
-			gl_pts->setPointSize(3.0);
+			gl_pts->setPointSize(4.0);
 			gl_pts->setColor_u8(TColor(0x0000ff));
 			scene->insert(gl_pts);
+
+			scene->getViewport()->addTextMessage(
+				5, 5, "Press keys '1'/'2' to switch raw/output clouds", 0);
 
 			m_gui_win->unlockAccess3DScene();
 		}
 
+		// Process key ops on the gui:
+		if (m_gui_win->keyHit())
+		{
+			const auto key = m_gui_win->getPushedKey();
+			m_gui_win->clearKeyHitFlag();
+			switch (key)
+			{
+				case '1':
+					m_visible_raw = !m_visible_raw;
+					break;
+
+				case '2':
+					m_visible_output = !m_visible_output;
+					break;
+
+				default:
+					break;
+			};
+		}
+
 		auto& scene = m_gui_win->get3DSceneAndLock();
+
 		auto gl_obs = mrpt::ptr_cast<mrpt::opengl::CSetOfObjects>::from(
 			scene->getByName("obstacles"));
-		// ROS_ASSERT(!!gl_obs);
+		ASSERT_(!!gl_obs);
 		gl_obs->clear();
 
 		auto glRawPts = mrpt::ptr_cast<mrpt::opengl::CPointCloud>::from(
@@ -228,6 +259,14 @@ void LocalObstaclesNode::on_do_publish()
 
 		auto glFinalPts = mrpt::ptr_cast<mrpt::opengl::CPointCloud>::from(
 			scene->getByName("final_points"));
+
+		scene->getViewport()->addTextMessage(
+			5, 25,
+			mrpt::format(
+				"Raw points: %10s | Output points: %10s",
+				m_visible_raw ? "VISIBLE" : "hidden",
+				m_visible_output ? "VISIBLE" : "hidden"),
+			1);
 
 		for (const auto& o : obs)
 		{
@@ -243,7 +282,10 @@ void LocalObstaclesNode::on_do_publish()
 		}  // end for
 
 		glRawPts->loadFromPointsMap(m_localmap_pts.get());
+		glRawPts->setVisibility(m_visible_raw);
+
 		glFinalPts->loadFromPointsMap(filteredPts.get());
+		glFinalPts->setVisibility(m_visible_output);
 
 		m_gui_win->unlockAccess3DScene();
 		m_gui_win->repaint();
@@ -263,8 +305,7 @@ void LocalObstaclesNode::on_new_sensor_laser_2d(
 		CTimeLoggerEntry tle2(
 			m_profiler, "onNewSensor_Laser2D.lookupTransform_sensor");
 		sensorOnRobot = m_tf_buffer->lookupTransform(
-			m_frameid_robot, scan->header.frame_id, scan->header.stamp,
-			timeout);
+			m_frameid_robot, scan->header.frame_id, tf2::TimePointZero);
 	}
 	catch (const tf2::TransformException& ex)
 	{
@@ -305,8 +346,7 @@ void LocalObstaclesNode::on_new_sensor_laser_2d(
 		try
 		{
 			robotTfStamp = m_tf_buffer->lookupTransform(
-				m_frameid_reference, m_frameid_robot, scan->header.stamp,
-				timeout);
+				m_frameid_reference, m_frameid_robot, tf2::TimePointZero);
 		}
 		catch (const tf2::ExtrapolationException& ex)
 		{
@@ -356,7 +396,7 @@ void LocalObstaclesNode::on_new_sensor_pointcloud(
 			m_profiler, "on_new_sensor_pointcloud.lookupTransform_sensor");
 
 		sensorOnRobot = m_tf_buffer->lookupTransform(
-			m_frameid_robot, pts->header.frame_id, pts->header.stamp, timeout);
+			m_frameid_robot, pts->header.frame_id, tf2::TimePointZero);
 	}
 	catch (const tf2::TransformException& ex)
 	{
@@ -402,8 +442,7 @@ void LocalObstaclesNode::on_new_sensor_pointcloud(
 		try
 		{
 			robotTfStamp = m_tf_buffer->lookupTransform(
-				m_frameid_reference, m_frameid_robot, pts->header.stamp,
-				timeout);
+				m_frameid_reference, m_frameid_robot, tf2::TimePointZero);
 		}
 		catch (const tf2::ExtrapolationException& ex)
 		{
@@ -461,6 +500,9 @@ void LocalObstaclesNode::read_parameters()
 	this->declare_parameter<double>("publish_period", 0.05);
 	this->get_parameter("publish_period", m_publish_period);
 	RCLCPP_INFO(get_logger(), "publish_period: %f", m_publish_period);
+
+	// publish_period can't be larger than m_time_window:
+	ASSERT_LE_(m_publish_period, m_time_window);
 
 	this->declare_parameter<std::string>(
 		"topic_local_map_pointcloud", "local_map_pointcloud");

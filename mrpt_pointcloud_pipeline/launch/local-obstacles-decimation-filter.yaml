@@ -1,16 +1,49 @@
-- class_name: mp2p_icp_filters::FilterDecimateVoxels
-  params:
-    input_pointcloud_layer: 'raw'
-    output_pointcloud_layer: 'decimated_pre'
-    voxel_filter_resolution: 0.05  # [m]
-    use_voxel_average: true
-    bounding_box_min: [ -5, -5, 0 ]
-    bounding_box_max: [ 10, 5, 1 ]
+# -----------------------------------------------------------------------------
+#                         mp2p_icp filters definition file
+#
+# See docs for MP2P_ICP library: https://docs.mola-slam.org/mp2p_icp/
+# -----------------------------------------------------------------------------
+
+# Remove points that are too far:
 - class_name: mp2p_icp_filters::FilterBoundingBox
   params:
-    input_pointcloud_layer: 'decimated_pre'
-    output_pointcloud_layer: 'decimated'
-    keep_bbox_contents: false
-    bounding_box_min: [ -0.22, -0.27, -1 ]
-    bounding_box_max: [  0.22,  0.27,  1 ]
+    input_pointcloud_layer: 'raw'
+    inside_pointcloud_layer: 'layer1'
+    bounding_box_min: [ -20.0, -20.0,  0.1 ]
+    bounding_box_max: [  20.0,  20.0,  1.5 ]
 
+# Split into nearby and distant
+- class_name: mp2p_icp_filters::FilterBoundingBox
+  params:
+    input_pointcloud_layer: 'layer1'
+    inside_pointcloud_layer: 'close'
+    outside_pointcloud_layer: 'far'
+    bounding_box_min: [ -6.0, -6.0, -3.0 ]
+    bounding_box_max: [  6.0,  6.0,  3.0 ]
+    
+# Downsample points:
+- class_name: mp2p_icp_filters::FilterDecimateVoxels
+  params:
+    input_pointcloud_layer: 'close'
+    output_pointcloud_layer: 'decim'
+    voxel_filter_resolution: 0.10  # [m]
+    #use_voxel_average: true
+    # This option flattens the 3D point cloud into a 2D one:
+    flatten_to: 1.0 # [m]
+
+- class_name: mp2p_icp_filters::FilterDecimateVoxels
+  params:
+    input_pointcloud_layer: 'far'
+    output_pointcloud_layer: 'decim'
+    voxel_filter_resolution: 0.5  # [m]
+    #use_voxel_average: true
+    # This option flattens the 3D point cloud into a 2D one:
+    flatten_to: 1.0 # [m]
+
+# Remove the robot body:
+- class_name: mp2p_icp_filters::FilterBoundingBox
+  params:
+    input_pointcloud_layer: 'decim'
+    outside_pointcloud_layer: 'output'
+    bounding_box_min: [ -1.0, -1.0, -2 ]
+    bounding_box_max: [  1.0,  1.0,  2 ]
