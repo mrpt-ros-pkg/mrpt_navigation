@@ -69,6 +69,7 @@ def generate_launch_description():
             'rnav.launch.py')]),
         launch_arguments={
             'log_level': 'INFO',
+            # 'save_nav_log': 'True',
         }.items()
     )
 

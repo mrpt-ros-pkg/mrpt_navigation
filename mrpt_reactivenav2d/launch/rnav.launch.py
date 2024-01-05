@@ -52,6 +52,10 @@ def generate_launch_description():
         'frameid_robot',
         default_value='base_link'
     )
+    save_nav_log_arg = DeclareLaunchArgument(
+        'save_nav_log',
+        default_value='False'
+    )
 
     log_level_launch_arg = DeclareLaunchArgument(
         "log_level",
@@ -75,6 +79,7 @@ def generate_launch_description():
                 'nav_period': LaunchConfiguration('nav_period'),
                 'frameid_reference': LaunchConfiguration('frameid_reference'),
                 'frameid_robot': LaunchConfiguration('frameid_robot'),
+                'save_nav_log': LaunchConfiguration('save_nav_log'),
             }
         ],
         arguments=['--ros-args', '--log-level',
@@ -91,5 +96,6 @@ def generate_launch_description():
         nav_period_arg,
         frameid_reference_arg,
         frameid_robot_arg,
+        save_nav_log_arg,
         node_rnav2d_launch,
     ])
