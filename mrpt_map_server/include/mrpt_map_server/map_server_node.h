@@ -29,20 +29,24 @@ class MapServer : public rclcpp::Node
 
    private:
 	// member variables
-	double m_frequency = 1.0;  //!< rate at which the ros map is published
+	double frequency_ = 1.0;  //!< rate at which the ros map is published
 
 	// params that come from launch file
 	std::string pub_mm_topic_ = "map_server";
+	
+	std::string service_map_str_ = "static_map";
 
-	std::string m_service_map_str = "static_map";
+	std::string frame_id_ = "map";
 
+#if 0
 	rclcpp::Service<nav_msgs::srv::GetMap>::SharedPtr
 		m_service_map;	//!< service for map server
-	nav_msgs::srv::GetMap::Response
-		m_response_ros;	 //!< response from the map server
+	nav_msgs::srv::GetMap::Response m_response_ros;	 //!< response from the map server
+#endif
 
 	/// metric map: will be used whatever is the incoming map format.
 	mp2p_icp::metric_map_t theMap_;
+	std::mutex theMapMtx_;
 
 	/// (re)publish each map layer, creating the publisher the first time.
 	/// If the number of subscriber is detected to have changed, msgs will be
@@ -50,21 +54,34 @@ class MapServer : public rclcpp::Node
 	void publish_map();
 
 	// ------ publishers --------
-	// clang-format off
+
+	template <typename msg_t>
+	struct PerTopicData
+	{
+		typename rclcpp::Publisher<msg_t>::SharedPtr pub;
+		size_t subscribers = 0;
+
+		bool new_subscribers()
+		{
+			const auto N = pub->get_subscription_count();
+			bool ret = N > subscribers;
+			subscribers = N;
+			return ret;
+		}
+	};
+
 	// for the top-level mm metric map:
-	rclcpp::Publisher<mrpt_msgs::msg::GenericObject>::SharedPtr pubMM_;
-	size_t pubMM_subscribers_ = 0;
+	PerTopicData<mrpt_msgs::msg::GenericObject> pubMM_;
 
-	// for grid map layers:
-	std::map<std::string, rclcpp::Publisher<nav_msgs::msg::OccupancyGrid>::SharedPtr> pubGridMaps_;
-	size_t pubGridMaps_subscribers_ = 0;
+	// clang-format off
+	// Binary form of each layer:
+	std::map<std::string, PerTopicData<mrpt_msgs::msg::GenericObject>> pubLayers_;
 	
-	std::map<std::string, rclcpp::Publisher<nav_msgs::msg::MapMetaData>::SharedPtr> pubGridMapsMetaData_;
-	size_t pubGridMapsMetaData_subscribers_ = 0;
-
+	// for grid map layers:
+	std::map<std::string, PerTopicData<nav_msgs::msg::OccupancyGrid>> pubGridMaps_;
+	std::map<std::string, PerTopicData<nav_msgs::msg::MapMetaData>> pubGridMapsMetaData_;
 	// for points layers:
-	std::map<std::string, rclcpp::Publisher<sensor_msgs::msg::PointCloud2::SharedPtr>> pubPointMaps_;
-	size_t pubPointMaps_subscribers_ = 0;
+	std::map<std::string,PerTopicData<sensor_msgs::msg::PointCloud2>> pubPointMaps_;
 
 	// clang-format on
 
