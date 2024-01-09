@@ -9,9 +9,11 @@
 #include "mrpt_map_server/map_server_node.h"
 
 #include <mrpt/config/CConfigFile.h>
+#include <mrpt/io/CFileGZInputStream.h>
 #include <mrpt/maps/CMultiMetricMap.h>
 #include <mrpt/maps/COccupancyGridMap2D.h>
 #include <mrpt/ros2bridge/map.h>
+#include <mrpt/serialization/CArchive.h>
 #include <mrpt/system/filesystem.h>	 // ASSERT_FILE_EXISTS_()
 
 #include <chrono>
@@ -27,26 +29,46 @@ MapServer::~MapServer() {}
 
 void MapServer::init()
 {
-	this->declare_parameter<bool>("debug", false);
-	this->get_parameter("debug", m_debug);
-	RCLCPP_INFO(this->get_logger(), "debug: '%s'", m_debug ? "true" : "false");
-
 	// See:
 	// https://github.com/mrpt-ros-pkg/mrpt_navigation/blob/ros2/mrpt_map_server/README.md
 
 	// MAP FORMAT 2: "legacy" ROS1 grid maps:
 	// -------------------------------------------
-	mrpt::maps::COccupancyGridMap2D::Ptr grid;
 	std::string map_yaml_file;
 	this->declare_parameter<std::string>("map_yaml_file", "");
 	this->get_parameter("map_yaml_file", map_yaml_file);
 	RCLCPP_INFO(
 		this->get_logger(), "map_yaml_file name: '%s'", map_yaml_file.c_str());
 
+	std::string mrpt_metricmap_file;
+	this->declare_parameter<std::string>("mrpt_metricmap_file", "");
+	this->get_parameter("mrpt_metricmap_file", mrpt_metricmap_file);
+	RCLCPP_INFO(
+		this->get_logger(), "mrpt_metricmap_file name: '%s'",
+		mrpt_metricmap_file.c_str());
+
 	if (!map_yaml_file.empty())
 	{
-		grid = mrpt::maps::COccupancyGridMap2D::Create();
+		auto grid = mrpt::maps::COccupancyGridMap2D::Create();
 		grid->loadFromROSMapServerYAML(map_yaml_file);
+
+		// store as the unique map layer named "map":
+		theMap_.layers["map"] = grid;
+	}
+	else if (!mrpt_metricmap_file.empty())
+	{
+		ASSERT_FILE_EXISTS_(mrpt_metricmap_file);
+		mrpt::io::CFileGZInputStream f(mrpt_metricmap_file);
+
+		auto a = mrpt::serialization::archiveFrom(f);
+
+		mrpt::serialization::CSerializable::Ptr obj = a.ReadObject();
+		ASSERT_(obj);
+		auto map = std::dynamic_pointer_cast<mrpt::maps::CMetricMap>(obj);
+		ASSERTMSG_(map, "Object read from input stream is not a CMetricMap");
+
+		// store as the unique map layer named "map":
+		theMap_.layers["map"] = map;
 	}
 	else
 	{
@@ -60,6 +82,10 @@ void MapServer::init()
 
 		ASSERT_FILE_EXISTS_(mm_file);
 
+		RCLCPP_INFO_STREAM(
+			this->get_logger(),
+			"Loading metric_map_t map from '" << mm_file << "' ...");
+
 		bool mapReadOk = theMap_.load_from_file(mm_file);
 		ASSERT_(mapReadOk);
 
@@ -68,37 +94,26 @@ void MapServer::init()
 			"Loaded map contents: " << theMap_.contents_summary());
 	}
 
-	ASSERT_(grid);
-
 	this->declare_parameter<std::string>("frame_id", "map");
 	this->get_parameter("frame_id", m_response_ros.map.header.frame_id);
 	RCLCPP_INFO(
 		this->get_logger(), "frame_id: '%s'",
 		m_response_ros.map.header.frame_id.c_str());
 
-	this->declare_parameter<double>("frequency", 0.1);
+	this->declare_parameter<double>("frequency", m_frequency);
 	this->get_parameter("frequency", m_frequency);
 	RCLCPP_INFO(this->get_logger(), "frequency: %f", m_frequency);
 
-	this->declare_parameter<std::string>("pub_map_ros", "map");
-	this->get_parameter("pub_map_ros", m_pub_map_ros_str);
+	this->declare_parameter<std::string>("pub_mm_topic", pub_mm_topic_);
+	this->get_parameter("pub_mm_topic", pub_mm_topic_);
 	RCLCPP_INFO(
-		this->get_logger(), "pub_map_ros: '%s'", m_pub_map_ros_str.c_str());
+		this->get_logger(), "pub_mm_topic: '%s'", pub_mm_topic_.c_str());
 
-	this->declare_parameter<std::string>("pub_metadata", "map_metadata");
-	this->get_parameter("pub_metadata", m_pub_metadata_str);
-	RCLCPP_INFO(
-		this->get_logger(), "pub_metadata: '%s'", m_pub_metadata_str.c_str());
-
-	this->declare_parameter<std::string>("service_map", "static_map");
+	this->declare_parameter<std::string>("service_map", m_service_map_str);
 	this->get_parameter("service_map", m_service_map_str);
 	RCLCPP_INFO(
 		this->get_logger(), "service_map: '%s'", m_service_map_str.c_str());
 
-	m_pub_map_ros = this->create_publisher<nav_msgs::msg::OccupancyGrid>(
-		m_pub_map_ros_str, 1);
-	m_pub_metadata = this->create_publisher<nav_msgs::msg::MapMetaData>(
-		m_pub_metadata_str, 1);
 	m_service_map = this->create_service<nav_msgs::srv::GetMap>(
 		m_service_map_str,
 		[this](
@@ -107,32 +122,7 @@ void MapServer::init()
 			this->map_callback(req, res);
 		});
 
-	if (m_debug)
-	{
-		RCLCPP_INFO(
-			this->get_logger(),
-			"gridMap[0]:  %i x %i @ %4.3fm/p, %4.3f, %4.3f, %4.3f, %4.3f\n",
-			grid->getSizeX(), grid->getSizeY(), grid->getResolution(),
-			grid->getXMin(), grid->getYMin(), grid->getXMax(), grid->getYMax());
-	}
-
-	mrpt::ros2bridge::toROS(*grid, m_response_ros.map);
-
-	if (m_debug)
-	{
-		RCLCPP_INFO(
-			this->get_logger(),
-			"msg:         %i x %i @ %4.3fm/p, %4.3f, %4.3f, %4.3f, %4.3f\n",
-			m_response_ros.map.info.width, m_response_ros.map.info.height,
-			m_response_ros.map.info.resolution,
-			m_response_ros.map.info.origin.position.x,
-			m_response_ros.map.info.origin.position.y,
-			m_response_ros.map.info.width * m_response_ros.map.info.resolution +
-				m_response_ros.map.info.origin.position.x,
-			m_response_ros.map.info.height *
-					m_response_ros.map.info.resolution +
-				m_response_ros.map.info.origin.position.y);
-	}
+	//	mrpt::ros2bridge::toROS(*grid, m_response_ros.map);
 }
 
 bool MapServer::map_callback(
@@ -146,10 +136,32 @@ bool MapServer::map_callback(
 
 void MapServer::publish_map()
 {
+	using namespace std::string_literals;
+
 	auto now = std::chrono::system_clock::now();
 
 	m_response_ros.map.header.stamp =
 		rclcpp::Time(now.time_since_epoch().count(), RCL_ROS_TIME);
+
+	// 1st: top-level MM map:
+	if (!pubMM_)
+	{
+		pubMM_ = this->create_publisher<mrpt_msgs::msg::GenericObject>(
+			pub_mm_topic_ + "/metric_map"s, 1);
+	}
+	if (pubMM_->get_subscription_count() > pubMM_subscribers_)
+	{
+		// xxx
+	}
+	pubMM_subscribers_ = pubMM_->get_subscription_count();
+
+	// 2nd: each layer:
+
+#if 0
+	m_pub_map_ros = m_pub_metadata =
+		this->create_publisher<nav_msgs::msg::MapMetaData>(
+			m_pub_metadata_str, 1);
+
 	if (m_pub_map_ros->get_subscription_count() > 0)
 	{
 		m_pub_map_ros->publish(m_response_ros.map);
@@ -158,6 +170,7 @@ void MapServer::publish_map()
 	{
 		m_pub_metadata->publish(m_response_ros.map.info);
 	}
+#endif
 }
 
 void MapServer::loop()

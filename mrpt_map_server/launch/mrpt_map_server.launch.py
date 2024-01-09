@@ -16,13 +16,22 @@ from launch.launch_description_sources import PythonLaunchDescriptionSource
 def generate_launch_description():
     # mrpt_map_pkg_dir = get_package_share_directory('mrpt_map_server')
 
-    map_yaml_file_arg = DeclareLaunchArgument(
-        'map_yaml_file', default_value=''
-    )
+
+    # Format 1 in docs:
     mm_file_arg = DeclareLaunchArgument(
         'mm_file',
         default_value=''
     )
+    # (legacy) Format 2 in docs:
+    map_yaml_file_arg = DeclareLaunchArgument(
+        'map_yaml_file', default_value=''
+    )
+    # Format 3 in docs:
+    mrpt_metricmap_file_arg = DeclareLaunchArgument(
+        'mrpt_metricmap_file', default_value=''
+    )
+    
+    # Others:
     frame_id_arg = DeclareLaunchArgument(
         'frame_id',
         default_value='map'
@@ -31,12 +40,12 @@ def generate_launch_description():
         'frequency',
         default_value='1.0'
     )
-    debug_arg = DeclareLaunchArgument(
-        'debug',
-        default_value='False'
+    pub_mm_topic_arg = DeclareLaunchArgument(
+        'pub_mm_topic',
+        default_value='mrpt_map'
     )
 
-    # Node: Local obstacles builder
+    # Node: Map server
     mrpt_map_server_node = Node(
         package='mrpt_map_server',
         executable='map_server_node',
@@ -47,18 +56,17 @@ def generate_launch_description():
             {'mm_file': LaunchConfiguration('mm_file')},
             {'frame_id': LaunchConfiguration('frame_id')},
             {'frequency': LaunchConfiguration('frequency')},
-            {'debug': LaunchConfiguration('debug')},
-            {'pub_map_ros': '/map'},
-            {'pub_metadata': '/map_metadata'},
-            {'service_map': 'static_map'}
+            {'mrpt_metricmap_file': LaunchConfiguration('mrpt_metricmap_file')},
+            {'pub_mm_topic': LaunchConfiguration('pub_mm_topic')},
         ],
     )
 
     return LaunchDescription([
         map_yaml_file_arg,
         mm_file_arg,
+        mrpt_metricmap_file_arg,
         frame_id_arg,
         frequency_arg,
-        debug_arg,
+        pub_mm_topic_arg,
         mrpt_map_server_node
     ])

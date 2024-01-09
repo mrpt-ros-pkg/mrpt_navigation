@@ -32,8 +32,10 @@ There are **three formats** in which maps can be read:
 A ``*.metricmap`` file contains any of the existing 
 [MRPT metric maps](https://docs.mrpt.org/reference/latest/group_mrpt_maps_grp.html)
 (point clouds, grid maps, etc.), which may come from custom applications or other SLAM packages.
-The map will be actually encapsulated into a `metric_map_t` map with layer name `raw`.
+The map will be actually encapsulated into a `metric_map_t` map with layer name `map`.
 
+So, whatever is the map source, this node will internally build a [`metric_map_t`](https://docs.mola-slam.org/mp2p_icp/)
+with one or more map layers, so it gets published in a uniform way to subscribers.
 
 Refer to example launch files at the end of this file for examples
 of usage of each of these methods.
@@ -48,7 +50,7 @@ of usage of each of these methods.
 
 #### Related to ROS published topics:
 * ``frame_id`` (Default=``map``): TF frame.
-* `pub_mm_topic` (Default=`mrpt_map_server/metric_map`). Despite the map source, it will be eventually stored as a `mp2p_icp`'s `metric_map_t` (`*.mm`) structure, then each layer will be published using its **layer name** as a **topic name** and with the appropriate type
+* `pub_mm_topic` (Default=`mrpt_map/metric_map`). Despite the map source, it will be eventually stored as a `mp2p_icp`'s `metric_map_t` (`*.mm`) structure, then each layer will be published using its **layer name** as a **topic name** and with the appropriate type
 (e.g. PointCloud2, OccupancyGrid,...). Also, the whole metric map is published as a generic serialized object to the topic defined by the 
 parameter `pub_mm_topic`.
 
@@ -56,8 +58,8 @@ parameter `pub_mm_topic`.
 None.
 
 ### Published topics
-* ``mrpt_map_server/metric_map`` (``mrpt_msgs::msg::GenericObject``) (topic name can be changed with parameter `pub_mm_topic`).
-* ``mrpt_map_server/<LAYER_NAME>`` (``nav_msgs::msg::OccupancyGrid``, ``sensors_msgs::msg::PointCloud2``, ...), one per map layer.
+* ``${pub_mm_topic}/metric_map`` (Default: ``mrpt_map/metric_map``) (``mrpt_msgs::msg::GenericObject``) (topic name can be changed with parameter `pub_mm_topic`).
+* ``${pub_mm_topic}/<LAYER_NAME>`` (Default: ``mrpt_map/<LAYER_NAME>``) (``nav_msgs::msg::OccupancyGrid``, ``sensors_msgs::msg::PointCloud2``, ...), one per map layer.
 
 If using options 2 or 3 above, there will be just one layer named `map`.
 
