@@ -16,6 +16,7 @@
 #include <mrpt/obs/CObservationRobotPose.h>
 #include <mrpt/ros2bridge/laser_scan.h>
 #include <mrpt/ros2bridge/map.h>
+#include <mrpt/ros2bridge/point_cloud2.h>
 #include <mrpt/ros2bridge/pose.h>
 #include <mrpt/ros2bridge/time.h>
 #include <mrpt/system/COutputLogger.h>
@@ -96,6 +97,21 @@ PFLocalizationNode::PFLocalizationNode(const rclcpp::NodeOptions& options)
 					topic, 1,
 					[topic, this](const sensor_msgs::msg::LaserScan& msg) {
 						callbackLaser(msg, topic);
+					}));
+		}
+	}
+	{
+		std::vector<std::string> sources;
+		mrpt::system::tokenize(
+			nodeParams_.topic_sensors_point_clouds, " ,\t\n", sources);
+		for (const auto& topic : sources)
+		{
+			numSensors++;
+			subs_point_clouds_.push_back(
+				this->create_subscription<sensor_msgs::msg::PointCloud2>(
+					topic, 1,
+					[topic, this](const sensor_msgs::msg::PointCloud2& msg) {
+						callbackPointCloud(msg, topic);
 					}));
 		}
 	}
@@ -262,8 +278,7 @@ void PFLocalizationNode::loop()
 
 bool PFLocalizationNode::waitForTransform(
 	mrpt::poses::CPose3D& des, const std::string& target_frame,
-	const std::string& source_frame, const rclcpp::Time& time,
-	const int timeoutMilliseconds)
+	const std::string& source_frame, const int timeoutMilliseconds)
 {
 	const rclcpp::Duration timeout(0, 1000 * timeoutMilliseconds);
 	try
@@ -295,11 +310,34 @@ void PFLocalizationNode::callbackLaser(
 {
 	RCLCPP_DEBUG(get_logger(), "Received 2D scan (%s)", topicName.c_str());
 
-	MRPT_TODO("ask tf for the actual pose");
+	// get sensor pose on the robot:
 	mrpt::poses::CPose3D sensorPose;
+	waitForTransform(
+		sensorPose, msg.header.frame_id, nodeParams_.base_footprint_frame_id);
 
 	auto obs = mrpt::obs::CObservation2DRangeScan::Create();
 	mrpt::ros2bridge::fromROS(msg, sensorPose, *obs);
+
+	obs->sensorLabel = topicName;
+
+	core_.on_observation(obs);
+}
+
+void PFLocalizationNode::callbackPointCloud(
+	const sensor_msgs::msg::PointCloud2& msg, const std::string& topicName)
+{
+	RCLCPP_DEBUG(get_logger(), "Received point cloud (%s)", topicName.c_str());
+
+	// get sensor pose on the robot:
+	mrpt::poses::CPose3D sensorPose;
+	waitForTransform(
+		sensorPose, msg.header.frame_id, nodeParams_.base_footprint_frame_id);
+
+	auto obs = mrpt::obs::CObservationPointCloud::Create();
+	obs->sensorLabel = topicName;
+	auto pts = mrpt::maps::CSimplePointsMap::Create();
+	obs->pointcloud = pts;
+	mrpt::ros2bridge::fromROS(msg, *pts);
 
 	obs->sensorLabel = topicName;
 

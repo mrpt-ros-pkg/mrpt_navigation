@@ -69,7 +69,7 @@ class PFLocalizationNode : public rclcpp::Node
 
 		int map_update_skip;
 
-		std::string base_frame_id = "base_link";
+		std::string base_footprint_frame_id = "base_footprint";
 		std::string odom_frame_id = "odom";
 		std::string global_frame_id = "map";
 
@@ -78,7 +78,11 @@ class PFLocalizationNode : public rclcpp::Node
 
 		std::string topic_odometry = "/odom";
 
-		std::string topic_sensors_2d_scan = "/laser1";	// Remove!
+		/// Comma "," separated list of topics to subscribe for LaserScan msgs
+		std::string topic_sensors_2d_scan;
+
+		/// Comma "," separated list of topics to subscribe for PointCloud2 msgs
+		std::string topic_sensors_point_clouds;
 
 		bool update_while_stopped;
 		bool update_sensor_pose;
@@ -101,6 +105,9 @@ class PFLocalizationNode : public rclcpp::Node
 	void loop();
 	void callbackLaser(
 		const sensor_msgs::msg::LaserScan& msg, const std::string& topicName);
+	void callbackPointCloud(
+		const sensor_msgs::msg::PointCloud2& msg, const std::string& topicName);
+
 	void callbackBeacon(const mrpt_msgs::msg::ObservationRangeBeacon&);
 	void callbackRobotPose(
 		const geometry_msgs::msg::PoseWithCovarianceStamped&);
@@ -127,7 +134,7 @@ class PFLocalizationNode : public rclcpp::Node
 	std::vector<rclcpp::Subscription<sensor_msgs::msg::LaserScan>::SharedPtr>
 		subs_2dlaser_;
 	std::vector<rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr>
-		subs_pointclouds_;
+		subs_point_clouds_;
 
 	// rclcpp::Subscriber sub_map_;
 	// rclcpp::ServiceClient client_map_;
@@ -160,8 +167,7 @@ class PFLocalizationNode : public rclcpp::Node
 
 	bool waitForTransform(
 		mrpt::poses::CPose3D& des, const std::string& target_frame,
-		const std::string& source_frame, const rclcpp::Time& time,
-		const int timeoutMilliseconds);
+		const std::string& source_frame, const int timeoutMilliseconds = 50);
 	bool mapCallback(
 		nav_msgs::srv::GetMap::Request& req,
 		nav_msgs::srv::GetMap::Response& res);
