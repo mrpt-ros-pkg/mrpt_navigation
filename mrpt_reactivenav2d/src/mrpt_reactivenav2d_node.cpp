@@ -363,20 +363,23 @@ void ReactiveNav2DNode::update_waypoint_sequence(
 {
 	mrpt::nav::TWaypointSequence wps;
 
+	mrpt::poses::CPose3D relPose = mrpt::poses::CPose3D::Identity();
+
+	// Convert to the "m_frameid_reference" frame of coordinates:
+	if (msg->header.frame_id != m_frameid_reference)
+		waitForTransform(relPose, msg->header.frame_id, m_frameid_reference);
+
 	for (const auto& wp : msg->waypoints)
 	{
-		tf2::Quaternion quat(
-			wp.target.orientation.x, wp.target.orientation.y,
-			wp.target.orientation.z, wp.target.orientation.w);
-		tf2::Matrix3x3 mat(quat);
-		double roll, pitch, yaw;
-		mat.getRPY(roll, pitch, yaw);
-		auto waypoint = mrpt::nav::TWaypoint(
-			wp.target.position.x, wp.target.position.y, wp.allowed_distance,
-			wp.allow_skip);
+		auto trg = mrpt::ros2bridge::fromROS(wp.target);
+		trg = relPose + trg;  // local to global frame, if needed.
 
-		if (yaw == yaw && !wp.ignore_heading)  // regular number, not NAN
-			waypoint.target_heading = yaw;
+		auto waypoint = mrpt::nav::TWaypoint(
+			trg.x(), trg.y(), wp.allowed_distance, wp.allow_skip);
+
+		// regular number, not NAN
+		if (trg.yaw() == trg.yaw() && !wp.ignore_heading)
+			waypoint.target_heading = trg.yaw();
 
 		wps.waypoints.push_back(waypoint);
 	}
@@ -400,30 +403,17 @@ void ReactiveNav2DNode::on_goal_received(
 		trg.pose.position.x, trg.pose.position.y,
 		trg.pose.orientation.z * 180.0 / M_PI, trg.header.frame_id.c_str());
 
+	auto trgPose = mrpt::ros2bridge::fromROS(trg.pose);
+
 	// Convert to the "m_frameid_reference" frame of coordinates:
 	if (trg.header.frame_id != m_frameid_reference)
 	{
-		// rclcpp::Duration timeout(0.2);
-		rclcpp::Duration timeout(std::chrono::milliseconds(200));
-		try
-		{
-			geometry_msgs::msg::TransformStamped ref_to_trgFrame =
-				m_tf_buffer->lookupTransform(
-					trg.header.frame_id, m_frameid_reference,
-					tf2::TimePointZero,
-					tf2::durationFromSec(timeout.seconds()));
-
-			tf2::doTransform(trg, trg, ref_to_trgFrame);
-		}
-		catch (const tf2::TransformException& ex)
-		{
-			RCLCPP_ERROR(this->get_logger(), "%s", ex.what());
-			return;
-		}
+		mrpt::poses::CPose3D relPose;
+		waitForTransform(relPose, trg.header.frame_id, m_frameid_reference);
+		trgPose = relPose + trgPose;
 	}
 
-	this->navigate_to(mrpt::math::TPose2D(
-		trg.pose.position.x, trg.pose.position.y, trg.pose.orientation.z));
+	this->navigate_to(mrpt::poses::CPose2D(trgPose).asTPose());
 }
 
 void ReactiveNav2DNode::on_local_obstacles(
@@ -460,6 +450,35 @@ void ReactiveNav2DNode::on_set_robot_shape(
 	{
 		std::lock_guard<std::mutex> csl(m_reactive_nav_engine_cs);
 		m_reactive_nav_engine.changeRobotShape(poly);
+	}
+}
+
+bool ReactiveNav2DNode::waitForTransform(
+	mrpt::poses::CPose3D& des, const std::string& target_frame,
+	const std::string& source_frame, const int timeoutMilliseconds)
+{
+	const rclcpp::Duration timeout(0, 1000 * timeoutMilliseconds);
+	try
+	{
+		geometry_msgs::msg::TransformStamped ref_to_trgFrame =
+			m_tf_buffer->lookupTransform(
+				target_frame, source_frame, tf2::TimePointZero,
+				tf2::durationFromSec(timeout.seconds()));
+
+		tf2::Transform tf;
+		tf2::fromMsg(ref_to_trgFrame.transform, tf);
+		des = mrpt::ros2bridge::fromROS(tf);
+
+		RCLCPP_DEBUG(
+			get_logger(), "[waitForTransform] Found pose %s -> %s: %s",
+			source_frame.c_str(), target_frame.c_str(), des.asString().c_str());
+
+		return true;
+	}
+	catch (const tf2::TransformException& ex)
+	{
+		RCLCPP_ERROR(get_logger(), "%s", ex.what());
+		return false;
 	}
 }
 

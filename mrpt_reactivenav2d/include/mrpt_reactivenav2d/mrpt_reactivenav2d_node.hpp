@@ -116,6 +116,10 @@ class ReactiveNav2DNode : public rclcpp::Node
 	std::mutex m_last_obstacles_cs;
 	std::mutex m_odometry_cs;
 
+	bool waitForTransform(
+		mrpt::poses::CPose3D& des, const std::string& target_frame,
+		const std::string& source_frame, const int timeoutMilliseconds = 50);
+
 	struct MyReactiveInterface : public mrpt::nav::CRobot2NavInterface
 	{
 		ReactiveNav2DNode& m_parent;
