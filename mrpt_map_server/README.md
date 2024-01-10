@@ -18,7 +18,7 @@ Unlike classic ROS 1 ``map_server``, this node can publish a range of different 
 
 ### Working rationale
 The C++ ROS 2 node loads all parameters at start up, loads the map
-as requested by parameters, and publishes the metric map in the corresponding topics. It is also possible to change the map via ROS services.
+as requested by parameters, and publishes the metric map in the corresponding topics. Messages are automatically re-sent when new subscribers are detected.
 
 There are **three formats** in which maps can be read:
 
@@ -50,7 +50,7 @@ of usage of each of these methods.
 
 #### Related to ROS published topics:
 * ``frame_id`` (Default=``map``): TF frame.
-* `pub_mm_topic` (Default=`mrpt_map/metric_map`). Despite the map source, it will be eventually stored as a `mp2p_icp`'s `metric_map_t` (`*.mm`) structure, then each layer will be published using its **layer name** as a **topic name** and with the appropriate type
+* `pub_mm_topic` (Default=`mrpt_map`). Despite the map source, it will be eventually stored as a `mp2p_icp`'s `metric_map_t` (`*.mm`) structure, then each layer will be published using its **layer name** as a **topic name** and with the appropriate type
 (e.g. PointCloud2, OccupancyGrid,...). Also, the whole metric map is published as a generic serialized object to the topic defined by the 
 parameter `pub_mm_topic`.
 
@@ -78,8 +78,15 @@ which can be used in user projects to launch the MRPT map server node, by settin
 
 ## Demos
 
-Launch an map server from a ROS yaml gridmap ([launch file](../mrpt_tutorials/launch/demo_map_server_gridmap_from_yaml.launch.py)):
+Launch a map server from a ROS yaml gridmap ([launch file](../mrpt_tutorials/launch/demo_map_server_gridmap_from_yaml.launch.py)):
 
 ```bash
 ros2 launch mrpt_tutorials demo_map_server_gridmap_from_yaml.launch.py
+```
+
+Launch a map server from a custom `.mm` map ([launch file](../mrpt_tutorials/launch/demo_map_server_from_mm.launch.py)), 
+which in the launch file is read from the environment variable `MM_FILE`, so it can be used like:
+ 
+```bash
+MM_FILE=/path/to/my/map.mm ros2 launch mrpt_tutorials demo_map_server_from_mm.launch.py
 ```
