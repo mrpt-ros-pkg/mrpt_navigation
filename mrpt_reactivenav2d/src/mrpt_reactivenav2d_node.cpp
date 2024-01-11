@@ -367,7 +367,7 @@ void ReactiveNav2DNode::update_waypoint_sequence(
 
 	// Convert to the "m_frameid_reference" frame of coordinates:
 	if (msg->header.frame_id != m_frameid_reference)
-		waitForTransform(relPose, msg->header.frame_id, m_frameid_reference);
+		waitForTransform(relPose, m_frameid_reference, msg->header.frame_id);
 
 	for (const auto& wp : msg->waypoints)
 	{
@@ -409,7 +409,7 @@ void ReactiveNav2DNode::on_goal_received(
 	if (trg.header.frame_id != m_frameid_reference)
 	{
 		mrpt::poses::CPose3D relPose;
-		waitForTransform(relPose, trg.header.frame_id, m_frameid_reference);
+		waitForTransform(relPose, m_frameid_reference, msg->header.frame_id);
 		trgPose = relPose + trgPose;
 	}
 
