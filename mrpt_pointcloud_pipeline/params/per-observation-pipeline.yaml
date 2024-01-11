@@ -1,0 +1,13 @@
+# -----------------------------------------------------------------------------
+#                         mp2p_icp filters definition file
+#
+# See docs for MP2P_ICP library: https://docs.mola-slam.org/mp2p_icp/
+# -----------------------------------------------------------------------------
+
+# Remove the robot body:
+- class_name: mp2p_icp_filters::FilterBoundingBox
+  params:
+    input_pointcloud_layer: 'raw'
+    outside_pointcloud_layer: 'output'
+    bounding_box_min: [ -1.0, -1.0, -2 ]
+    bounding_box_max: [  1.0,  1.0,  2 ]

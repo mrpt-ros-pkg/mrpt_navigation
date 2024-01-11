@@ -37,14 +37,18 @@ LocalObstaclesNode::LocalObstaclesNode(const rclcpp::NodeOptions& options)
 	size_t nSubsTotal = 0;
 	nSubsTotal += subscribe_to_multiple_topics<sensor_msgs::msg::LaserScan>(
 		m_topics_source_2dscan, m_subs_2dlaser,
-		[this](const sensor_msgs::msg::LaserScan::SharedPtr scan) {
-			this->on_new_sensor_laser_2d(scan);
+		[this](
+			const sensor_msgs::msg::LaserScan::SharedPtr scan,
+			const std::string& topicName) {
+			this->on_new_sensor_laser_2d(scan, topicName);
 		});
 
 	nSubsTotal += subscribe_to_multiple_topics<sensor_msgs::msg::PointCloud2>(
 		m_topics_source_pointclouds, m_subs_pointclouds,
-		[this](const sensor_msgs::msg::PointCloud2::SharedPtr pts) {
-			this->on_new_sensor_pointcloud(pts);
+		[this](
+			const sensor_msgs::msg::PointCloud2::SharedPtr pts,
+			const std::string& topicName) {
+			this->on_new_sensor_pointcloud(pts, topicName);
 		});
 
 	RCLCPP_INFO(
@@ -80,7 +84,7 @@ void LocalObstaclesNode::on_do_publish()
 	CTimeLoggerEntry tle(m_profiler, "on_do_publish");
 
 	// Purge old observations & latch a local copy:
-	TListObservations obs;
+	obs_list_t obs;
 	{
 		CTimeLoggerEntry tle(m_profiler, "onDoPublish.removingOld");
 		m_hist_obs_mtx.lock();
@@ -89,7 +93,7 @@ void LocalObstaclesNode::on_do_publish()
 		if (!m_hist_obs.empty())
 		{
 			const double last_time = m_hist_obs.rbegin()->first;
-			TListObservations::iterator it_first_valid =
+			obs_list_t::iterator it_first_valid =
 				m_hist_obs.lower_bound(last_time - m_time_window);
 			const size_t nToRemove =
 				std::distance(m_hist_obs.begin(), it_first_valid);
@@ -102,6 +106,27 @@ void LocalObstaclesNode::on_do_publish()
 		// Local copy in this thread:
 		obs = m_hist_obs;
 		m_hist_obs_mtx.unlock();
+	}
+
+	// Keep only one obs per topic?
+	if (m_one_observation_per_topic)
+	{
+		// TODO(jlbc): Remove in reverse order to keep the latest one!
+		std::set<std::string> foundTopics;
+		for (auto it = obs.begin(); it != obs.end();)
+		{
+			const auto& topic = it->second.sourceTopic;
+			if (foundTopics.count(topic) != 0)
+			{
+				// duplicated entry, delete:
+				it = obs.erase(it);
+			}
+			else
+			{
+				foundTopics.insert(topic);
+				++it;  // move on:
+			}
+		}
 	}
 
 	RCLCPP_DEBUG(
@@ -120,7 +145,6 @@ void LocalObstaclesNode::on_do_publish()
 		// Get the latest robot pose in the reference frame (typ: /odom ->
 		// /base_link)
 		// so we can build the local map RELATIVE to it:
-		rclcpp::Duration timeout(std::chrono::seconds(1));
 
 		try
 		{
@@ -152,21 +176,43 @@ void LocalObstaclesNode::on_do_publish()
 			const mrpt::poses::CPose3D relPose = ipt.robot_pose - curRobotPose;
 
 			// Insert obs:
-			m_localmap_pts->insertObservationPtr(ipt.observation, relPose);
+			if (m_per_obs_pipeline.empty())
+			{
+				// direct insertion w/o filtering:
+				m_localmap_pts->insertObservationPtr(ipt.observation, relPose);
+			}
+			else
+			{
+				CTimeLoggerEntry tleObsFilter(
+					m_profiler, "on_do_publish.apply_per_obs_pipeline");
+
+				// per-observation filtering:
+				auto auxPts = CSimplePointsMap::Create();
+				auxPts->insertObservationPtr(ipt.observation);
+
+				mp2p_icp::metric_map_t mm;
+				mm.layers[mp2p_icp::metric_map_t::PT_LAYER_RAW] = auxPts;
+				mp2p_icp_filters::apply_filter_pipeline(m_per_obs_pipeline, mm);
+
+				const mrpt::maps::CPointsMap::Ptr outPts =
+					mm.point_layer(m_filter_output_layer_name);
+				m_localmap_pts->insertAnotherMap(outPts.get(), relPose);
+			}
 		}
 	}
 
 	// Filtering:
 	mrpt::maps::CPointsMap::Ptr filteredPts;
 
-	if (!m_filter_pipeline.empty())
+	if (!m_final_pipeline.empty())
 	{
+		// Apply final filtering:
 		CTimeLoggerEntry tleFilter(
-			m_profiler, "on_do_publish.apply_filter_pipeline");
+			m_profiler, "on_do_publish.apply_final_pipeline");
 
 		mp2p_icp::metric_map_t mm;
 		mm.layers[mp2p_icp::metric_map_t::PT_LAYER_RAW] = m_localmap_pts;
-		mp2p_icp_filters::apply_filter_pipeline(m_filter_pipeline, mm);
+		mp2p_icp_filters::apply_filter_pipeline(m_final_pipeline, mm);
 
 		filteredPts = mm.point_layer(m_filter_output_layer_name);
 	}
@@ -274,7 +320,7 @@ void LocalObstaclesNode::on_do_publish()
 
 		for (const auto& o : obs)
 		{
-			const TInfoPerTimeStep& ipt = o.second;
+			const InfoPerTimeStep& ipt = o.second;
 			// Relative pose in the past:
 			mrpt::poses::CPose3D relPose(mrpt::poses::UNINITIALIZED_POSE);
 			relPose.inverseComposeFrom(ipt.robot_pose, curRobotPose);
@@ -298,10 +344,10 @@ void LocalObstaclesNode::on_do_publish()
 }  // onDoPublish
 
 void LocalObstaclesNode::on_new_sensor_laser_2d(
-	const sensor_msgs::msg::LaserScan::SharedPtr& scan)
+	const sensor_msgs::msg::LaserScan::SharedPtr& scan,
+	const std::string& topicName)
 {
 	CTimeLoggerEntry tle(m_profiler, "on_new_sensor_laser_2d");
-	rclcpp::Duration timeout(std::chrono::seconds(1));
 
 	geometry_msgs::msg::TransformStamped sensorOnRobot;
 	try
@@ -375,23 +421,23 @@ void LocalObstaclesNode::on_new_sensor_laser_2d(
 	}
 
 	// Insert into the observation history:
-	TInfoPerTimeStep ipt;
+	InfoPerTimeStep ipt;
+	ipt.sourceTopic = topicName;
 	ipt.observation = obsScan;
 	ipt.robot_pose = robotPose;
 
 	m_hist_obs_mtx.lock();
-	m_hist_obs.insert(
-		m_hist_obs.end(), TListObservations::value_type(timestamp, ipt));
+	m_hist_obs.insert(m_hist_obs.end(), obs_list_t::value_type(timestamp, ipt));
 	m_hist_obs_mtx.unlock();
 
 }  // end on_new_sensor_laser_2d
 
 void LocalObstaclesNode::on_new_sensor_pointcloud(
-	const sensor_msgs::msg::PointCloud2::SharedPtr& pts)
+	const sensor_msgs::msg::PointCloud2::SharedPtr& pts,
+	const std::string& topicName)
 {
 	CTimeLoggerEntry tle(m_profiler, "on_new_sensor_pointcloud");
 
-	rclcpp::Duration timeout(std::chrono::seconds(1));
 	// Get the relative position of the sensor wrt the robot:
 	geometry_msgs::msg::TransformStamped sensorOnRobot;
 	try
@@ -471,13 +517,13 @@ void LocalObstaclesNode::on_new_sensor_pointcloud(
 	}
 
 	// Insert into the observation history:
-	TInfoPerTimeStep ipt;
+	InfoPerTimeStep ipt;
+	ipt.sourceTopic = topicName;
 	ipt.observation = obsPts;
 	ipt.robot_pose = robotPose;
 
 	m_hist_obs_mtx.lock();
-	m_hist_obs.insert(
-		m_hist_obs.end(), TListObservations::value_type(timestamp, ipt));
+	m_hist_obs.insert(m_hist_obs.end(), obs_list_t::value_type(timestamp, ipt));
 	m_hist_obs_mtx.unlock();
 }  // end on_new_sensor_pointcloud
 
@@ -500,6 +546,14 @@ void LocalObstaclesNode::read_parameters()
 	this->declare_parameter<double>("time_window", 0.20);
 	this->get_parameter("time_window", m_time_window);
 	RCLCPP_INFO(get_logger(), "time_window: %f", m_time_window);
+
+	this->declare_parameter<bool>(
+		"one_observation_per_topic", m_one_observation_per_topic);
+	this->get_parameter(
+		"one_observation_per_topic", m_one_observation_per_topic);
+	RCLCPP_INFO(
+		get_logger(), "one_observation_per_topic: %s",
+		m_one_observation_per_topic ? "true" : "false");
 
 	this->declare_parameter<double>("publish_period", 0.05);
 	this->get_parameter("publish_period", m_publish_period);
@@ -530,23 +584,40 @@ void LocalObstaclesNode::read_parameters()
 		get_logger(), "source_topics_pointclouds: %s",
 		m_topics_source_pointclouds.c_str());
 
-	this->declare_parameter<std::string>("filter_yaml_file", "");
-	this->get_parameter("filter_yaml_file", m_filter_yaml_file);
+	this->declare_parameter<std::string>("per_obs_filter_yaml_file", "");
+	this->get_parameter("per_obs_filter_yaml_file", m_per_obs_filter_yaml_file);
 	RCLCPP_INFO(
-		get_logger(), "filter_yaml_file: %s", m_filter_yaml_file.c_str());
-	if (!m_filter_yaml_file.empty())
+		get_logger(), "per_obs_filter_yaml_file: %s",
+		m_per_obs_filter_yaml_file.c_str());
+	if (!m_per_obs_filter_yaml_file.empty())
 	{
-		ASSERT_FILE_EXISTS_(m_filter_yaml_file);
-		mrpt::containers::yaml cfg;
-		cfg.loadFromFile(m_filter_yaml_file);
+		ASSERT_FILE_EXISTS_(m_per_obs_filter_yaml_file);
+		const mrpt::containers::yaml cfg =
+			mrpt::containers::yaml::FromFile(m_per_obs_filter_yaml_file);
 		std::stringstream ss;
 		cfg.printAsYAML(ss);
 		RCLCPP_INFO(get_logger(), "%s", ss.str().c_str());
-		m_filter_pipeline = mp2p_icp_filters::filter_pipeline_from_yaml(cfg);
+		m_per_obs_pipeline = mp2p_icp_filters::filter_pipeline_from_yaml(cfg);
+	}
+
+	this->declare_parameter<std::string>("final_filter_yaml_file", "");
+	this->get_parameter("final_filter_yaml_file", m_final_filter_yaml_file);
+	RCLCPP_INFO(
+		get_logger(), "final_filter_yaml_file: %s",
+		m_final_filter_yaml_file.c_str());
+	if (!m_final_filter_yaml_file.empty())
+	{
+		ASSERT_FILE_EXISTS_(m_final_filter_yaml_file);
+		const mrpt::containers::yaml cfg =
+			mrpt::containers::yaml::FromFile(m_final_filter_yaml_file);
+		std::stringstream ss;
+		cfg.printAsYAML(ss);
+		RCLCPP_INFO(get_logger(), "%s", ss.str().c_str());
+		m_final_pipeline = mp2p_icp_filters::filter_pipeline_from_yaml(cfg);
 	}
 
 	this->declare_parameter<std::string>(
-		"filter_output_layer_name", "decimated");
+		"filter_output_layer_name", m_filter_output_layer_name);
 	this->get_parameter("filter_output_layer_name", m_filter_output_layer_name);
 	RCLCPP_INFO(
 		get_logger(), "filter_output_layer_name: %s",

@@ -65,11 +65,13 @@ class LocalObstaclesNode : public rclcpp::Node
 
 	/* Callback: On new sensor data*/
 	void on_new_sensor_laser_2d(
-		const sensor_msgs::msg::LaserScan::SharedPtr& scan);
+		const sensor_msgs::msg::LaserScan::SharedPtr& scan,
+		const std::string& topicName);
 
 	/* Callback: On new pointcloud data*/
 	void on_new_sensor_pointcloud(
-		const sensor_msgs::msg::PointCloud2::SharedPtr& pts);
+		const sensor_msgs::msg::PointCloud2::SharedPtr& pts,
+		const std::string& topicName);
 
 	/**
 	 * @brief Subscribe to a variable number of topics.
@@ -96,8 +98,12 @@ class LocalObstaclesNode : public rclcpp::Node
 		}
 		for (const auto& source : lstSources)
 		{
-			const auto sub =
-				this->create_subscription<MessageT>(source, 1, callback);
+			const auto sub = this->create_subscription<MessageT>(
+				source, 1,
+				[source, callback,
+				 this](const typename MessageT::SharedPtr msg) {
+					callback(msg, source);
+				});
 			subscriptions.push_back(sub);  // 1 is the queue size
 			num_subscriptions++;
 		}
@@ -109,6 +115,7 @@ class LocalObstaclesNode : public rclcpp::Node
 	// member variables
 	CTimeLogger m_profiler;
 	bool m_show_gui = false;
+	bool m_one_observation_per_topic = false;
 	std::string m_frameid_reference = "odom";  //!< type:"odom"
 	std::string m_frameid_robot = "base_link";	//!< type: "base_link"
 	std::string m_topic_local_map_pointcloud =
@@ -126,16 +133,16 @@ class LocalObstaclesNode : public rclcpp::Node
 	rclcpp::TimerBase::SharedPtr m_timer_publish;
 
 	// Sensor data:
-	struct TInfoPerTimeStep
+	struct InfoPerTimeStep
 	{
+		std::string sourceTopic;
 		CObservation::Ptr observation;
 		mrpt::poses::CPose3D robot_pose;
 	};
-	typedef std::multimap<double, TInfoPerTimeStep> TListObservations;
+	using obs_list_t = std::multimap<double, InfoPerTimeStep>;
 
-	TListObservations m_hist_obs;  //!< The history of past observations during
-								   //! the interest time window.
-
+	/// The history of past observations duringthe interest time window.
+	obs_list_t m_hist_obs;
 	std::mutex m_hist_obs_mtx;	//!< mutex
 
 	CSimplePointsMap::Ptr m_localmap_pts = CSimplePointsMap::Create();
@@ -145,9 +152,9 @@ class LocalObstaclesNode : public rclcpp::Node
 
 	/// Used for example to run voxel grid decimation, etc.
 	/// Refer to mp2p_icp docs
-	mp2p_icp_filters::FilterPipeline m_filter_pipeline;
+	mp2p_icp_filters::FilterPipeline m_per_obs_pipeline, m_final_pipeline;
 	std::string m_filter_output_layer_name;	 //!< mp2p_icp output layer name
-	std::string m_filter_yaml_file;
+	std::string m_per_obs_filter_yaml_file, m_final_filter_yaml_file;
 
 	/**
 	 * @name ROS2 pubs/subs
