@@ -409,7 +409,8 @@ void ReactiveNav2DNode::on_goal_received(
 	if (trg.header.frame_id != m_frameid_reference)
 	{
 		mrpt::poses::CPose3D relPose;
-		waitForTransform(relPose, m_frameid_reference, msg->header.frame_id);
+		waitForTransform(
+			relPose, m_frameid_reference, trg_ptr->header.frame_id);
 		trgPose = relPose + trgPose;
 	}
 
