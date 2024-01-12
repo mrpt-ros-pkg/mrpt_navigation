@@ -99,7 +99,8 @@ class ReactiveNav2DNode : public rclcpp::Node
 	std::string m_sub_topic_wp_seq = "reactive_nav_waypoints";
 	std::string m_sub_topic_odometry = "/odom";
 
-	std::string m_pub_topic_cmd_vel = "/cmd_vel";
+	// It's remapped as needed from the launch.py
+	const std::string m_pub_topic_cmd_vel = "/cmd_vel";
 
 	std::string m_frameid_reference = "map";
 	std::string m_frameid_robot = "base_link";

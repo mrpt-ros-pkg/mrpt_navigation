@@ -56,6 +56,10 @@ def generate_launch_description():
         'save_nav_log',
         default_value='False'
     )
+    cmd_vel_out_arg = DeclareLaunchArgument(
+        'cmd_vel_out',
+        default_value='/cmd_vel'
+    )
 
     log_level_launch_arg = DeclareLaunchArgument(
         "log_level",
@@ -70,6 +74,7 @@ def generate_launch_description():
         executable='mrpt_reactivenav2d_node',
         name='mrpt_reactivenav2d_node',
         output='screen',
+        remappings={('/cmd_vel', LaunchConfiguration('cmd_vel_out'))},
         parameters=[
             {
                 'cfg_file_reactive': LaunchConfiguration('rnav_cfg_file'),
@@ -97,5 +102,6 @@ def generate_launch_description():
         frameid_reference_arg,
         frameid_robot_arg,
         save_nav_log_arg,
+        cmd_vel_out_arg,
         node_rnav2d_launch,
     ])
