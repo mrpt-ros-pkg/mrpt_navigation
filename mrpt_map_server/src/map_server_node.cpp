@@ -17,6 +17,7 @@
 #include <mrpt/maps/CPointsMapXYZI.h>
 #include <mrpt/maps/CPointsMapXYZIRT.h>
 #include <mrpt/maps/CSimplePointsMap.h>
+#include <mrpt/maps/CVoxelMap.h>
 #include <mrpt/ros2bridge/map.h>
 #include <mrpt/ros2bridge/point_cloud2.h>
 #include <mrpt/ros2bridge/time.h>
@@ -106,7 +107,7 @@ void MapServer::init()
 	this->declare_parameter<std::string>("frame_id", frame_id_);
 	this->get_parameter("frame_id", frame_id_);
 	RCLCPP_INFO(this->get_logger(), "frame_id: '%s'", frame_id_.c_str());
-	
+
 	this->declare_parameter<double>("frequency", frequency_);
 	this->get_parameter("frequency", frequency_);
 	RCLCPP_INFO(this->get_logger(), "frequency: %f", frequency_);
@@ -115,7 +116,7 @@ void MapServer::init()
 	this->get_parameter("pub_mm_topic", pub_mm_topic_);
 	RCLCPP_INFO(
 		this->get_logger(), "pub_mm_topic: '%s'", pub_mm_topic_.c_str());
-	
+
 	this->declare_parameter<std::string>("service_map", service_map_str_);
 	this->get_parameter("service_map", service_map_str_);
 	RCLCPP_INFO(
@@ -223,6 +224,28 @@ void MapServer::publish_map()
 						"Unexpected point cloud class: '%s'",
 						pts->GetRuntimeClass()->className);
 				}
+				pubPointMaps_[layerName].pub->publish(msg_pts);
+			}
+		}
+
+		// Is it a voxelmap?
+		if (auto vxl =
+				std::dynamic_pointer_cast<mrpt::maps::CVoxelMap>(layerMap);
+			vxl)
+		{
+			// Render in RVIZ as occupied voxels=points:
+			mrpt::maps::CSimplePointsMap::Ptr pts = vxl->getOccupiedVoxels();
+
+			if (pubPointMaps_.count(layerName) == 0)
+			{
+				pubPointMaps_[layerName].pub =
+					this->create_publisher<sensor_msgs::msg::PointCloud2>(
+						pub_mm_topic_ + "/"s + layerName + "_points"s, 1);
+			}
+			if (pubPointMaps_[layerName].new_subscribers())
+			{
+				sensor_msgs::msg::PointCloud2 msg_pts;
+				mrpt::ros2bridge::toROS(*pts, msg_header, msg_pts);
 				pubPointMaps_[layerName].pub->publish(msg_pts);
 			}
 		}
