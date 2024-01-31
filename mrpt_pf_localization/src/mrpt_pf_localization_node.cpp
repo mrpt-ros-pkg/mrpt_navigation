@@ -8,6 +8,7 @@
 
 #include "mrpt_pf_localization_node.h"
 
+#include <mp2p_icp/metricmap.h>
 #include <mrpt/maps/COccupancyGridMap2D.h>
 #include <mrpt/obs/CObservation2DRangeScan.h>
 #include <mrpt/obs/CObservationBeaconRanges.h>
@@ -19,6 +20,7 @@
 #include <mrpt/ros2bridge/point_cloud2.h>
 #include <mrpt/ros2bridge/pose.h>
 #include <mrpt/ros2bridge/time.h>
+#include <mrpt/serialization/CSerializable.h>
 #include <mrpt/system/COutputLogger.h>
 #include <pose_cov_ops/pose_cov_ops.h>
 
@@ -66,6 +68,10 @@ PFLocalizationNode::PFLocalizationNode(const rclcpp::NodeOptions& options)
 			};
 		});
 
+	// Params:
+	// -----------------
+	reload_params_from_ros();
+
 	// Create all publishers and subscribers:
 	// ------------------------------------------
 	sub_init_pose_ = this->create_subscription<
@@ -73,12 +79,11 @@ PFLocalizationNode::PFLocalizationNode(const rclcpp::NodeOptions& options)
 		nodeParams_.topic_initialpose, 1,
 		std::bind(&PFLocalizationNode::callbackInitialpose, this, _1));
 
-	MRPT_TODO("Update to new mp2p_icp based metric maps!");
-	sub_gridmap_ = this->create_subscription<nav_msgs::msg::OccupancyGrid>(
-		nodeParams_.topic_gridmap, 1,
+	subMap_ = this->create_subscription<mrpt_msgs::msg::GenericObject>(
+		nodeParams_.topic_map, 1,
 		std::bind(&PFLocalizationNode::callbackMap, this, _1));
 
-	sub_odometry_ = this->create_subscription<nav_msgs::msg::Odometry>(
+	subOdometry_ = this->create_subscription<nav_msgs::msg::Odometry>(
 		nodeParams_.topic_odometry, 1,
 		std::bind(&PFLocalizationNode::callbackOdometry, this, _1));
 
@@ -120,6 +125,14 @@ PFLocalizationNode::PFLocalizationNode(const rclcpp::NodeOptions& options)
 		numSensors > 0,
 		"At least one sensor input source must be defined! Refer to the "
 		"package documentation.");
+
+	pubParticles_ = this->create_publisher<geometry_msgs::msg::PoseArray>(
+		nodeParams_.pub_topic_particles, 1);
+
+	pubPose_ =
+		this->create_publisher<geometry_msgs::msg::PoseWithCovarianceStamped>(
+			nodeParams_.pub_topic_pose, 1);
+
 #if 0
 		else if (sources[i].find("beacon") != std::string::npos)
 		{
@@ -132,14 +145,6 @@ PFLocalizationNode::PFLocalizationNode(const rclcpp::NodeOptions& options)
 				sources[i], 1, &PFLocalizationNode::callbackRobotPose, this);
 		}
 
-	pub_particles_ =
-		advertise<geometry_msgs::PoseArray>("particlecloud", 1, true);
-
-	pub_pose_ = advertise<geometry_msgs::PoseWithCovarianceStamped>(
-		"mrpt_pose", 2, true);
-
-	// publisher_ = this->create_publisher<std_msgs::msg::String>("string_msg",
-	// 10);
 
 	// On params change, reload all params:
 	// -----------------------------------------
@@ -152,10 +157,6 @@ PFLocalizationNode::PFLocalizationNode(const rclcpp::NodeOptions& options)
 	tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
 
 	tf_broadcaster_ = std::make_shared<tf2_ros::TransformBroadcaster>(*this);
-
-	// Params:
-	// -----------------
-	reload_params_from_ros();
 
 	// Create timer:
 	// ------------------------------------------
@@ -236,44 +237,27 @@ void PFLocalizationNode::reload_params_from_ros()
 		}
 	}
 
-	// paramsBlock.printAsYAML();
-
 	core_.init_from_yaml(paramsBlock);
-
-	MRPT_TODO("Load params of nodeParams_ too!");
-
-#if 0
-	if (!param()->map_file.empty())
-	{
-		if (metric_map_->countMapsByClass<COccupancyGridMap2D>())
-		{
-			mrpt::ros2bridge::toROS(
-				*metric_map_->mapByClass<COccupancyGridMap2D>(), resp_.map);
-		}
-		pub_map_ = advertise<nav_msgs::OccupancyGrid>("map", 1, true);
-		pub_metadata_ =
-			advertise<nav_msgs::MapMetaData>("map_metadata", 1, true);
-		service_map_ = advertiseService(
-			"static_map", &PFLocalizationNode::mapCallback, this);
-	}
-#endif
+	nodeParams_.loadFrom(paramsBlock);
 }
 
 void PFLocalizationNode::loop()
 {
 	RCLCPP_DEBUG(get_logger(), "loop");
 
+	// PF algorithm:
 	core_.step();
 
-#if 0
-	if ((loop_count_ % param()->map_update_skip == 0) &&
-		(metric_map_->countMapsByClass<COccupancyGridMap2D>()))
-		publishMap();
-	if (loop_count_ % param()->particlecloud_update_skip == 0)
+	// Publish to ROS:
+	if (isTimeFor(nodeParams_.publish_particles_decimation))  //
 		publishParticles();
-	if (param()->tf_broadcast) publishTF();
-	if (param()->pose_broadcast) publishPose();
-#endif
+
+	publishTF();
+	publishPose();
+
+	MRPT_TODO("pub quality metrics");
+
+	loopCount_++;
 }
 
 bool PFLocalizationNode::waitForTransform(
@@ -484,21 +468,32 @@ void PFLocalizationNode::odometryForCallback(
 #endif
 }
 
-void PFLocalizationNode::callbackMap(const nav_msgs::msg::OccupancyGrid& msg)
+void PFLocalizationNode::callbackMap(const mrpt_msgs::msg::GenericObject& obj)
 {
 	RCLCPP_INFO(
-		get_logger(),
-		"[callbackMap] Just received an occupancy gridmap via a ROS topic");
+		get_logger(), "[callbackMap] Received a metric map via ROS topic");
+
+	mrpt::serialization::CSerializable::Ptr o;
+	mrpt::serialization::OctetVectorToObject(obj.data, o);
+
+	ASSERT_(o);
+	auto mm = std::dynamic_pointer_cast<mp2p_icp::metric_map_t>(o);
+	ASSERTMSG_(
+		mm, mrpt::format(
+				"Expected incoming map of type mp2p_icp::metric_map_t but it "
+				"is '%s'",
+				o->GetRuntimeClass()->className));
+
+	RCLCPP_INFO_STREAM(
+		get_logger(), "[callbackMap] Map contents: " << mm->contents_summary());
 
 	auto mMap = mrpt::maps::CMultiMetricMap::Create();
-	auto grid = mrpt::maps::COccupancyGridMap2D::Create();
 
-	bool ok = mrpt::ros2bridge::fromROS(msg, *grid);
-	mMap->maps.push_back(grid);
-
-	if (!ok)
+	for (const auto& [layerName, layerMap] : mm->layers)
 	{
-		RCLCPP_ERROR(get_logger(), "Error loading metric map from ROS topic.");
+		mMap->maps.push_back(layerMap);
+
+		// TODO: Optionally override the map likelihood params?
 	}
 
 	core_.set_map_from_metric_map(mMap);
@@ -589,33 +584,6 @@ void PFLocalizationNode::updateMap(const nav_msgs::msg::OccupancyGrid& _msg)
 	ASSERT_(metric_map_->countMapsByClass<COccupancyGridMap2D>());
 	mrpt::ros2bridge::fromROS(
 		_msg, *metric_map_->mapByClass<COccupancyGridMap2D>());
-#endif
-}
-
-bool PFLocalizationNode::mapCallback(
-	nav_msgs::srv::GetMap::Request& req, nav_msgs::srv::GetMap::Response& res)
-{
-#if 0
-	MRPT_LOG_INFO_FMT("mapCallback: service requested!\n");
-	res = resp_;
-#endif
-	return true;
-}
-
-void PFLocalizationNode::publishMap()
-{
-#if 0
-	resp_.map.header.stamp = ros::Time::now();
-	resp_.map.header.frame_id = param()->global_frame_id;
-	resp_.map.header.seq = loop_count_;
-	if (pub_map_.getNumSubscribers() > 0)
-	{
-		pub_map_.publish(resp_.map);
-	}
-	if (pub_metadata_.getNumSubscribers() > 0)
-	{
-		pub_metadata_.publish(resp_.map.info);
-	}
 #endif
 }
 
@@ -808,135 +776,30 @@ void PFLocalizationNode::useROSLogLevel()
 	core_.setVerbosityLevel(lvl);
 }
 
-#if 0
-PFLocalizationNode::Parameters::Parameters(PFLocalizationNode* p)
-	: PFLocalization::Parameters(p)
+void PFLocalizationNode::NodeParameters::loadFrom(
+	const mrpt::containers::yaml& cfg)
 {
-	node.param<double>("transform_tolerance", transform_tolerance, 0.1);
-	MRPT_LOG_INFO_FMT("transform_tolerance: %f", transform_tolerance);
-	node.param<double>("no_update_tolerance", no_update_tolerance, 1.0);
-	MRPT_LOG_INFO_FMT("no_update_tolerance: %f", no_update_tolerance);
-	node.param<double>(
-		"no_inputs_tolerance", no_inputs_tolerance,
-		std::numeric_limits<double>::infinity());
-	MRPT_LOG_INFO_FMT(
-		"no_inputs_tolerance: %f", no_inputs_tolerance);  // disabled by default
-	node.param<double>("rate", rate, MRPT_LOCALIZATION_NODE_DEFAULT_RATE);
-	MRPT_LOG_INFO_FMT("rate: %f", rate);
-	node.getParam("gui_mrpt", gui_mrpt);
-	MRPT_LOG_INFO_FMT("gui_mrpt: %s", gui_mrpt ? "true" : "false");
-	node.param<int>(
-		"parameter_update_skip", parameter_update_skip,
-		MRPT_LOCALIZATION_NODE_DEFAULT_PARAMETER_UPDATE_SKIP);
-	MRPT_LOG_INFO_FMT("parameter_update_skip: %i", parameter_update_skip);
-	node.getParam("ini_file", ini_file);
-	MRPT_LOG_INFO_FMT("ini_file: %s", ini_file.c_str());
-	node.getParam("map_file", map_file);
-	MRPT_LOG_INFO_FMT("map_file: %s", map_file.c_str());
-	node.getParam("sensor_sources", sensor_sources);
-	MRPT_LOG_INFO_FMT("sensor_sources: %s", sensor_sources.c_str());
-	node.param<std::string>("global_frame_id", global_frame_id, "map");
-	MRPT_LOG_INFO_FMT("global_frame_id: %s", global_frame_id.c_str());
-	node.param<std::string>("odom_frame_id", odom_frame_id, "odom");
-	MRPT_LOG_INFO_FMT("odom_frame_id: %s", odom_frame_id.c_str());
-	node.param<std::string>("base_frame_id", base_frame_id, "base_link");
-	MRPT_LOG_INFO_FMT("base_frame_id: %s", base_frame_id.c_str());
-	node.param<bool>("pose_broadcast", pose_broadcast, false);
-	MRPT_LOG_INFO_FMT("pose_broadcast: %s", pose_broadcast ? "true" : "false");
-	node.param<bool>("tf_broadcast", tf_broadcast, true);
-	MRPT_LOG_INFO_FMT("tf_broadcast: %s", tf_broadcast ? "true" : "false");
-	node.param<bool>("use_map_topic", use_map_topic, false);
-	MRPT_LOG_INFO_FMT("use_map_topic: %s", use_map_topic ? "true" : "false");
-	node.param<bool>("first_map_only", first_map_only, false);
-	MRPT_LOG_INFO_FMT("first_map_only: %s", first_map_only ? "true" : "false");
-	node.param<bool>("debug", debug, true);
-	MRPT_LOG_INFO_FMT("debug: %s", debug ? "true" : "false");
-
-	reconfigure_cb_ = boost::bind(
-		&PFLocalizationNode::Parameters::callbackParameters, this, _1, _2);
-	reconfigure_server_.setCallback(reconfigure_cb_);
-}
-
-void PFLocalizationNode::Parameters::update(const unsigned long& loop_count)
-{
-	if (loop_count % parameter_update_skip) return;
-	node.getParam("debug", debug);
-	if (loop_count == 0)
-		MRPT_LOG_INFO_FMT("debug: %s", debug ? "true" : "false");
-	{
-		int v = particlecloud_update_skip;
-		node.param<int>(
-			"particlecloud_update_skip", particlecloud_update_skip,
-			MRPT_LOCALIZATION_NODE_DEFAULT_PARTICLECLOUD_UPDATE_SKIP);
-		if (v != particlecloud_update_skip)
-			MRPT_LOG_INFO_FMT(
-				"particlecloud_update_skip: %i", particlecloud_update_skip);
-	}
-	{
-		int v = map_update_skip;
-		node.param<int>(
-			"map_update_skip", map_update_skip,
-			MRPT_LOCALIZATION_NODE_DEFAULT_MAP_UPDATE_SKIP);
-		if (v != map_update_skip)
-			MRPT_LOG_INFO_FMT("map_update_skip: %i", map_update_skip);
-	}
-}
-
-void PFLocalizationNode::Parameters::callbackParameters(
-	mrpt_pf_localization::MotionConfig& config, uint32_t level)
-{
-	if (config.motion_noise_type == MOTION_MODEL_GAUSSIAN)
-	{
-		motion_model_options->modelSelection =
-			CActionRobotMovement2D::mmGaussian;
-
-		motion_model_options->gaussianModel.a1 = config.gaussian_alpha_1;
-		motion_model_options->gaussianModel.a2 = config.gaussian_alpha_2;
-		motion_model_options->gaussianModel.a3 = config.gaussian_alpha_3;
-		motion_model_options->gaussianModel.a4 = config.gaussian_alpha_4;
-		motion_model_options->gaussianModel.minStdXY = config.gaussian_alpha_xy;
-		motion_model_options->gaussianModel.minStdPHI =
-			config.gaussian_alpha_phi;
-		MRPT_LOG_INFO_FMT("gaussianModel.type: gaussian");
-		MRPT_LOG_INFO_FMT(
-			"gaussianModel.a1: %f", motion_model_options->gaussianModel.a1);
-		MRPT_LOG_INFO_FMT(
-			"gaussianModel.a2: %f", motion_model_options->gaussianModel.a2);
-		MRPT_LOG_INFO_FMT(
-			"gaussianModel.a3: %f", motion_model_options->gaussianModel.a3);
-		MRPT_LOG_INFO_FMT(
-			"gaussianModel.a4: %f", motion_model_options->gaussianModel.a4);
-		MRPT_LOG_INFO_FMT(
-			"gaussianModel.minStdXY: %f",
-			motion_model_options->gaussianModel.minStdXY);
-		MRPT_LOG_INFO_FMT(
-			"gaussianModel.minStdPHI: %f",
-			motion_model_options->gaussianModel.minStdPHI);
-	}
-	else
-	{
-		MRPT_LOG_INFO_FMT(
-			"We support at the moment only gaussian motion models");
-	}
-	*use_motion_model_default_options = config.use_default_motion;
-	MRPT_LOG_INFO_FMT(
-		"use_motion_model_default_options: %s",
-		use_motion_model_default_options ? "true" : "false");
-	motion_model_default_options->gaussianModel.minStdXY =
-		config.default_noise_xy;
-	MRPT_LOG_INFO_FMT(
-		"default_noise_xy: %f",
-		motion_model_default_options->gaussianModel.minStdXY);
-	motion_model_default_options->gaussianModel.minStdPHI =
-		config.default_noise_phi;
-	MRPT_LOG_INFO_FMT(
-		"default_noise_phi: %f",
-		motion_model_default_options->gaussianModel.minStdPHI);
-	update_while_stopped = config.update_while_stopped;
-	MRPT_LOG_INFO_FMT(
-		"update_while_stopped: %s", update_while_stopped ? "true" : "false");
-	update_sensor_pose = config.update_sensor_pose;
-	MRPT_LOG_INFO_FMT(
-		"update_sensor_pose: %s", update_sensor_pose ? "true" : "false");
-}
+#if 1
+	cfg.printAsYAML();
 #endif
+
+	MCP_LOAD_OPT(cfg, rate_hz);
+	MCP_LOAD_OPT(cfg, transform_tolerance);
+	MCP_LOAD_OPT(cfg, no_update_tolerance);
+	MCP_LOAD_OPT(cfg, no_inputs_tolerance);
+	MCP_LOAD_OPT(cfg, publish_particles_decimation);
+
+	MCP_LOAD_OPT(cfg, base_footprint_frame_id);
+	MCP_LOAD_OPT(cfg, odom_frame_id);
+	MCP_LOAD_OPT(cfg, global_frame_id);
+
+	MCP_LOAD_OPT(cfg, topic_map);
+	MCP_LOAD_OPT(cfg, topic_initialpose);
+	MCP_LOAD_OPT(cfg, topic_odometry);
+
+	MCP_LOAD_OPT(cfg, pub_topic_particles);
+	MCP_LOAD_OPT(cfg, pub_topic_pose);
+
+	MCP_LOAD_OPT(cfg, topic_sensors_2d_scan);
+	MCP_LOAD_OPT(cfg, topic_sensors_point_clouds);
+}

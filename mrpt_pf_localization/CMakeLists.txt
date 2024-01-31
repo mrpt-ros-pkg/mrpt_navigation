@@ -13,6 +13,7 @@ find_package(pose_cov_ops REQUIRED)
 find_package(mrpt_msgs_bridge REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(tf2_geometry_msgs REQUIRED)
+find_package(mp2p_icp_map REQUIRED)
 
 find_package(mrpt-ros2bridge REQUIRED)
 find_package(mrpt-gui REQUIRED)
@@ -54,6 +55,7 @@ target_link_libraries(${PROJECT_NAME}_core
   mrpt::gui
   mrpt::slam
   mrpt::ros2bridge
+  mola::mp2p_icp_map
 )
 
 add_executable(${PROJECT_NAME}_node

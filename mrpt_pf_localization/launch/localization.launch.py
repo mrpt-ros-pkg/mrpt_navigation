@@ -35,6 +35,23 @@ def generate_launch_description():
         description="Logging level"
     )
 
+    topic_sensors_2d_scan_arg = DeclareLaunchArgument(
+        "topic_sensors_2d_scan",
+        default_value='',
+        description="Comma-separated list of topics to subscribe for LaserScan msgs as sensor inputs"
+    )
+    topic_sensors_point_clouds_arg = DeclareLaunchArgument(
+        "topic_sensors_point_clouds",
+        default_value='',
+        description="Comma-separated list of topics to subscribe for PointCloud2 msgs as sensor inputs"
+    )
+
+    gui_enable_arg = DeclareLaunchArgument(
+        "gui_enable",
+        default_value='False',
+        description="Whether to show a custom UI with details on the PF status"
+    )
+
     pf_localization_node = Node(
         package='mrpt_pf_localization',
         executable='mrpt_pf_localization_node',
@@ -44,6 +61,9 @@ def generate_launch_description():
             LaunchConfiguration('pf_params_file'),
             {
                 "mrpt_map_config_file": LaunchConfiguration('mrpt_map_config_file'),
+                "topic_sensors_2d_scan": LaunchConfiguration('topic_sensors_2d_scan'),
+                "topic_sensors_point_clouds": LaunchConfiguration('topic_sensors_point_clouds'),
+                "gui_enable": LaunchConfiguration('gui_enable'),
             }],
         arguments=['--ros-args', '--log-level',
                    LaunchConfiguration('log_level')]
@@ -53,5 +73,8 @@ def generate_launch_description():
         mrpt_map_config_file_launch_arg,
         pf_log_level_launch_arg,
         pf_params_file_launch_arg,
+        topic_sensors_2d_scan_arg,
+        topic_sensors_point_clouds_arg,
+        gui_enable_arg,
         pf_localization_node,
     ])

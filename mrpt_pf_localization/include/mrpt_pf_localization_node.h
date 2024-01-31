@@ -30,6 +30,8 @@
 #include <std_msgs/msg/header.hpp>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 
+#include "mrpt_msgs/msg/generic_object.hpp"
+
 #define MRPT_LOCALIZATION_NODE_DEFAULT_PARAMETER_UPDATE_SKIP 1
 #define MRPT_LOCALIZATION_NODE_DEFAULT_PARTICLECLOUD_UPDATE_SKIP 5
 #define MRPT_LOCALIZATION_NODE_DEFAULT_MAP_UPDATE_SKIP 2
@@ -49,7 +51,9 @@ class PFLocalizationNode : public rclcpp::Node
 		NodeParameters() = default;
 		~NodeParameters() = default;
 
-		double rate_hz = 10.0;	//!< Execution rate in Hz
+		void loadFrom(const mrpt::containers::yaml& cfg);
+
+		double rate_hz = 2.0;  //!< Execution rate in Hz
 
 		/// projection into the future added to the published tf to extend its
 		/// validity
@@ -60,23 +64,20 @@ class PFLocalizationNode : public rclcpp::Node
 		double no_update_tolerance = 1.0;
 
 		/// maximum time without any observation before start complaining
-		double no_inputs_tolerance;
+		double no_inputs_tolerance = 2.0;
 
-		///
-		int parameter_update_skip;
-
-		int particlecloud_update_skip;
-
-		int map_update_skip;
+		int publish_particles_decimation = 1;
 
 		std::string base_footprint_frame_id = "base_footprint";
 		std::string odom_frame_id = "odom";
 		std::string global_frame_id = "map";
 
+		std::string topic_map = "/mrpt_map/metric_map";
 		std::string topic_initialpose = "/initialpose";
-		std::string topic_gridmap = "/map";
-
 		std::string topic_odometry = "/odom";
+
+		std::string pub_topic_particles = "/particlecloud";
+		std::string pub_topic_pose = "/pf_pose";
 
 		/// Comma "," separated list of topics to subscribe for LaserScan msgs
 		std::string topic_sensors_2d_scan;
@@ -86,16 +87,19 @@ class PFLocalizationNode : public rclcpp::Node
 
 		bool update_while_stopped;
 		bool update_sensor_pose;
-		bool pose_broadcast;
-		bool tf_broadcast;
-		bool use_map_topic;
-		bool first_map_only;
 	};
 
 	NodeParameters nodeParams_;
 
    private:
 	PFLocalizationCore core_;
+
+	int loopCount_ = 0;	 //!< For decimation purposes only
+
+	bool isTimeFor(int decimation) const
+	{
+		return decimation <= 1 || (loopCount_ % decimation == 0);
+	}
 
 	rclcpp::TimerBase::SharedPtr timer_;
 
@@ -116,7 +120,9 @@ class PFLocalizationNode : public rclcpp::Node
 	void callbackInitialpose(
 		const geometry_msgs::msg::PoseWithCovarianceStamped& msg);
 	void callbackOdometry(const nav_msgs::msg::Odometry&);
-	void callbackMap(const nav_msgs::msg::OccupancyGrid&);
+
+	void callbackMap(const mrpt_msgs::msg::GenericObject& obj);
+
 	void updateMap(const nav_msgs::msg::OccupancyGrid&);
 	void publishTF();
 	void publishPose();
@@ -126,9 +132,9 @@ class PFLocalizationNode : public rclcpp::Node
 	/** Sub for /initialpose */
 	rclcpp::Subscription<geometry_msgs::msg::PoseWithCovarianceStamped>::
 		SharedPtr sub_init_pose_;
-	rclcpp::Subscription<nav_msgs::msg::OccupancyGrid>::SharedPtr sub_gridmap_;
 
-	rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr sub_odometry_;
+	rclcpp::Subscription<mrpt_msgs::msg::GenericObject>::SharedPtr subMap_;
+	rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr subOdometry_;
 
 	// Sensors:
 	std::vector<rclcpp::Subscription<sensor_msgs::msg::LaserScan>::SharedPtr>
@@ -136,17 +142,10 @@ class PFLocalizationNode : public rclcpp::Node
 	std::vector<rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr>
 		subs_point_clouds_;
 
-	// rclcpp::Subscriber sub_map_;
-	// rclcpp::ServiceClient client_map_;
-
-	rclcpp::Publisher<geometry_msgs::msg::PoseArray>::SharedPtr pub_particles_;
-
-	// Pubs for ROS standard occupancy grid map:
-	rclcpp::Publisher<nav_msgs::msg::OccupancyGrid>::SharedPtr pub_map_;
-	rclcpp::Publisher<nav_msgs::msg::MapMetaData>::SharedPtr pub_metadata_;
+	rclcpp::Publisher<geometry_msgs::msg::PoseArray>::SharedPtr pubParticles_;
 
 	rclcpp::Publisher<geometry_msgs::msg::PoseWithCovarianceStamped>::SharedPtr
-		pub_pose_;
+		pubPose_;
 
 	// rclcpp::ServiceServer service_map_;
 
@@ -168,8 +167,4 @@ class PFLocalizationNode : public rclcpp::Node
 	bool waitForTransform(
 		mrpt::poses::CPose3D& des, const std::string& target_frame,
 		const std::string& source_frame, const int timeoutMilliseconds = 50);
-	bool mapCallback(
-		nav_msgs::srv::GetMap::Request& req,
-		nav_msgs::srv::GetMap::Response& res);
-	void publishMap();
 };
