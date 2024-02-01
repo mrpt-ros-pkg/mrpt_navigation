@@ -269,7 +269,7 @@ bool PFLocalizationNode::waitForTransform(
 	{
 		geometry_msgs::msg::TransformStamped ref_to_trgFrame =
 			tf_buffer_->lookupTransform(
-				target_frame, source_frame, tf2::TimePointZero,
+				source_frame, target_frame, tf2::TimePointZero,
 				tf2::durationFromSec(timeout.seconds()));
 
 		tf2::Transform tf;
@@ -589,23 +589,28 @@ void PFLocalizationNode::updateMap(const nav_msgs::msg::OccupancyGrid& _msg)
 
 void PFLocalizationNode::publishParticles()
 {
-#if 0
-	if (pub_particles_.getNumSubscribers() > 0)
-	{
-		geometry_msgs::PoseArray poseArray;
-		poseArray.header.frame_id = param()->global_frame_id;
-		poseArray.header.stamp = ros::Time::now();
-		poseArray.header.seq = loop_count_;
-		poseArray.poses.resize(pdf_.particlesCount());
-		for (size_t i = 0; i < pdf_.particlesCount(); i++)
-		{
-			const auto p = mrpt::math::TPose3D(pdf_.getParticlePose(i));
-			poseArray.poses[i] = mrpt::ros2bridge::toROS_Pose(p);
-		}
-		mrpt::poses::CPose2D p;
-		pub_particles_.publish(poseArray);
+	if (!pubParticles_->get_subscription_count()) return;
+
+	mrpt::poses::CPose3DPDFParticles::Ptr parts = core_.getLastPoseEstimation();
+
+	geometry_msgs::msg::PoseArray poseArray;
+	poseArray.header.frame_id = nodeParams_.global_frame_id;
+	poseArray.header.stamp = this->get_clock()->now();
+
+	if (!parts)
+	{  // no solution yet
+		poseArray.poses.resize(0);
+		pubParticles_->publish(poseArray);
+		return;
 	}
-#endif
+
+	poseArray.poses.resize(parts->size());
+	for (size_t i = 0; i < parts->size(); i++)
+	{
+		const auto p = parts->getParticlePose(i);
+		poseArray.poses[i] = mrpt::ros2bridge::toROS_Pose(p);
+	}
+	pubParticles_->publish(poseArray);
 }
 
 /**

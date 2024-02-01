@@ -337,6 +337,8 @@ void PFLocalizationCore::onStateToBeInitialized()
 		else
 			_.pdf3d->resetUniform(pMin, pMax, params_.initial_particle_count);
 	}
+
+	internal_fill_state_lastResult();
 }
 
 void PFLocalizationCore::onStateRunning()
@@ -505,6 +507,8 @@ void PFLocalizationCore::onStateRunning()
 	// Collect further output stats:
 	// ------------------------------
 	state_.time_last_update = sfLastTimeStamp;
+
+	internal_fill_state_lastResult();
 
 	// GUI:
 	// -----------
@@ -791,5 +795,37 @@ void PFLocalizationCore::relocalize_here(
 	if (state_.fsm_state == State::RUNNING)
 	{
 		state_.fsm_state = State::TO_BE_INITIALIZED;
+	}
+}
+
+mrpt::poses::CPose3DPDFParticles::Ptr
+	PFLocalizationCore::getLastPoseEstimation() const
+{
+	auto lck = mrpt::lockHelper(stateMtx_);
+	return state_.lastResult;
+}
+
+void PFLocalizationCore::internal_fill_state_lastResult()
+{
+	if (state_.pdf2d)
+	{
+		// Convert SE(2) -> SE(3)
+		state_.lastResult = mrpt::poses::CPose3DPDFParticles::Create();
+		const size_t N = state_.pdf2d->size();
+		state_.lastResult->resetDeterministic({}, N);
+		for (size_t i = 0; i < N; i++)
+		{
+			auto& trg = state_.lastResult->m_particles.at(i);
+			const auto& org = state_.pdf2d->m_particles.at(i);
+
+			trg.log_w = org.log_w;
+			trg.d = mrpt::math::TPose3D(org.d);
+		}
+	}
+	else if (state_.pdf3d)
+	{
+		// Make a copy:
+		state_.lastResult = mrpt::poses::CPose3DPDFParticles::Create();
+		*state_.lastResult = *state_.pdf3d;
 	}
 }

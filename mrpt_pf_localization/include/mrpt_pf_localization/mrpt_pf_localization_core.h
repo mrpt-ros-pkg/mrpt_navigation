@@ -176,6 +176,11 @@ class PFLocalizationCore : public mrpt::system::COutputLogger
 	/** Returns a *copy* (it is intentional) of the parameters at this moment */
 	const Parameters getParams() { return params_; }
 
+	/** Returns the last filter estimate, or empty ptr if never run yet.
+	 *  Multi thread safe.
+	 */
+	mrpt::poses::CPose3DPDFParticles::Ptr getLastPoseEstimation() const;
+
 	/** @} */
 
    protected:
@@ -206,6 +211,10 @@ class PFLocalizationCore : public mrpt::system::COutputLogger
 		 *  This field is protected by an independent mutex.
 		 */
 		std::vector<mrpt::obs::CObservation::Ptr> pendingObs;
+
+		/** The last state of the filter, for sending as a copy to the user API
+		 */
+		mrpt::poses::CPose3DPDFParticles::Ptr lastResult;
 	};
 
    private:
@@ -233,4 +242,6 @@ class PFLocalizationCore : public mrpt::system::COutputLogger
 
 	void init_gui();
 	void update_gui(const mrpt::obs::CSensoryFrame& sf);
+
+	void internal_fill_state_lastResult();
 };
