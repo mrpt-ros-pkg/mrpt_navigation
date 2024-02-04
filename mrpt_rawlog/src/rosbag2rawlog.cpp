@@ -40,11 +40,14 @@
 #include <mrpt/system/progress.h>
 #include <mrpt/version.h>
 #include <tf2/buffer_core.h>
+#include <tf2/convert.h>
 #include <tf2/exceptions.h>
 
+#include <cv_bridge/cv_bridge.hpp>
 #include <iostream>
 #include <memory>
 #include <nav_msgs/msg/odometry.hpp>
+#include <optional>
 #include <rclcpp/rclcpp.hpp>
 #include <rclcpp/serialization.hpp>
 #include <rosbag2_cpp/converter_options.hpp>
@@ -55,6 +58,7 @@
 #include <sensor_msgs/msg/laser_scan.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
 #include <std_msgs/msg/int32.hpp>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>	// needed by tf2::fromMsg()
 #include <tf2_msgs/msg/tf_message.hpp>
 
 //#include <rosbag2_cpp/storage_options.hpp>
@@ -91,9 +95,10 @@ TCLAP::SwitchArg arg_overwrite(
 	"w", "overwrite", "Force overwrite target file without prompting.", cmd,
 	false);
 
-TCLAP::ValueArg<std::string> arg_world_frame(
-	"f", "frame", "Reference /tf frame (Default: 'map')", false, "map", "map",
-	cmd);
+TCLAP::ValueArg<std::string> arg_base_link_frame(
+	"b", "base-link",
+	"Reference /tf frame for the robot frame (Default: 'base_link')", false,
+	"base_link", "base_link", cmd);
 
 using Obs = std::list<mrpt::serialization::CSerializable::Ptr>;
 
@@ -110,11 +115,8 @@ class RosSynchronizer
 	using Callback = std::function<Obs(const std::shared_ptr<Args>&...)>;
 
 	RosSynchronizer(
-		std::string_view rootFrame, std::shared_ptr<tf2::BufferCore> tfBuffer,
-		const Callback& callback)
-		: m_rootFrame(rootFrame),
-		  m_tfBuffer(std::move(tfBuffer)),
-		  m_callback(callback)
+		std::shared_ptr<tf2::BufferCore> tfBuffer, const Callback& callback)
+		: m_tfBuffer(std::move(tfBuffer)), m_callback(callback)
 	{
 	}
 
@@ -189,7 +191,6 @@ class RosSynchronizer
 	}
 
    private:
-	std::string m_rootFrame;
 	std::shared_ptr<tf2::BufferCore> m_tfBuffer;
 	Tuple m_cache;
 	bool m_poseValid = false;
@@ -197,8 +198,47 @@ class RosSynchronizer
 	Callback m_callback;
 };
 
+std::shared_ptr<tf2::BufferCore> tfBuffer;
+
+bool findOutSensorPose(
+	mrpt::poses::CPose3D& des, const std::string& target_frame,
+	const std::string& source_frame,
+	const std::optional<mrpt::poses::CPose3D>& fixedSensorPose)
+{
+	if (fixedSensorPose)
+	{
+		des = fixedSensorPose.value();
+		return true;
+	}
+
+	try
+	{
+		ASSERT_(tfBuffer);
+
+		geometry_msgs::msg::TransformStamped ref_to_trgFrame =
+			tfBuffer->lookupTransform(
+				target_frame, source_frame, {} /*latest value*/);
+
+		tf2::Transform tf;
+		tf2::fromMsg(ref_to_trgFrame.transform, tf);
+		des = mrpt::ros2bridge::fromROS(tf);
+
+		std::cout << mrpt::format(
+			"[findOutSensorPose] Found pose %s -> %s: %s\n",
+			source_frame.c_str(), target_frame.c_str(), des.asString().c_str());
+
+		return true;
+	}
+	catch (const tf2::TransformException& ex)
+	{
+		std::cerr << "findOutSensorPose: " << ex.what() << std::endl;
+		return false;
+	}
+}
+
 Obs toPointCloud2(
-	std::string_view msg, const rosbag2_storage::SerializedBagMessage& rosmsg)
+	std::string_view msg, const rosbag2_storage::SerializedBagMessage& rosmsg,
+	const std::optional<mrpt::poses::CPose3D>& fixedSensorPose)
 {
 	rclcpp::SerializedMessage serMsg(*rosmsg.serialized_data);
 	static rclcpp::Serialization<sensor_msgs::msg::PointCloud2> serializer;
@@ -209,6 +249,11 @@ Obs toPointCloud2(
 	auto ptsObs = mrpt::obs::CObservationPointCloud::Create();
 	ptsObs->sensorLabel = msg;
 	ptsObs->timestamp = mrpt::ros2bridge::fromROS(pts.header.stamp);
+
+	bool sensorPoseOK = findOutSensorPose(
+		ptsObs->sensorPose, pts.header.frame_id, arg_base_link_frame.getValue(),
+		fixedSensorPose);
+	ASSERT_(sensorPoseOK);
 
 	// Convert points:
 	std::set<std::string> fields = mrpt::ros2bridge::extractFields(pts);
@@ -273,7 +318,8 @@ Obs toPointCloud2(
 }
 
 Obs toLidar2D(
-	std::string_view msg, const rosbag2_storage::SerializedBagMessage& rosmsg)
+	std::string_view msg, const rosbag2_storage::SerializedBagMessage& rosmsg,
+	const std::optional<mrpt::poses::CPose3D>& fixedSensorPose)
 {
 	rclcpp::SerializedMessage serMsg(*rosmsg.serialized_data);
 	static rclcpp::Serialization<sensor_msgs::msg::LaserScan> serializer;
@@ -290,11 +336,17 @@ Obs toLidar2D(
 	scanObs->sensorLabel = msg;
 	scanObs->timestamp = mrpt::ros2bridge::fromROS(scan.header.stamp);
 
+	bool sensorPoseOK = findOutSensorPose(
+		scanObs->sensorPose, scan.header.frame_id,
+		arg_base_link_frame.getValue(), fixedSensorPose);
+	ASSERT_(sensorPoseOK);
+
 	return {scanObs};
 }
 
 Obs toRotatingScan(
-	std::string_view msg, const rosbag2_storage::SerializedBagMessage& rosmsg)
+	std::string_view msg, const rosbag2_storage::SerializedBagMessage& rosmsg,
+	const std::optional<mrpt::poses::CPose3D>& fixedSensorPose)
 {
 	rclcpp::SerializedMessage serMsg(*rosmsg.serialized_data);
 	static rclcpp::Serialization<sensor_msgs::msg::PointCloud2> serializer;
@@ -312,7 +364,6 @@ Obs toRotatingScan(
 
 	// As a structured 2D range images, if we have ring numbers:
 	auto obsRotScan = mrpt::obs::CObservationRotatingScan::Create();
-	// MRPT_TODO("Extract sensor pose from tf frames");
 	const mrpt::poses::CPose3D sensorPose;
 
 	if (!mrpt::ros2bridge::fromROS(pts, *obsRotScan, sensorPose))
@@ -325,11 +376,17 @@ Obs toRotatingScan(
 	obsRotScan->sensorLabel = msg;
 	obsRotScan->timestamp = mrpt::ros2bridge::fromROS(pts.header.stamp);
 
+	bool sensorPoseOK = findOutSensorPose(
+		obsRotScan->sensorPose, pts.header.frame_id,
+		arg_base_link_frame.getValue(), fixedSensorPose);
+	ASSERT_(sensorPoseOK);
+
 	return {obsRotScan};
 }
 
 Obs toIMU(
-	std::string_view msg, const rosbag2_storage::SerializedBagMessage& rosmsg)
+	std::string_view msg, const rosbag2_storage::SerializedBagMessage& rosmsg,
+	const std::optional<mrpt::poses::CPose3D>& fixedSensorPose)
 {
 	rclcpp::SerializedMessage serMsg(*rosmsg.serialized_data);
 	static rclcpp::Serialization<sensor_msgs::msg::Imu> serializer;
@@ -344,6 +401,11 @@ Obs toIMU(
 
 	// Convert data:
 	mrpt::ros2bridge::fromROS(imu, *mrptObs);
+
+	bool sensorPoseOK = findOutSensorPose(
+		mrptObs->sensorPose, imu.header.frame_id,
+		arg_base_link_frame.getValue(), fixedSensorPose);
+	ASSERT_(sensorPoseOK);
 
 	return {mrptObs};
 }
@@ -372,6 +434,33 @@ Obs toOdometry(
 	mrptObs->velocityLocal.omega = odo.twist.twist.angular.z;
 
 	return {mrptObs};
+}
+
+Obs toImage(
+	std::string_view msg, const rosbag2_storage::SerializedBagMessage& rosmsg,
+	const std::optional<mrpt::poses::CPose3D>& fixedSensorPose)
+{
+	rclcpp::SerializedMessage serMsg(*rosmsg.serialized_data);
+	static rclcpp::Serialization<sensor_msgs::msg::Image> serializer;
+
+	auto image = std::make_shared<sensor_msgs::msg::Image>();
+	serializer.deserialize_message(&serMsg, image.get());
+
+	auto imgObs = mrpt::obs::CObservationImage::Create();
+
+	imgObs->sensorLabel = msg;
+	imgObs->timestamp = mrpt::ros2bridge::fromROS(image->header.stamp);
+
+	auto cv_ptr = cv_bridge::toCvShare(image);
+
+	imgObs->image = mrpt::img::CImage(cv_ptr->image, mrpt::img::DEEP_COPY);
+
+	bool sensorPoseOK = findOutSensorPose(
+		imgObs->cameraPose, image->header.frame_id,
+		arg_base_link_frame.getValue(), fixedSensorPose);
+	ASSERT_(sensorPoseOK);
+
+	return {imgObs};
 }
 
 #if 0
@@ -429,21 +518,6 @@ Obs toRangeImage(
 	return {};
 }
 
-Obs toImage(std::string_view msg, const rosbag2_storage::SerializedBagMessage& rosmsg)
-{
-	auto image = rosmsg.instantiate<sensor_msgs::Image>();
-
-	auto cv_ptr = cv_bridge::toCvShare(image);
-
-	auto imgObs = mrpt::obs::CObservationImage::Create();
-
-	imgObs->sensorLabel = msg;
-	imgObs->timestamp = mrpt::ros2bridge::fromROS(image->header.stamp);
-
-	imgObs->image = mrpt::img::CImage(cv_ptr->image, mrpt::img::SHALLOW_COPY);
-
-	return {imgObs};
-}
 #endif
 
 template <bool isStatic>
@@ -476,11 +550,9 @@ Obs toTf(
 class Transcriber
 {
    public:
-	Transcriber(
-		std::string_view rootFrame, const mrpt::containers::yaml& config)
-		: m_rootFrame(rootFrame)
+	Transcriber(const mrpt::containers::yaml& config)
 	{
-		auto tfBuffer = std::make_shared<tf2::BufferCore>();
+		tfBuffer = std::make_shared<tf2::BufferCore>();
 
 		m_lookup["/tf"].emplace_back(
 			[=](const rosbag2_storage::SerializedBagMessage& rosmsg) {
@@ -497,6 +569,14 @@ class Transcriber
 			auto& sensor = sensorNode.second.asMap();
 			const auto sensorType = sensor.at("type").as<std::string>();
 
+			// Optional: fixed sensorPose (then ignores/don't need "tf" data):
+			std::optional<mrpt::poses::CPose3D> fixedSensorPose;
+			if (sensor.count("fixed_sensor_pose") != 0)
+			{
+				fixedSensorPose = mrpt::poses::CPose3D::FromString(
+					"["s + sensor.at("fixed_sensor_pose").as<std::string>() +
+					"]"s);
+			}
 #if 0
 			if (sensorType == "CObservation3DRangeScan")
 			{
@@ -517,61 +597,40 @@ class Transcriber
 					.emplace_back(sync->bind<1>());
 				m_lookup["/tf"].emplace_back(sync->bindTfSync());
 			}
+#endif
 			else if (sensorType == "CObservationImage")
 			{
 				auto callback =
 					[=](const rosbag2_storage::SerializedBagMessage& m) {
-						return toImage(sensorName, m);
+						return toImage(sensorName, m, fixedSensorPose);
 					};
 				m_lookup[sensor.at("image_topic").as<std::string>()]
 					.emplace_back(callback);
 			}
-			else
-#endif
-			if (sensorType == "CObservationPointCloud")
+			else if (sensorType == "CObservationPointCloud")
 			{
 				auto callback =
 					[=](const rosbag2_storage::SerializedBagMessage& m) {
-						return toPointCloud2(sensorName, m);
+						return toPointCloud2(sensorName, m, fixedSensorPose);
 					};
 				m_lookup[sensor.at("topic").as<std::string>()].emplace_back(
 					callback);
-
-#if 0  // WIP: get sensor poses from /tf.
-				auto callback =
-					[=, &tfBuffer](
-						const sensor_msgs::msg::PointCloud2::SharedPtr& m) {
-						tfBuffer->lookupTransform(
-							m->header.frame_id, base_link, m->header.stamp);
-
-						return toPointCloud2(sensorName, m);
-					};
-				using Synchronizer =
-					RosSynchronizer<sensor_msgs::msg::PointCloud2>;
-				auto sync = std::make_shared<Synchronizer>(
-					rootFrame, tfBuffer, callback);
-
-				m_lookup[sensor.at("topic").as<std::string>()].emplace_back(
-					sync->bind<0>());
-				m_lookup["/tf"].emplace_back(sync->bindTfSync());
-#endif
 			}
 			else if (sensorType == "CObservation2DRangeScan")
 			{
 				auto callback =
 					[=](const rosbag2_storage::SerializedBagMessage& m) {
-						return toLidar2D(sensorName, m);
+						return toLidar2D(sensorName, m, fixedSensorPose);
 					};
 
 				m_lookup[sensor.at("topic").as<std::string>()].emplace_back(
 					callback);
-				// m_lookup["/tf"].emplace_back(sync->bindTfSync());
 			}
 			else if (sensorType == "CObservationRotatingScan")
 			{
 				auto callback =
 					[=](const rosbag2_storage::SerializedBagMessage& m) {
-						return toRotatingScan(sensorName, m);
+						return toRotatingScan(sensorName, m, fixedSensorPose);
 					};
 				m_lookup[sensor.at("topic").as<std::string>()].emplace_back(
 					callback);
@@ -580,11 +639,10 @@ class Transcriber
 			{
 				auto callback =
 					[=](const rosbag2_storage::SerializedBagMessage& m) {
-						return toIMU(sensorName, m);
+						return toIMU(sensorName, m, fixedSensorPose);
 					};
 				m_lookup[sensor.at("topic").as<std::string>()].emplace_back(
 					callback);
-				// m_lookup["/tf"].emplace_back(sync->bindTfSync());
 			}
 			else if (sensorType == "CObservationOdometry")
 			{
@@ -625,7 +683,6 @@ class Transcriber
 	};
 
    private:
-	std::string m_rootFrame;
 	std::map<std::string, std::vector<CallbackFunction>> m_lookup;
 	std::set<std::string> m_unhandledTopics;
 };
@@ -695,7 +752,7 @@ int main(int argc, char** argv)
 		auto arch = archiveFrom(fil_out);
 
 		size_t curEntry = 0, showProgressCnt = 0;
-		Transcriber t(arg_world_frame.getValue(), config);
+		Transcriber t(config);
 
 		while (reader.has_next())
 		{
