@@ -70,11 +70,11 @@ using namespace mrpt::system;
 using namespace std;
 
 // Declare the supported command line switches ===========
-TCLAP::CmdLine cmd("rosbag2rawlog", ' ', MRPT_getVersion().c_str());
+TCLAP::CmdLine cmd("rosbag2rawlog (ROS 2)", ' ', MRPT_getVersion().c_str());
 
 TCLAP::UnlabeledValueArg<std::string> arg_input_file(
-	"bags", "Input bag files (required) (*.bag)", true, "dataset.bag", "Files",
-	cmd);
+	"bags", "Input bag files (required) (*.mcap,*.db3)", true, "dataset.mcap",
+	"Files", cmd);
 
 TCLAP::ValueArg<std::string> arg_output_file(
 	"o", "output", "Output dataset (*.rawlog)", true, "", "dataset_out.rawlog",
@@ -691,8 +691,9 @@ int main(int argc, char** argv)
 {
 	try
 	{
+		printf(" rosbag2rawlog (ROS 2) - Part of the MRPT\n");
 		printf(
-			" rosbag2rawlog - Built against MRPT %s - Sources timestamp: %s\n",
+			" MRPT C++ Library: %s - Sources timestamp: %s\n",
 			MRPT_getVersion().c_str(), MRPT_getCompilationDate().c_str());
 
 		// Parse arguments:
@@ -758,22 +759,7 @@ int main(int argc, char** argv)
 		{
 			// serialized data
 			auto serialized_message = reader.read_next();
-#if 0
-			rclcpp::SerializedMessage serMsg(
-				*serialized_message->serialized_data);
-			auto topic = serialized_message->topic_name;
-			if (topic.find("tf") != std::string::npos)
-			{
-				static rclcpp::Serialization<tf2_msgs::msg::TFMessage>
-					tfSerializer;
 
-				tf2_msgs::msg::TFMessage msg;
-				tfSerializer.deserialize_message(
-					&serMsg, &msg);
-
-				// tf2_msgs::msg::to_block_style_yaml(msg, std::cout);
-			}
-#endif
 			auto ptrs = t.toMrpt(*serialized_message);
 			for (auto& ptr : ptrs)
 			{
