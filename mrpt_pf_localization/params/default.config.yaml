@@ -33,23 +33,42 @@ mrpt_pf_localization_node:
     gui_camera_follow_robot: true
     
     # For SE(2) mode: Uncertainty motion model for regular odometry-based motion
+    # See docs for mrpt::obs::CActionRobotMovement2D::TMotionModelOptions or https://docs.mrpt.org/reference/latest/tutorial-motion-models.html
     motion_model_2d:
-      ~
-    
+      modelSelection: mmGaussian    # (mmGaussian|mmThrun)
+      gaussianModel:
+        a1: 0.01    # [m/m]
+        a2: 0.0001  # [m/rad]
+        a3: 1.0     # [deg/m]
+        a4: 0.10    # [deg/deg]
+        minStdXY: 0.01  # [m]
+        minStdPHI: 0.2  # [deg]
+      thrunModel:
+        alfa1_rot_rot: 0.1
+        alfa2_rot_trans: 0.1
+        alfa3_trans_trans: 0.1
+        alfa4_trans_rot: 0.1
+        additional_std_XY: 0.01 # [m]
+        additional_std_phi: 0.2 # [deg]
+
     # For SE(2) mode: Uncertainty motion model to use when NO odometry has
     # been received.
+    # See docs for mrpt::obs::CActionRobotMovement2D::TMotionModelOptions or https://docs.mrpt.org/reference/latest/tutorial-motion-models.html
     motion_model_no_odom_2d:
-      ~
+      modelSelection: mmGaussian    # (mmGaussian|mmThrun)
+      gaussianModel:
+        minStdXY: 0.10  # [m]
+        minStdPHI: 2.0  # [deg]
     
     # For SE(3) mode: Uncertainty motion model for regular odometry-based motion
     motion_model_3d:
-      ~
+      modelSelection: mmGaussian
     
     # For SE(3) mode: Uncertainty motion model to use when NO odometry has
     # been received.
     motion_model_no_odom_3d:
-      ~
-    
+      modelSelection: mmGaussian
+
     # Particle filter options:
     # Refer to docs for: [TParticleFilterOptions](https://docs.mrpt.org/reference/latest/struct_mrpt_bayes_CParticleFilter_TParticleFilterOptions.html)
     # -----------------------------------------------

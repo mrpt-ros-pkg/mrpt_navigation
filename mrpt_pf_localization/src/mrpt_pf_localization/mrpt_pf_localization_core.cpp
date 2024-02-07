@@ -68,6 +68,59 @@ PFLocalizationCore::Parameters::Parameters()
 	// TODO: Params that make more sense?
 }
 
+#define MCP_LOAD_REQ_HERE(Yaml__, Var__, Trg__)                                \
+	if (!Yaml__.has(#Var__))                                                   \
+		throw std::invalid_argument(mrpt::format(                              \
+			"Required parameter `%s` not an existing key in dictionary.",      \
+			#Var__));                                                          \
+	if constexpr (std::is_enum_v<decltype(Trg__)>)                             \
+		Trg__ = mrpt::typemeta::TEnumType<std::remove_cv_t<decltype(Trg__)>>:: \
+			name2value(Yaml__[#Var__].as<std::string>());                      \
+	else                                                                       \
+		Trg__ = Yaml__[#Var__].as<decltype(Trg__)>()
+
+#define MCP_LOAD_OPT_HERE(Yaml__, Var__, Trg__)                             \
+	if constexpr (std::is_enum_v<decltype(Trg__)>)                          \
+	{                                                                       \
+		if (!Yaml__.empty() && Yaml__.has(#Var__))                          \
+			Trg__ = mrpt::typemeta::TEnumType<std::remove_cv_t<decltype(    \
+				Trg__)>>::name2value(Yaml__[#Var__].as<std::string>());     \
+	}                                                                       \
+	else if (!Yaml__.isNullNode() && !Yaml__.empty() && Yaml__.has(#Var__)) \
+	Trg__ = Yaml__[#Var__].as<decltype(Trg__)>()
+
+#define MCP_LOAD_OPT_DEG_HERE(Yaml__, Var__, Trg__)                    \
+	if (!Yaml__.isNullNode() && !Yaml__.empty() && Yaml__.has(#Var__)) \
+	Trg__ = mrpt::DEG2RAD(Yaml__[#Var__].as<decltype(Trg__)>())
+
+namespace
+{
+void load_motion_model2d_from(
+	const mrpt::containers::yaml& p,
+	mrpt::obs::CActionRobotMovement2D::TMotionModelOptions& mmo)
+{
+	MCP_LOAD_REQ_HERE(p, modelSelection, mmo.modelSelection);
+
+	ASSERT_(p.has("gaussianModel"));
+
+	MCP_LOAD_OPT_HERE(p, a1, mmo.gaussianModel.a1);
+	MCP_LOAD_OPT_HERE(p, a2, mmo.gaussianModel.a2);
+	MCP_LOAD_OPT_DEG_HERE(p, a3, mmo.gaussianModel.a3);
+	MCP_LOAD_OPT_HERE(p, a4, mmo.gaussianModel.a4);
+	MCP_LOAD_OPT_HERE(p, minStdXY, mmo.gaussianModel.minStdXY);
+	MCP_LOAD_OPT_DEG_HERE(p, minStdPHI, mmo.gaussianModel.minStdPHI);
+
+	MCP_LOAD_OPT_HERE(p, alfa1_rot_rot, mmo.thrunModel.alfa1_rot_rot);
+	MCP_LOAD_OPT_HERE(p, alfa2_rot_trans, mmo.thrunModel.alfa2_rot_trans);
+	MCP_LOAD_OPT_HERE(p, alfa3_trans_trans, mmo.thrunModel.alfa3_trans_trans);
+	MCP_LOAD_OPT_HERE(p, alfa4_trans_rot, mmo.thrunModel.alfa4_trans_rot);
+	MCP_LOAD_OPT_HERE(p, additional_std_XY, mmo.thrunModel.additional_std_XY);
+	MCP_LOAD_OPT_DEG_HERE(
+		p, additional_std_phi, mmo.thrunModel.additional_std_phi);
+}
+
+}  // namespace
+
 void PFLocalizationCore::Parameters::load_from(
 	const mrpt::containers::yaml& params)
 {
@@ -76,13 +129,19 @@ void PFLocalizationCore::Parameters::load_from(
 	MCP_LOAD_OPT(params, gui_camera_follow_robot);
 
 	// motion_model_2d
-	MRPT_TODO("Load motion model params!");
+	ASSERT_(params.has("motion_model_2d"));
+	load_motion_model2d_from(params["motion_model_2d"], motion_model_2d);
 
 	// motion_model_no_odom_2d
+	ASSERT_(params.has("motion_model_no_odom_2d"));
+	load_motion_model2d_from(
+		params["motion_model_no_odom_2d"], motion_model_2d);
 
 	// motion_model_3d
+	MCP_LOAD_OPT(params, motion_model_3d.modelSelection);
 
 	// motion_model_no_odom_3d
+	MCP_LOAD_OPT(params, motion_model_no_odom_3d.modelSelection);
 
 	// initial_pose: check minimum required fields, if given via YAML.
 	if (params.has("initial_pose"))
@@ -575,14 +634,6 @@ void PFLocalizationCore::init_from_yaml(const mrpt::containers::yaml& params)
 
 	// Load all required and optional params:
 	params_.load_from(params);
-
-	// Now, parse the map, if given in the YAML in any of the supported
-	// formats:
-
-	// if (0)
-	// set_map_from_simple_map();
-	// set_map_from_metric_map();
-	// set_map_from_ros_yaml();
 }
 
 void PFLocalizationCore::init_gui()

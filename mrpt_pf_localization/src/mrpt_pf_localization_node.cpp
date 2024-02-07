@@ -256,10 +256,10 @@ void PFLocalizationNode::reload_params_from_ros()
 		}
 	}
 
+	RCLCPP_DEBUG_STREAM(get_logger(), paramsBlock);
+
 	core_.init_from_yaml(paramsBlock);
 	nodeParams_.loadFrom(paramsBlock);
-
-	RCLCPP_DEBUG_STREAM(get_logger(), paramsBlock);
 }
 
 void PFLocalizationNode::loop()
