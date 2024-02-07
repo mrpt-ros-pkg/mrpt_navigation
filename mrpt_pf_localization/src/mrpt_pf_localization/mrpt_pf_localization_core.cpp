@@ -828,4 +828,8 @@ void PFLocalizationCore::internal_fill_state_lastResult()
 		state_.lastResult = mrpt::poses::CPose3DPDFParticles::Create();
 		*state_.lastResult = *state_.pdf3d;
 	}
+
+	MRPT_LOG_DEBUG_FMT(
+		"internal_fill_state_lastResult: mean=%s",
+		state_.lastResult->getMeanVal().asString().c_str());
 }
