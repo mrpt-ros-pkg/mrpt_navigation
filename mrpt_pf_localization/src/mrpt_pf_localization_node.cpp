@@ -22,11 +22,26 @@
 #include <mrpt/ros2bridge/time.h>
 #include <mrpt/serialization/CSerializable.h>
 #include <mrpt/system/COutputLogger.h>
+#include <mrpt/version.h>
 #include <pose_cov_ops/pose_cov_ops.h>
 
 #include <geometry_msgs/msg/pose_array.hpp>
 #include <mrpt_msgs_bridge/beacon.hpp>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
+
+#if MRPT_VERSION >= 0x020b08
+#include <mrpt/system/hyperlink.h>
+#else
+namespace mrpt::system	// backwards compatibility:
+{
+std::string hyperlink(
+	const std::string& text, const std::string& uri, bool force_format = false,
+	bool show_uri_anyway = false)
+{
+	return text;
+}
+}  // namespace mrpt::system
+#endif
 
 int main(int argc, char** argv)
 {
@@ -40,6 +55,7 @@ int main(int argc, char** argv)
 PFLocalizationNode::PFLocalizationNode(const rclcpp::NodeOptions& options)
 	: rclcpp::Node("mrpt_pf_localization_node", options)
 {
+	using namespace std::string_literals;
 	using std::placeholders::_1;
 
 	// Redirect MRPT logger to ROS logger:
@@ -123,8 +139,11 @@ PFLocalizationNode::PFLocalizationNode(const rclcpp::NodeOptions& options)
 
 	ASSERTMSG_(
 		numSensors > 0,
-		"At least one sensor input source must be defined! Refer to the "
-		"package documentation.");
+		"At least one sensor input source must be defined! Refer to the "s +
+			mrpt::system::hyperlink(
+				"package documentation.",
+				"https://github.com/mrpt-ros-pkg/mrpt_navigation",
+				true /*force ^format*/));
 
 	pubParticles_ = this->create_publisher<geometry_msgs::msg::PoseArray>(
 		nodeParams_.pub_topic_particles, 1);
@@ -239,6 +258,8 @@ void PFLocalizationNode::reload_params_from_ros()
 
 	core_.init_from_yaml(paramsBlock);
 	nodeParams_.loadFrom(paramsBlock);
+
+	RCLCPP_DEBUG_STREAM(get_logger(), paramsBlock);
 }
 
 void PFLocalizationNode::loop()
@@ -784,10 +805,6 @@ void PFLocalizationNode::useROSLogLevel()
 void PFLocalizationNode::NodeParameters::loadFrom(
 	const mrpt::containers::yaml& cfg)
 {
-#if 1
-	cfg.printAsYAML();
-#endif
-
 	MCP_LOAD_OPT(cfg, rate_hz);
 	MCP_LOAD_OPT(cfg, transform_tolerance);
 	MCP_LOAD_OPT(cfg, no_update_tolerance);

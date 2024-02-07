@@ -40,23 +40,20 @@ def generate_launch_description():
         'one_observation_per_topic',
         default_value='false'
     )
-    per_obs_filter_yaml_file_arg = DeclareLaunchArgument(
-        'per_obs_filter_yaml_file',
+    pipeline_yaml_file_arg = DeclareLaunchArgument(
+        'pipeline_yaml_file',
         default_value=os.path.join(
-            myPkgDir, 'params', 'per-observation-pipeline.yaml')
-    )
-    final_filter_yaml_file_arg = DeclareLaunchArgument(
-        'final_filter_yaml_file',
-        default_value=os.path.join(
-            myPkgDir, 'params', 'final-pipeline.yaml')
+            myPkgDir, 'params', 'point-cloud-pipeline.yaml')
     )
     filter_output_layer_name_arg = DeclareLaunchArgument(
         'filter_output_layer_name',
-        default_value='output'
+        default_value='output',
+        description='The mp2p_icp metric_map_t layer name(s) to be published. Comma-separated list of more than one.'
     )
     filter_output_topic_arg = DeclareLaunchArgument(
         'filter_output_topic_name',
-        default_value='/local_map_pointcloud'
+        default_value='/local_map_pointcloud',
+        description='The topic name to publish the output layer map(s). Comma-separated list of more than one, then the number must match that of filter_output_layer_name.'
     )
     frameid_reference_arg = DeclareLaunchArgument(
         'frameid_reference',
@@ -85,10 +82,7 @@ def generate_launch_description():
             {'source_topics_pointclouds': LaunchConfiguration(
                 'points_topic_name')},
             {'show_gui': LaunchConfiguration('show_gui')},
-            {'per_obs_filter_yaml_file': LaunchConfiguration(
-                'per_obs_filter_yaml_file')},
-            {'final_filter_yaml_file': LaunchConfiguration(
-                'final_filter_yaml_file')},
+            {'pipeline_yaml_file': LaunchConfiguration('pipeline_yaml_file')},
             {'filter_output_layer_name': LaunchConfiguration(
                 'filter_output_layer_name')},
             {'time_window': LaunchConfiguration('time_window')},
@@ -110,8 +104,7 @@ def generate_launch_description():
         points_topic_name_arg,
         show_gui_arg,
         time_window_arg,
-        per_obs_filter_yaml_file_arg,
-        final_filter_yaml_file_arg,
+        pipeline_yaml_file_arg,
         filter_output_layer_name_arg,
         filter_output_topic_arg,
         frameid_reference_arg,

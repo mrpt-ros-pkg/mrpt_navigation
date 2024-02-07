@@ -27,11 +27,6 @@ LocalObstaclesNode::LocalObstaclesNode(const rclcpp::NodeOptions& options)
 
 	read_parameters();
 
-	// Create publisher for local map point cloud
-	m_pub_local_map_pointcloud =
-		this->create_publisher<sensor_msgs::msg::PointCloud2>(
-			m_topic_local_map_pointcloud, 10);
-
 	// Init ROS subs:
 	// Subscribe to one or more laser sources:
 	size_t nSubsTotal = 0;
@@ -64,10 +59,6 @@ LocalObstaclesNode::LocalObstaclesNode(const rclcpp::NodeOptions& options)
 
 		rclcpp::shutdown();
 	}
-
-	// Local map params:
-	m_localmap_pts->insertionOptions.minDistBetweenLaserPoints = 0;
-	m_localmap_pts->insertionOptions.also_interpolate = false;
 
 	// Create the tf2 buffer and listener
 	m_tf_buffer = std::make_shared<tf2_ros::Buffer>(this->get_clock());
@@ -137,7 +128,8 @@ void LocalObstaclesNode::on_do_publish()
 
 	// Build local map(s):
 	// -----------------------------------------------
-	m_localmap_pts->clear();
+	mp2p_icp::metric_map_t mm;
+
 	mrpt::poses::CPose3D curRobotPose;
 	{
 		CTimeLoggerEntry tle2(m_profiler, "on_do_publish.buildLocalMap");
@@ -176,54 +168,33 @@ void LocalObstaclesNode::on_do_publish()
 			const mrpt::poses::CPose3D relPose = ipt.robot_pose - curRobotPose;
 
 			// Insert obs:
-			if (m_per_obs_pipeline.empty())
-			{
-				// direct insertion w/o filtering:
-				m_localmap_pts->insertObservationPtr(ipt.observation, relPose);
-			}
-			else
-			{
-				CTimeLoggerEntry tleObsFilter(
-					m_profiler, "on_do_publish.apply_per_obs_pipeline");
+			CTimeLoggerEntry tleObsFilter(
+				m_profiler, "on_do_publish.apply_per_obs_pipeline");
 
-				// per-observation filtering:
-				auto auxPts = CSimplePointsMap::Create();
-				auxPts->insertObservationPtr(ipt.observation);
+			// Apply optional generators for auxiliary map layers, etc:
+			mp2p_icp_filters::apply_generators(
+				m_generator, *ipt.observation, mm);
 
-				mp2p_icp::metric_map_t mm;
-				mm.layers[mp2p_icp::metric_map_t::PT_LAYER_RAW] = auxPts;
-				mp2p_icp_filters::apply_filter_pipeline(m_per_obs_pipeline, mm);
+			// per-observation filtering:
+			mp2p_icp_filters::apply_filter_pipeline(m_per_obs_pipeline, mm);
 
-				const mrpt::maps::CPointsMap::Ptr outPts =
-					mm.point_layer(m_filter_output_layer_name);
-				m_localmap_pts->insertAnotherMap(outPts.get(), relPose);
-			}
+			tleObsFilter.stop();
 		}
 	}
 
-	// Filtering:
-	mrpt::maps::CPointsMap::Ptr filteredPts;
+	// Apply final filtering:
+	CTimeLoggerEntry tleFilter(
+		m_profiler, "on_do_publish.apply_final_pipeline");
 
-	if (!m_final_pipeline.empty())
-	{
-		// Apply final filtering:
-		CTimeLoggerEntry tleFilter(
-			m_profiler, "on_do_publish.apply_final_pipeline");
+	mp2p_icp_filters::apply_filter_pipeline(m_final_pipeline, mm);
 
-		mp2p_icp::metric_map_t mm;
-		mm.layers[mp2p_icp::metric_map_t::PT_LAYER_RAW] = m_localmap_pts;
-		mp2p_icp_filters::apply_filter_pipeline(m_final_pipeline, mm);
-
-		filteredPts = mm.point_layer(m_filter_output_layer_name);
-	}
-	else
-	{
-		filteredPts = m_localmap_pts;
-	}
+	tleFilter.stop();
 
 	// Publish them:
-	if (m_pub_local_map_pointcloud->get_subscription_count() > 0)
+	for (auto& e : layer2topic_)
 	{
+		if (e.pub->get_subscription_count() == 0) continue;
+
 		sensor_msgs::msg::PointCloud2 msg_pts;
 		msg_pts.header.frame_id = m_frameid_robot;
 
@@ -231,15 +202,18 @@ void LocalObstaclesNode::on_do_publish()
 		msg_pts.header.stamp = mrpt::ros2bridge::toROS(
 			mrpt::Clock::fromDouble(obs.rbegin()->first));
 
+		const auto& outPtsMap = mm.point_layer(e.layer);
+		ASSERT_(outPtsMap);
+
 		// TODO(jlbc): We could add an if-else chain if XYZI / XYZIRT point
 		// clouds are desired as output too, but it seems not likely for this
 		// kind of filtering node.
-		auto simplPts = std::dynamic_pointer_cast<mrpt::maps::CSimplePointsMap>(
-			filteredPts);
+		auto simplPts =
+			std::dynamic_pointer_cast<mrpt::maps::CSimplePointsMap>(outPtsMap);
 		ASSERT_(simplPts);
 
 		mrpt::ros2bridge::toROS(*simplPts, msg_pts.header, msg_pts);
-		m_pub_local_map_pointcloud->publish(msg_pts);
+		e.pub->publish(msg_pts);
 	}
 
 	// Show gui:
@@ -331,11 +305,22 @@ void LocalObstaclesNode::on_do_publish()
 			gl_obs->insert(gl_axis);
 		}  // end for
 
-		glRawPts->loadFromPointsMap(m_localmap_pts.get());
-		glRawPts->setVisibility(m_visible_raw);
+		if (auto pts = mm.point_layer(mp2p_icp::metric_map_t::PT_LAYER_RAW);
+			pts)
+		{
+			glRawPts->loadFromPointsMap(pts.get());
+			glRawPts->setVisibility(m_visible_raw);
+		}
 
-		glFinalPts->loadFromPointsMap(filteredPts.get());
-		glFinalPts->setVisibility(m_visible_output);
+		// This shows the first output layer only (!). TODO: show all of them?
+		if (!layer2topic_.empty())
+		{
+			if (auto pts = mm.point_layer(layer2topic_.front().layer); pts)
+			{
+				glFinalPts->loadFromPointsMap(pts.get());
+				glFinalPts->setVisibility(m_visible_output);
+			}
+		}
 
 		m_gui_win->unlockAccess3DScene();
 		m_gui_win->repaint();
@@ -563,14 +548,6 @@ void LocalObstaclesNode::read_parameters()
 	ASSERT_LE_(m_publish_period, m_time_window);
 
 	this->declare_parameter<std::string>(
-		"topic_local_map_pointcloud", "local_map_pointcloud");
-	this->get_parameter(
-		"topic_local_map_pointcloud", m_topic_local_map_pointcloud);
-	RCLCPP_INFO(
-		get_logger(), "topic_local_map_pointcloud: %s",
-		m_topic_local_map_pointcloud.c_str());
-
-	this->declare_parameter<std::string>(
 		"source_topics_2d_scans", "scan, laser1");
 	this->get_parameter("source_topics_2d_scans", m_topics_source_2dscan);
 	RCLCPP_INFO(
@@ -584,44 +561,64 @@ void LocalObstaclesNode::read_parameters()
 		get_logger(), "source_topics_pointclouds: %s",
 		m_topics_source_pointclouds.c_str());
 
-	this->declare_parameter<std::string>("per_obs_filter_yaml_file", "");
-	this->get_parameter("per_obs_filter_yaml_file", m_per_obs_filter_yaml_file);
+	this->declare_parameter<std::string>(
+		"pipeline_yaml_file", m_pipeline_yaml_file);
+	this->get_parameter("pipeline_yaml_file", m_pipeline_yaml_file);
 	RCLCPP_INFO(
-		get_logger(), "per_obs_filter_yaml_file: %s",
-		m_per_obs_filter_yaml_file.c_str());
-	if (!m_per_obs_filter_yaml_file.empty())
+		get_logger(), "pipeline_yaml_file: %s", m_pipeline_yaml_file.c_str());
 	{
-		ASSERT_FILE_EXISTS_(m_per_obs_filter_yaml_file);
+		ASSERT_FILE_EXISTS_(m_pipeline_yaml_file);
 		const mrpt::containers::yaml cfg =
-			mrpt::containers::yaml::FromFile(m_per_obs_filter_yaml_file);
-		std::stringstream ss;
-		cfg.printAsYAML(ss);
-		RCLCPP_INFO(get_logger(), "%s", ss.str().c_str());
-		m_per_obs_pipeline = mp2p_icp_filters::filter_pipeline_from_yaml(cfg);
+			mrpt::containers::yaml::FromFile(m_pipeline_yaml_file);
+
+		RCLCPP_DEBUG_STREAM(get_logger(), cfg);
+
+		ASSERT_(cfg.has("generators"));
+		ASSERT_(cfg.has("per_observation"));
+		ASSERT_(cfg.has("final"));
+
+		m_generator = mp2p_icp_filters::generators_from_yaml(cfg["generators"]);
+		m_per_obs_pipeline =
+			mp2p_icp_filters::filter_pipeline_from_yaml(cfg["per_observation"]);
+		m_final_pipeline =
+			mp2p_icp_filters::filter_pipeline_from_yaml(cfg["final"]);
 	}
 
-	this->declare_parameter<std::string>("final_filter_yaml_file", "");
-	this->get_parameter("final_filter_yaml_file", m_final_filter_yaml_file);
-	RCLCPP_INFO(
-		get_logger(), "final_filter_yaml_file: %s",
-		m_final_filter_yaml_file.c_str());
-	if (!m_final_filter_yaml_file.empty())
-	{
-		ASSERT_FILE_EXISTS_(m_final_filter_yaml_file);
-		const mrpt::containers::yaml cfg =
-			mrpt::containers::yaml::FromFile(m_final_filter_yaml_file);
-		std::stringstream ss;
-		cfg.printAsYAML(ss);
-		RCLCPP_INFO(get_logger(), "%s", ss.str().c_str());
-		m_final_pipeline = mp2p_icp_filters::filter_pipeline_from_yaml(cfg);
-	}
+	// Output layer(s) ==> ROS topic(s) mapping:
+	// --------------------------------------------------
+	std::string filter_output_layer_name = "output";
+	std::string topic_local_map_pointcloud = "local_map_pointcloud";
 
 	this->declare_parameter<std::string>(
-		"filter_output_layer_name", m_filter_output_layer_name);
-	this->get_parameter("filter_output_layer_name", m_filter_output_layer_name);
+		"topic_local_map_pointcloud", topic_local_map_pointcloud);
+	this->get_parameter(
+		"topic_local_map_pointcloud", topic_local_map_pointcloud);
+	RCLCPP_INFO(
+		get_logger(), "topic_local_map_pointcloud: %s",
+		topic_local_map_pointcloud.c_str());
+
+	this->declare_parameter<std::string>(
+		"filter_output_layer_name", filter_output_layer_name);
+	this->get_parameter("filter_output_layer_name", filter_output_layer_name);
 	RCLCPP_INFO(
 		get_logger(), "filter_output_layer_name: %s",
-		m_filter_output_layer_name.c_str());
+		filter_output_layer_name.c_str());
+
+	// parse lists:
+	std::vector<std::string> lstLayers, lstTopics;
+	mrpt::system::tokenize(filter_output_layer_name, ", \t\r\n", lstLayers);
+	mrpt::system::tokenize(topic_local_map_pointcloud, ", \t\r\n", lstTopics);
+	ASSERT_EQUAL_(lstLayers.size(), lstTopics.size());
+	for (size_t i = 0; i < lstLayers.size(); i++)
+	{
+		auto& e = layer2topic_.emplace_back();
+		e.layer = lstLayers.at(i);
+		e.topic = lstTopics.at(i);
+
+		// Create publisher for local map point cloud:
+		e.pub =
+			this->create_publisher<sensor_msgs::msg::PointCloud2>(e.topic, 10);
+	}
 }
 
 int main(int argc, char** argv)

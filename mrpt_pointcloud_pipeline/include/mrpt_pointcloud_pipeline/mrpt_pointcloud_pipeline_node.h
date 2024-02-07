@@ -9,6 +9,7 @@
 /* mrpt deps*/
 #include <mp2p_icp/icp_pipeline_from_yaml.h>
 #include <mp2p_icp_filters/FilterDecimateVoxels.h>
+#include <mp2p_icp_filters/Generator.h>
 #include <mrpt/config/CConfigFile.h>
 #include <mrpt/containers/yaml.h>
 #include <mrpt/gui/CDisplayWindow3D.h>
@@ -93,7 +94,6 @@ class LocalObstaclesNode : public rclcpp::Node
 		// Error handling: check if lstSources is empty
 		if (lstSources.empty())
 		{
-			RCLCPP_ERROR(this->get_logger(), "List of topics is empty.");
 			return 0;  // Return early with 0 subscriptions
 		}
 		for (const auto& source : lstSources)
@@ -118,8 +118,6 @@ class LocalObstaclesNode : public rclcpp::Node
 	bool m_one_observation_per_topic = false;
 	std::string m_frameid_reference = "odom";  //!< type:"odom"
 	std::string m_frameid_robot = "base_link";	//!< type: "base_link"
-	std::string m_topic_local_map_pointcloud =
-		"local_map_pointcloud";	 //!< Default: "local_map_pointcloud"
 	std::string m_topics_source_2dscan =
 		"scan, laser1";	 //!< Default: "scan, laser1"
 	std::string m_topics_source_pointclouds = "";
@@ -145,23 +143,27 @@ class LocalObstaclesNode : public rclcpp::Node
 	obs_list_t m_hist_obs;
 	std::mutex m_hist_obs_mtx;	//!< mutex
 
-	CSimplePointsMap::Ptr m_localmap_pts = CSimplePointsMap::Create();
-
 	mrpt::gui::CDisplayWindow3D::Ptr m_gui_win;
 	bool m_visible_raw = true, m_visible_output = true;
 
 	/// Used for example to run voxel grid decimation, etc.
 	/// Refer to mp2p_icp docs
+	std::string m_pipeline_yaml_file;
 	mp2p_icp_filters::FilterPipeline m_per_obs_pipeline, m_final_pipeline;
-	std::string m_filter_output_layer_name;	 //!< mp2p_icp output layer name
-	std::string m_per_obs_filter_yaml_file, m_final_filter_yaml_file;
+	mp2p_icp_filters::GeneratorSet m_generator;
+
+	struct LayerTopicNames
+	{
+		std::string layer;
+		std::string topic;
+		rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr pub;
+	};
+	std::vector<LayerTopicNames> layer2topic_;
 
 	/**
 	 * @name ROS2 pubs/subs
 	 * @{
 	 */
-	rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr
-		m_pub_local_map_pointcloud;
 	std::vector<rclcpp::Subscription<sensor_msgs::msg::LaserScan>::SharedPtr>
 		m_subs_2dlaser;
 	std::vector<rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr>
