@@ -7,6 +7,7 @@
    +------------------------------------------------------------------------+ */
 
 #include <gtest/gtest.h>
+#include <mp2p_icp/metricmap.h>
 #include <mrpt/containers/yaml.h>
 #include <mrpt/core/get_env.h>
 #include <mrpt/obs/CRawlog.h>
@@ -15,6 +16,8 @@
 #include <thread>
 
 const bool RUN_TESTS_WITH_GUI = mrpt::get_env("RUN_TESTS_WITH_GUI", false);
+
+const auto TEST_MM_FILE = mrpt::get_env<std::string>("TEST_MM_FILE", "");
 
 const char* TEST_PARAMS_YAML_FILE =
 	MRPT_LOCALIZATION_SOURCE_DIR "/params/default.config.yaml";
@@ -25,8 +28,9 @@ const char* TEST_MAP_CONFIG_FILE =
 const char* TEST_SIMPLEMAP_FILE = MRPT_LOCALIZATION_SOURCE_DIR
 	"/../mrpt_tutorials/maps/gh25_simulated.simplemap";
 
-const char* TEST_RAWLOG_FILE = MRPT_LOCALIZATION_SOURCE_DIR
-	"/../mrpt_tutorials/datasets/driving_in_office_obs.rawlog";
+const std::string TEST_RAWLOG_FILE = mrpt::get_env<std::string>(
+	"TEST_RAWLOG_FILE", MRPT_LOCALIZATION_SOURCE_DIR
+	"/../mrpt_tutorials/datasets/driving_in_office_obs.rawlog");
 
 TEST(PF_Localization, InitState)
 {
@@ -66,9 +70,26 @@ TEST(PF_Localization, RunRealDataset)
 	EXPECT_EQ(loc.getState(), PFLocalizationCore::State::UNINITIALIZED);
 
 	// Now, load a map:
-	bool loadOk =
-		loc.set_map_from_simple_map(TEST_MAP_CONFIG_FILE, TEST_SIMPLEMAP_FILE);
-	EXPECT_TRUE(loadOk);
+	if (TEST_MM_FILE.empty())
+	{
+		bool loadOk = loc.set_map_from_simple_map(
+			TEST_MAP_CONFIG_FILE, TEST_SIMPLEMAP_FILE);
+		EXPECT_TRUE(loadOk);
+	}
+	else
+	{
+		mp2p_icp::metric_map_t mm;
+		bool loadOk = mm.load_from_file(TEST_MM_FILE);
+		EXPECT_TRUE(loadOk);
+
+		auto mMap = mrpt::maps::CMultiMetricMap::Create();
+		for (const auto& [layerName, layerMap] : mm.layers)
+		{
+			mMap->maps.push_back(layerMap);
+			// TODO: Optionally override the map likelihood params?
+		}
+		loc.set_map_from_metric_map(mMap);
+	}
 
 	// Now, we should transition to TO_INITIALIZE:
 	loc.step();
