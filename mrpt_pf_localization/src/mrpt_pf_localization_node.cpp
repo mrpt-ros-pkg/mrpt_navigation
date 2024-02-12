@@ -325,6 +325,8 @@ void PFLocalizationNode::callbackLaser(
 
 	obs->sensorLabel = topicName;
 
+	last_sensor_stamp_ = obs->timestamp;
+
 	core_.on_observation(obs);
 }
 
@@ -345,6 +347,8 @@ void PFLocalizationNode::callbackPointCloud(
 	mrpt::ros2bridge::fromROS(msg, *pts);
 
 	obs->sensorLabel = topicName;
+
+	last_sensor_stamp_ = obs->timestamp;
 
 	core_.on_observation(obs);
 }
@@ -514,7 +518,7 @@ void PFLocalizationNode::callbackMap(const mrpt_msgs::msg::GenericObject& obj)
 	{
 		mMap->maps.push_back(layerMap);
 
-		// TODO: Optionally override the map likelihood params?
+		MRPT_TODO("Optionally override the map likelihood params");
 	}
 
 	core_.set_map_from_metric_map(mMap);
@@ -596,6 +600,8 @@ void PFLocalizationNode::callbackOdometry(const nav_msgs::msg::Odometry& msg)
 	obs->odometry =
 		mrpt::poses::CPose2D(mrpt::ros2bridge::fromROS(msg.pose.pose));
 
+	last_sensor_stamp_ = obs->timestamp;
+
 	core_.on_observation(obs);
 }
 
@@ -616,7 +622,15 @@ void PFLocalizationNode::publishParticles()
 
 	geometry_msgs::msg::PoseArray poseArray;
 	poseArray.header.frame_id = nodeParams_.global_frame_id;
-	poseArray.header.stamp = this->get_clock()->now();
+
+	const auto tf_tolerance =
+		tf2::durationFromSec(nodeParams_.transform_tolerance);
+
+	tf2::TimePoint transform_expiration =
+		tf2_ros::fromMsg(mrpt::ros2bridge::toROS(*last_sensor_stamp_)) +
+		tf_tolerance;
+
+	poseArray.header.stamp = tf2_ros::toMsg(transform_expiration);
 
 	if (!parts)
 	{  // no solution yet
@@ -646,6 +660,7 @@ void PFLocalizationNode::publishTF()
 
 	const auto posePdf = core_.getLastPoseEstimation();
 	if (!posePdf) return;  // No solution yet.
+	if (!last_sensor_stamp_) return;
 
 	const auto estimatedPose = posePdf->getMeanVal();
 
@@ -669,7 +684,8 @@ void PFLocalizationNode::publishTF()
 		tf2::durationFromSec(nodeParams_.transform_tolerance);
 
 	tf2::TimePoint transform_expiration =
-		tf2_ros::fromMsg(this->get_clock()->now()) + tf_tolerance;
+		tf2_ros::fromMsg(mrpt::ros2bridge::toROS(*last_sensor_stamp_)) +
+		tf_tolerance;
 
 	tf2::Stamped<tf2::Transform> tmp_tf_stamped(
 		baseOnMap_tf * odomOnBase_tf, transform_expiration, global_frame_id);

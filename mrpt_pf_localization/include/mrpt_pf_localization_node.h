@@ -157,6 +157,8 @@ class PFLocalizationNode : public rclcpp::Node
 	std::map<std::string, mrpt::poses::CPose3D> laser_poses_;
 	std::map<std::string, mrpt::poses::CPose3D> beacon_poses_;
 
+	std::optional<mrpt::Clock::time_point> last_sensor_stamp_;
+
 	// methods
 	void update();
 	void updateSensorPose(std::string frame_id);
