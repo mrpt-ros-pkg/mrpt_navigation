@@ -143,7 +143,7 @@ PFLocalizationNode::PFLocalizationNode(const rclcpp::NodeOptions& options)
 			mrpt::system::hyperlink(
 				"package documentation.",
 				"https://github.com/mrpt-ros-pkg/mrpt_navigation",
-				true /*force ^format*/));
+				true /*force format*/));
 
 	pubParticles_ = this->create_publisher<geometry_msgs::msg::PoseArray>(
 		nodeParams_.pub_topic_particles, 1);
@@ -640,101 +640,44 @@ void PFLocalizationNode::publishParticles()
  */
 void PFLocalizationNode::publishTF()
 {
-#if 0
-	static std::string base_frame_id = param()->base_frame_id;
-	static std::string odom_frame_id = param()->odom_frame_id;
-	static std::string global_frame_id = param()->global_frame_id;
+	std::string base_frame_id = nodeParams_.base_footprint_frame_id;
+	std::string odom_frame_id = nodeParams_.odom_frame_id;
+	std::string global_frame_id = nodeParams_.global_frame_id;
 
-	const mrpt::poses::CPose2D robotPoseFromPF = [this]() {
-		return pdf_.getMeanVal();
-	}();
+	const auto posePdf = core_.getLastPoseEstimation();
+	if (!posePdf) return;  // No solution yet.
 
-	tf2::Transform baseOnMap_tf;
-	tf2::fromMsg(mrpt::ros2bridge::toROS_Pose(robotPoseFromPF), baseOnMap_tf);
+	const auto estimatedPose = posePdf->getMeanVal();
 
-	ros::Time time_last_update(0.0);
-	if (state_ == RUN)
-	{
-		time_last_update = mrpt::ros2bridge::toROS(time_last_update_);
+	MRPT_TODO("Use param: no_update_tolerance");
 
-		// Last update time can be too far in the past if we where not updating
-		// filter, due to robot stopped or no
-		// observations for a while (we optionally show a warning in the second
-		// case)
-		// We use time zero if so when getting base -> odom tf to prevent an
-		// extrapolation into the past exception
-		if ((ros::Time::now() - time_last_update).toSec() >
-			param()->no_update_tolerance)
-		{
-			if ((ros::Time::now() - time_last_input_).toSec() >
-				param()->no_inputs_tolerance)
-			{
-				ROS_WARN_THROTTLE(
-					2.0,
-					"No observations received for %.2fs (tolerance %.2fs); are "
-					"robot sensors working?",
-					(ros::Time::now() - time_last_input_).toSec(),
-					param()->no_inputs_tolerance);
-			}
-			else
-			{
-				MRPT_LOG_DEBUG_FMT_THROTTLE(
-					2.0,
-					"No filter updates for %.2fs (tolerance %.2fs); probably "
-					"robot stopped for a while",
-					(ros::Time::now() - time_last_update).toSec(),
-					param()->no_update_tolerance);
-			}
+	mrpt::poses::CPose3D T_base_to_odom;
+	this->waitForTransform(T_base_to_odom, odom_frame_id, base_frame_id);
 
-			time_last_update = ros::Time(0.0);
-		}
-	}
-
-	tf2::Transform odomOnBase_tf;
-
-	{
-		geometry_msgs::TransformStamped transform;
-		try
-		{
-			transform = tf_buffer_.lookupTransform(
-				base_frame_id, odom_frame_id, time_last_update,
-				ros::Duration(0.1));
-		}
-		catch (const tf2::TransformException& e)
-		{
-			ROS_WARN_THROTTLE(
-				2.0,
-				"Failed to get transform target_frame (%s) to source_frame "
-				"(%s): "
-				"%s",
-				base_frame_id.c_str(), odom_frame_id.c_str(), e.what());
-			ROS_WARN_THROTTLE(
-				2.0,
-				"Ensure that your mobile base driver is broadcasting %s -> %s "
-				"tf",
-				odom_frame_id.c_str(), base_frame_id.c_str());
-
-			return;
-		}
-		tf2::Transform tx;
-		tf2::fromMsg(transform.transform, tx);
-		odomOnBase_tf = tx;
-	}
+	RCLCPP_INFO_STREAM(get_logger(), "T_base_to_odom: " << T_base_to_odom);
 
 	// We want to send a transform that is good up until a tolerance time so
 	// that odom can be used
-	ros::Time transform_expiration =
-		(time_last_update.isZero() ? ros::Time::now() : time_last_update) +
-		ros::Duration(param()->transform_tolerance);
+
+	const tf2::Transform baseOnMap_tf =
+		mrpt::ros2bridge::toROS_tfTransform(estimatedPose);
+
+	const tf2::Transform odomOnBase_tf =
+		mrpt::ros2bridge::toROS_tfTransform(T_base_to_odom);
+
+	const auto tf_tolerance =
+		tf2::durationFromSec(nodeParams_.transform_tolerance);
+
+	tf2::TimePoint transform_expiration =
+		tf2_ros::fromMsg(this->get_clock()->now()) + tf_tolerance;
 
 	tf2::Stamped<tf2::Transform> tmp_tf_stamped(
 		baseOnMap_tf * odomOnBase_tf, transform_expiration, global_frame_id);
 
-	geometry_msgs::TransformStamped tfGeom = tf2::toMsg(tmp_tf_stamped);
+	geometry_msgs::msg::TransformStamped tfGeom = tf2::toMsg(tmp_tf_stamped);
 	tfGeom.child_frame_id = odom_frame_id;
 
-	tf_broadcaster_.sendTransform(tfGeom);
-#endif
+	tf_broadcaster_->sendTransform(tfGeom);
 }
 
 /**
