@@ -31,9 +31,11 @@ class MapServer : public rclcpp::Node
 	// member variables
 	double frequency_ = 1.0;  //!< rate at which the ros map is published
 
+	double force_republish_period_ = 5.0;  //!< [s] (0:disabled)
+
 	// params that come from launch file
 	std::string pub_mm_topic_ = "map_server";
-	
+
 	std::string service_map_str_ = "static_map";
 
 	std::string frame_id_ = "map";
@@ -60,12 +62,23 @@ class MapServer : public rclcpp::Node
 	{
 		typename rclcpp::Publisher<msg_t>::SharedPtr pub;
 		size_t subscribers = 0;
+		double lastPublishTime = 0;
 
-		bool new_subscribers()
+		bool new_subscribers(
+			const rclcpp::Time& now, double forceRepublishPeriodSeconds)
 		{
 			const auto N = pub->get_subscription_count();
 			bool ret = N > subscribers;
 			subscribers = N;
+
+			if (forceRepublishPeriodSeconds > 0)
+			{
+				if (now.seconds() - lastPublishTime >
+					forceRepublishPeriodSeconds)
+					ret = true;
+			}
+
+			if (ret) lastPublishTime = now.seconds();
 			return ret;
 		}
 	};

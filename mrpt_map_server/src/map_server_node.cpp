@@ -112,6 +112,13 @@ void MapServer::init()
 	this->get_parameter("frequency", frequency_);
 	RCLCPP_INFO(this->get_logger(), "frequency: %f", frequency_);
 
+	this->declare_parameter<double>(
+		"force_republish_period", force_republish_period_);
+	this->get_parameter("force_republish_period", force_republish_period_);
+	RCLCPP_INFO(
+		this->get_logger(), "force_republish_period: %f",
+		force_republish_period_);
+
 	this->declare_parameter<std::string>("pub_mm_topic", pub_mm_topic_);
 	this->get_parameter("pub_mm_topic", pub_mm_topic_);
 	RCLCPP_INFO(
@@ -153,7 +160,7 @@ void MapServer::publish_map()
 		pubMM_.pub = this->create_publisher<mrpt_msgs::msg::GenericObject>(
 			pub_mm_topic_ + "/metric_map"s, 1);
 	}
-	if (pubMM_.new_subscribers())
+	if (pubMM_.new_subscribers(get_clock()->now(), force_republish_period_))
 	{
 		mrpt_msgs::msg::GenericObject msg;
 		mrpt::serialization::ObjectToOctetVector(&theMap_, msg.data);
@@ -174,7 +181,8 @@ void MapServer::publish_map()
 				this->create_publisher<mrpt_msgs::msg::GenericObject>(
 					pub_mm_topic_ + "/"s + layerName, 1);
 		}
-		if (pubLayers_[layerName].new_subscribers())
+		if (pubLayers_[layerName].new_subscribers(
+				get_clock()->now(), force_republish_period_))
 		{
 			mrpt_msgs::msg::GenericObject msg;
 			mrpt::serialization::ObjectToOctetVector(layerMap.get(), msg.data);
@@ -193,7 +201,8 @@ void MapServer::publish_map()
 					this->create_publisher<sensor_msgs::msg::PointCloud2>(
 						pub_mm_topic_ + "/"s + layerName + "_points"s, 1);
 			}
-			if (pubPointMaps_[layerName].new_subscribers())
+			if (pubPointMaps_[layerName].new_subscribers(
+					get_clock()->now(), force_republish_period_))
 			{
 				sensor_msgs::msg::PointCloud2 msg_pts;
 
@@ -242,7 +251,8 @@ void MapServer::publish_map()
 					this->create_publisher<sensor_msgs::msg::PointCloud2>(
 						pub_mm_topic_ + "/"s + layerName + "_points"s, 1);
 			}
-			if (pubPointMaps_[layerName].new_subscribers())
+			if (pubPointMaps_[layerName].new_subscribers(
+					get_clock()->now(), force_republish_period_))
 			{
 				sensor_msgs::msg::PointCloud2 msg_pts;
 				mrpt::ros2bridge::toROS(*pts, msg_header, msg_pts);
@@ -270,8 +280,10 @@ void MapServer::publish_map()
 			// Note: DONT merge this into a single (..||..) to avoid
 			// shortcircuit logic, since we want both calls to be evaluated for
 			// their side effects.
-			const bool b1 = pubGridMaps_[layerName].new_subscribers();
-			const bool b2 = pubGridMapsMetaData_[layerName].new_subscribers();
+			const bool b1 = pubGridMaps_[layerName].new_subscribers(
+				get_clock()->now(), force_republish_period_);
+			const bool b2 = pubGridMapsMetaData_[layerName].new_subscribers(
+				get_clock()->now(), force_republish_period_);
 			if (b1 || b2)
 			{
 				nav_msgs::msg::OccupancyGrid gridMsg;
