@@ -32,7 +32,13 @@ def generate_launch_description():
     pf_log_level_launch_arg = DeclareLaunchArgument(
         "log_level",
         default_value=TextSubstitution(text=str("INFO")),
-        description="Logging level"
+        description="Logging level for the ROS node and the PF core class"
+    )
+
+    pf_log_level_core_launch_arg = DeclareLaunchArgument(
+        "log_level_core",
+        default_value=TextSubstitution(text=str("INFO")),
+        description="Logging level for PF core C++ class (DEBUG|INFO|WARN|ERROR)"
     )
 
     topic_sensors_2d_scan_arg = DeclareLaunchArgument(
@@ -64,6 +70,7 @@ def generate_launch_description():
                 "topic_sensors_2d_scan": LaunchConfiguration('topic_sensors_2d_scan'),
                 "topic_sensors_point_clouds": LaunchConfiguration('topic_sensors_point_clouds'),
                 "gui_enable": LaunchConfiguration('gui_enable'),
+                "log_level_core": LaunchConfiguration('log_level_core'),
             }],
         arguments=['--ros-args', '--log-level',
                    LaunchConfiguration('log_level')]
@@ -72,6 +79,7 @@ def generate_launch_description():
     return LaunchDescription([
         mrpt_map_config_file_launch_arg,
         pf_log_level_launch_arg,
+        pf_log_level_core_launch_arg,
         pf_params_file_launch_arg,
         topic_sensors_2d_scan_arg,
         topic_sensors_point_clouds_arg,

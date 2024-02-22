@@ -474,6 +474,17 @@ void PFLocalizationCore::onStateRunning()
 		odomObs = o;
 	}
 
+	MRPT_LOG_DEBUG_STREAM(
+		"onStateRunning: " << sf.size() << " observations=\n"
+						   <<
+		[&]() {
+			std::stringstream ss;
+			for (const auto& obs : sf)
+				ss << " - " << obs->sensorLabel
+				   << " class: " << obs->GetRuntimeClass()->className << "\n";
+			return ss.str();
+		}());
+
 	const bool is_3D = state_.pdf3d.has_value();
 
 	std::optional<mrpt::obs::CActionRobotMovement2D::Ptr> odomMove2D;
@@ -503,6 +514,12 @@ void PFLocalizationCore::onStateRunning()
 		{
 			odomMove2D.value()->computeFromOdometry(
 				incOdoPose, params_.motion_model_2d);
+
+			MRPT_LOG_DEBUG_STREAM("onStateRunning: motion model= " << [&]() {
+				std::stringstream ss;
+				odomMove2D.value()->getDescriptionAsText(ss);
+				return ss.str();
+			}());
 		}
 		else
 		{
@@ -511,6 +528,12 @@ void PFLocalizationCore::onStateRunning()
 
 			odomMove3D.value()->computeFromOdometry(
 				mrpt::poses::CPose3D(incOdoPose), params_.motion_model_3d);
+
+			MRPT_LOG_DEBUG_STREAM("onStateRunning: motion model= " << [&]() {
+				std::stringstream ss;
+				odomMove3D.value()->getDescriptionAsText(ss);
+				return ss.str();
+			}());
 		}
 	}
 	else
@@ -528,6 +551,7 @@ void PFLocalizationCore::onStateRunning()
 				mrpt::poses::CPose3D::Identity(),
 				params_.motion_model_no_odom_3d);
 		}
+		MRPT_LOG_DEBUG("onStateRunning: motion model= NONE (random walk)");
 	}
 
 	mrpt::obs::CActionCollection actions;
@@ -562,6 +586,10 @@ void PFLocalizationCore::onStateRunning()
 			: static_cast<mrpt::bayes::CParticleFilterCapable&>(*state_.pdf3d);
 
 	state_.pf.executeOn(pfc, &actions, &sf, &state_.pf_stats);
+
+	MRPT_LOG_DEBUG_STREAM(
+		"onStateRunning: executed PF, ESS_beforeResample="
+		<< state_.pf_stats.ESS_beforeResample);
 
 	// Collect further output stats:
 	// ------------------------------
@@ -634,6 +662,14 @@ void PFLocalizationCore::init_from_yaml(const mrpt::containers::yaml& params)
 
 	// Load all required and optional params:
 	params_.load_from(params);
+
+	if (params.asMap().count("log_level_core"))
+	{
+		const auto coreLogLevel =
+			mrpt::typemeta::str2enum<mrpt::system::VerbosityLevel>(
+				params["log_level_core"].as<std::string>());
+		this->setMinLoggingLevel(coreLogLevel);
+	}
 }
 
 void PFLocalizationCore::init_gui()
@@ -880,7 +916,6 @@ void PFLocalizationCore::internal_fill_state_lastResult()
 		*state_.lastResult = *state_.pdf3d;
 	}
 
-	MRPT_LOG_DEBUG_FMT(
-		"internal_fill_state_lastResult: mean=%s",
-		state_.lastResult->getMeanVal().asString().c_str());
+	MRPT_LOG_DEBUG_STREAM(
+		"internal_fill_state_lastResult: " << state_.lastResult->asString());
 }

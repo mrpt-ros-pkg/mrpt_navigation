@@ -68,7 +68,9 @@ PFLocalizationNode::PFLocalizationNode(const rclcpp::NodeOptions& options)
 			switch (level)
 			{
 				case mrpt::system::LVL_DEBUG:
-					RCLCPP_DEBUG_STREAM(this->get_logger(), msg);
+					// intentional: DEBUG -> INFO, to enable core DEBUG but node
+					// INFO levels (see launch argument "log_level_core")
+					RCLCPP_INFO_STREAM(this->get_logger(), msg);
 					break;
 				case mrpt::system::LVL_INFO:
 					RCLCPP_INFO_STREAM(this->get_logger(), msg);
