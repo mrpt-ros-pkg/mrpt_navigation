@@ -7,6 +7,7 @@
    +------------------------------------------------------------------------+ */
 
 #include <mrpt/config/CConfigFile.h>
+#include <mrpt/config/CConfigFileMemory.h>
 #include <mrpt/core/lock_helper.h>
 #include <mrpt/maps/CLandmarksMap.h>
 #include <mrpt/maps/COccupancyGridMap2D.h>
@@ -225,6 +226,18 @@ void PFLocalizationCore::Parameters::load_from(
 	getOptParam(kldo, kld_options.KLD_maxSampleSize, "KLD_maxSampleSize");
 	getOptParam(kldo, kld_options.KLD_minSampleSize, "KLD_minSampleSize");
 	getOptParam(kldo, kld_options.KLD_minSamplesPerBin, "KLD_minSamplesPerBin");
+
+	// override_likelihood_point_maps
+	if (params.has("override_likelihood_point_maps"))
+	{
+		auto& likOpts = override_likelihood_point_maps.emplace();
+
+		mrpt::config::CConfigFileMemory cfg;
+		std::stringstream ss;
+		ss << params["override_likelihood_point_maps"];
+		cfg.setContentFromYAML(ss.str());
+		likOpts.loadFromConfigFile(cfg, "");
+	}
 
 	//
 	MCP_LOAD_OPT(params, initial_particle_count);
@@ -644,8 +657,27 @@ void PFLocalizationCore::set_map_from_metric_map(
 {
 	auto lck = mrpt::lockHelper(stateMtx_);
 
+	for (const auto& m : metricMap->maps)
+	{
+		ASSERT_(m);
+
+		if (auto pts = std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(m);
+			pts && params_.override_likelihood_point_maps)
+		{
+			pts->likelihoodOptions = *params_.override_likelihood_point_maps;
+		}
+		else if (auto occ2D =
+					 std::dynamic_pointer_cast<mrpt::maps::COccupancyGridMap2D>(
+						 m);
+				 occ2D && params_.override_likelihood_gridmaps)
+		{
+			occ2D->likelihoodOptions = *params_.override_likelihood_gridmaps;
+		}
+	}
+
 	params_.metric_map = metricMap;
 
+	// debug trace with full submap details: ----------------------------
 	MRPT_LOG_DEBUG_STREAM("set_map_from_metric_map: Map contents: " << [&]() {
 		std::stringstream ss;
 		ss << metricMap->asString() << ". Maps:\n";
@@ -657,6 +689,7 @@ void PFLocalizationCore::set_map_from_metric_map(
 				pts)
 			{
 				ss << "  CPointsMap::likelihoodOptions:\n";
+
 				pts->likelihoodOptions.dumpToTextStream(ss);
 				ss << "\n";
 			}
@@ -672,6 +705,7 @@ void PFLocalizationCore::set_map_from_metric_map(
 		}
 		return ss.str();
 	}());
+	// end of debug trace ^^^^^^^^^^^^^^^^^
 }
 
 /* Load all params from a YAML source.

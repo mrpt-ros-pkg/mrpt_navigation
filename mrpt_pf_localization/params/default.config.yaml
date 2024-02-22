@@ -102,9 +102,16 @@ mrpt_pf_localization_node:
     kld_options:
       KLD_minSampleSize: 250
       KLD_maxSampleSize: 5000
-      KLD_binSize_XY: 0.15    # [meters]
+      KLD_binSize_XY: 0.25    # [meters]
       KLD_binSize_PHI: 0.17   # [radians]
-      KLD_delta: 0.01
-      KLD_epsilon: 0.02
+      KLD_delta: 0.05
+      KLD_epsilon: 0.05
       KLD_minSamplesPerBin: 0
-    
+      
+    # If defined, this block will override the likelihoodOptions field of the 
+    # de-serialized metric map (.mm) used as global map:
+    override_likelihood_point_maps:
+      sigma_dist: 0.10  # [m]
+      max_corr_distance: 1.5 # [m]
+      decimation: 50
+

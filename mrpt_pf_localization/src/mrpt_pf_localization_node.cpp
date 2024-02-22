@@ -525,11 +525,7 @@ void PFLocalizationNode::callbackMap(const mrpt_msgs::msg::GenericObject& obj)
 	auto mMap = mrpt::maps::CMultiMetricMap::Create();
 
 	for (const auto& [layerName, layerMap] : mm->layers)
-	{
 		mMap->maps.push_back(layerMap);
-
-		MRPT_TODO("Optionally override the map likelihood params");
-	}
 
 	core_.set_map_from_metric_map(mMap);
 }

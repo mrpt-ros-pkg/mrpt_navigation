@@ -13,6 +13,8 @@
 #include <mrpt/core/Clock.h>
 #include <mrpt/gui/CDisplayWindow3D.h>
 #include <mrpt/maps/CMultiMetricMap.h>
+#include <mrpt/maps/COccupancyGridMap2D.h>	// TLikelihoodOptions
+#include <mrpt/maps/CPointsMap.h>  // TLikelihoodOptions
 #include <mrpt/obs/CActionRobotMovement2D.h>
 #include <mrpt/obs/CActionRobotMovement3D.h>
 #include <mrpt/obs/CObservationOdometry.h>
@@ -104,6 +106,12 @@ class PFLocalizationCore : public mrpt::system::COutputLogger
 		 * Can be changed at any moment.
 		 */
 		mrpt::slam::TKLDParams kld_options;
+
+		// likelihood option overrides:
+		std::optional<mrpt::maps::CPointsMap::TLikelihoodOptions>
+			override_likelihood_point_maps;
+		std::optional<mrpt::maps::COccupancyGridMap2D::TLikelihoodOptions>
+			override_likelihood_gridmaps;
 
 		/** Number of particles upon initialization.
 		 *  Can be changed while state = UNINITIALIZED.
