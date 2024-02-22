@@ -646,8 +646,32 @@ void PFLocalizationCore::set_map_from_metric_map(
 
 	params_.metric_map = metricMap;
 
-	MRPT_LOG_DEBUG_STREAM(
-		"set_map_from_metric_map: Map contents: " << metricMap->asString());
+	MRPT_LOG_DEBUG_STREAM("set_map_from_metric_map: Map contents: " << [&]() {
+		std::stringstream ss;
+		ss << metricMap->asString() << ". Maps:\n";
+		for (const auto& m : metricMap->maps)
+		{
+			ASSERT_(m);
+			ss << " - " << m->asString() << "\n";
+			if (auto pts = std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(m);
+				pts)
+			{
+				ss << "  CPointsMap::likelihoodOptions:\n";
+				pts->likelihoodOptions.dumpToTextStream(ss);
+				ss << "\n";
+			}
+			else if (auto occ2D = std::dynamic_pointer_cast<
+						 mrpt::maps::COccupancyGridMap2D>(m);
+					 occ2D)
+			{
+				ss << "  COccupancyGridMap2D::likelihoodOptions:\n";
+				occ2D->likelihoodOptions.dumpToTextStream(ss);
+				ss << "\n";
+			}
+			ss << "\n";
+		}
+		return ss.str();
+	}());
 }
 
 /* Load all params from a YAML source.
