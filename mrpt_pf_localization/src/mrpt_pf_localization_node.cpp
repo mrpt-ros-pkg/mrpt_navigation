@@ -182,6 +182,15 @@ PFLocalizationNode::PFLocalizationNode(const rclcpp::NodeOptions& options)
 	timer_ = this->create_wall_timer(
 		std::chrono::microseconds(mrpt::round(1.0e6 / nodeParams_.rate_hz)),
 		[this]() { this->loop(); });
+
+	ASSERT_GT_(nodeParams_.transform_tolerance, 1e-3);
+	timerPubTF_ = this->create_wall_timer(
+		std::chrono::microseconds(
+			mrpt::round(1.0e6 * nodeParams_.transform_tolerance)),
+		[this]() {
+			this->publishPose();
+			this->publishTF();
+		});
 }
 
 PFLocalizationNode::~PFLocalizationNode()
@@ -273,8 +282,7 @@ void PFLocalizationNode::loop()
 	if (isTimeFor(nodeParams_.publish_particles_decimation))  //
 		publishParticles();
 
-	publishTF();
-	publishPose();
+	update_tf_pub_data();
 
 	MRPT_TODO("pub quality metrics");
 
@@ -623,12 +631,14 @@ void PFLocalizationNode::publishParticles()
 	geometry_msgs::msg::PoseArray poseArray;
 	poseArray.header.frame_id = nodeParams_.global_frame_id;
 
+#if 0
 	const auto tf_tolerance =
 		tf2::durationFromSec(nodeParams_.transform_tolerance);
+#endif
 
 	tf2::TimePoint transform_expiration =
-		tf2_ros::fromMsg(mrpt::ros2bridge::toROS(*last_sensor_stamp_)) +
-		tf_tolerance;
+		tf2_ros::fromMsg(mrpt::ros2bridge::toROS(*last_sensor_stamp_));
+	//  +tf_tolerance;
 
 	poseArray.header.stamp = tf2_ros::toMsg(transform_expiration);
 
@@ -652,7 +662,7 @@ void PFLocalizationNode::publishParticles()
  * @brief Publish map -> odom tf; as the filter provides map -> base, we
  * multiply it by base -> odom
  */
-void PFLocalizationNode::publishTF()
+void PFLocalizationNode::update_tf_pub_data()
 {
 	std::string base_frame_id = nodeParams_.base_footprint_frame_id;
 	std::string odom_frame_id = nodeParams_.odom_frame_id;
@@ -668,8 +678,7 @@ void PFLocalizationNode::publishTF()
 
 	mrpt::poses::CPose3D T_base_to_odom;
 	this->waitForTransform(T_base_to_odom, odom_frame_id, base_frame_id);
-
-	RCLCPP_INFO_STREAM(get_logger(), "T_base_to_odom: " << T_base_to_odom);
+	// Note: this wait above typ takes ~50 us
 
 	// We want to send a transform that is good up until a tolerance time so
 	// that odom can be used
@@ -690,10 +699,25 @@ void PFLocalizationNode::publishTF()
 	tf2::Stamped<tf2::Transform> tmp_tf_stamped(
 		baseOnMap_tf * odomOnBase_tf, transform_expiration, global_frame_id);
 
-	geometry_msgs::msg::TransformStamped tfGeom = tf2::toMsg(tmp_tf_stamped);
-	tfGeom.child_frame_id = odom_frame_id;
+	auto lck = mrpt::lockHelper(tfMapOdomToPublishMtx_);
 
-	tf_broadcaster_->sendTransform(tfGeom);
+	tfMapOdomToPublish_ = tf2::toMsg(tmp_tf_stamped);
+	tfMapOdomToPublish_.child_frame_id = odom_frame_id;
+}
+
+void PFLocalizationNode::publishTF()
+{
+	auto lck = mrpt::lockHelper(tfMapOdomToPublishMtx_);
+
+	tf_broadcaster_->sendTransform(tfMapOdomToPublish_);
+
+	const auto tf_tolerance =
+		tf2::durationFromSec(nodeParams_.transform_tolerance);
+
+	// Increase timestamp to keep it valid on next re-publish and until a better
+	// odom->map is found.
+	tfMapOdomToPublish_.header.stamp = tf2_ros::toMsg(
+		tf2_ros::fromMsg(tfMapOdomToPublish_.header.stamp) + tf_tolerance);
 }
 
 /**

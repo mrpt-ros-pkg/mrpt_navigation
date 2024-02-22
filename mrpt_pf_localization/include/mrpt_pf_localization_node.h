@@ -56,7 +56,8 @@ class PFLocalizationNode : public rclcpp::Node
 		double rate_hz = 2.0;  //!< Execution rate in Hz
 
 		/// projection into the future added to the published tf to extend its
-		/// validity
+		/// validity. /tf will be re-published with half this period to ensure
+		/// that it is always valid in the /tf tree.
 		double transform_tolerance = 0.1;
 
 		/// maximum time without updating we keep using filter time instead of
@@ -101,7 +102,7 @@ class PFLocalizationNode : public rclcpp::Node
 		return decimation <= 1 || (loopCount_ % decimation == 0);
 	}
 
-	rclcpp::TimerBase::SharedPtr timer_;
+	rclcpp::TimerBase::SharedPtr timer_, timerPubTF_;
 
 	///
 	void reload_params_from_ros();
@@ -169,4 +170,8 @@ class PFLocalizationNode : public rclcpp::Node
 	bool waitForTransform(
 		mrpt::poses::CPose3D& des, const std::string& target_frame,
 		const std::string& source_frame, const int timeoutMilliseconds = 50);
+
+	void update_tf_pub_data();
+	geometry_msgs::msg::TransformStamped tfMapOdomToPublish_;
+	std::mutex tfMapOdomToPublishMtx_;
 };
