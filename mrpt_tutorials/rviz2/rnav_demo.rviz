@@ -133,8 +133,8 @@ Visualization Manager:
     - Alpha: 1
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
-        Max Value: 5.155340194702148
-        Min Value: -0.0028658807277679443
+        Max Value: 6.03987455368042
+        Min Value: -0.017573237419128418
         Value: true
       Axis: Z
       Channel Name: intensity
@@ -184,6 +184,18 @@ Visualization Manager:
         Reliability Policy: Reliable
         Value: /goal_pose
       Value: true
+    - Class: rviz_default_plugins/MarkerArray
+      Enabled: true
+      Name: SelectedPath
+      Namespaces:
+        rnav.ptg: true
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /reactivenav_selected_ptg
+      Value: true
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
@@ -230,25 +242,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/Orbit
-      Distance: 15.144521713256836
+      Distance: 29.317007064819336
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 1.4794015884399414
-        Y: 1.8182421922683716
-        Z: -1.134027361869812
+        X: 7.80765438079834
+        Y: 1.4349921941757202
+        Z: -0.6004581451416016
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.8147972822189331
+      Pitch: 0.8397969007492065
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 0.09039875864982605
+      Yaw: 3.348553419113159
     Saved: ~
 Window Geometry:
   Displays:
@@ -266,5 +278,5 @@ Window Geometry:
   Views:
     collapsed: false
   Width: 1061
-  X: 1920
-  Y: 239
+  X: 377
+  Y: 661

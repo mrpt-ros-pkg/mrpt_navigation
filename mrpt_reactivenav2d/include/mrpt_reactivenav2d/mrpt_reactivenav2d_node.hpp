@@ -37,6 +37,7 @@
 #include <sensor_msgs/msg/laser_scan.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
+#include <visualization_msgs/msg/marker_array.hpp>
 
 using namespace mrpt::nav;
 using mrpt::maps::CSimplePointsMap;
@@ -81,6 +82,9 @@ class ReactiveNav2DNode : public rclcpp::Node
 	rclcpp::Subscription<geometry_msgs::msg::Polygon>::SharedPtr subRobotShape_;
 	rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr pubCmdVel_;
 
+	rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr
+		pubSelectedPtg_;
+
 	std::shared_ptr<tf2_ros::Buffer> tfBuffer_;
 	std::shared_ptr<tf2_ros::TransformListener> tfListener_;
 	/** @} */
@@ -97,6 +101,7 @@ class ReactiveNav2DNode : public rclcpp::Node
 	std::string subTopicOdometry_ = "/odom";
 
 	std::string pubTopicCmdVel_ = "/cmd_vel";
+	std::string pubTopicSelectedPtg_ = "reactivenav_selected_ptg";
 
 	std::string frameidReference_ = "map";
 	std::string frameidRobot_ = "base_link";
@@ -118,10 +123,14 @@ class ReactiveNav2DNode : public rclcpp::Node
 		mrpt::poses::CPose3D& des, const std::string& target_frame,
 		const std::string& source_frame, const int timeoutMilliseconds = 50);
 
+	void publish_last_log_record_to_ros(const mrpt::nav::CLogFileRecord& lr);
+	visualization_msgs::msg::MarkerArray log_to_margers(
+		const mrpt::nav::CLogFileRecord& lr) const;
+
 	struct MyReactiveInterface : public mrpt::nav::CRobot2NavInterface
 	{
 		ReactiveNav2DNode& parent_;
-		
+
 		MyReactiveInterface(ReactiveNav2DNode& parent) : parent_(parent) {}
 
 		/** Get the current pose and speeds of the robot.
@@ -136,7 +145,7 @@ class ReactiveNav2DNode : public rclcpp::Node
 			mrpt::math::TPose2D& curOdometry, std::string& frame_id) override
 		{
 			double curV, curW;
-			
+
 			CTimeLoggerEntry tle(parent_.profiler_, "getCurrentPoseAndSpeeds");
 
 			// rclcpp::Duration timeout(0.1);
@@ -148,7 +157,7 @@ class ReactiveNav2DNode : public rclcpp::Node
 				CTimeLoggerEntry tle2(
 					parent_.profiler_,
 					"getCurrentPoseAndSpeeds.lookupTransform_sensor");
-				
+
 				tfGeom = parent_.tfBuffer_->lookupTransform(
 					parent_.frameidReference_, parent_.frameidRobot_,
 					tf2::TimePointZero,
