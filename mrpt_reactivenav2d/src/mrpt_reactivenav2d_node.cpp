@@ -18,45 +18,39 @@ using namespace mrpt::config;
 
 /**  Constructor: Inits ROS system */
 ReactiveNav2DNode::ReactiveNav2DNode(const rclcpp::NodeOptions& options)
-	: Node("mrpt_reactivenav2d", options),
-	  m_1st_time_init(false),
-	  m_target_allowed_distance(0.40f),
-	  m_nav_period(0.100),
-	  m_save_nav_log(false),
-	  m_reactive_if(*this),
-	  m_reactive_nav_engine(m_reactive_if)
+	: Node("mrpt_reactivenav2d", options)
 {
 	// Load params
 	read_parameters();
 
 	assert(m_nav_period > 0);
-
-	if (m_cfg_file_reactive.empty())
+	
+	if (cfgFileReactive_.empty())
 	{
 		RCLCPP_ERROR(
 			this->get_logger(),
 			"Mandatory param 'cfg_file_reactive' is missing!");
 		throw;
 	}
-
-	if (!mrpt::system::fileExists(m_cfg_file_reactive))
+	
+	if (!mrpt::system::fileExists(cfgFileReactive_))
 	{
 		RCLCPP_ERROR(
 			this->get_logger(), "Config file not found: %s",
-			m_cfg_file_reactive.c_str());
+			cfgFileReactive_.c_str());
 		throw;
 	}
-
-	m_reactive_nav_engine.enableLogFile(m_save_nav_log);
+	
+	rnavEngine_.enableLogFile(saveNavLog_);
 
 	// Load reactive config:
 	// ----------------------------------------------------
-	if (!m_cfg_file_reactive.empty())
+	if (!cfgFileReactive_.empty())
 	{
 		try
 		{
-			CConfigFile cfgFil(m_cfg_file_reactive);
-			m_reactive_nav_engine.loadConfigFile(cfgFil);
+			CConfigFile cfgFil(cfgFileReactive_);
+			rnavEngine_.loadConfigFile(cfgFil);
 		}
 		catch (std::exception& e)
 		{
@@ -73,20 +67,19 @@ ReactiveNav2DNode::ReactiveNav2DNode(const rclcpp::NodeOptions& options)
 
 	// Init this subscriber first so we know asap the desired robot shape,
 	// if provided via a topic:
-	if (!m_sub_topic_robot_shape.empty())
+	if (!subTopicRobotShape_.empty())
 	{
-		m_sub_robot_shape =
-			this->create_subscription<geometry_msgs::msg::Polygon>(
-				m_sub_topic_robot_shape, 1,
-				[this](const geometry_msgs::msg::Polygon::SharedPtr poly) {
-					this->on_set_robot_shape(poly);
-				});
+		subRobotShape_ = this->create_subscription<geometry_msgs::msg::Polygon>(
+			subTopicRobotShape_, 1,
+			[this](const geometry_msgs::msg::Polygon::SharedPtr poly) {
+				this->on_set_robot_shape(poly);
+			});
 
 		RCLCPP_INFO(
 			this->get_logger(),
 			"Params say robot shape will arrive via topic '%s'... waiting 3 "
 			"seconds for it.",
-			m_sub_topic_robot_shape.c_str());
+			subTopicRobotShape_.c_str());
 
 		// Use rate object to implement sleep
 		rclcpp::Rate rate(1);  // 1 Hz
@@ -101,7 +94,7 @@ ReactiveNav2DNode::ReactiveNav2DNode(const rclcpp::NodeOptions& options)
 	{
 		// Load robot shape: 1/2 polygon
 		// ---------------------------------------------
-		CConfigFile c(m_cfg_file_reactive);
+		CConfigFile c(cfgFileReactive_);
 		std::string s = "CReactiveNavigationSystem";
 
 		std::vector<float> xs, ys;
@@ -124,8 +117,8 @@ ReactiveNav2DNode::ReactiveNav2DNode(const rclcpp::NodeOptions& options)
 				poly[i].y = ys[i];
 			}
 
-			std::lock_guard<std::mutex> csl(m_reactive_nav_engine_cs);
-			m_reactive_nav_engine.changeRobotShape(poly);
+			std::lock_guard<std::mutex> csl(rnavEngineMtx_);
+			rnavEngine_.changeRobotShape(poly);
 		}
 
 		// Load robot shape: 2/2 circle
@@ -134,51 +127,51 @@ ReactiveNav2DNode::ReactiveNav2DNode(const rclcpp::NodeOptions& options)
 				s, "RobotModel_circular_shape_radius", -1.0, false);
 			robot_radius > 0)
 		{
-			std::lock_guard<std::mutex> csl(m_reactive_nav_engine_cs);
-			m_reactive_nav_engine.changeRobotCircularShapeRadius(robot_radius);
+			std::lock_guard<std::mutex> csl(rnavEngineMtx_);
+			rnavEngine_.changeRobotCircularShapeRadius(robot_radius);
 		}
 	}
 
 	// Init ROS publishers:
 	// -----------------------
-	m_pub_cmd_vel = this->create_publisher<geometry_msgs::msg::Twist>(
-		m_pub_topic_cmd_vel, 1);
+	pubCmdVel_ = this->create_publisher<geometry_msgs::msg::Twist>(
+		pubTopicCmdVel_, 1);
 
 	// Init ROS subs:
 	// -----------------------
-	m_sub_odometry = this->create_subscription<nav_msgs::msg::Odometry>(
-		m_sub_topic_odometry, 1,
+	subOdometry_ = this->create_subscription<nav_msgs::msg::Odometry>(
+		subTopicOdometry_, 1,
 		[this](const nav_msgs::msg::Odometry::SharedPtr odom) {
 			this->on_odometry_received(odom);
 		});
 
-	m_sub_wp_seq = this->create_subscription<mrpt_msgs::msg::WaypointSequence>(
-		m_sub_topic_wp_seq, 1,
+	subWpSeq_ = this->create_subscription<mrpt_msgs::msg::WaypointSequence>(
+		subTopicWpSeq_, 1,
 		[this](const mrpt_msgs::msg::WaypointSequence::SharedPtr msg) {
 			this->on_waypoint_seq_received(msg);
 		});
 
-	m_sub_nav_goal = this->create_subscription<geometry_msgs::msg::PoseStamped>(
-		m_sub_topic_reactive_nav_goal, 1,
+	subNavGoal_ = this->create_subscription<geometry_msgs::msg::PoseStamped>(
+		subTopicNavGoal_, 1,
 		[this](const geometry_msgs::msg::PoseStamped::SharedPtr msg) {
 			this->on_goal_received(msg);
 		});
 
-	m_sub_local_obs = this->create_subscription<sensor_msgs::msg::PointCloud2>(
-		m_sub_topic_local_obstacles, 1,
+	subLocalObs_ = this->create_subscription<sensor_msgs::msg::PointCloud2>(
+		subTopicLocalObstacles_, 1,
 		[this](const sensor_msgs::msg::PointCloud2::SharedPtr msg) {
 			this->on_local_obstacles(msg);
 		});
 
 	// Init tf buffers
 	// ----------------------------------------------------
-	m_tf_buffer = std::make_shared<tf2_ros::Buffer>(this->get_clock());
-	m_tf_listener = std::make_shared<tf2_ros::TransformListener>(*m_tf_buffer);
+	tfBuffer_ = std::make_shared<tf2_ros::Buffer>(this->get_clock());
+	tfListener_ = std::make_shared<tf2_ros::TransformListener>(*tfBuffer_);
 
 	// Init timer:
 	// ----------------------------------------------------
-	m_timer_run_nav = this->create_wall_timer(
-		std::chrono::duration<double>(m_nav_period),
+	timerRunNav_ = this->create_wall_timer(
+		std::chrono::duration<double>(navPeriod_),
 		[this]() { this->on_do_navigation(); });
 
 }  // end ctor
@@ -187,85 +180,85 @@ void ReactiveNav2DNode::read_parameters()
 {
 	declare_parameter<std::string>(
 		"cfg_file_reactive", "reactive2d_config.ini");
-	get_parameter("cfg_file_reactive", m_cfg_file_reactive);
+	get_parameter("cfg_file_reactive", cfgFileReactive_);
 	RCLCPP_INFO(
 		this->get_logger(), "cfg_file_reactive %s",
-		m_cfg_file_reactive.c_str());
+		cfgFileReactive_.c_str());
 
 	declare_parameter<double>(
-		"target_allowed_distance", m_target_allowed_distance);
-	get_parameter("target_allowed_distance", m_target_allowed_distance);
+		"target_allowed_distance", targetAllowedDistance_);
+	get_parameter("target_allowed_distance", targetAllowedDistance_);
 	RCLCPP_INFO(
 		this->get_logger(), "target_allowed_distance: %f",
-		m_target_allowed_distance);
-
-	declare_parameter<double>("nav_period", m_nav_period);
-	get_parameter("nav_period", m_nav_period);
-	RCLCPP_INFO(this->get_logger(), "nav_period: %f", m_nav_period);
-
-	declare_parameter<std::string>("frameid_reference", m_frameid_reference);
-	get_parameter("frameid_reference", m_frameid_reference);
+		targetAllowedDistance_);
+	
+	declare_parameter<double>("nav_period", navPeriod_);
+	get_parameter("nav_period", navPeriod_);
+	RCLCPP_INFO(this->get_logger(), "nav_period: %f", navPeriod_);
+	
+	declare_parameter<std::string>("frameid_reference", frameidReference_);
+	get_parameter("frameid_reference", frameidReference_);
 	RCLCPP_INFO(
 		this->get_logger(), "frameid_reference: %s",
-		m_frameid_reference.c_str());
-
-	declare_parameter<std::string>("frameid_robot", m_frameid_robot);
-	get_parameter("frameid_robot", m_frameid_robot);
+		frameidReference_.c_str());
+	
+	declare_parameter<std::string>("frameid_robot", frameidRobot_);
+	get_parameter("frameid_robot", frameidRobot_);
 	RCLCPP_INFO(
-		this->get_logger(), "frameid_robot: %s", m_frameid_robot.c_str());
-
-	declare_parameter<std::string>("topic_wp_seq", m_sub_topic_wp_seq);
-	get_parameter("topic_wp_seq", m_sub_topic_wp_seq);
+		this->get_logger(), "frameid_robot: %s", frameidRobot_.c_str());
+	
+	declare_parameter<std::string>("topic_wp_seq", subTopicWpSeq_);
+	get_parameter("topic_wp_seq", subTopicWpSeq_);
 	RCLCPP_INFO(
-		this->get_logger(), "topic_wp_seq: %s", m_sub_topic_wp_seq.c_str());
+		this->get_logger(), "topic_wp_seq: %s", subTopicWpSeq_.c_str());
 
 	declare_parameter<std::string>(
-		"topic_reactive_nav_goal", m_sub_topic_reactive_nav_goal);
-	get_parameter("topic_reactive_nav_goal", m_sub_topic_reactive_nav_goal);
+		"topic_reactive_nav_goal", subTopicNavGoal_);
+	get_parameter("topic_reactive_nav_goal", subTopicNavGoal_);
 	RCLCPP_INFO(
 		this->get_logger(), "topic_reactive_nav_goal: %s",
-		m_sub_topic_reactive_nav_goal.c_str());
-
-	declare_parameter<std::string>("topic_odometry", m_sub_topic_odometry);
-	get_parameter("topic_odometry", m_sub_topic_odometry);
+		subTopicNavGoal_.c_str());
+	
+	declare_parameter<std::string>("topic_odometry", subTopicOdometry_);
+	get_parameter("topic_odometry", subTopicOdometry_);
 	RCLCPP_INFO(
-		this->get_logger(), "topic_odometry: %s", m_sub_topic_odometry.c_str());
-
-	declare_parameter<std::string>("topic_cmd_vel", m_pub_topic_cmd_vel);
-	get_parameter("topic_cmd_vel", m_pub_topic_cmd_vel);
+		this->get_logger(), "topic_odometry: %s", subTopicOdometry_.c_str());
+	
+	declare_parameter<std::string>("topic_cmd_vel", pubTopicCmdVel_);
+	get_parameter("topic_cmd_vel", pubTopicCmdVel_);
 	RCLCPP_INFO(
-		this->get_logger(), "topic_cmd_vel: %s", m_pub_topic_cmd_vel.c_str());
+		this->get_logger(), "topic_cmd_vel: %s", pubTopicCmdVel_.c_str());
 
 	declare_parameter<std::string>(
-		"topic_obstacles", m_sub_topic_local_obstacles);
-	get_parameter("topic_obstacles", m_sub_topic_local_obstacles);
+		"topic_obstacles", subTopicLocalObstacles_);
+	get_parameter("topic_obstacles", subTopicLocalObstacles_);
 	RCLCPP_INFO(
 		this->get_logger(), "topic_obstacles: %s",
-		m_sub_topic_local_obstacles.c_str());
+		subTopicLocalObstacles_.c_str());
 
 	declare_parameter<std::string>(
-		"topic_robot_shape", m_sub_topic_robot_shape);
-	get_parameter("topic_robot_shape", m_sub_topic_robot_shape);
+		"topic_robot_shape", subTopicRobotShape_);
+	get_parameter("topic_robot_shape", subTopicRobotShape_);
 	RCLCPP_INFO(
 		this->get_logger(), "topic_robot_shape: %s",
-		m_sub_topic_robot_shape.c_str());
+		subTopicRobotShape_.c_str());
 
 	declare_parameter<bool>("save_nav_log", false);
-	get_parameter("save_nav_log", m_save_nav_log);
+	get_parameter("save_nav_log", saveNavLog_);
 	RCLCPP_INFO(
-		this->get_logger(), "save_nav_log: %s", m_save_nav_log ? "yes" : "no");
+		this->get_logger(), "save_nav_log: %s", saveNavLog_ ? "yes" : "no");
 
 	declare_parameter<std::string>("ptg_plugin_files", "");
-	get_parameter("ptg_plugin_files", m_plugin_file);
+	get_parameter("ptg_plugin_files", pluginFile_);
 	RCLCPP_INFO(
-		this->get_logger(), "ptg_plugin_files: %s", m_plugin_file.c_str());
-
-	if (!m_plugin_file.empty())
+		this->get_logger(), "ptg_plugin_files: %s", pluginFile_.c_str());
+	
+	if (!pluginFile_.empty())
 	{
 		RCLCPP_INFO_STREAM(
-			this->get_logger(), "About to load plugins: " << m_plugin_file);
+			this->get_logger(), "About to load plugins: " << pluginFile_);
 		std::string errorMsgs;
-		if (!mrpt::system::loadPluginModules(m_plugin_file, errorMsgs))
+		if (!mrpt::system::loadPluginModules(pluginFile_, errorMsgs))
 		{
 			RCLCPP_ERROR_STREAM(
 				this->get_logger(),
@@ -290,7 +283,7 @@ void ReactiveNav2DNode::navigate_to(const mrpt::math::TPose2D& target)
 	CAbstractNavigator::TargetInfo target_info;
 	target_info.target_coords.x = target.x;
 	target_info.target_coords.y = target.y;
-	target_info.targetAllowedDistance = m_target_allowed_distance;
+	target_info.targetAllowedDistance = targetAllowedDistance_;
 	target_info.targetIsRelative = false;
 
 	// API for single targets:
@@ -300,8 +293,8 @@ void ReactiveNav2DNode::navigate_to(const mrpt::math::TPose2D& target)
 	// navParams.restrict_PTG_indices.push_back(1);
 
 	{
-		std::lock_guard<std::mutex> csl(m_reactive_nav_engine_cs);
-		m_reactive_nav_engine.navigate(&navParams);
+		std::lock_guard<std::mutex> csl(rnavEngineMtx_);
+		rnavEngine_.navigate(&navParams);
 	}
 }
 
@@ -310,44 +303,46 @@ void ReactiveNav2DNode::on_do_navigation()
 {
 	// 1st time init:
 	// ----------------------------------------------------
-	if (!m_1st_time_init)
+	if (!initialized_)
 	{
-		m_1st_time_init = true;
+		initialized_ = true;
 		RCLCPP_INFO(
 			this->get_logger(),
 			"[ReactiveNav2DNode] Initializing reactive navigation "
 			"engine...");
 		{
-			std::lock_guard<std::mutex> csl(m_reactive_nav_engine_cs);
-			m_reactive_nav_engine.initialize();
+			std::lock_guard<std::mutex> csl(rnavEngineMtx_);
+			rnavEngine_.initialize();
 		}
 		RCLCPP_INFO(
 			this->get_logger(),
 			"[ReactiveNav2DNode] Reactive navigation engine init done!");
 	}
 
-	CTimeLoggerEntry tle(m_profiler, "on_do_navigation");
+	CTimeLoggerEntry tle(profiler_, "on_do_navigation");
 	// Main nav loop (in whatever state nav is: IDLE, NAVIGATING, etc.)
-	m_reactive_nav_engine.navigationStep();
+	rnavEngine_.navigationStep();
+
+	tle.stop();
 }
 
 void ReactiveNav2DNode::on_odometry_received(
 	const nav_msgs::msg::Odometry::SharedPtr& msg)
 {
-	std::lock_guard<std::mutex> csl(m_odometry_cs);
+	std::lock_guard<std::mutex> csl(odometryMtx_);
 	tf2::Quaternion quat(
 		msg->pose.pose.orientation.x, msg->pose.pose.orientation.y,
 		msg->pose.pose.orientation.z, msg->pose.pose.orientation.w);
 	tf2::Matrix3x3 mat(quat);
 	double roll, pitch, yaw;
 	mat.getRPY(roll, pitch, yaw);
-	m_odometry.odometry = mrpt::poses::CPose2D(
+	odometry_.odometry = mrpt::poses::CPose2D(
 		msg->pose.pose.position.x, msg->pose.pose.position.y, yaw);
-
-	m_odometry.velocityLocal.vx = msg->twist.twist.linear.x;
-	m_odometry.velocityLocal.vy = msg->twist.twist.linear.y;
-	m_odometry.velocityLocal.omega = msg->twist.twist.angular.z;
-	m_odometry.hasVelocities = true;
+	
+	odometry_.velocityLocal.vx = msg->twist.twist.linear.x;
+	odometry_.velocityLocal.vy = msg->twist.twist.linear.y;
+	odometry_.velocityLocal.omega = msg->twist.twist.angular.z;
+	odometry_.hasVelocities = true;
 
 	RCLCPP_DEBUG_STREAM(this->get_logger(), "Odometry updated");
 }
@@ -366,8 +361,8 @@ void ReactiveNav2DNode::update_waypoint_sequence(
 	mrpt::poses::CPose3D relPose = mrpt::poses::CPose3D::Identity();
 
 	// Convert to the "m_frameid_reference" frame of coordinates:
-	if (msg->header.frame_id != m_frameid_reference)
-		waitForTransform(relPose, m_frameid_reference, msg->header.frame_id);
+	if (msg->header.frame_id != frameidReference_)
+		waitForTransform(relPose, frameidReference_, msg->header.frame_id);
 
 	for (const auto& wp : msg->waypoints)
 	{
@@ -386,8 +381,8 @@ void ReactiveNav2DNode::update_waypoint_sequence(
 
 	RCLCPP_INFO_STREAM(this->get_logger(), "New navigateWaypoints() command");
 	{
-		std::lock_guard<std::mutex> csl(m_reactive_nav_engine_cs);
-		m_reactive_nav_engine.navigateWaypoints(wps);
+		std::lock_guard<std::mutex> csl(rnavEngineMtx_);
+		rnavEngine_.navigateWaypoints(wps);
 	}
 }
 
@@ -406,11 +401,11 @@ void ReactiveNav2DNode::on_goal_received(
 	auto trgPose = mrpt::ros2bridge::fromROS(trg.pose);
 
 	// Convert to the "m_frameid_reference" frame of coordinates:
-	if (trg.header.frame_id != m_frameid_reference)
+	if (trg.header.frame_id != frameidReference_)
 	{
 		mrpt::poses::CPose3D relPose;
 		waitForTransform(
-			relPose, m_frameid_reference, trg_ptr->header.frame_id);
+			relPose, frameidReference_, trg_ptr->header.frame_id);
 		trgPose = relPose + trgPose;
 	}
 
@@ -420,11 +415,11 @@ void ReactiveNav2DNode::on_goal_received(
 void ReactiveNav2DNode::on_local_obstacles(
 	const sensor_msgs::msg::PointCloud2::SharedPtr& obs)
 {
-	std::lock_guard<std::mutex> csl(m_last_obstacles_cs);
-	mrpt::ros2bridge::fromROS(*obs, m_last_obstacles);
+	std::lock_guard<std::mutex> csl(lastObstaclesMtx_);
+	mrpt::ros2bridge::fromROS(*obs, lastObstacles_);
 	RCLCPP_DEBUG(
 		this->get_logger(), "Local obstacles received: %u points",
-		static_cast<unsigned int>(m_last_obstacles.size()));
+		static_cast<unsigned int>(lastObstacles_.size()));
 }
 
 void ReactiveNav2DNode::on_set_robot_shape(
@@ -449,8 +444,8 @@ void ReactiveNav2DNode::on_set_robot_shape(
 	}
 
 	{
-		std::lock_guard<std::mutex> csl(m_reactive_nav_engine_cs);
-		m_reactive_nav_engine.changeRobotShape(poly);
+		std::lock_guard<std::mutex> csl(rnavEngineMtx_);
+		rnavEngine_.changeRobotShape(poly);
 	}
 }
 
@@ -462,7 +457,7 @@ bool ReactiveNav2DNode::waitForTransform(
 	try
 	{
 		geometry_msgs::msg::TransformStamped ref_to_trgFrame =
-			m_tf_buffer->lookupTransform(
+			tfBuffer_->lookupTransform(
 				target_frame, source_frame, tf2::TimePointZero,
 				tf2::durationFromSec(timeout.seconds()));
 

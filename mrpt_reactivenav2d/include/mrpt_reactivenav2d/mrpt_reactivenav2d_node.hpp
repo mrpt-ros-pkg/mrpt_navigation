@@ -73,48 +73,46 @@ class ReactiveNav2DNode : public rclcpp::Node
    private:
 	/** @name ROS pubs/subs
 	 *  @{ */
-	rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr m_sub_odometry;
-	rclcpp::Subscription<mrpt_msgs::msg::WaypointSequence>::SharedPtr
-		m_sub_wp_seq;
+	rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr subOdometry_;
+	rclcpp::Subscription<mrpt_msgs::msg::WaypointSequence>::SharedPtr subWpSeq_;
 	rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr
-		m_sub_nav_goal;
-	rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr
-		m_sub_local_obs;
-	rclcpp::Subscription<geometry_msgs::msg::Polygon>::SharedPtr
-		m_sub_robot_shape;
-	rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr m_pub_cmd_vel;
+		subNavGoal_;
+	rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr subLocalObs_;
+	rclcpp::Subscription<geometry_msgs::msg::Polygon>::SharedPtr subRobotShape_;
+	rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr pubCmdVel_;
 
-	std::shared_ptr<tf2_ros::Buffer> m_tf_buffer;
-	std::shared_ptr<tf2_ros::TransformListener> m_tf_listener;
+	std::shared_ptr<tf2_ros::Buffer> tfBuffer_;
+	std::shared_ptr<tf2_ros::TransformListener> tfListener_;
 	/** @} */
 
-	CTimeLogger m_profiler;
-	bool m_1st_time_init;  //!< Reactive initialization done?
-	double m_target_allowed_distance = 0.40;
-	double m_nav_period = 0.10;
+	CTimeLogger profiler_;
+	bool initialized_ = false;	//!< Reactive initialization done?
+	double targetAllowedDistance_ = 0.40;
+	double navPeriod_ = 0.10;
 
-	std::string m_sub_topic_reactive_nav_goal = "reactive_nav_goal";
-	std::string m_sub_topic_local_obstacles = "local_map_pointcloud";
-	std::string m_sub_topic_robot_shape;
-	std::string m_sub_topic_wp_seq = "reactive_nav_waypoints";
-	std::string m_sub_topic_odometry = "/odom";
+	std::string subTopicNavGoal_ = "reactive_nav_goal";
+	std::string subTopicLocalObstacles_ = "local_map_pointcloud";
+	std::string subTopicRobotShape_;
+	std::string subTopicWpSeq_ = "reactive_nav_waypoints";
+	std::string subTopicOdometry_ = "/odom";
 
-	std::string m_pub_topic_cmd_vel = "/cmd_vel";
+	std::string pubTopicCmdVel_ = "/cmd_vel";
 
-	std::string m_frameid_reference = "map";
-	std::string m_frameid_robot = "base_link";
+	std::string frameidReference_ = "map";
+	std::string frameidRobot_ = "base_link";
 
-	std::string m_plugin_file;
-	std::string m_cfg_file_reactive;
+	std::string pluginFile_;
+	std::string cfgFileReactive_;
 
-	bool m_save_nav_log;
+	bool saveNavLog_ = false;
 
-	rclcpp::TimerBase::SharedPtr m_timer_run_nav;
+	rclcpp::TimerBase::SharedPtr timerRunNav_;
 
-	mrpt::obs::CObservationOdometry m_odometry;
-	CSimplePointsMap m_last_obstacles;
-	std::mutex m_last_obstacles_cs;
-	std::mutex m_odometry_cs;
+	mrpt::obs::CObservationOdometry odometry_;
+	std::mutex odometryMtx_;
+
+	CSimplePointsMap lastObstacles_;
+	std::mutex lastObstaclesMtx_;
 
 	bool waitForTransform(
 		mrpt::poses::CPose3D& des, const std::string& target_frame,
@@ -122,9 +120,9 @@ class ReactiveNav2DNode : public rclcpp::Node
 
 	struct MyReactiveInterface : public mrpt::nav::CRobot2NavInterface
 	{
-		ReactiveNav2DNode& m_parent;
-
-		MyReactiveInterface(ReactiveNav2DNode& parent) : m_parent(parent) {}
+		ReactiveNav2DNode& parent_;
+		
+		MyReactiveInterface(ReactiveNav2DNode& parent) : parent_(parent) {}
 
 		/** Get the current pose and speeds of the robot.
 		 *   \param curPose Current robot pose.
@@ -138,9 +136,8 @@ class ReactiveNav2DNode : public rclcpp::Node
 			mrpt::math::TPose2D& curOdometry, std::string& frame_id) override
 		{
 			double curV, curW;
-
-			CTimeLoggerEntry tle(
-				m_parent.m_profiler, "getCurrentPoseAndSpeeds");
+			
+			CTimeLoggerEntry tle(parent_.profiler_, "getCurrentPoseAndSpeeds");
 
 			// rclcpp::Duration timeout(0.1);
 			rclcpp::Duration timeout(std::chrono::milliseconds(100));
@@ -149,17 +146,17 @@ class ReactiveNav2DNode : public rclcpp::Node
 			try
 			{
 				CTimeLoggerEntry tle2(
-					m_parent.m_profiler,
+					parent_.profiler_,
 					"getCurrentPoseAndSpeeds.lookupTransform_sensor");
-
-				tfGeom = m_parent.m_tf_buffer->lookupTransform(
-					m_parent.m_frameid_reference, m_parent.m_frameid_robot,
+				
+				tfGeom = parent_.tfBuffer_->lookupTransform(
+					parent_.frameidReference_, parent_.frameidRobot_,
 					tf2::TimePointZero,
 					tf2::durationFromSec(timeout.seconds()));
 			}
 			catch (const tf2::TransformException& ex)
 			{
-				RCLCPP_ERROR(m_parent.get_logger(), "%s", ex.what());
+				RCLCPP_ERROR(parent_.get_logger(), "%s", ex.what());
 				return false;
 			}
 
@@ -178,7 +175,7 @@ class ReactiveNav2DNode : public rclcpp::Node
 			curV = curW = 0;
 			MRPT_TODO("Retrieve current speeds from /odom topic?");
 			RCLCPP_DEBUG(
-				m_parent.get_logger(),
+				parent_.get_logger(),
 				"[getCurrentPoseAndSpeeds] Latest pose: %s",
 				curPose.asString().c_str());
 
@@ -204,13 +201,13 @@ class ReactiveNav2DNode : public rclcpp::Node
 			const double v = vel_cmd_diff_driven->lin_vel;
 			const double w = vel_cmd_diff_driven->ang_vel;
 			RCLCPP_DEBUG(
-				m_parent.get_logger(),
+				parent_.get_logger(),
 				"changeSpeeds: v=%7.4f m/s  w=%8.3f deg/s", v,
 				w * 180.0f / M_PI);
 			geometry_msgs::msg::Twist cmd;
 			cmd.linear.x = v;
 			cmd.angular.z = w;
-			m_parent.m_pub_cmd_vel->publish(cmd);
+			parent_.pubCmdVel_->publish(cmd);
 			return true;
 		}
 
@@ -236,8 +233,8 @@ class ReactiveNav2DNode : public rclcpp::Node
 			mrpt::system::TTimeStamp& timestamp) override
 		{
 			timestamp = mrpt::system::now();
-			std::lock_guard<std::mutex> csl(m_parent.m_last_obstacles_cs);
-			obstacles = m_parent.m_last_obstacles;
+			std::lock_guard<std::mutex> csl(parent_.lastObstaclesMtx_);
+			obstacles = parent_.lastObstacles_;
 
 			MRPT_TODO("TODO: Check age of obstacles!");
 			return true;
@@ -262,8 +259,7 @@ class ReactiveNav2DNode : public rclcpp::Node
 		void sendWaySeemsBlockedEvent() override {}
 	};
 
-	MyReactiveInterface m_reactive_if;
-
-	CReactiveNavigationSystem m_reactive_nav_engine;
-	std::mutex m_reactive_nav_engine_cs;
+	MyReactiveInterface reactiveInterface_{*this};
+	CReactiveNavigationSystem rnavEngine_{reactiveInterface_};
+	std::mutex rnavEngineMtx_;
 };
