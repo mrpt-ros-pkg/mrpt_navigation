@@ -43,7 +43,12 @@
 #include <tf2/convert.h>
 #include <tf2/exceptions.h>
 
+#if CV_BRIDGE_VERSION < 0x030400
+#include <cv_bridge/cv_bridge.h>
+#else
 #include <cv_bridge/cv_bridge.hpp>
+#endif
+
 #include <iostream>
 #include <memory>
 #include <nav_msgs/msg/odometry.hpp>
