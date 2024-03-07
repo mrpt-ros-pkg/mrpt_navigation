@@ -3,7 +3,8 @@ Panels:
     Help Height: 78
     Name: Displays
     Property Tree Widget:
-      Expanded: ~
+      Expanded:
+        - /SelectedPath1
       Splitter Ratio: 0.6294117569923401
     Tree Height: 512
   - Class: rviz_common/Selection
@@ -133,8 +134,8 @@ Visualization Manager:
     - Alpha: 1
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
-        Max Value: 6.03987455368042
-        Min Value: -0.017573237419128418
+        Max Value: 6.023365020751953
+        Min Value: -0.0029557347297668457
         Value: true
       Axis: Z
       Channel Name: intensity
@@ -194,7 +195,7 @@ Visualization Manager:
         Durability Policy: Volatile
         History Policy: Keep Last
         Reliability Policy: Reliable
-        Value: /reactivenav_selected_ptg
+        Value: /rnav/reactivenav_selected_ptg
       Value: true
   Enabled: true
   Global Options:
@@ -242,25 +243,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/Orbit
-      Distance: 29.317007064819336
+      Distance: 14.023480415344238
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 7.80765438079834
-        Y: 1.4349921941757202
-        Z: -0.6004581451416016
+        X: 5.88953161239624
+        Y: -0.3220280706882477
+        Z: -2.6075305938720703
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.8397969007492065
+      Pitch: 0.8847968578338623
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 3.348553419113159
+      Yaw: 2.9735488891601562
     Saved: ~
 Window Geometry:
   Displays:
@@ -278,5 +279,5 @@ Window Geometry:
   Views:
     collapsed: false
   Width: 1061
-  X: 377
-  Y: 661
+  X: 212
+  Y: 606

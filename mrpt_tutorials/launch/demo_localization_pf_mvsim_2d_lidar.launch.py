@@ -24,6 +24,8 @@ def generate_launch_description():
             'localization.launch.py')]),
         launch_arguments={
             'log_level': 'INFO',
+            'topic_sensors_2d_scan': '/laser1',
+            'topic_sensors_point_clouds': '',
         }.items()
     )
 

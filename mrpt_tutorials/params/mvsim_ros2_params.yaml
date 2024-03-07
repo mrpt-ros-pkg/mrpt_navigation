@@ -1,8 +1,8 @@
 # ROS2 parameter files for same-name launch "*.launch.py"
-mvsim:
+/**:
   ros__parameters:
     #world_file: overrdian via launch parameter
-    do_fake_localization: true     # publish tf odom -> base_link
+    do_fake_localization: false     # publish tf odom -> base_link
     publisher_history_len: 100     # history window length of publishers
     show_gui: true
     use_sim_time: false

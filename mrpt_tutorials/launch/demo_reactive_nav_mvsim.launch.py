@@ -33,6 +33,7 @@ def generate_launch_description():
             'log_level': 'INFO',
             'scan_topic_name': '/scanner1',
             'points_topic_name': '/lidar1_points',
+            'filter_output_topic_name': '/local_map_pointcloud',
             'time_window': '0.20',
             'show_gui': 'True',
         }.items()
