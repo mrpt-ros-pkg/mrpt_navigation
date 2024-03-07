@@ -36,6 +36,8 @@ def generate_launch_description():
             'filter_output_topic_name': '/local_map_pointcloud',
             'time_window': '0.20',
             'show_gui': 'True',
+            'frameid_robot': 'base_link',
+            'frameid_reference': 'odom',
         }.items()
     )
 
@@ -71,6 +73,8 @@ def generate_launch_description():
         launch_arguments={
             'log_level': 'INFO',
             # 'save_nav_log': 'True',
+            'frameid_robot': 'base_link',
+            'frameid_reference': 'map',
         }.items()
     )
 
