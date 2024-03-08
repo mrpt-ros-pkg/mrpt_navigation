@@ -124,8 +124,9 @@ class ReactiveNav2DNode : public rclcpp::Node
 		const std::string& source_frame, const int timeoutMilliseconds = 50);
 
 	void publish_last_log_record_to_ros(const mrpt::nav::CLogFileRecord& lr);
+
 	visualization_msgs::msg::MarkerArray log_to_margers(
-		const mrpt::nav::CLogFileRecord& lr) const;
+		const mrpt::nav::CLogFileRecord& lr);
 
 	struct MyReactiveInterface : public mrpt::nav::CRobot2NavInterface
 	{
