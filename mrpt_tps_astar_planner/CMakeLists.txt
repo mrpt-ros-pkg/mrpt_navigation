@@ -1,29 +1,22 @@
-cmake_minimum_required(VERSION 3.0.2)
-project(tps_astar_nav)
-set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
+cmake_minimum_required(VERSION 3.5)
+project(mrpt_tps_astar_planner)
+
+# find dependencies
+find_package(ament_cmake REQUIRED)
+find_package(rclcpp REQUIRED)
+find_package(rclcpp_components REQUIRED)
+find_package(nav_msgs REQUIRED)
+find_package(geometry_msgs)
+find_package(sensor_msgs REQUIRED)
+find_package(mrpt_msgs REQUIRED)
+find_package(tf2 REQUIRED)
+find_package(tf2_ros)
+find_package(tf2_geometry_msgs REQUIRED)
+find_package(visualization_msgs REQUIRED)
 
 
-## Find catkin macros and libraries
-## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
-## is used, also find other catkin packages
-find_package(catkin REQUIRED COMPONENTS
-  actionlib
-  actionlib_msgs
-  dynamic_reconfigure
-  geometry_msgs
-  roscpp
-  tf2
-  tf2_ros
-  tf2_geometry_msgs
-  visualization_msgs
-  nav_msgs
-  sensor_msgs
-  mrpt_msgs
-)
-
-add_subdirectory(submodules)
-
-find_package(mrpt-ros1bridge REQUIRED)
+## System dependencies are found with CMake's conventions
+find_package(mrpt-ros2bridge REQUIRED)
 find_package(mrpt-nav REQUIRED)
 find_package(mrpt-kinematics REQUIRED)
 find_package(mrpt-math REQUIRED)
@@ -32,13 +25,20 @@ find_package(mrpt-containers REQUIRED)
 find_package(mrpt-maps REQUIRED)
 find_package(mrpt-gui REQUIRED)
 find_package(mrpt-opengl REQUIRED)
-if(NOT TARGET selfdriving)
-	find_package(selfdriving REQUIRED) # selfdriving::selfdriving
-else()
-	add_library(selfdriving::selfdriving ALIAS selfdriving)
+
+find_package(mrpt_path_planning REQUIRED)
+if (TARGET mrpt_path_planning AND NOT TARGET mrpt_path_planning::mrpt_path_planning)
+  add_library(mrpt_path_planning::mrpt_path_planning ALIAS mrpt_path_planning)
 endif()
 
 message(STATUS "MRPT_VERSION: ${MRPT_VERSION}")
+if(NOT CMAKE_C_STANDARD)
+  set(CMAKE_C_STANDARD 99)
+endif()
+
+if(NOT CMAKE_CXX_STANDARD)
+  set(CMAKE_CXX_STANDARD 17)
+endif()
 
 if (CMAKE_COMPILER_IS_GNUCXX)
 	# High level of warnings.
@@ -54,118 +54,79 @@ IF(CMAKE_COMPILER_IS_GNUCXX AND NOT CMAKE_BUILD_TYPE MATCHES "Debug")
   add_compile_options(-O3)
 ENDIF()
 
-
-###################################
-## catkin specific configuration ##
-###################################
-## The catkin_package macro generates cmake config files for your package
-## Declare things to be passed to dependent projects
-## INCLUDE_DIRS: uncomment this if your package contains header files
-## LIBRARIES: libraries you create in this project that dependent projects also need
-## CATKIN_DEPENDS: catkin_packages dependent projects also need
-## DEPENDS: system dependencies of this project that dependent projects also need
-catkin_package(
-#  INCLUDE_DIRS include
-#  LIBRARIES tps_astar
-CATKIN_DEPENDS
-    actionlib
-    actionlib_msgs
-    dynamic_reconfigure
-    geometry_msgs
-    roscpp
-    tf2
-    tf2_ros
-    tf2_geometry_msgs
-    visualization_msgs
-    nav_msgs
-    sensor_msgs
-    mrpt_msgs
-#  DEPENDS system_lib
-)
-
 ###########
 ## Build ##
 ###########
 
-## Specify additional locations of header files
-## Your package locations should be listed before other locations
-include_directories(
-  include
-  ${catkin_INCLUDE_DIRS}
-  selfdriving
+## Declare a cpp executable
+add_executable(${PROJECT_NAME}_node
+  src/mrpt_tps_astar_planner_node.cpp
+  include/mrpt_tps_astar_planner/mrpt_tps_astar_planner_node.h
+  #
+  src/tps_navigator.cpp
+  include/mrpt_tps_astar_planner/tps_navigator.h
 )
 
-## Declare a C++ library
-# add_library(${PROJECT_NAME}
-#   src/${PROJECT_NAME}/tps_astar.cpp
-# )
-
-## Add cmake target dependencies of the library
-## as an example, code may need to be generated before libraries
-## either from message generation or dynamic reconfigure
-# add_dependencies(${PROJECT_NAME} ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-
-## Declare a C++ executable
-add_executable(${PROJECT_NAME}_node src/tps_navigator.cpp src/tps_astar_nav_node.cpp)
-
-## Rename C++ executable without prefix
-## The above recommended prefix causes long target names, the following renames the
-## target back to the shorter version for ease of user use
-## e.g. "rosrun someones_pkg node" instead of "rosrun someones_pkg someones_pkg_node"
-# set_target_properties(${PROJECT_NAME}_node PROPERTIES OUTPUT_NAME node PREFIX "")
-
-## Add cmake target dependencies of the executable
-## same as for the library above
-# add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_include_directories(${PROJECT_NAME}_node
+                          PUBLIC
+                          $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+                          $<INSTALL_INTERFACE:include>
+)               
 
 ## Specify libraries to link a library or executable target against
 target_link_libraries(${PROJECT_NAME}_node
-  ${catkin_LIBRARIES}
-  mrpt::nav 
-  mrpt::system 
-  mrpt::ros1bridge 
-  mrpt::math
+  mrpt::nav
   mrpt::kinematics
-  mrpt::maps
-  mrpt::containers
-  mrpt::gui 
-  mrpt::opengl
-  selfdriving::selfdriving
+  mrpt::ros2bridge
+  mrpt_path_planning::mrpt_path_planning
+)
+
+ament_target_dependencies(
+  ${PROJECT_NAME}_node
+  "rclcpp"
+  "rclcpp_components"
+  "nav_msgs"
+  "sensor_msgs"
+  "geometry_msgs"
+  "mrpt_msgs"
+  "tf2"
+  "tf2_ros"
+  "tf2_geometry_msgs"
+  "visualization_msgs"
 )
 
 #############
 ## Install ##
 #############
 
-install(TARGETS selfdriving
-  ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-  RUNTIME DESTINATION ${CATKIN_GLOBAL_BIN_DESTINATION}
-)
+# all install targets should use catkin DESTINATION variables
+# See http://ros.org/doc/api/catkin/html/adv_user_guide/variables.html
 
+
+## Mark executables and/or libraries for installation
 install(TARGETS ${PROJECT_NAME}_node
-  ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+  DESTINATION lib/${PROJECT_NAME}
 )
 
 ## Mark other files for installation (e.g. launch and bag files, etc.)
 install(DIRECTORY
   launch
   configs
-  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
+  DESTINATION share/${PROJECT_NAME}
 )
 
-## Mark cpp header files for installation
-install(DIRECTORY include/${PROJECT_NAME}_node/
-  DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
-  FILES_MATCHING PATTERN "*.h"
-#   PATTERN ".svn" EXCLUDE
-)
+#############
+## Testing ##
+#############
+if(BUILD_TESTING)
+  find_package(ament_lint_auto REQUIRED)
+  # the following line skips the linter which checks for copyrights
+  # uncomment the line when a copyright and license is not present in all source files
+  #set(ament_cmake_copyright_FOUND TRUE)
+  # the following line skips cpplint (only works in a git repo)
+  # uncomment the line when this package is not in a git repo
+  #set(ament_cmake_cpplint_FOUND TRUE)
+  ament_lint_auto_find_test_dependencies()
+endif()
 
-## Mark other files for installation (e.g. launch and bag files, etc.)
-# install(FILES
-#   # myfile1
-#   # myfile2
-#   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
-# )
+ament_package()
