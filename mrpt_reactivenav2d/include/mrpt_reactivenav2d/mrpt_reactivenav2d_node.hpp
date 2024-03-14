@@ -242,7 +242,7 @@ class ReactiveNav2DNode : public rclcpp::Node
 			CSimplePointsMap& obstacles,
 			mrpt::system::TTimeStamp& timestamp) override
 		{
-			timestamp = mrpt::system::now();
+			timestamp = mrpt::Clock::now();
 			std::lock_guard<std::mutex> csl(parent_.lastObstaclesMtx_);
 			obstacles = parent_.lastObstacles_;
 
