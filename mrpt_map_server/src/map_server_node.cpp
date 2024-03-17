@@ -152,13 +152,18 @@ bool MapServer::map_callback(
 void MapServer::publish_map()
 {
 	using namespace std::string_literals;
+
+	// REP-2003: https://ros.org/reps/rep-2003.html
+	// Maps:  reliable transient-local
+	auto QoS = rclcpp::QoS(rclcpp::KeepLast(1)).transient_local().reliable();
+
 	auto lck = mrpt::lockHelper(theMapMtx_);
 
 	// 1st: top-level MM map:
 	if (!pubMM_.pub)
 	{
 		pubMM_.pub = this->create_publisher<mrpt_msgs::msg::GenericObject>(
-			pub_mm_topic_ + "/metric_map"s, 1);
+			pub_mm_topic_ + "/metric_map"s, QoS);
 	}
 	if (pubMM_.new_subscribers(get_clock()->now(), force_republish_period_))
 	{
@@ -179,7 +184,7 @@ void MapServer::publish_map()
 		{
 			pubLayers_[layerName].pub =
 				this->create_publisher<mrpt_msgs::msg::GenericObject>(
-					pub_mm_topic_ + "/"s + layerName, 1);
+					pub_mm_topic_ + "/"s + layerName, QoS);
 		}
 		if (pubLayers_[layerName].new_subscribers(
 				get_clock()->now(), force_republish_period_))
@@ -199,7 +204,7 @@ void MapServer::publish_map()
 			{
 				pubPointMaps_[layerName].pub =
 					this->create_publisher<sensor_msgs::msg::PointCloud2>(
-						pub_mm_topic_ + "/"s + layerName + "_points"s, 1);
+						pub_mm_topic_ + "/"s + layerName + "_points"s, QoS);
 			}
 			if (pubPointMaps_[layerName].new_subscribers(
 					get_clock()->now(), force_republish_period_))
@@ -249,7 +254,7 @@ void MapServer::publish_map()
 			{
 				pubPointMaps_[layerName].pub =
 					this->create_publisher<sensor_msgs::msg::PointCloud2>(
-						pub_mm_topic_ + "/"s + layerName + "_points"s, 1);
+						pub_mm_topic_ + "/"s + layerName + "_points"s, QoS);
 			}
 			if (pubPointMaps_[layerName].new_subscribers(
 					get_clock()->now(), force_republish_period_))
@@ -270,12 +275,12 @@ void MapServer::publish_map()
 			{
 				pubGridMaps_[layerName].pub =
 					this->create_publisher<nav_msgs::msg::OccupancyGrid>(
-						pub_mm_topic_ + "/"s + layerName + "_gridmap"s, 1);
+						pub_mm_topic_ + "/"s + layerName + "_gridmap"s, QoS);
 
 				pubGridMapsMetaData_[layerName].pub =
 					this->create_publisher<nav_msgs::msg::MapMetaData>(
 						pub_mm_topic_ + "/"s + layerName + "_gridmap_metadata"s,
-						1);
+						QoS);
 			}
 			// Note: DONT merge this into a single (..||..) to avoid
 			// shortcircuit logic, since we want both calls to be evaluated for

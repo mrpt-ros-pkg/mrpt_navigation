@@ -18,6 +18,7 @@ The latest **SLAM framework**, whose maps are compatible with this repository fo
 
 Documentation for each package
 ----------------------------------
+All packages follow [REP-2003](https://ros.org/reps/rep-2003.html) regarding ROS 2 topic QoS.
 
 Related to localization:
 * [mrpt_map_server](mrpt_map_server): A node that loads a ROS standard gridmap or an MRPT or MP2P_ICP map and publishes it to a (set of) topic(s).

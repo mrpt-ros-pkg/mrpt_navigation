@@ -31,7 +31,7 @@ class MapServer : public rclcpp::Node
 	// member variables
 	double frequency_ = 1.0;  //!< rate at which the ros map is published
 
-	double force_republish_period_ = 5.0;  //!< [s] (0:disabled)
+	double force_republish_period_ = 0;	 //!< [s] (0:disabled)
 
 	// params that come from launch file
 	std::string pub_mm_topic_ = "map_server";
