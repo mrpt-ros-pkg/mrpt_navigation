@@ -28,6 +28,7 @@
 #include <mrpt/obs/CObservationPointCloud.h>
 #include <mrpt/obs/CObservationRotatingScan.h>
 #include <mrpt/poses/CPose3DQuat.h>
+#include <mrpt/ros2bridge/gps.h>
 #include <mrpt/ros2bridge/imu.h>
 #include <mrpt/ros2bridge/laser_scan.h>
 #include <mrpt/ros2bridge/point_cloud2.h>
@@ -61,6 +62,7 @@
 #include <sensor_msgs/msg/image.hpp>
 #include <sensor_msgs/msg/imu.hpp>
 #include <sensor_msgs/msg/laser_scan.hpp>
+#include <sensor_msgs/msg/nav_sat_fix.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
 #include <std_msgs/msg/int32.hpp>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>	// needed by tf2::fromMsg()
@@ -417,6 +419,32 @@ Obs toIMU(
 	return {mrptObs};
 }
 
+Obs toGPS(
+	std::string_view msg, const rosbag2_storage::SerializedBagMessage& rosmsg,
+	const std::optional<mrpt::poses::CPose3D>& fixedSensorPose)
+{
+	rclcpp::SerializedMessage serMsg(*rosmsg.serialized_data);
+	static rclcpp::Serialization<sensor_msgs::msg::NavSatFix> serializer;
+
+	sensor_msgs::msg::NavSatFix gps;
+	serializer.deserialize_message(&serMsg, &gps);
+
+	auto mrptObs = mrpt::obs::CObservationGPS::Create();
+
+	mrptObs->sensorLabel = msg;
+	mrptObs->timestamp = mrpt::ros2bridge::fromROS(gps.header.stamp);
+
+	// Convert data:
+	mrpt::ros2bridge::fromROS(gps, *mrptObs);
+
+	bool sensorPoseOK = findOutSensorPose(
+		mrptObs->sensorPose, gps.header.frame_id,
+		arg_base_link_frame.getValue(), fixedSensorPose);
+	ASSERT_(sensorPoseOK);
+
+	return {mrptObs};
+}
+
 Obs toOdometry(
 	std::string_view msg, const rosbag2_storage::SerializedBagMessage& rosmsg)
 {
@@ -651,6 +679,15 @@ class Transcriber
 				m_lookup[sensor.at("topic").as<std::string>()].emplace_back(
 					callback);
 			}
+			else if (sensorType == "CObservationGPS")
+			{
+				auto callback =
+					[=](const rosbag2_storage::SerializedBagMessage& m) {
+						return toGPS(sensorName, m, fixedSensorPose);
+					};
+				m_lookup[sensor.at("topic").as<std::string>()].emplace_back(
+					callback);
+			}
 			else if (sensorType == "CObservationOdometry")
 			{
 				auto callback =
@@ -659,6 +696,11 @@ class Transcriber
 					};
 				m_lookup[sensor.at("topic").as<std::string>()].emplace_back(
 					callback);
+			}
+			else
+			{
+				THROW_EXCEPTION_FMT(
+					"Found unhandled sensor type='%s'", sensorType.c_str());
 			}
 			// TODO: Handle more cases?
 		}
