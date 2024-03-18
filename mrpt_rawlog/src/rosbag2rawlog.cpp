@@ -228,9 +228,11 @@ bool findOutSensorPose(
 		tf2::fromMsg(ref_to_trgFrame.transform, tf);
 		des = mrpt::ros2bridge::fromROS(tf);
 
+#if 0
 		std::cout << mrpt::format(
 			"[findOutSensorPose] Found pose %s -> %s: %s\n",
 			source_frame.c_str(), target_frame.c_str(), des.asString().c_str());
+#endif
 
 		return true;
 	}
