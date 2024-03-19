@@ -2,6 +2,14 @@
 Changelog for package mrpt_local_obstacles
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* fix missing mola-common submodule
+* Ported PointCloud to PointCloud2
+* allow subscribing to pointcloud sensor msgs too
+* Add optional pointcloud filtering (via mp2p_icp library)
+* Contributors: Jose Luis Blanco Claraco, Jose Luis Blanco-Claraco
+
 1.0.4 (2023-03-28)
 ------------------
 * Fix demo launch files for newer MVSIM

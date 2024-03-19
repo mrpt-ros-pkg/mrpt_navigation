@@ -2,6 +2,12 @@
 Changelog for package mrpt_localization
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Merge branch 'mrpt-ros-pkg:ros1' into ros1
+* Add new parameters to control initial uncertainty: initial_pose_std_xy,initial_pose_std_phi
+* Contributors: Jose Luis Blanco Claraco, Shravan S Rai
+
 1.0.4 (2023-03-28)
 ------------------
 * Fix build against mrpt >=2.7.0

@@ -2,6 +2,12 @@
 Changelog for package mrpt_msgs_bridge
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Merge branch 'newtip' into ros1
+* dependency changes
+* Contributors: Jose Luis Blanco-Claraco, SRai22
+
 1.0.4 (2023-03-28)
 ------------------
 

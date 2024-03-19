@@ -2,6 +2,14 @@
 Changelog for package mrpt_reactivenav2d
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* fix mrpt2 API
+* Optional plugin files for ptgs
+* observe the waypoint ignore_heading field
+* waypoint navigation enabled
+* Contributors: Jose Luis Blanco-Claraco, SRai22
+
 1.0.4 (2023-03-28)
 ------------------
 * Fix demo launch files for newer MVSIM

@@ -2,6 +2,9 @@
 Changelog for package mrpt_map
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+
 1.0.4 (2023-03-28)
 ------------------
 * mrpt_map: new param to load from ROS map-YAML file
