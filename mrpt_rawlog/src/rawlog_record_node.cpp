@@ -58,7 +58,7 @@ RawlogRecordNode::RawlogRecordNode(ros::NodeHandle& n) : n_(n) {}
 
 void RawlogRecordNode::init()
 {
-	updateRawLogName(mrpt::system::now());
+	updateRawLogName(mrpt::Clock::now());
 	ROS_INFO("rawlog file: %s", base_param_.raw_log_name.c_str());
 	if (base_param_.record_range_scan)
 	{
