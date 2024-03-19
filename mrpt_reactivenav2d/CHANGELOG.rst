@@ -2,8 +2,8 @@
 Changelog for package mrpt_reactivenav2d
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.0.5 (2024-03-19)
+------------------
 * fix mrpt2 API
 * Optional plugin files for ptgs
 * observe the waypoint ignore_heading field

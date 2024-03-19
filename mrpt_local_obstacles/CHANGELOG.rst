@@ -2,8 +2,8 @@
 Changelog for package mrpt_local_obstacles
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.0.5 (2024-03-19)
+------------------
 * fix missing mola-common submodule
 * Ported PointCloud to PointCloud2
 * allow subscribing to pointcloud sensor msgs too

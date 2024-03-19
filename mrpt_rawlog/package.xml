@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <package format="2">
   <name>mrpt_rawlog</name>
-  <version>1.0.4</version>
+  <version>1.0.5</version>
   <description>This package provides nodes to record and play MRPT rawlogs.</description>
 
   <maintainer email="markus.bader@tuwien.ac.at">Markus Bader</maintainer>

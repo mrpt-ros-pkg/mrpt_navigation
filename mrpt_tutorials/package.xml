@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <package>
   <name>mrpt_tutorials</name>
-  <version>1.0.4</version>
+  <version>1.0.5</version>
   <description>Example files used as tutorials for MRPT ROS packages</description>
 
   <maintainer email="markus.bader@tuwien.ac.at">Markus Bader</maintainer>
