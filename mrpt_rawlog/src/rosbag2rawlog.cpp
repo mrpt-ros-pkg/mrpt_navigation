@@ -15,6 +15,7 @@
 //  Maintained: JLBC @ 2018-2023
 // ===========================================================================
 
+// MRPT:
 #include <mrpt/3rdparty/tclap/CmdLine.h>
 #include <mrpt/containers/yaml.h>
 #include <mrpt/io/CFileGZInputStream.h>
@@ -40,20 +41,16 @@
 #include <mrpt/system/os.h>
 #include <mrpt/system/progress.h>
 #include <mrpt/version.h>
+
+// mrpt pkgs:
+#include <mrpt_msgs/msg/generic_observation.hpp>
+
+// ROS:
 #include <tf2/buffer_core.h>
 #include <tf2/convert.h>
 #include <tf2/exceptions.h>
 
-#if CV_BRIDGE_VERSION < 0x030400
-#include <cv_bridge/cv_bridge.h>
-#else
-#include <cv_bridge/cv_bridge.hpp>
-#endif
-
-#include <iostream>
-#include <memory>
 #include <nav_msgs/msg/odometry.hpp>
-#include <optional>
 #include <rclcpp/rclcpp.hpp>
 #include <rclcpp/serialization.hpp>
 #include <rosbag2_cpp/converter_options.hpp>
@@ -68,7 +65,16 @@
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>	// needed by tf2::fromMsg()
 #include <tf2_msgs/msg/tf_message.hpp>
 
-//#include <rosbag2_cpp/storage_options.hpp>
+// std:
+#include <iostream>
+#include <memory>
+#include <optional>
+
+#if CV_BRIDGE_VERSION < 0x030400
+#include <cv_bridge/cv_bridge.h>
+#else
+#include <cv_bridge/cv_bridge.hpp>
+#endif
 
 using namespace mrpt;
 using namespace mrpt::io;
@@ -159,18 +165,6 @@ class RosSynchronizer
 		return [=](const rosbag2_storage::SerializedBagMessage& rosmsg) {
 			if (!std::get<i>(ptr->m_cache))
 			{
-				/* ROS 1:
-				 * 	auto pts = rosmsg.instantiate<sensor_msgs::PointCloud2>();
-				 *
-				 * ROS 2:
-				 *  rclcpp::SerializedMessage serMsg(rosmsg->serialized_data);
-				 *  auto topic = serialized_message->topic_name;
-				 *  static rclcpp::Serialization<tf2_msgs::msg::TFMessage>
-				 * serializer;
-				 *  tf2_msgs::msg::TFMessage msg;
-				 *  serializer.deserialize_message(&serMsg, &msg);
-				 */
-
 				using msg_t =
 					typename std::tuple_element<i, Tuple>::type::element_type;
 
@@ -192,7 +186,7 @@ class RosSynchronizer
 	CallbackFunction bindTfSync()
 	{
 		std::shared_ptr<RosSynchronizer> ptr = this->shared_from_this();
-		return [=](const rosbag2_storage::SerializedBagMessage& rosmsg) {
+		return [=](const rosbag2_storage::SerializedBagMessage& /*rosmsg*/) {
 			return ptr->checkAndSignal();
 		};
 	}
@@ -498,6 +492,28 @@ Obs toImage(
 	return {imgObs};
 }
 
+Obs fromGenericMrptObservation(
+	const rosbag2_storage::SerializedBagMessage& rosmsg)
+{
+	rclcpp::SerializedMessage serMsg(*rosmsg.serialized_data);
+	static rclcpp::Serialization<mrpt_msgs::msg::GenericObservation> serializer;
+
+	mrpt_msgs::msg::GenericObservation obs;
+	serializer.deserialize_message(&serMsg, &obs);
+
+	mrpt::serialization::CSerializable::Ptr obj;
+	mrpt::serialization::OctetVectorToObject(obs.data, obj);
+	ASSERT_(obj);
+
+	auto o = std::dynamic_pointer_cast<mrpt::obs::CObservation>(obj);
+	ASSERTMSG_(
+		o,
+		"Deserialized object could not be converted to "
+		"mrpt::obs::CObservation");
+
+	return {o};
+}
+
 #if 0
 Obs toRangeImage(
 	std::string_view msg, const sensor_msgs::Image::Ptr& image,
@@ -693,6 +709,15 @@ class Transcriber
 				auto callback =
 					[=](const rosbag2_storage::SerializedBagMessage& m) {
 						return toOdometry(sensorName, m);
+					};
+				m_lookup[sensor.at("topic").as<std::string>()].emplace_back(
+					callback);
+			}
+			else if (sensorType == "GenericObservation")
+			{
+				auto callback =
+					[=](const rosbag2_storage::SerializedBagMessage& m) {
+						return fromGenericMrptObservation(m);
 					};
 				m_lookup[sensor.at("topic").as<std::string>()].emplace_back(
 					callback);
