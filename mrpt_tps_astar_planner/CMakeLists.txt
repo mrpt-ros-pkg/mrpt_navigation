@@ -61,19 +61,15 @@ ENDIF()
 ## Declare a cpp executable
 add_executable(${PROJECT_NAME}_node
   src/mrpt_tps_astar_planner_node.cpp
-  include/mrpt_tps_astar_planner/mrpt_tps_astar_planner_node.h
-  #
-  src/tps_navigator.cpp
-  include/mrpt_tps_astar_planner/tps_navigator.h
 )
 
-target_include_directories(${PROJECT_NAME}_node
-                          PUBLIC
-                          $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-                          $<INSTALL_INTERFACE:include>
-)               
+#target_include_directories(${PROJECT_NAME}_node
+#                          PUBLIC
+#                          $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+#                          $<INSTALL_INTERFACE:include>
+#)
 
-## Specify libraries to link a library or executable target against
+# Specify libraries to link a library or executable target against
 target_link_libraries(${PROJECT_NAME}_node
   mrpt::nav
   mrpt::kinematics
