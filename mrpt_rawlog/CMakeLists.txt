@@ -10,6 +10,7 @@ find_package(sensor_msgs REQUIRED)
 find_package(rosbag2_cpp REQUIRED)
 find_package(tf2_geometry_msgs REQUIRED)
 find_package(cv_bridge REQUIRED)
+find_package(mrpt_msgs REQUIRED)
 
 find_package(mrpt-ros2bridge REQUIRED)
 message(STATUS "MRPT_VERSION: ${MRPT_VERSION}")
@@ -47,6 +48,7 @@ ament_target_dependencies(
   tf2_msgs
   cv_bridge
   tf2_geometry_msgs
+  mrpt_msgs
 )
 
 

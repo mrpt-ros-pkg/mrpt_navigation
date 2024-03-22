@@ -13,11 +13,13 @@ from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 from launch.actions import DeclareLaunchArgument, Shutdown
 from ament_index_python import get_package_share_directory
+from launch.actions import GroupAction
+from launch_ros.actions import PushRosNamespace
 import os
 
 
 def generate_launch_description():
-    myPkgDir = get_package_share_directory("mrpt_reactivenav2d")
+    # myPkgDir = get_package_share_directory("mrpt_reactivenav2d")
     # print('myPkgDir: ' + myPkgDir)
 
     default_rnav_cfg_file = os.path.join(
@@ -94,7 +96,7 @@ def generate_launch_description():
         on_exit=[emit_shutdown_action]
     )
 
-    return LaunchDescription([
+    ld = LaunchDescription([
         rnav_cfg_file_arg,
         log_level_launch_arg,
         topic_robot_shape_arg,
@@ -107,3 +109,10 @@ def generate_launch_description():
         topic_cmd_vel_arg,
         node_rnav2d_launch,
     ])
+
+    # Namespace to avoid clash launch argument names with the parent scope:
+    return LaunchDescription([GroupAction(
+        actions=[
+            PushRosNamespace(namespace='rnav'),
+            ld
+        ])])

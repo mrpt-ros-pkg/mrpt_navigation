@@ -8,7 +8,7 @@
 # PFLocalizationCore class skipping those two top-level YAML maps, as done
 # in the unit tests (see "test/*.cpp")
 #
-mrpt_pf_localization_node:
+/**:
   ros__parameters:
     # If false (default), will use 2D (SE(2)) particle filter.
     # Otherwise,the 3D mode (SE(3)) is enabled.

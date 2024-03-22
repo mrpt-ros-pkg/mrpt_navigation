@@ -124,8 +124,9 @@ class ReactiveNav2DNode : public rclcpp::Node
 		const std::string& source_frame, const int timeoutMilliseconds = 50);
 
 	void publish_last_log_record_to_ros(const mrpt::nav::CLogFileRecord& lr);
+
 	visualization_msgs::msg::MarkerArray log_to_margers(
-		const mrpt::nav::CLogFileRecord& lr) const;
+		const mrpt::nav::CLogFileRecord& lr);
 
 	struct MyReactiveInterface : public mrpt::nav::CRobot2NavInterface
 	{
@@ -241,7 +242,7 @@ class ReactiveNav2DNode : public rclcpp::Node
 			CSimplePointsMap& obstacles,
 			mrpt::system::TTimeStamp& timestamp) override
 		{
-			timestamp = mrpt::system::now();
+			timestamp = mrpt::Clock::now();
 			std::lock_guard<std::mutex> csl(parent_.lastObstaclesMtx_);
 			obstacles = parent_.lastObstacles_;
 

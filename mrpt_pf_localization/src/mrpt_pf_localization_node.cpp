@@ -94,15 +94,20 @@ PFLocalizationNode::PFLocalizationNode(const rclcpp::NodeOptions& options)
 	// ------------------------------------------
 	sub_init_pose_ = this->create_subscription<
 		geometry_msgs::msg::PoseWithCovarianceStamped>(
-		nodeParams_.topic_initialpose, 1,
+		nodeParams_.topic_initialpose, rclcpp::SystemDefaultsQoS(),
 		std::bind(&PFLocalizationNode::callbackInitialpose, this, _1));
 
+	// See: REP-2003: https://ros.org/reps/rep-2003.html
+	const auto mapQoS =
+		rclcpp::QoS(rclcpp::KeepLast(1)).transient_local().reliable();
+	const auto sensorQoS = rclcpp::SensorDataQoS();
+
 	subMap_ = this->create_subscription<mrpt_msgs::msg::GenericObject>(
-		nodeParams_.topic_map, 1,
+		nodeParams_.topic_map, mapQoS,
 		std::bind(&PFLocalizationNode::callbackMap, this, _1));
 
 	subOdometry_ = this->create_subscription<nav_msgs::msg::Odometry>(
-		nodeParams_.topic_odometry, 1,
+		nodeParams_.topic_odometry, rclcpp::SystemDefaultsQoS(),
 		std::bind(&PFLocalizationNode::callbackOdometry, this, _1));
 
 	// Subscribe to one or more laser sources:
@@ -117,7 +122,7 @@ PFLocalizationNode::PFLocalizationNode(const rclcpp::NodeOptions& options)
 			numSensors++;
 			subs_2dlaser_.push_back(
 				this->create_subscription<sensor_msgs::msg::LaserScan>(
-					topic, 1,
+					topic, sensorQoS,
 					[topic, this](const sensor_msgs::msg::LaserScan& msg) {
 						callbackLaser(msg, topic);
 					}));
@@ -132,7 +137,7 @@ PFLocalizationNode::PFLocalizationNode(const rclcpp::NodeOptions& options)
 			numSensors++;
 			subs_point_clouds_.push_back(
 				this->create_subscription<sensor_msgs::msg::PointCloud2>(
-					topic, 1,
+					topic, sensorQoS,
 					[topic, this](const sensor_msgs::msg::PointCloud2& msg) {
 						callbackPointCloud(msg, topic);
 					}));
@@ -148,11 +153,11 @@ PFLocalizationNode::PFLocalizationNode(const rclcpp::NodeOptions& options)
 				true /*force format*/));
 
 	pubParticles_ = this->create_publisher<geometry_msgs::msg::PoseArray>(
-		nodeParams_.pub_topic_particles, 1);
+		nodeParams_.pub_topic_particles, rclcpp::SystemDefaultsQoS());
 
 	pubPose_ =
 		this->create_publisher<geometry_msgs::msg::PoseWithCovarianceStamped>(
-			nodeParams_.pub_topic_pose, 1);
+			nodeParams_.pub_topic_pose, rclcpp::SystemDefaultsQoS());
 
 #if 0
 		else if (sources[i].find("beacon") != std::string::npos)

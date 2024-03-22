@@ -13,6 +13,8 @@ from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 from launch.actions import DeclareLaunchArgument, Shutdown
 from ament_index_python import get_package_share_directory
+from launch.actions import GroupAction
+from launch_ros.actions import PushRosNamespace
 import os
 
 
@@ -99,7 +101,7 @@ def generate_launch_description():
         on_exit=[emit_shutdown_action]
     )
 
-    return LaunchDescription([
+    ld = LaunchDescription([
         lidar_topic_name_arg,
         points_topic_name_arg,
         show_gui_arg,
@@ -113,3 +115,10 @@ def generate_launch_description():
         one_observation_per_topic_arg,
         mrpt_pointcloud_pipeline_node,
     ])
+
+    # Namespace to avoid clash launch argument names with the parent scope:
+    return LaunchDescription([GroupAction(
+        actions=[
+            PushRosNamespace(namespace='pc_pipeline'),
+            ld
+        ])])

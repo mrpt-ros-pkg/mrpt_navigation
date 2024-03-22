@@ -8,7 +8,6 @@
 
 #include "mrpt_reactivenav2d/mrpt_reactivenav2d_node.hpp"
 
-#include <cassert>
 #include <stdexcept>
 
 using namespace mrpt::nav;
@@ -23,7 +22,7 @@ ReactiveNav2DNode::ReactiveNav2DNode(const rclcpp::NodeOptions& options)
 	// Load params
 	read_parameters();
 
-	assert(m_nav_period > 0);
+	ASSERT_(navPeriod_ > 0);
 
 	if (cfgFileReactive_.empty())
 	{
@@ -489,7 +488,7 @@ void ReactiveNav2DNode::publish_last_log_record_to_ros(
 }
 
 visualization_msgs::msg::MarkerArray ReactiveNav2DNode::log_to_margers(
-	const mrpt::nav::CLogFileRecord& lr) const
+	const mrpt::nav::CLogFileRecord& lr)
 {
 	if (!lr.nPTGs || lr.nSelectedPTG < 0 ||
 		lr.nSelectedPTG >= static_cast<int32_t>(lr.nPTGs))
