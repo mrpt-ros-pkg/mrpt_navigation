@@ -34,28 +34,26 @@
 #include <mrpt/system/CTimeLogger.h>
 #include <mrpt/system/datetime.h>
 #include <mrpt/system/filesystem.h>
-#include <mrpt/version.h>
-#include <mrpt_tps_astar_planner/mrpt_tps_astar_planner_node.h>
 #include <tf2/LinearMath/Matrix3x3.h>
 #include <tf2/LinearMath/Quaternion.h>
 
 #include <cmath>
 #include <functional>
-#include <geometry_msgs/msg/PoseStamped.hpp>
-#include <geometry_msgs/msg/PoseWithCovarianceStamped.hpp>
-#include <geometry_msgs/msg/Twist.hpp>
-#include <geometry_msgs/msh/PoseArray.hpp>
+#include <geometry_msgs/msg/pose_array.hpp>
+#include <geometry_msgs/msg/pose_stamped.hpp>
+#include <geometry_msgs/msg/pose_with_covariance_stamped.hpp>
+#include <geometry_msgs/msg/twist.hpp>
 #include <memory>
-#include <mrpt_msgs/msg/Waypoint.hpp>
-#include <mrpt_msgs/msg/WaypointSequence.hpp>
+#include <mrpt_msgs/msg/waypoint.hpp>
+#include <mrpt_msgs/msg/waypoint_sequence.hpp>
 #include <mutex>
-#include <nav_msgs/msg/OccupancyGrid.hpp>
-#include <nav_msgs/msg/Odometry.hpp>
+#include <nav_msgs/msg/occupancy_grid.hpp>
+#include <nav_msgs/msg/odometry.hpp>
 #include <optional>
 #include <rclcpp/rclcpp.hpp>
-#include <sensor_msgs/msg/PointCloud.hpp>
+#include <sensor_msgs/msg/point_cloud2.hpp>
 #include <sstream>
-#include <std_msgs/msg/Bool.hpp>
+#include <std_msgs/msg/bool.hpp>
 #include <string>
 
 // for debugging
@@ -64,378 +62,259 @@
 #include <mrpt/opengl/COpenGLScene.h>
 #include <mrpt/opengl/stock_objects.h>
 
-class TPS_Astar_Nav_Node
+const char* NODE_NAME = "mrpt_tps_astar_node";
+
+class TPS_Astar_Nav_Node;
+
+/**
+ * @brief RobotInterface is the robot interface for NavEngine.
+ * NavEngine algorithms callback into the interface functions to execute
+ * robot autonomous navigation
+ */
+class RobotInterface : public mpp::VehicleMotionInterface, mpp::ObstacleSource
 {
-   private:
-	struct TAuxInitializer
-	{
-		TAuxInitializer(int argc, char** argv)
-		{
-			ros::init(argc, argv, "tps_astar_nav");
-		}
-	};
-
-	mrpt::system::CTimeLogger m_profiler;
-	TAuxInitializer m_auxinit;	//!< Just to make sure ROS is init first
-	ros::NodeHandle m_nh;  //!< The node handle
-
-	std::once_flag m_init_flag;	 //!< Perform initialization once
-	std::once_flag m_map_received_flag;	 //!< Receive map once
-	mrpt::maps::CPointsMap::Ptr m_grid_map;	 //!< DS for the Gridmap
-	mrpt_msgs::WaypointSequence m_wps_msg;
-
-	mrpt::math::TPose2D m_nav_goal;	 //!< Navigation Goal position
-	mrpt::math::TPose2D m_start_pose;  //!< Navigation start position
-	mrpt::math::TTwist2D m_start_vel;  //!< Robot velocity at start
-	mpp::VehicleLocalizationState
-		m_localization_pose;  //!< DS for localization info
-	mpp::VehicleOdometryState m_odometry;  //!< DS for odometry info
-	mrpt::maps::CPointsMap::Ptr
-		m_obstacle_src;	 //!< DS for holding obstacle info from sensors
-	std::once_flag m_init_nav_flag;	 //!< Initialize Nav Engine once
-	bool m_nav_engine_init;	 //!< Flag to indicate nav engine is initialized
-	ros::Timer m_timer_run_nav;	 //!< Periodic timer for navigator
-	ros::Timer m_timer_enqueue;	 //!< Periodic timer for enqueued command status
-								 //!< checker
-	double m_nav_period;  //!< Time period(Frequency) of Nav Step
-	double m_enq_cmd_check_time;  //!< Time period(frequency) of enqueued
-								  //!< command status checker
-
-	ros::Subscriber m_sub_map;	//!< Subscriber to Map
-	ros::Subscriber
-		m_sub_localization_pose;  //!< Subscriber to localization info
-	ros::Subscriber m_sub_odometry;	 //!< Subscriber to Odometry info from robot
-	ros::Subscriber m_sub_obstacles;  //!< Subsciber to obstacle map info
-	ros::Subscriber
-		m_sub_replan;  //!< Subscribe to topic from rnav that tells to replan
-
-	ros::Publisher
-		m_pub_cmd_vel;	//!< Publisher for velocity commands for the robot
-	ros::Publisher m_pub_wp_seq;  //!< Publisher for Waypoint sequence
-
-	std::string m_sub_map_str;	//!< parameterized name for map subscriber
-	std::string m_sub_localization_str;	 //!< parameterized name for
-										 //!< localization subscriber
-	std::string
-		m_sub_odometry_str;	 //!< parameterized name for odometry subscriber
-	std::string m_sub_obstacles_str;  //!< parameterized name for obsctacle
-									  //!< source map subscriber
-	std::string m_sub_replan_str;  //!< parameterized name for replan subscriber
-
-	std::string m_pub_cmd_vel_str;	//!< parameterized name for velocity command
-									//!< publisher
-	std::string m_pub_wp_seq_str;  //!< parameterized name for waypoint sequence
-								   //!< publisher
-
-	std::mutex m_obstacles_cs;	//!< mutex for obstacle data
-	std::mutex m_localization_cs;  //!< mutex for localization data
-	std::mutex m_odometry_cs;  //!< mutex for odometry data
-	std::mutex m_next_cmd_cs;  //!< mutex for enqueued command
-
-	// for debugging
-	bool m_debug;
-	bool m_gui_mrpt;
-	std::string m_gui_mrpt_str;
-	mrpt::gui::CDisplayWindow3D::Ptr m_win_3d;
-	mrpt::opengl::COpenGLScene m_scene;
-
-	std::function<void()>
-		on_enqueued_motion_fired;  //!< callback for jackal robot when enqueued
-								   //!< cmd fired
-	std::function<void()>
-		on_enqueued_motion_timeout;	 //!< callback for jackal robot when enqueud
-									 //!< cmd timed out
-	mrpt::math::TPose2D m_motion_trigger_pose;	//!< Pose at which enqueued cmd
-												//!< should be executed
-	mrpt::math::TPose2D
-		m_motion_trigger_tolerance;	 //!< Pose tolerance for enqueued cmd
-	double m_motion_trigger_timeout;  //!< Timeout period within which the
-									  //!< enqueud cmd should execute
-	mrpt::kinematics::CVehicleVelCmd::Ptr
-		m_next_cmd;	 //!< DS for enqueued motion cmd
-	mrpt::kinematics::CVehicleVelCmd::Ptr
-		m_NOP_cmd;	//!< DS for NO-op, continue with previous command
-	double m_enq_motion_timer;	//!< Timer that checks if enqueued cmd timed out
+   public:
+	/* Ctor*/
+	RobotInterface(TPS_Astar_Nav_Node& parent);
 
 	/**
-	 * @brief Jackal Interface is the robot interface for the NavEngine.
-	 * NavEngine algorithms callback into the interface functions to execute
-	 * Robot ODOA
+	 * @brief Provides access to the vehicle localization data.
+	 *
+	 * In case of a hardware/communication error, leave `valid=false` in the
+	 * return structure.
 	 */
-	struct Jackal_Interface : public mpp::VehicleMotionInterface,
-							  mpp::ObstacleSource
-	{
-		TPS_Astar_Nav_Node& m_parent;  //!< Top level parent class object
-		bool m_enqueued_motion_pending;	 //!< indicator that enqueued command is
-										 //!< pending and needs to be executed
-		bool m_enqueued_motion_timeout;	 //!< indicator that enqueued command
-										 //!< timedout
-		mpp::VehicleOdometryState m_enqueued_motion_trigger_odom;
-		std::mutex m_enqueued_motion_mutex;	 //!< mutex for enqueued commands
+	mpp::VehicleLocalizationState get_localization() override;
 
-		/* Ctor*/
-		Jackal_Interface(TPS_Astar_Nav_Node& parent)
-			: m_parent(parent),
-			  m_enqueued_motion_pending(false),
-			  m_enqueued_motion_timeout(false)
-		{
-			m_parent.on_enqueued_motion_fired = [this]() {
-				ROS_INFO_STREAM("[Jackal Robot] Enqueud motion fired");
-				changeSpeeds(*m_parent.m_next_cmd);
-				ROS_INFO_STREAM("[Jackal Robot] change speeds");
-				{
-					// std::lock_guard<std::mutex> csl(m_enqueued_motion_mutex);
-					m_enqueued_motion_pending = false;
-					m_enqueued_motion_timeout = false;
-				}
-				ROS_INFO_STREAM("Mutex Release");
-				return;
-			};
+	/** @brief Access method to the vehicle odometry data.
+	 *
+	 *
+	 * In case of a hardware/communication error, leave `valid=false` in the
+	 * return structure.
+	 */
+	mpp::VehicleOdometryState get_odometry() override;
 
-			m_parent.on_enqueued_motion_timeout = [this]() {
-				ROS_INFO_STREAM("[Jackal Robot] Enqueud motion timedout");
-				// std::lock_guard<std::mutex> csl(m_enqueued_motion_mutex);
-				m_enqueued_motion_pending = false;
-				m_enqueued_motion_timeout = true;
-				return;
-			};
-		}
+	/**
+	 * @brief Refer Parent class for docs
+	 *
+	 */
+	bool motion_execute(
+		const std::optional<mrpt::kinematics::CVehicleVelCmd::Ptr>& immediate,
+		const std::optional<mpp::EnqueuedMotionCmd>& next) override;
 
-		/**
-		 * @brief Provides access to the vehicle localization data.
-		 *
-		 * In case of a hardware/communication error, leave `valid=false` in the
-		 * return structure.
-		 */
-		mpp::VehicleLocalizationState get_localization() override
-		{
-			return m_parent.get_localization_state();
-		}
+	bool supports_enqeued_motions() const override;
 
-		/** @brief Access method to the vehicle odometry data.
-		 *
-		 *
-		 * In case of a hardware/communication error, leave `valid=false` in the
-		 * return structure.
-		 */
-		mpp::VehicleOdometryState get_odometry() override
-		{
-			return m_parent.get_odometry_state();
-		}
+	bool enqeued_motion_pending() const override;
 
-		/**
-		 * @brief Refer Parent class for docs
-		 *
-		 */
-		bool motion_execute(
-			const std::optional<mrpt::kinematics::CVehicleVelCmd::Ptr>&
-				immediate,
-			const std::optional<mpp::EnqueuedMotionCmd>& next) override
-		{
-			if (immediate.has_value())
-			{
-				std::lock_guard<std::mutex> csl(m_enqueued_motion_mutex);
-				ROS_INFO_STREAM("[Jackal_Robot] Motion command received");
-				mrpt::kinematics::CVehicleVelCmd& vel_cmd =
-					*(immediate.value());
-				changeSpeeds(vel_cmd);
-				m_parent.m_NOP_cmd = immediate.value();
-				m_enqueued_motion_pending = false;
-				m_enqueued_motion_timeout = false;
-			}
+	bool enqeued_motion_timed_out() const override;
 
-			if (next.has_value())
-			{
-				// ROS_INFO_STREAM("[Jackal_Robot] Enqueued command received");
-				std::lock_guard<std::mutex> csl(m_enqueued_motion_mutex);
-				auto& enq_cmd = next.value();
-				m_enqueued_motion_pending = true;
-				m_enqueued_motion_timeout = false;
-				m_parent.m_motion_trigger_pose = enq_cmd.nextCondition.position;
-				m_parent.m_motion_trigger_tolerance =
-					enq_cmd.nextCondition.tolerance;
-				m_parent.m_motion_trigger_timeout =
-					enq_cmd.nextCondition.timeout;
-				m_parent.m_next_cmd = next->nextCmd;
-				m_parent.m_enq_motion_timer = 0.0;
-				ROS_INFO_STREAM(
-					"[Jackal_Robot] Next cmd timeout = "
-					<< m_parent.m_motion_trigger_timeout
-					<< " Enq_Motion_timer = " << m_parent.m_enq_motion_timer);
-			}
+	std::optional<mpp::VehicleOdometryState>
+		enqued_motion_last_odom_when_triggered() const override;
 
-			if (!immediate.has_value() && !next.has_value())
-			{
-				std::lock_guard<std::mutex> csl(m_enqueued_motion_mutex);
-				ROS_INFO_STREAM("[Jackal_Robot] NOP command received");
-				if (m_parent.m_NOP_cmd)
-				{
-					changeSpeeds(*m_parent.m_NOP_cmd);
-					return true;
-				}
-			}
+	bool changeSpeeds(const mrpt::kinematics::CVehicleVelCmd& vel_cmd);
 
-			return true;
-		}
+	void stop(const mpp::STOP_TYPE stopType) override;
 
-		bool supports_enqeued_motions() const override { return true; }
+	mrpt::kinematics::CVehicleVelCmd::Ptr getStopCmd();
 
-		bool enqeued_motion_pending() const override
-		{
-			auto lck = mrpt::lockHelper(m_enqueued_motion_mutex);
-			// ROS_INFO_STREAM("Enqueued motion command pending ?"<<
-			// 				(m_enqueued_motion_pending?"True":"False"));
-			return m_enqueued_motion_pending;
-		}
+	mrpt::kinematics::CVehicleVelCmd::Ptr getEmergencyStopCmd();
 
-		bool enqeued_motion_timed_out() const override
-		{
-			auto lck = mrpt::lockHelper(m_enqueued_motion_mutex);
-			// ROS_INFO_STREAM("Enqueued motion command timed out ?"<<
-			// 				(m_enqueued_motion_timeout?"True":"False"));
-			return m_enqueued_motion_timeout;
-		}
+	void stop_watchdog() override;
 
-		std::optional<mpp::VehicleOdometryState>
-			enqued_motion_last_odom_when_triggered() const override
-		{
-			auto lck = mrpt::lockHelper(m_enqueued_motion_mutex);
-			return m_enqueued_motion_trigger_odom;
-		}
+	void start_watchdog(const size_t periodMilliseconds) override;
 
-		bool changeSpeeds(const mrpt::kinematics::CVehicleVelCmd& vel_cmd)
-		{
-			// ROS_INFO_STREAM("[Jackal_Robot] change speeds");
-			using namespace mrpt::kinematics;
-			const CVehicleVelCmd_DiffDriven* vel_cmd_diff_driven =
-				dynamic_cast<const CVehicleVelCmd_DiffDriven*>(&vel_cmd);
-			ASSERT_(vel_cmd_diff_driven);
+	void on_nav_end_due_to_error() override;
 
-			const double v = vel_cmd_diff_driven->lin_vel;
-			const double w = vel_cmd_diff_driven->ang_vel;
-			ROS_INFO_STREAM(
-				"changeSpeeds: v= " << v << "m/s and w=" << w * 180.0f / M_PI
-									<< "deg/s");
-			geometry_msgs::Twist cmd;
-			cmd.linear.x = v;
-			cmd.angular.z = w;
-			m_parent.publish_cmd_vel(cmd);
-			return true;
-		}
+	void on_nav_start() override;
 
-		void stop(const mpp::STOP_TYPE stopType) override
-		{
-			if (stopType == mpp::STOP_TYPE::EMERGENCY)
-			{
-				const auto cmd = getEmergencyStopCmd();
-				m_enqueued_motion_pending = false;
-				m_enqueued_motion_timeout = false;
-				changeSpeeds(*cmd);
-			}
-			else
-			{
-				const auto cmd = getStopCmd();
-				m_enqueued_motion_pending = false;
-				m_enqueued_motion_timeout = false;
-				changeSpeeds(*cmd);
-			}
-		}
+	void on_nav_end() override;
 
-		mrpt::kinematics::CVehicleVelCmd::Ptr getStopCmd()
-		{
-			mrpt::kinematics::CVehicleVelCmd::Ptr vel =
-				mrpt::kinematics::CVehicleVelCmd::Ptr(
-					new mrpt::kinematics::CVehicleVelCmd_DiffDriven);
-			vel->setToStop();
-			return vel;
-		}
+	void on_path_seems_blocked() override;
 
-		mrpt::kinematics::CVehicleVelCmd::Ptr getEmergencyStopCmd()
-		{
-			return getStopCmd();
-		}
+	void on_apparent_collision() override;
 
-		void stop_watchdog() override
-		{
-			ROS_INFO_STREAM("TPS_Astar_Navigator watchdog timer stopped");
-		}
+	mrpt::maps::CPointsMap::Ptr obstacles(
+		[[maybe_unused]] mrpt::system::TTimeStamp t =
+			mrpt::system::TTimeStamp()) override;
 
-		void start_watchdog(const size_t periodMilliseconds) override
-		{
-			ROS_INFO_STREAM("TPS_Astar_Navigator start watchdog timer");
-		}
+	// JL: Needed?
+	// CObject* clone() const override { return nullptr; }
 
-		void on_nav_end_due_to_error() override
-		{
-			ROS_INFO_STREAM("[TPS_Astar_Navigator] Nav End due to error");
-			stop(mpp::STOP_TYPE::EMERGENCY);
-		}
+   private:
+	//!< Top level parent class object
+	TPS_Astar_Nav_Node& parent_;
 
-		void on_nav_start() override
-		{
-			ROS_INFO_STREAM(
-				"[TPS_Astar_Navigator] Nav starting to Goal ="
-				<< m_parent.m_nav_goal.asString());
-		}
+	/// Indicator that enqueued command is pending and needs to be executed
+	bool enqueued_motion_pending_;
 
-		void on_nav_end() override
-		{
-			ROS_INFO_STREAM("[TPS_Astar_Navigator] Nav End");
-			stop(mpp::STOP_TYPE::REGULAR);
-		}
+	/// indicator that enqueued command timedout
+	bool enqueued_motion_timeout_;
+	mpp::VehicleOdometryState enqueued_motion_trigger_odom_;
 
-		void on_path_seems_blocked() override
-		{
-			ROS_INFO_STREAM("[TPS_Astar_Navigator] Path Seems blocked");
-			stop(mpp::STOP_TYPE::REGULAR);
-		}
+	std::mutex enqueued_motion_mutex_;	//!< mutex for enqueued commands
+};
 
-		void on_apparent_collision() override
-		{
-			ROS_INFO_STREAM("[TPS_Astar_Navigator] Apparent collision");
-			// stop(mpp::STOP_TYPE::REGULAR);
-		}
-
-		mrpt::maps::CPointsMap::Ptr obstacles(
-			[[maybe_unused]] mrpt::system::TTimeStamp t =
-				mrpt::system::TTimeStamp()) override
-		{
-			return m_parent.get_current_obstacles();
-		}
-
-		CObject* clone() const override { return nullptr; }
-	};
-
-	std::shared_ptr<Jackal_Interface> m_jackal_robot;
-
-	mpp::PlannerOutput m_activePlanOutput;
-	std::vector<mpp::CostEvaluator::Ptr> m_costEvaluators;
-	bool m_path_plan_done;
-
-	std::shared_ptr<mpp::TPS_Navigator> m_nav_engine;
-	mpp::WaypointSequence m_waypts;	 //<! DS for waypoints
-	mpp::WaypointStatusSequence m_wayptsStatus;	 //<! DS for waypoint status
-
-	bool stringToBool(const std::string& str);
+/**
+ * The main ROS2 node class.
+ */
+class TPS_Astar_Nav_Node : public rclcpp::Node
+{
+	friend class RobotInterface;
 
    public:
-	TPS_Astar_Nav_Node(int argc, char** argv);
-	~TPS_Astar_Nav_Node(){};
+	TPS_Astar_Nav_Node();
+	virtual ~TPS_Astar_Nav_Node() = default;
+
+   private:
+	/// CTimeLogger instance for profiling
+	mrpt::system::CTimeLogger profiler_;
+
+	/// Flag for performing initialization once
+	std::once_flag init_flag_;
+
+	/// Flag for receiving map once
+	std::once_flag map_received_flag_;
+
+	/// Pointer to a grid map
+	mrpt::maps::CPointsMap::Ptr grid_map_;
+
+	/// Message for waypoint sequence
+	mrpt_msgs::msg::WaypointSequence wps_msg_;
+
+	/// Navigation goal position
+	mrpt::math::TPose2D nav_goal_{0, 0, 0};
+
+	/// Navigation start position
+	mrpt::math::TPose2D start_pose_{0, 0, 0};
+
+	/// Robot velocity at start
+	mrpt::math::TTwist2D start_vel_{0, 0, 0};
+
+	/// Vehicle localization state
+	mpp::VehicleLocalizationState localization_pose_;
+
+	/// Vehicle odometry state
+	mpp::VehicleOdometryState odometry_;
+
+	/// Pointer to obstacle map
+	mrpt::maps::CPointsMap::Ptr obstacle_src_;
+
+	/// Flag for initializing navigation engine once
+	std::once_flag init_nav_flag_;
+
+	/// Flag indicating navigation engine is initialized
+	bool nav_engine_init_ = false;
+
+	/// Timer for running navigator periodically
+	rclcpp::TimerBase::SharedPtr timer_run_nav_;
+
+	/// Timer for enqueued command status checker
+	rclcpp::TimerBase::SharedPtr timer_enqueue_;
+
+	/// Time period [s] of navigation step
+	double nav_period_ = 0.25;
+
+	/// Time period [s] of enqueued command status checker
+	double enq_cmd_check_time_ = 0.020;
+
+	/// Subscriber to map
+	rclcpp::Subscription<nav_msgs::msg::OccupancyGrid>::SharedPtr sub_map_;
+
+	/// Subscriber to localization info
+	rclcpp::Subscription<geometry_msgs::msg::PoseWithCovarianceStamped>
+		sub_localization_pose_;
+
+	/// Subscriber to odometry info from robot
+	rclcpp::Subscription<nav_msgs::msg::Odometry> sub_odometry_;
+
+	/// Subscriber to obstacle map info
+	rclcpp::Subscription<sensor_msgs::msg::PointCloud2> sub_obstacles_;
+
+	/// Subscriber to topic from rnav that tells to replan
+	/// TODO(JL): Switch into a service!
+	rclcpp::Subscription<std_msgs::msg::Bool> sub_replan_;
+
+	/// Publisher for velocity commands for the robot
+	rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr pub_cmd_vel_;
+
+	/// Publisher for waypoint sequence
+	rclcpp::Publisher<mrpt_msgs::msg::WaypointSequence>::SharedPtr pub_wp_seq_;
+
+	/// Mutex for obstacle data
+	std::mutex obstacles_cs_;
+
+	/// Mutex for localization data
+	std::mutex localization_cs_;
+
+	/// Mutex for odometry data
+	std::mutex odometry_cs_;
+
+	/// Mutex for enqueued command
+	std::mutex next_cmd_cs_;
+
+	/// Debug flag
+	bool debug_ = true;
+
+	/// Flag for MRPT GUI
+	bool gui_mrpt_ = false;
+
+	/// Pointer to MRPT 3D display window
+	mrpt::gui::CDisplayWindow3D::Ptr win_3d_;
+
+	/// MRPT OpenGL scene
+	mrpt::opengl::COpenGLScene scene_;
+
+	/// Callback for jackal robot when enqueued command fired
+	std::function<void()> on_enqueued_motion_fired;
+
+	/// Callback for jackal robot when enqueued command timed out
+	std::function<void()> on_enqueued_motion_timeout;
+
+	/// Pose at which enqueued command should be executed
+	mrpt::math::TPose2D motion_trigger_pose_;
+
+	/// Pose tolerance for enqueued command
+	mrpt::math::TPose2D motion_trigger_tolerance_;
+
+	/// Timeout period within which the enqueued command should execute
+	double motion_trigger_timeout_ = 0;
+
+	/// Pointer to enqueued motion command
+	mrpt::kinematics::CVehicleVelCmd::Ptr next_cmd_;
+
+	/// Pointer to NO-op command, continue with previous command
+	mrpt::kinematics::CVehicleVelCmd::Ptr NOP_cmd_;
+
+	/// Timer that checks if enqueued command timed out
+	double enq_motion_timer_ = 0;
+
+	std::shared_ptr<RobotInterface> robot_;
+
+	mpp::PlannerOutput activePlanOutput_;
+	std::vector<mpp::CostEvaluator::Ptr> costEvaluators_;
+	bool path_plan_done_ = false;
+
+	std::shared_ptr<mpp::NavEngine> nav_engine_;
+	mpp::WaypointSequence waypts_;	//<! DS for waypoints
+	mpp::WaypointStatusSequence wayptsStatus_;	//<! DS for waypoint status
+
+   private:
 	template <typename T>
-	std::vector<T> processStringParam(const std::string& param_str);
+	std::vector<T> processStringParam(const std::string& parastr_);
+
 	/* Define callbacks*/
-	void callbackMap(const nav_msgs::OccupancyGrid& _map);
+	void callbackMap(const nav_msgs::msg::OccupancyGrid& msg);
 	void callbackLocalization(
-		const geometry_msgs::PoseWithCovarianceStamped& _pose);
-	void callbackOdometry(const nav_msgs::Odometry& _odom);
-	void callbackObstacles(const sensor_msgs::PointCloud& _pc);
-	void callbackReplan(const std_msgs::Bool& _flag);
+		const geometry_msgs::msg::PoseWithCovarianceStamped& _pose);
+	void callbackOdometry(const nav_msgs::msg::Odometry& _odom);
+	void callbackObstacles(const sensor_msgs::msg::PointCloud2& _pc);
+	void callbackReplan(const std_msgs::msg::Bool& _flag);
+
 	/* update methods*/
-	void updateMap(const nav_msgs::OccupancyGrid& _msg);
+	void updateMap(const nav_msgs::msg::OccupancyGrid& _msg);
 	void updateLocalization(
-		const geometry_msgs::PoseWithCovarianceStamped& _pose);
-	void updateOdom(const nav_msgs::Odometry& _odom);
-	void updateObstacles(const sensor_msgs::PointCloud& _pc);
+		const geometry_msgs::msg::PoseWithCovarianceStamped& _pose);
+	void updateOdom(const nav_msgs::msg::Odometry& _odom);
+	void updateObstacles(const sensor_msgs::msg::PointCloud2& _pc);
 
 	bool do_path_plan(mrpt::math::TPose2D& start, mrpt::math::TPose2D& goal);
 	void init3DDebug();
@@ -444,8 +323,9 @@ class TPS_Astar_Nav_Node
 	mpp::VehicleLocalizationState get_localization_state();
 	mpp::VehicleOdometryState get_odometry_state();
 	mrpt::maps::CPointsMap::Ptr get_current_obstacles();
-	void publish_cmd_vel(const geometry_msgs::Twist& cmd_vel);
-	void publish_waypoint_sequence(const mrpt_msgs::WaypointSequence& wps);
+
+	void publish_cmd_vel(const geometry_msgs::msg::Twist& cmd_vel);
+	void publish_waypoint_sequence(const mrpt_msgs::msg::WaypointSequence& wps);
 
 	/* Navigator methods*/
 	void initializeNavigator();
@@ -454,573 +334,587 @@ class TPS_Astar_Nav_Node
 	void checkEnqueuedMotionCmds(const ros::TimerEvent&);
 };
 
-TPS_Astar_Nav_Node::TPS_Astar_Nav_Node(int argc, char** argv)
-	: m_auxinit(argc, argv),
-	  m_nh(),
-	  m_localn("~"),
-	  m_nav_goal(mrpt::math::TPose2D(0.0, 0.0, 0.0)),
-	  m_start_pose(mrpt::math::TPose2D(0.0, 0.0, 0.0)),
-	  m_start_vel(mrpt::math::TTwist2D(0.0, 0.0, 0.0)),
-	  m_debug(true),
-	  m_gui_mrpt(false),
-	  m_nav_period(1.00),
-	  m_nav_engine_init(false),
-	  m_path_plan_done(false),
-	  m_motion_trigger_timeout(0.0),
-	  m_enq_motion_timer(0.0),
-	  m_enq_cmd_check_time(0.020)
+TPS_Astar_Nav_Node::TPS_Astar_Nav_Node() : rclcpp::Node(NODE_NAME)
 {
-	std::string nav_goal_str = "[0.0, 0.0, 0.0]";
-	std::string start_pose_str = "[0.0, 0.0, 0.0]";
-	std::string vel_str = "2.0";
-	m_localn.param("nav_goal", nav_goal_str, nav_goal_str);
-	std::vector<double> goal_pose = processStringParam<double>(nav_goal_str);
-	if (goal_pose.size() != 3)
 	{
-		ROS_ERROR("Invalid nav_goal parameter.");
-		return;
-	}
-	m_nav_goal = mrpt::math::TPose2D(goal_pose[0], goal_pose[1], goal_pose[2]);
-	ROS_INFO_STREAM(
-		"[TPS_Astar_Nav_Node]nav goal received =" << m_nav_goal.asString());
+		const auto qos = rclcpp::SystemDefaultsQoS();
 
-	m_localn.param("start_pose", start_pose_str, start_pose_str);
-	std::vector<double> start_pose = processStringParam<double>(start_pose_str);
-	if (start_pose.size() != 3)
-	{
-		ROS_ERROR("Invalid start pose parameter.");
-		return;
-	}
-	m_start_pose =
-		mrpt::math::TPose2D(start_pose[0], start_pose[1], start_pose[2]);
-	ROS_INFO_STREAM(
-		"[TPS_Astar_Nav_Node] start pose received ="
-		<< m_start_pose.asString());
+		std::string nav_goal_str = "[0.0, 0.0, 0.0]";
+		std::string start_pose_str = "[0.0, 0.0, 0.0]";
+		std::string vel_str = "2.0";
 
-	m_localn.param("start_vel", vel_str, vel_str);
-	m_start_vel = mrpt::math::TTwist2D(std::stod(vel_str), 0.0, 0.0);
-	ROS_INFO_STREAM(
-		"[TPS_Astar_Nav_Node]starting velocity =" << m_start_vel.asString());
+		this->declare_parameter<std::string>("nav_goal", nav_goal_str);
+		nav_goal_str = this->get_parameter("nav_goal").as_string();
 
-	m_localn.param("mrpt_gui", m_gui_mrpt_str, m_gui_mrpt_str);
-	if (!m_gui_mrpt_str.empty())
-		m_gui_mrpt = stringToBool(m_gui_mrpt_str);
-	else
-		m_gui_mrpt = false;
-
-	m_localn.param("topic_map_sub", m_sub_map_str, m_sub_map_str);
-	m_sub_map = m_nh.subscribe(
-		m_sub_map_str, 1, &TPS_Astar_Nav_Node::callbackMap, this);
-
-	m_localn.param(
-		"topic_localization_sub", m_sub_localization_str,
-		m_sub_localization_str);
-	m_sub_localization_pose = m_nh.subscribe(
-		m_sub_localization_str, 1, &TPS_Astar_Nav_Node::callbackLocalization,
-		this);
-
-	m_localn.param(
-		"topic_odometry_sub", m_sub_odometry_str, m_sub_odometry_str);
-	m_sub_odometry = m_nh.subscribe(
-		m_sub_odometry_str, 1, &TPS_Astar_Nav_Node::callbackOdometry, this);
-
-	m_localn.param(
-		"topic_obstacles_sub", m_sub_obstacles_str, m_sub_obstacles_str);
-	m_sub_obstacles = m_nh.subscribe(
-		m_sub_obstacles_str, 1, &TPS_Astar_Nav_Node::callbackObstacles, this);
-
-	m_localn.param("topic_replan_sub", m_sub_replan_str, m_sub_replan_str);
-	m_sub_replan = m_nh.subscribe(
-		m_sub_replan_str, 1, &TPS_Astar_Nav_Node::callbackReplan, this);
-
-	m_localn.param("topic_cmd_vel_pub", m_pub_cmd_vel_str, m_pub_cmd_vel_str);
-	m_pub_cmd_vel = m_nh.advertise<geometry_msgs::Twist>(m_pub_cmd_vel_str, 1);
-
-	m_localn.param("topic_wp_seq_pub", m_pub_wp_seq_str, m_pub_wp_seq_str);
-	m_pub_wp_seq =
-		m_nh.advertise<mrpt_msgs::WaypointSequence>(m_pub_wp_seq_str, 1);
-
-	// Init timers:
-	m_timer_run_nav = m_nh.createTimer(
-		ros::Duration(m_nav_period), &TPS_Astar_Nav_Node::onDoNavigation, this);
-
-	// Odometry publisher runs at 50Hz, so this functions runs at the same
-	// periodicity
-	m_timer_enqueue = m_nh.createTimer(
-		ros::Duration(m_enq_cmd_check_time),
-		&TPS_Astar_Nav_Node::checkEnqueuedMotionCmds, this);
-
-	if (m_nav_engine)
-	{
-		ROS_INFO_STREAM(
-			"TPS Astart Navigator already initialized, resetting nav engine");
-		m_nav_engine.reset();
-	}
-
-	m_nav_engine = std::make_shared<mpp::TPS_Navigator>();
-
-	m_jackal_robot = std::make_shared<Jackal_Interface>(*this);
-}
-
-bool TPS_Astar_Nav_Node::stringToBool(const std::string& str)
-{
-	if (str == "true" || str == "True" || str == "TRUE" || str == "1")
-		return true;
-	else
-		return false;
-	//    if(str == "false" || str == "False" || str == "FALSE" || str == "0")
-	//    return false;
-}
-template <typename T>
-std::vector<T> TPS_Astar_Nav_Node::processStringParam(
-	const std::string& param_str)
-{
-	std::string str = param_str;
-	std::replace(str.begin(), str.end(), '[', ' ');
-	std::replace(str.begin(), str.end(), ']', ' ');
-
-	std::vector<T> result;
-	std::istringstream iss(str);
-	T value;
-
-	while (iss >> value)
-	{
-		result.push_back(value);
-		if (iss.peek() == ',')
+		localn_.param("nav_goal", nav_goal_str, nav_goal_str);
+		std::vector<double> goal_pose =
+			processStringParam<double>(nav_goal_str);
+		if (goal_pose.size() != 3)
 		{
-			iss.ignore();
+			ROS_ERROR("Invalid nav_goal parameter.");
+			return;
+		}
+		nav_goal_ =
+			mrpt::math::TPose2D(goal_pose[0], goal_pose[1], goal_pose[2]);
+		RCLCPP_INFO_STREAM(
+			this->get_logger(),
+			"[TPS_Astar_Nav_Node]nav goal received =" << nav_goal_.asString());
+
+		localn_.param("start_pose", start_pose_str, start_pose_str);
+		std::vector<double> start_pose =
+			processStringParam<double>(start_pose_str);
+		if (start_pose.size() != 3)
+		{
+			ROS_ERROR("Invalid start pose parameter.");
+			return;
+		}
+		start_pose_ =
+			mrpt::math::TPose2D(start_pose[0], start_pose[1], start_pose[2]);
+		RCLCPP_INFO_STREAM(
+			this->get_logger(), "[TPS_Astar_Nav_Node] start pose received ="
+									<< start_pose_.asString());
+
+		localn_.param("start_vel", vel_str, vel_str);
+		start_vel_ = mrpt::math::TTwist2D(std::stod(vel_str), 0.0, 0.0);
+		RCLCPP_INFO_STREAM(
+			this->get_logger(),
+			"[TPS_Astar_Nav_Node]starting velocity =" << start_vel_.asString());
+
+		localn_.param("mrpt_gui", gui_mrpt_str_, gui_mrpt_str_);
+		if (!gui_mrpt_str_.empty())
+			gui_mrpt_ = stringToBool(gui_mrpt_str_);
+		else
+			gui_mrpt_ = false;
+
+		localn_.param("topic_map_sub", sub_map_str_, sub_map_str_);
+		sub_map_ = nh_.subscribe(
+			sub_map_str_, 1, &TPS_Astar_Nav_Node::callbackMap, this);
+
+		localn_.param(
+			"topic_localization_sub", sub_localization_str_,
+			sub_localization_str_);
+		sub_localization_pose_ = nh_.subscribe(
+			sub_localization_str_, 1,
+			[this](const geometry_msgs::msg::PoseWithCovarianceStamped& pose) {
+				updateLocalization(pose);
+			});
+
+		localn_.param(
+			"topic_odometry_sub", sub_odometry_str_, sub_odometry_str_);
+		sub_odometry_ = this->create_subscription<>(
+			sub_odometry_str_, 1, [this]() { updateOdom(odom); });
+
+		localn_.param(
+			"topic_obstacles_sub", sub_obstacles_str_, sub_obstacles_str_);
+		sub_obstacles_ = nh_.subscribe(
+			sub_obstacles_str_, 1, &TPS_Astar_Nav_Node::callbackObstacles,
+			this);
+
+		localn_.param("topic_replan_sub", sub_replan_str_, sub_replan_str_);
+		sub_replan_ = nh_.subscribe(
+			sub_replan_str_, 1, &TPS_Astar_Nav_Node::callbackReplan, this);
+
+		localn_.param("topic_cmd_vel_pub", pub_cmd_vel_str_, pub_cmd_vel_str_);
+		pub_cmd_vel_ = nh_.advertise<geometry_msgs::Twist>(pub_cmd_vel_str_, 1);
+
+		localn_.param("topic_wp_seq_pub", pub_wp_seq_str_, pub_wp_seq_str_);
+		pub_wp_seq_ =
+			nh_.advertise<mrpt_msgs::WaypointSequence>(pub_wp_seq_str_, 1);
+
+		// Init timers:
+		timer_run_nav_ = this->create_wall_timer(
+			std::chrono::microseconds(mrpt::round(1e6 * nav_period_)),
+			std::bind(&TPS_Astar_Nav_Node::onDoNavigation, this));
+
+		// Odometry publisher runs at 50Hz, so this functions runs at the same
+		// periodicity
+		timer_enqueue_ = this->create_wall_timer(
+			std::chrono::microseconds(mrpt::round(1e6 * enq_cmd_check_time_)),
+			std::bind(&TPS_Astar_Nav_Node::timerCallback, this));
+
+		if (nav_engine_)
+		{
+			RCLCPP_INFO_STREAM(
+				this->get_logger(),
+				"TPS Astart Navigator already initialized, resetting nav "
+				"engine");
+			nav_engine_.reset();
+		}
+
+		nav_engine_ = std::make_shared<mpp::TPS_Navigator>();
+
+		robot_ = std::make_shared<RobotInterface>(*this);
+	}
+
+	bool TPS_Astar_Nav_Node::stringToBool(const std::string& str)
+	{
+		if (str == "true" || str == "True" || str == "TRUE" || str == "1")
+			return true;
+		else
+			return false;
+		//    if(str == "false" || str == "False" || str == "FALSE" || str ==
+		//    "0") return false;
+	}
+	template <typename T>
+	std::vector<T> TPS_Astar_Nav_Node::processStringParam(
+		const std::string& parastr_)
+	{
+		std::string str = parastr_;
+		std::replace(str.begin(), str.end(), '[', ' ');
+		std::replace(str.begin(), str.end(), ']', ' ');
+
+		std::vector<T> result;
+		std::istringstream iss(str);
+		T value;
+
+		while (iss >> value)
+		{
+			result.push_back(value);
+			if (iss.peek() == ',')
+			{
+				iss.ignore();
+			}
+		}
+		return result;
+	}
+
+	void TPS_Astar_Nav_Node::callbackMap(const nav_msgs::OccupancyGrid& _map)
+	{
+		// RCLCPP_INFO_STREAM(this->get_logger(), "Navigator Map received for
+		// planning");
+		std::call_once(
+			map_received_flag_, [this, _map]() { this->updateMap(_map); });
+	}
+
+	void TPS_Astar_Nav_Node::callbackOdometry(const nav_msgs::Odometry& _odom)
+	{
+	}
+
+	void TPS_Astar_Nav_Node::callbackObstacles(
+		const sensor_msgs::msg::PointCloud2& _pc)
+	{
+		updateObstacles(_pc);
+	}
+
+	void TPS_Astar_Nav_Node::callbackReplan(const std_msgs::Bool& _flag)
+	{
+		auto& pose = localization_pose_;
+
+		if (pose.valid && _flag.data)
+		{
+			path_plan_done_ = do_path_plan(pose.pose, nav_goal_);
 		}
 	}
-	return result;
-}
 
-void TPS_Astar_Nav_Node::callbackMap(const nav_msgs::OccupancyGrid& _map)
-{
-	// ROS_INFO_STREAM("Navigator Map received for planning");
-	std::call_once(
-		m_map_received_flag, [this, _map]() { this->updateMap(_map); });
-}
-
-void TPS_Astar_Nav_Node::callbackLocalization(
-	const geometry_msgs::PoseWithCovarianceStamped& _pose)
-{
-	updateLocalization(_pose);
-}
-
-void TPS_Astar_Nav_Node::callbackOdometry(const nav_msgs::Odometry& _odom)
-{
-	updateOdom(_odom);
-}
-
-void TPS_Astar_Nav_Node::callbackObstacles(const sensor_msgs::PointCloud& _pc)
-{
-	updateObstacles(_pc);
-}
-
-void TPS_Astar_Nav_Node::callbackReplan(const std_msgs::Bool& _flag)
-{
-	auto& pose = m_localization_pose;
-
-	if (pose.valid && _flag.data)
+	void TPS_Astar_Nav_Node::publish_cmd_vel(
+		const geometry_msgs::Twist& cmd_vel)
 	{
-		m_path_plan_done = do_path_plan(pose.pose, m_nav_goal);
+		RCLCPP_INFO_STREAM(
+			this->get_logger(), "Publishing velocity command" << cmd_vel);
+		pub_cmd_vel_.publish(cmd_vel);
 	}
-}
 
-void TPS_Astar_Nav_Node::publish_cmd_vel(const geometry_msgs::Twist& cmd_vel)
-{
-	ROS_INFO_STREAM("Publishing velocity command" << cmd_vel);
-	m_pub_cmd_vel.publish(cmd_vel);
-}
-
-void TPS_Astar_Nav_Node::publish_waypoint_sequence(
-	const mrpt_msgs::WaypointSequence& wps)
-{
-	m_pub_wp_seq.publish(wps);
-}
-
-void TPS_Astar_Nav_Node::init3DDebug()
-{
-	ROS_INFO("init3DDebug");
-
-	if (!m_win_3d)
+	void TPS_Astar_Nav_Node::publish_waypoint_sequence(
+		const mrpt_msgs::WaypointSequence& wps)
 	{
-		m_win_3d = mrpt::gui::CDisplayWindow3D::Create(
-			"Pathplanning-TPS-AStar", 1000, 600);
-		m_win_3d->setCameraZoom(20);
-		m_win_3d->setCameraAzimuthDeg(-45);
+		pub_wp_seq_.publish(wps);
+	}
 
-		auto plane = m_grid_map->getVisualization();
-		m_scene.insert(plane);
+	void TPS_Astar_Nav_Node::init3DDebug()
+	{
+		ROS_INFO("init3DDebug");
+
+		if (!win_3d_)
+		{
+			win_3d_ = mrpt::gui::CDisplayWindow3D::Create(
+				"Pathplanning-TPS-AStar", 1000, 600);
+			win_3d_->setCameraZoom(20);
+			win_3d_->setCameraAzimuthDeg(-45);
+
+			auto plane = grid_map_->getVisualization();
+			scene_.insert(plane);
+
+			{
+				mrpt::opengl::COpenGLScene::Ptr ptr_scene =
+					win_3d_->get3DSceneAndLock();
+
+				ptr_scene->insert(plane);
+
+				ptr_scene->enableFollowCamera(true);
+
+				win_3d_->unlockAccess3DScene();
+			}
+		}  // Show 3D?
+	}
+
+	void TPS_Astar_Nav_Node::updateLocalization(
+		const geometry_msgs::PoseWithCovarianceStamped& msg)
+	{
+		tf2::Quaternion quat(
+			msg.pose.pose.orientation.x, msg.pose.pose.orientation.y,
+			msg.pose.pose.orientation.z, msg.pose.pose.orientation.w);
+		tf2::Matrix3x3 mat(quat);
+		double roll, pitch, yaw;
+		mat.getRPY(roll, pitch, yaw);
+		std::lock_guard<std::mutex> csl(localization_cs_);
+		localization_pose_.frame_id = msg.header.frame_id;
+		localization_pose_.valid = true;
+		localization_pose_.pose.x = msg.pose.pose.position.x;
+		localization_pose_.pose.y = msg.pose.pose.position.y;
+		localization_pose_.pose.phi = yaw;
+		localization_pose_.timestamp =
+			mrpt::ros1bridge::fromROS(msg.header.stamp);
+		// RCLCPP_INFO_STREAM(this->get_logger(), "Localization update
+		// complete");
+	}
+
+	void TPS_Astar_Nav_Node::updateOdom(const nav_msgs::Odometry& msg)
+	{
+		tf2::Quaternion quat(
+			msg.pose.pose.orientation.x, msg.pose.pose.orientation.y,
+			msg.pose.pose.orientation.z, msg.pose.pose.orientation.w);
+		tf2::Matrix3x3 mat(quat);
+		double roll, pitch, yaw;
+		mat.getRPY(roll, pitch, yaw);
+		std::lock_guard<std::mutex> csl(odometry_cs_);
+		odometry_.odometry.x = msg.pose.pose.position.x;
+		odometry_.odometry.y = msg.pose.pose.position.y;
+		odometry_.odometry.phi = yaw;
+
+		odometry_.odometryVelocityLocal.vx = msg.twist.twist.linear.x;
+		odometry_.odometryVelocityLocal.vy = msg.twist.twist.linear.y;
+		odometry_.odometryVelocityLocal.omega = msg.twist.twist.angular.z;
+
+		odometry_.valid = true;
+		odometry_.timestamp = mrpt::system::now();
+		/*TODO*/
+		odometry_.pendedActionExists = robot_->enqeued_motion_pending();
+		// RCLCPP_INFO_STREAM(this->get_logger(), "Odometry update complete");
+	}
+
+	void TPS_Astar_Nav_Node::updateObstacles(const sensor_msgs::PointCloud& _pc)
+	{
+		mrpt::maps::CSimplePointsMap point_cloud;
+		if (!mrpt::ros1bridge::fromROS(_pc, point_cloud))
+		{
+			ROS_ERROR("Failed to convert Point Cloud to MRPT Points Map");
+		}
+		std::lock_guard<std::mutex> csl(obstacles_cs_);
+		obstacle_src_ = std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(
+			std::make_shared<mrpt::maps::CSimplePointsMap>(point_cloud));
+
+		// RCLCPP_INFO_STREAM(this->get_logger(), "Obstacles update complete");
+	}
+
+	void TPS_Astar_Nav_Node::updateMap(const nav_msgs::OccupancyGrid& msg)
+	{
+		mrpt::maps::COccupancyGridMap2D grid;
+		// ASSERT_(grid.countMapsByClass<mrpt::maps::COccupancyGridMap2D>());
+		mrpt::ros1bridge::fromROS(msg, grid);
+		auto obsPts = mrpt::maps::CSimplePointsMap::Create();
+		grid.getAsPointCloud(*obsPts);
+		RCLCPP_INFO_STREAM(this->get_logger(), "Setting gridmap for planning");
+		grid_map_ = std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(obsPts);
+
+		path_plan_done_ = do_path_plan(start_pose_, nav_goal_);
+	}
+
+	void TPS_Astar_Nav_Node::initializeNavigator()
+	{
+		if (!nav_engine_)
+		{
+			ROS_ERROR("TPS_AStar Not created!");
+			return;
+		}
+
+		nav_engine_->setMinLoggingLevel(
+			mrpt::system::VerbosityLevel::LVL_DEBUG);
+		nav_engine_->config_.vehicleMotionInterface =
+			std::dynamic_pointer_cast<mpp::VehicleMotionInterface>(
+				/*std::make_shared<RobotInterface>*/ (robot_));
+		nav_engine_->config_.vehicleMotionInterface->setMinLoggingLevel(
+			mrpt::system::VerbosityLevel::LVL_DEBUG);
+		nav_engine_->config_.globalMapObstacleSource =
+			mpp::ObstacleSource::FromStaticPointcloud(grid_map_);
+		nav_engine_->config_.localSensedObstacleSource =
+			mpp::ObstacleSource::FromStaticPointcloud(obstacle_src_);
 
 		{
-			mrpt::opengl::COpenGLScene::Ptr ptr_scene =
-				m_win_3d->get3DSceneAndLock();
+			std::string ptg_ini_file;
+			localn_.param("ptg_ini", ptg_ini_file, ptg_ini_file);
 
-			ptr_scene->insert(plane);
-
-			ptr_scene->enableFollowCamera(true);
-
-			m_win_3d->unlockAccess3DScene();
+			ROS_ASSERT_MSG(
+				mrpt::system::fileExists(ptg_ini_file),
+				"PTG ini file not found: '%s'", ptg_ini_file.c_str());
+			mrpt::config::CConfigFile cfg(ptg_ini_file);
+			nav_engine_->config_.ptgs.initFromConfigFile(cfg, "SelfDriving");
 		}
-	}  // Show 3D?
-}
 
-void TPS_Astar_Nav_Node::updateLocalization(
-	const geometry_msgs::PoseWithCovarianceStamped& msg)
-{
-	tf2::Quaternion quat(
-		msg.pose.pose.orientation.x, msg.pose.pose.orientation.y,
-		msg.pose.pose.orientation.z, msg.pose.pose.orientation.w);
-	tf2::Matrix3x3 mat(quat);
-	double roll, pitch, yaw;
-	mat.getRPY(roll, pitch, yaw);
-	std::lock_guard<std::mutex> csl(m_localization_cs);
-	m_localization_pose.frame_id = msg.header.frame_id;
-	m_localization_pose.valid = true;
-	m_localization_pose.pose.x = msg.pose.pose.position.x;
-	m_localization_pose.pose.y = msg.pose.pose.position.y;
-	m_localization_pose.pose.phi = yaw;
-	m_localization_pose.timestamp = mrpt::ros1bridge::fromROS(msg.header.stamp);
-	// ROS_INFO_STREAM("Localization update complete");
-}
+		{
+			// cost map:
+			std::string costmap_parafile_;
 
-void TPS_Astar_Nav_Node::updateOdom(const nav_msgs::Odometry& msg)
-{
-	tf2::Quaternion quat(
-		msg.pose.pose.orientation.x, msg.pose.pose.orientation.y,
-		msg.pose.pose.orientation.z, msg.pose.pose.orientation.w);
-	tf2::Matrix3x3 mat(quat);
-	double roll, pitch, yaw;
-	mat.getRPY(roll, pitch, yaw);
-	std::lock_guard<std::mutex> csl(m_odometry_cs);
-	m_odometry.odometry.x = msg.pose.pose.position.x;
-	m_odometry.odometry.y = msg.pose.pose.position.y;
-	m_odometry.odometry.phi = yaw;
+			localn_.param(
+				"global_costmap_parameters", costmap_parafile_,
+				costmap_parafile_);
 
-	m_odometry.odometryVelocityLocal.vx = msg.twist.twist.linear.x;
-	m_odometry.odometryVelocityLocal.vy = msg.twist.twist.linear.y;
-	m_odometry.odometryVelocityLocal.omega = msg.twist.twist.angular.z;
+			ROS_ASSERT_MSG(
+				mrpt::system::fileExists(costmap_parafile_),
+				"costmap params file not found: '%s'",
+				costmap_parafile_.c_str());
 
-	m_odometry.valid = true;
-	m_odometry.timestamp = mrpt::system::now();
-	/*TODO*/
-	m_odometry.pendedActionExists = m_jackal_robot->enqeued_motion_pending();
-	// ROS_INFO_STREAM("Odometry update complete");
-}
+			nav_engine_->config_.globalCostParameters =
+				mpp::CostEvaluatorCostMap::Parameters::FromYAML(
+					mrpt::containers::yaml::FromFile(costmap_parafile_));
 
-void TPS_Astar_Nav_Node::updateObstacles(const sensor_msgs::PointCloud& _pc)
-{
-	mrpt::maps::CSimplePointsMap point_cloud;
-	if (!mrpt::ros1bridge::fromROS(_pc, point_cloud))
-	{
-		ROS_ERROR("Failed to convert Point Cloud to MRPT Points Map");
-	}
-	std::lock_guard<std::mutex> csl(m_obstacles_cs);
-	m_obstacle_src = std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(
-		std::make_shared<mrpt::maps::CSimplePointsMap>(point_cloud));
+			nav_engine_->config_.localCostParameters =
+				mpp::CostEvaluatorCostMap::Parameters::FromYAML(
+					mrpt::containers::yaml::FromFile(costmap_parafile_));
+		}
 
-	// ROS_INFO_STREAM("Obstacles update complete");
-}
+		// Preferred waypoints:
+		{
+			std::string wp_params_file;
+			localn_.param(
+				"prefer_waypoints_parameters", wp_params_file, wp_params_file);
 
-void TPS_Astar_Nav_Node::updateMap(const nav_msgs::OccupancyGrid& msg)
-{
-	mrpt::maps::COccupancyGridMap2D grid;
-	// ASSERT_(grid.countMapsByClass<mrpt::maps::COccupancyGridMap2D>());
-	mrpt::ros1bridge::fromROS(msg, grid);
-	auto obsPts = mrpt::maps::CSimplePointsMap::Create();
-	grid.getAsPointCloud(*obsPts);
-	ROS_INFO_STREAM("Setting gridmap for planning");
-	m_grid_map = std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(obsPts);
+			ROS_ASSERT_MSG(
+				mrpt::system::fileExists(wp_params_file),
+				"Prefer waypoints params file not found: '%s'",
+				wp_params_file.c_str());
+			nav_engine_->config_.preferWaypointsParameters =
+				mpp::CostEvaluatorPreferredWaypoint::Parameters::FromYAML(
+					mrpt::containers::yaml::FromFile(wp_params_file));
+		}
 
-	m_path_plan_done = do_path_plan(m_start_pose, m_nav_goal);
-}
+		{
+			std::string planner_parameters_file;
+			localn_.param(
+				"planner_parameters", planner_parameters_file,
+				planner_parameters_file);
 
-void TPS_Astar_Nav_Node::initializeNavigator()
-{
-	if (!m_nav_engine)
-	{
-		ROS_ERROR("TPS_AStar Not created!");
-		return;
-	}
+			ROS_ASSERT_MSG(
+				mrpt::system::fileExists(planner_parameters_file),
+				"Planner params file not found: '%s'",
+				planner_parameters_file.c_str());
 
-	m_nav_engine->setMinLoggingLevel(mrpt::system::VerbosityLevel::LVL_DEBUG);
-	m_nav_engine->config_.vehicleMotionInterface =
-		std::dynamic_pointer_cast<mpp::VehicleMotionInterface>(
-			/*std::make_shared<Jackal_Interface>*/ (m_jackal_robot));
-	m_nav_engine->config_.vehicleMotionInterface->setMinLoggingLevel(
-		mrpt::system::VerbosityLevel::LVL_DEBUG);
-	m_nav_engine->config_.globalMapObstacleSource =
-		mpp::ObstacleSource::FromStaticPointcloud(m_grid_map);
-	m_nav_engine->config_.localSensedObstacleSource =
-		mpp::ObstacleSource::FromStaticPointcloud(m_obstacle_src);
+			nav_engine_->config_.plannerParams =
+				mpp::TPS_Astar_Parameters::FromYAML(
+					mrpt::containers::yaml::FromFile(planner_parameters_file));
+		}
 
-	{
-		std::string ptg_ini_file;
-		m_localn.param("ptg_ini", ptg_ini_file, ptg_ini_file);
+		{
+			std::string nav_engine_parameters_file;
+			localn_.param(
+				"nav_engine_parameters", nav_engine_parameters_file,
+				nav_engine_parameters_file);
 
-		ROS_ASSERT_MSG(
-			mrpt::system::fileExists(ptg_ini_file),
-			"PTG ini file not found: '%s'", ptg_ini_file.c_str());
-		mrpt::config::CConfigFile cfg(ptg_ini_file);
-		m_nav_engine->config_.ptgs.initFromConfigFile(cfg, "SelfDriving");
+			ROS_ASSERT_MSG(
+				mrpt::system::fileExists(nav_engine_parameters_file),
+				"Planner params file not found: '%s'",
+				nav_engine_parameters_file.c_str());
+
+			nav_engine_->config_.loadFrom(
+				mrpt::containers::yaml::FromFile(nav_engine_parameters_file));
+		}
+
+		nav_engine_->initialize();
+
+		RCLCPP_INFO_STREAM(
+			this->get_logger(), "TPS_Astar Navigator intialized");
+
+		if (path_plan_done_)
+		{
+			navigateTo(nav_goal_);
+		}
+		nav_engine_init_ = true;
 	}
 
+	void TPS_Astar_Nav_Node::navigateTo(const mrpt::math::TPose2D& target)
 	{
-		// cost map:
-		std::string costmap_param_file;
+		// mpp::Waypoint waypoint(target.x, target.y, 1.0, false, 0.0, 0.0);
 
-		m_localn.param(
-			"global_costmap_parameters", costmap_param_file,
-			costmap_param_file);
+		// RCLCPP_INFO_STREAM(this->get_logger(), "[TPS_Astar_Nav_Node]
+		// navigateTo"<<waypoint.getAsText());
 
-		ROS_ASSERT_MSG(
-			mrpt::system::fileExists(costmap_param_file),
-			"costmap params file not found: '%s'", costmap_param_file.c_str());
+		// waypts_.waypoints.push_back(waypoint);
 
-		m_nav_engine->config_.globalCostParameters =
-			mpp::CostEvaluatorCostMap::Parameters::FromYAML(
-				mrpt::containers::yaml::FromFile(costmap_param_file));
-
-		m_nav_engine->config_.localCostParameters =
-			mpp::CostEvaluatorCostMap::Parameters::FromYAML(
-				mrpt::containers::yaml::FromFile(costmap_param_file));
+		nav_engine_->request_navigation(waypts_);
 	}
 
-	// Preferred waypoints:
+	bool TPS_Astar_Nav_Node::do_path_plan(
+		mrpt::math::TPose2D & start, mrpt::math::TPose2D & goal)
 	{
-		std::string wp_params_file;
-		m_localn.param(
-			"prefer_waypoints_parameters", wp_params_file, wp_params_file);
+		RCLCPP_INFO_STREAM(this->get_logger(), "Do path planning");
+		auto obs = mpp::ObstacleSource::FromStaticPointcloud(grid_map_);
+		mpp::PlannerInput planner_input;
 
-		ROS_ASSERT_MSG(
-			mrpt::system::fileExists(wp_params_file),
-			"Prefer waypoints params file not found: '%s'",
-			wp_params_file.c_str());
-		m_nav_engine->config_.preferWaypointsParameters =
-			mpp::CostEvaluatorPreferredWaypoint::Parameters::FromYAML(
-				mrpt::containers::yaml::FromFile(wp_params_file));
-	}
+		planner_input.stateStart.pose = start;
+		planner_input.stateStart.vel = start_vel_;
+		planner_input.stateGoal.state = goal;
+		planner_input.obstacles.emplace_back(obs);
+		auto bbox = obs->obstacles()->boundingBox();
 
-	{
-		std::string planner_parameters_file;
-		m_localn.param(
-			"planner_parameters", planner_parameters_file,
-			planner_parameters_file);
+		{
+			const auto bboxMargin = mrpt::math::TPoint3Df(2.0, 2.0, .0);
+			const auto ptStart = mrpt::math::TPoint3Df(
+				planner_input.stateStart.pose.x,
+				planner_input.stateStart.pose.y, 0);
+			const auto ptGoal = mrpt::math::TPoint3Df(
+				planner_input.stateGoal.asSE2KinState().pose.x,
+				planner_input.stateGoal.asSE2KinState().pose.y, 0);
+			bbox.updateWithPoint(ptStart - bboxMargin);
+			bbox.updateWithPoint(ptStart + bboxMargin);
+			bbox.updateWithPoint(ptGoal - bboxMargin);
+			bbox.updateWithPoint(ptGoal + bboxMargin);
+		}
 
-		ROS_ASSERT_MSG(
-			mrpt::system::fileExists(planner_parameters_file),
-			"Planner params file not found: '%s'",
-			planner_parameters_file.c_str());
+		planner_input.worldBboxMax = {bbox.max.x, bbox.max.y, PI_};
+		planner_input.worldBboxMin = {bbox.min.x, bbox.min.y, -PI_};
 
-		m_nav_engine->config_.plannerParams =
-			mpp::TPS_Astar_Parameters::FromYAML(
-				mrpt::containers::yaml::FromFile(planner_parameters_file));
-	}
+		std::cout << "Start state: " << planner_input.stateStart.asString()
+				  << "\n";
+		std::cout << "Goal state : " << planner_input.stateGoal.asString()
+				  << "\n";
+		std::cout << "Obstacles  : " << obs->obstacles()->size() << " points\n";
+		std::cout << "World bbox : " << planner_input.worldBboxMin.asString()
+				  << " - " << planner_input.worldBboxMax.asString() << "\n";
 
-	{
-		std::string nav_engine_parameters_file;
-		m_localn.param(
-			"nav_engine_parameters", nav_engine_parameters_file,
-			nav_engine_parameters_file);
+		mpp::Planner::Ptr planner = mpp::TPS_Astar::Create();
 
-		ROS_ASSERT_MSG(
-			mrpt::system::fileExists(nav_engine_parameters_file),
-			"Planner params file not found: '%s'",
-			nav_engine_parameters_file.c_str());
+		// Enable time profiler:
+		planner->profiler_().enable(true);
 
-		m_nav_engine->config_.loadFrom(
-			mrpt::containers::yaml::FromFile(nav_engine_parameters_file));
-	}
+		{
+			// cost map:
+			std::string costmap_parafile_;
 
-	m_nav_engine->initialize();
+			localn_.param(
+				"global_costmap_parameters", costmap_parafile_,
+				costmap_parafile_);
 
-	ROS_INFO_STREAM("TPS_Astar Navigator intialized");
+			ROS_ASSERT_MSG(
+				mrpt::system::fileExists(costmap_parafile_),
+				"costmap params file not found: '%s'",
+				costmap_parafile_.c_str());
 
-	if (m_path_plan_done)
-	{
-		navigateTo(m_nav_goal);
-	}
-	m_nav_engine_init = true;
-}
+			const auto costMapParams =
+				mpp::CostEvaluatorCostMap::Parameters::FromYAML(
+					mrpt::containers::yaml::FromFile(costmap_parafile_));
 
-void TPS_Astar_Nav_Node::navigateTo(const mrpt::math::TPose2D& target)
-{
-	// mpp::Waypoint waypoint(target.x, target.y, 1.0, false, 0.0, 0.0);
+			auto costmap = mpp::CostEvaluatorCostMap::FromStaticPointObstacles(
+				*grid_map_, costMapParams, planner_input.stateStart.pose);
 
-	// ROS_INFO_STREAM("[TPS_Astar_Nav_Node] navigateTo"<<waypoint.getAsText());
+			RCLCPP_INFO_STREAM(
+				this->get_logger(),
+				"******************************* Costmap file read");
 
-	// m_waypts.waypoints.push_back(waypoint);
+			planner->costEvaluators_.push_back(costmap);
+		}
 
-	m_nav_engine->request_navigation(m_waypts);
-}
+		{
+			std::string planner_parameters_file;
+			localn_.param(
+				"planner_parameters", planner_parameters_file,
+				planner_parameters_file);
 
-bool TPS_Astar_Nav_Node::do_path_plan(
-	mrpt::math::TPose2D& start, mrpt::math::TPose2D& goal)
-{
-	ROS_INFO_STREAM("Do path planning");
-	auto obs = mpp::ObstacleSource::FromStaticPointcloud(m_grid_map);
-	mpp::PlannerInput planner_input;
+			ROS_ASSERT_MSG(
+				mrpt::system::fileExists(planner_parameters_file),
+				"Planner params file not found: '%s'",
+				planner_parameters_file.c_str());
 
-	planner_input.stateStart.pose = start;
-	planner_input.stateStart.vel = m_start_vel;
-	planner_input.stateGoal.state = goal;
-	planner_input.obstacles.emplace_back(obs);
-	auto bbox = obs->obstacles()->boundingBox();
+			const auto c =
+				mrpt::containers::yaml::FromFile(planner_parameters_file);
+			planner->params_froyaml_(c);
+			std::cout << "Loaded these planner params:\n";
+			planner->params_as_yaml().printAsYAML();
+		}
 
-	{
-		const auto bboxMargin = mrpt::math::TPoint3Df(2.0, 2.0, .0);
-		const auto ptStart = mrpt::math::TPoint3Df(
-			planner_input.stateStart.pose.x, planner_input.stateStart.pose.y,
-			0);
-		const auto ptGoal = mrpt::math::TPoint3Df(
-			planner_input.stateGoal.asSE2KinState().pose.x,
-			planner_input.stateGoal.asSE2KinState().pose.y, 0);
-		bbox.updateWithPoint(ptStart - bboxMargin);
-		bbox.updateWithPoint(ptStart + bboxMargin);
-		bbox.updateWithPoint(ptGoal - bboxMargin);
-		bbox.updateWithPoint(ptGoal + bboxMargin);
-	}
+		// Insert custom progress callback:
+		planner->progressCallback_ = [](const mpp::ProgressCallbackData& pcd) {
+			std::cout << "[progressCallback] bestCostFromStart: "
+					  << pcd.bestCostFromStart
+					  << " bestCostToGoal: " << pcd.bestCostToGoal
+					  << " bestPathLength: " << pcd.bestPath.size()
+					  << std::endl;
+		};
 
-	planner_input.worldBboxMax = {bbox.max.x, bbox.max.y, M_PI};
-	planner_input.worldBboxMin = {bbox.min.x, bbox.min.y, -M_PI};
+		{
+			std::string ptg_ini_file;
+			localn_.param("ptg_ini", ptg_ini_file, ptg_ini_file);
 
-	std::cout << "Start state: " << planner_input.stateStart.asString() << "\n";
-	std::cout << "Goal state : " << planner_input.stateGoal.asString() << "\n";
-	std::cout << "Obstacles  : " << obs->obstacles()->size() << " points\n";
-	std::cout << "World bbox : " << planner_input.worldBboxMin.asString()
-			  << " - " << planner_input.worldBboxMax.asString() << "\n";
+			ROS_ASSERT_MSG(
+				mrpt::system::fileExists(ptg_ini_file),
+				"PTG ini file not found: '%s'", ptg_ini_file.c_str());
+			mrpt::config::CConfigFile cfg(ptg_ini_file);
+			planner_input.ptgs.initFromConfigFile(cfg, "SelfDriving");
 
-	mpp::Planner::Ptr planner = mpp::TPS_Astar::Create();
+			RCLCPP_INFO_STREAM(this->get_logger(), "PTG ini");
+		}
 
-	// Enable time profiler:
-	planner->profiler_().enable(true);
+		const mpp::PlannerOutput plan = planner->plan(planner_input);
 
-	{
-		// cost map:
-		std::string costmap_param_file;
+		std::cout << "\nDone.\n";
+		std::cout << "Success: " << (plan.success ? "YES" : "NO") << "\n";
+		std::cout << "Plan has " << plan.motionTree.edges_to_children.size()
+				  << " overall edges, " << plan.motionTree.nodes().size()
+				  << " nodes\n";
 
-		m_localn.param(
-			"global_costmap_parameters", costmap_param_file,
-			costmap_param_file);
+		if (!plan.bestNodeId.has_value())
+		{
+			std::cerr << "No bestNodeId in plan output.\n";
+			return false;
+		}
 
-		ROS_ASSERT_MSG(
-			mrpt::system::fileExists(costmap_param_file),
-			"costmap params file not found: '%s'", costmap_param_file.c_str());
+		if (plan.success)
+		{
+			activePlanOutput_ = plan;
+			costEvaluators_ = planner->costEvaluators_;
+		}
 
-		const auto costMapParams =
-			mpp::CostEvaluatorCostMap::Parameters::FromYAML(
-				mrpt::containers::yaml::FromFile(costmap_param_file));
-
-		auto costmap = mpp::CostEvaluatorCostMap::FromStaticPointObstacles(
-			*m_grid_map, costMapParams, planner_input.stateStart.pose);
-
-		ROS_INFO_STREAM("******************************* Costmap file read");
-
-		planner->costEvaluators_.push_back(costmap);
-	}
-
-	{
-		std::string planner_parameters_file;
-		m_localn.param(
-			"planner_parameters", planner_parameters_file,
-			planner_parameters_file);
-
-		ROS_ASSERT_MSG(
-			mrpt::system::fileExists(planner_parameters_file),
-			"Planner params file not found: '%s'",
-			planner_parameters_file.c_str());
-
-		const auto c =
-			mrpt::containers::yaml::FromFile(planner_parameters_file);
-		planner->params_from_yaml(c);
-		std::cout << "Loaded these planner params:\n";
-		planner->params_as_yaml().printAsYAML();
-	}
-
-	// Insert custom progress callback:
-	planner->progressCallback_ = [](const mpp::ProgressCallbackData& pcd) {
-		std::cout << "[progressCallback] bestCostFromStart: "
-				  << pcd.bestCostFromStart
-				  << " bestCostToGoal: " << pcd.bestCostToGoal
-				  << " bestPathLength: " << pcd.bestPath.size() << std::endl;
-	};
-
-	{
-		std::string ptg_ini_file;
-		m_localn.param("ptg_ini", ptg_ini_file, ptg_ini_file);
-
-		ROS_ASSERT_MSG(
-			mrpt::system::fileExists(ptg_ini_file),
-			"PTG ini file not found: '%s'", ptg_ini_file.c_str());
-		mrpt::config::CConfigFile cfg(ptg_ini_file);
-		planner_input.ptgs.initFromConfigFile(cfg, "SelfDriving");
-
-		ROS_INFO_STREAM("PTG ini");
-	}
-
-	const mpp::PlannerOutput plan = planner->plan(planner_input);
-
-	std::cout << "\nDone.\n";
-	std::cout << "Success: " << (plan.success ? "YES" : "NO") << "\n";
-	std::cout << "Plan has " << plan.motionTree.edges_to_children.size()
-			  << " overall edges, " << plan.motionTree.nodes().size()
-			  << " nodes\n";
-
-	if (!plan.bestNodeId.has_value())
-	{
-		std::cerr << "No bestNodeId in plan output.\n";
-		return false;
-	}
-
-	if (plan.success)
-	{
-		m_activePlanOutput = plan;
-		m_costEvaluators = planner->costEvaluators_;
-	}
-
-	// backtrack:
-	auto [plannedPath, pathEdges] =
-		plan.motionTree.backtrack_path(*plan.bestNodeId);
+		// backtrack:
+		auto [plannedPath, pathEdges] =
+			plan.motionTree.backtrack_path(*plan.bestNodeId);
 
 #if 0  // JLBC: disabled to check if this is causing troubles
     mpp::refine_trajectory(plannedPath, pathEdges, planner_input.ptgs);
 #endif
 
-	// Show plan in a GUI for debugging
-	if (plan.success)  // && m_gui_mrpt
-	{
-		mpp::VisualizationOptions vizOpts;
+		// Show plan in a GUI for debugging
+		if (plan.success)  // && gui_mrpt_
+		{
+			mpp::VisualizationOptions vizOpts;
 
-		vizOpts.renderOptions.highlight_path_to_node_id = plan.bestNodeId;
-		vizOpts.renderOptions.color_normal_edge = {0xb0b0b0, 0x20};	 // RGBA
-		vizOpts.renderOptions.width_normal_edge =
-			0;	// hide all edges except best path
-		vizOpts.gui_modal = false;	// leave GUI open in a background thread
+			vizOpts.renderOptions.highlight_path_to_node_id = plan.bestNodeId;
+			vizOpts.renderOptions.color_normal_edge = {0xb0b0b0, 0x20};	 // RGBA
+			vizOpts.renderOptions.width_normal_edge =
+				0;	// hide all edges except best path
+			vizOpts.gui_modal = false;	// leave GUI open in a background thread
 
-		mpp::viz_nav_plan(plan, vizOpts, planner->costEvaluators_);
-	}
+			mpp::viz_nav_plan(plan, vizOpts, planner->costEvaluators_);
+		}
 
-	// Interpolate so we have many waypoints:
-	mpp::trajectory_t interpPath;
-	if (plan.success)
-	{
-		const double interpPeriod = 0.25;  // [s]
+		// Interpolate so we have many waypoints:
+		mpp::trajectory_t interpPath;
+		if (plan.success)
+		{
+			const double interpPeriod = 0.25;  // [s]
 
-		interpPath = mpp::plan_to_trajectory(
-			pathEdges, planner_input.ptgs, interpPeriod);
+			interpPath = mpp::plan_to_trajectory(
+				pathEdges, planner_input.ptgs, interpPeriod);
 
-		// Note: trajectory is in local frame of reference
-		// of plan.originalInput.stateStart.pose
-		// so, correct that relative pose so we keep everything in global frame:
-		const auto& startPose = plan.originalInput.stateStart.pose;
-		for (auto& kv : interpPath)
-			kv.second.state.pose = startPose + kv.second.state.pose;
-	}
+			// Note: trajectory is in local frame of reference
+			// of plan.originalInput.stateStart.pose
+			// so, correct that relative pose so we keep everything in global
+			// frame:
+			const auto& startPose = plan.originalInput.stateStart.pose;
+			for (auto& kv : interpPath)
+				kv.second.state.pose = startPose + kv.second.state.pose;
+		}
 
-	m_wps_msg = mrpt_msgs::WaypointSequence();
-	if (plan.success)
-	{
+		wps_msg_ = mrpt_msgs::WaypointSequence();
+		if (plan.success)
+		{
 #if 0
         size_t N = pathEdges.size();
         for(const auto& edge: pathEdges)
@@ -1037,140 +931,374 @@ bool TPS_Astar_Nav_Node::do_path_plan(
             wp_msg.target.orientation.w = 0.0;
             wp_msg.allow_skip = true;
 
-            m_wps_msg.waypoints.push_back(wp_msg);
+            wps_msg_.waypoints.push_back(wp_msg);
         }
 #else
-		for (auto& kv : interpPath)
-		{
-			const auto& goal_state = kv.second.state;
-			std::cout << "Waypoint: x = " << goal_state.pose.x
-					  << ", y= " << goal_state.pose.y << std::endl;
-			auto wp_msg = mrpt_msgs::Waypoint();
-			wp_msg.target.position.x = goal_state.pose.x;
-			wp_msg.target.position.y = goal_state.pose.y;
-			wp_msg.target.position.z = 0.0;
-			wp_msg.target.orientation.x = 0.0;
-			wp_msg.target.orientation.y = 0.0;
-			wp_msg.target.orientation.z = 0.0;
-			wp_msg.target.orientation.w = 0.0;
+			for (auto& kv : interpPath)
+			{
+				const auto& goal_state = kv.second.state;
+				std::cout << "Waypoint: x = " << goal_state.pose.x
+						  << ", y= " << goal_state.pose.y << std::endl;
+				auto wp_msg = mrpt_msgs::Waypoint();
+				wp_msg.target.position.x = goal_state.pose.x;
+				wp_msg.target.position.y = goal_state.pose.y;
+				wp_msg.target.position.z = 0.0;
+				wp_msg.target.orientation.x = 0.0;
+				wp_msg.target.orientation.y = 0.0;
+				wp_msg.target.orientation.z = 0.0;
+				wp_msg.target.orientation.w = 0.0;
 
-			wp_msg.allowed_distance = 1.5;	// TODO: Make a param
-			wp_msg.allow_skip = true;
+				wp_msg.allowed_distance = 1.5;	// TODO: Make a param
+				wp_msg.allow_skip = true;
 
-			m_wps_msg.waypoints.push_back(wp_msg);
-		}
+				wps_msg_.waypoints.push_back(wp_msg);
+			}
 #endif
 
-		auto wp_msg = mrpt_msgs::Waypoint();
-		wp_msg.target.position.x = m_nav_goal.x;
-		wp_msg.target.position.y = m_nav_goal.y;
-		wp_msg.target.position.z = 0.0;
-		tf2::Quaternion quaternion;
-		quaternion.setRPY(0.0, 0.0, m_nav_goal.phi);
-		wp_msg.target.orientation.x = quaternion.x();
-		wp_msg.target.orientation.y = quaternion.y();
-		wp_msg.target.orientation.z = quaternion.z();
-		wp_msg.target.orientation.w = quaternion.w();
+			auto wp_msg = mrpt_msgs::Waypoint();
+			wp_msg.target.position.x = nav_goal_.x;
+			wp_msg.target.position.y = nav_goal_.y;
+			wp_msg.target.position.z = 0.0;
+			tf2::Quaternion quaternion;
+			quaternion.setRPY(0.0, 0.0, nav_goal_.phi);
+			wp_msg.target.orientation.x = quaternion.x();
+			wp_msg.target.orientation.y = quaternion.y();
+			wp_msg.target.orientation.z = quaternion.z();
+			wp_msg.target.orientation.w = quaternion.w();
 
-		wp_msg.allowed_distance = 0.4;	// TODO: Make a param
-		wp_msg.allow_skip = false;
+			wp_msg.allowed_distance = 0.4;	// TODO: Make a param
+			wp_msg.allow_skip = false;
 
-		m_wps_msg.waypoints.push_back(wp_msg);
+			wps_msg_.waypoints.push_back(wp_msg);
+		}
+		return plan.success;
 	}
-	return plan.success;
-}
 
-mpp::VehicleLocalizationState TPS_Astar_Nav_Node::get_localization_state()
-{
-	std::lock_guard<std::mutex> csl(m_localization_cs);
-	return m_localization_pose;
-}
-mpp::VehicleOdometryState TPS_Astar_Nav_Node::get_odometry_state()
-{
-	std::lock_guard<std::mutex> csl(m_odometry_cs);
-	return m_odometry;
-}
-mrpt::maps::CPointsMap::Ptr TPS_Astar_Nav_Node::get_current_obstacles()
-{
-	std::lock_guard<std::mutex> csl(m_obstacles_cs);
-	return m_obstacle_src;
-}
-
-void TPS_Astar_Nav_Node::onDoNavigation(const ros::TimerEvent&)
-{
-	if (m_path_plan_done)
+	mpp::VehicleLocalizationState TPS_Astar_Nav_Node::get_localization_state()
 	{
-		publish_waypoint_sequence(m_wps_msg);
+		std::lock_guard<std::mutex> csl(localization_cs_);
+		return localization_pose_;
+	}
+	mpp::VehicleOdometryState TPS_Astar_Nav_Node::get_odometry_state()
+	{
+		std::lock_guard<std::mutex> csl(odometry_cs_);
+		return odometry_;
+	}
+	mrpt::maps::CPointsMap::Ptr TPS_Astar_Nav_Node::get_current_obstacles()
+	{
+		std::lock_guard<std::mutex> csl(obstacles_cs_);
+		return obstacle_src_;
 	}
 
-	// if(m_obstacle_src && m_localization_pose.valid)
-	// {
-	//     std::call_once(m_init_nav_flag,[this]()
-	//     {this->initializeNavigator();});
-	// }
+	void TPS_Astar_Nav_Node::onDoNavigation(const ros::TimerEvent&)
+	{
+		if (path_plan_done_)
+		{
+			publish_waypoint_sequence(wps_msg_);
+		}
 
-	// if(m_nav_engine_init)
-	// {
-	//     try
-	//     {
-	// 	    m_nav_engine->navigation_step();
-	//     }
-	//     catch (const std::exception& e)
-	//     {
-	// 	    std::cerr << "[TPS_Astar_Nav_Node] Exception:" << e.what() <<
-	// std::endl; 	    return;
-	//     }
+		// if(obstacle_src_ && localization_pose_.valid)
+		// {
+		//     std::call_once(init_nav_flag_,[this]()
+		//     {this->initializeNavigator();});
+		// }
 
-	// }
-}
+		// if(nav_engine_init_)
+		// {
+		//     try
+		//     {
+		// 	    nav_engine_->navigation_step();
+		//     }
+		//     catch (const std::exception& e)
+		//     {
+		// 	    std::cerr << "[TPS_Astar_Nav_Node] Exception:" << e.what() <<
+		// std::endl; 	    return;
+		//     }
 
-void TPS_Astar_Nav_Node::checkEnqueuedMotionCmds(const ros::TimerEvent&)
-{
-	// if(m_odometry.valid) // && m_jackal_robot->enqeued_motion_pending())
-	// {
-	//     auto& odo = m_odometry.odometry;
-	//     ROS_INFO_STREAM("Odo: "<<  odo.asString());
-	//     auto& pose = m_localization_pose.pose;
-	//     ROS_INFO_STREAM("Pose: "<< pose.asString());
-	//     ROS_INFO_STREAM("Trigger Pose "<< m_motion_trigger_pose.asString());
-	//     if(std::abs(odo.x - m_motion_trigger_pose.x) <
-	//     m_motion_trigger_tolerance.x &&
-	//        std::abs(odo.y - m_motion_trigger_pose.y) <
-	//        m_motion_trigger_tolerance.y && std::abs(odo.phi -
-	//        m_motion_trigger_pose.phi) < m_motion_trigger_tolerance.phi)
-	//     {
-	//         std::lock_guard<std::mutex>
-	//         csl(m_jackal_robot->m_enqueued_motion_mutex);
-	//         //ROS_INFO_STREAM("Enqueued motion fired");
-	//         on_enqueued_motion_fired();
-	//         m_jackal_robot->m_enqueued_motion_trigger_odom = m_odometry;
-	//         ROS_INFO_STREAM("calling change speeds upon pend action fired");
-	//         //m_jackal_robot->changeSpeeds(*m_next_cmd);
-	//         ROS_INFO_STREAM("Change speeds complete");
-	//         m_NOP_cmd = m_next_cmd;
-	//         ROS_INFO_STREAM("Next NOP command set");
-	//     }
-	//     else
-	//     {
-	//         ROS_INFO_STREAM("[TPS_Astar_Nav_Node] Enqueued motion timer =
-	//         "<<m_enq_motion_timer); m_enq_motion_timer +=
-	//         m_enq_cmd_check_time; if(m_jackal_robot->enqeued_motion_pending()
-	//         &&
-	//           m_enq_motion_timer > m_motion_trigger_timeout)
-	//         {
-	//             std::lock_guard<std::mutex>
-	//             csl(m_jackal_robot->m_enqueued_motion_mutex);
-	//             on_enqueued_motion_timeout();
-	//             m_enq_motion_timer = 0.0;
-	//         }
-	//     }
-	// }
-}
+		// }
+	}
 
-int main(int argc, char** argv)
-{
-	TPS_Astar_Nav_Node the_node(argc, argv);
-	// the_node.do_path_plan();
-	ros::spin();
-	return 0;
-}
+	void TPS_Astar_Nav_Node::checkEnqueuedMotionCmds(const ros::TimerEvent&)
+	{
+		// if(odometry_.valid) // && jackal_robot_->enqeued_motion_pending())
+		// {
+		//     auto& odo = odometry_.odometry;
+		//     RCLCPP_INFO_STREAM(this->get_logger(), "Odo: "<< odo.asString());
+		//     auto& pose = localization_pose_.pose;
+		//     RCLCPP_INFO_STREAM(this->get_logger(), "Pose: "<<
+		//     pose.asString()); RCLCPP_INFO_STREAM(this->get_logger(), "Trigger
+		//     Pose "<< motion_trigger_pose_.asString()); if(std::abs(odo.x -
+		//     motion_trigger_pose_.x) < motion_trigger_tolerance_.x &&
+		//        std::abs(odo.y - motion_trigger_pose_.y) <
+		//        motion_trigger_tolerance_.y && std::abs(odo.phi -
+		//        motion_trigger_pose_.phi) < motion_trigger_tolerance_.phi)
+		//     {
+		//         std::lock_guard<std::mutex>
+		//         csl(jackal_robot_->enqueued_motion_mutex_);
+		//         //RCLCPP_INFO_STREAM(this->get_logger(), "Enqueued motion
+		//         fired"); on_enqueued_motion_fired();
+		//         jackal_robot_->enqueued_motion_trigger_odom_ = odometry_;
+		//         RCLCPP_INFO_STREAM(this->get_logger(), "calling change speeds
+		//         upon pend action fired");
+		//         //jackal_robot_->changeSpeeds(*next_cmd_);
+		//         RCLCPP_INFO_STREAM(this->get_logger(), "Change speeds
+		//         complete"); NOP_cmd_ = next_cmd_;
+		//         RCLCPP_INFO_STREAM(this->get_logger(), "Next NOP command
+		//         set");
+		//     }
+		//     else
+		//     {
+		//         RCLCPP_INFO_STREAM(this->get_logger(), "[TPS_Astar_Nav_Node]
+		//         Enqueued motion timer =
+		//         "<<enq_motion_timer_); enq_motion_timer_ +=
+		//         enq_cmd_check_time_;
+		//         if(jackal_robot_->enqeued_motion_pending()
+		//         &&
+		//           enq_motion_timer_ > motion_trigger_timeout_)
+		//         {
+		//             std::lock_guard<std::mutex>
+		//             csl(jackal_robot_->enqueued_motion_mutex_);
+		//             on_enqueued_motion_timeout();
+		//             enq_motion_timer_ = 0.0;
+		//         }
+		//     }
+		// }
+	}
+
+	// --------------------------------------
+
+	RobotInterface::RobotInterface(TPS_Astar_Nav_Node & parent)
+		: parent_(parent),
+		  enqueued_motion_pending_(false),
+		  enqueued_motion_timeout_(false)
+	{
+		parent_.on_enqueued_motion_fired = [this]() {
+			RCLCPP_INFO_STREAM(
+				this->get_logger(), "[Jackal Robot] Enqueud motion fired");
+			changeSpeeds(*parent_.next_cmd_);
+			RCLCPP_INFO_STREAM(
+				this->get_logger(), "[Jackal Robot] change speeds");
+			{
+				// std::lock_guard<std::mutex> csl(enqueued_motion_mutex_);
+				enqueued_motion_pending_ = false;
+				enqueued_motion_timeout_ = false;
+			}
+			RCLCPP_INFO_STREAM(this->get_logger(), "Mutex Release");
+			return;
+		};
+
+		parent_.on_enqueued_motion_timeout = [this]() {
+			RCLCPP_INFO_STREAM(
+				this->get_logger(), "[Jackal Robot] Enqueud motion timedout");
+			// std::lock_guard<std::mutex> csl(enqueued_motion_mutex_);
+			enqueued_motion_pending_ = false;
+			enqueued_motion_timeout_ = true;
+			return;
+		};
+	}
+
+	mpp::VehicleLocalizationState RobotInterface::get_localization()
+	{
+		return parent_.get_localization_state();
+	}
+
+	mpp::VehicleOdometryState RobotInterface::get_odometry()
+	{
+		return parent_.get_odometry_state();
+	}
+
+	bool RobotInterface::motion_execute(
+		const std::optional<mrpt::kinematics::CVehicleVelCmd::Ptr>& immediate,
+		const std::optional<mpp::EnqueuedMotionCmd>& next)
+	{
+		if (immediate.has_value())
+		{
+			std::lock_guard<std::mutex> csl(enqueued_motion_mutex_);
+			RCLCPP_INFO_STREAM(
+				this->get_logger(), "[Jackal_Robot] Motion command received");
+			mrpt::kinematics::CVehicleVelCmd& vel_cmd = *(immediate.value());
+			changeSpeeds(vel_cmd);
+			parent_.NOP_cmd_ = immediate.value();
+			enqueued_motion_pending_ = false;
+			enqueued_motion_timeout_ = false;
+		}
+
+		if (next.has_value())
+		{
+			// RCLCPP_INFO_STREAM(this->get_logger(), "[Jackal_Robot] Enqueued
+			// command received");
+			std::lock_guard<std::mutex> csl(enqueued_motion_mutex_);
+			auto& enq_cmd = next.value();
+			enqueued_motion_pending_ = true;
+			enqueued_motion_timeout_ = false;
+			parent_.motion_trigger_pose_ = enq_cmd.nextCondition.position;
+			parent_.motion_trigger_tolerance_ = enq_cmd.nextCondition.tolerance;
+			parent_.motion_trigger_timeout_ = enq_cmd.nextCondition.timeout;
+			parent_.next_cmd_ = next->nextCmd;
+			parent_.enq_motion_timer_ = 0.0;
+			RCLCPP_INFO_STREAM(
+				this->get_logger(),
+				"[Jackal_Robot] Next cmd timeout = "
+					<< parent_.motion_trigger_timeout_
+					<< " Enq_Motion_timer = " << parent_.enq_motion_timer_);
+		}
+
+		if (!immediate.has_value() && !next.has_value())
+		{
+			std::lock_guard<std::mutex> csl(enqueued_motion_mutex_);
+			RCLCPP_INFO_STREAM(
+				this->get_logger(), "[Jackal_Robot] NOP command received");
+			if (parent_.NOP_cmd_)
+			{
+				changeSpeeds(*parent_.NOP_cmd_);
+				return true;
+			}
+		}
+
+		return true;
+	}
+
+	bool RobotInterface::supports_enqeued_motions() const { return true; }
+
+	bool RobotInterface::enqeued_motion_pending() const
+	{
+		auto lck = mrpt::lockHelper(enqueued_motion_mutex_);
+		// RCLCPP_INFO_STREAM(this->get_logger(), "Enqueued motion command
+		// pending
+		// ?"<< 				(enqueued_motion_pending_?"True":"False"));
+		return enqueued_motion_pending_;
+	}
+
+	bool RobotInterface::enqeued_motion_timed_out() const
+	{
+		auto lck = mrpt::lockHelper(enqueued_motion_mutex_);
+		// RCLCPP_INFO_STREAM(this->get_logger(), "Enqueued motion command timed
+		// out
+		// ?"<< 				(enqueued_motion_timeout_?"True":"False"));
+		return enqueued_motion_timeout_;
+	}
+
+	std::optional<mpp::VehicleOdometryState>
+		RobotInterface::enqued_motion_last_odowhen_triggered_() const
+	{
+		auto lck = mrpt::lockHelper(enqueued_motion_mutex_);
+		return enqueued_motion_trigger_odom_;
+	}
+
+	bool RobotInterface::changeSpeeds(
+		const mrpt::kinematics::CVehicleVelCmd& vel_cmd)
+	{
+		// RCLCPP_INFO_STREAM(this->get_logger(), "[Jackal_Robot] change
+		// speeds");
+		using namespace mrpt::kinematics;
+		const CVehicleVelCmd_DiffDriven* vel_cmd_diff_driven =
+			dynamic_cast<const CVehicleVelCmd_DiffDriven*>(&vel_cmd);
+		ASSERT_(vel_cmd_diff_driven);
+
+		const double v = vel_cmd_diff_driven->lin_vel;
+		const double w = vel_cmd_diff_driven->ang_vel;
+		RCLCPP_INFO_STREAM(
+			this->get_logger(),
+			"changeSpeeds: v= " << v << "m/s and w=" << w * 180.0f / PI_
+								<< "deg/s");
+		geometry_msgs::Twist cmd;
+		cmd.linear.x = v;
+		cmd.angular.z = w;
+		parent_.publish_cmd_vel(cmd);
+		return true;
+	}
+
+	void RobotInterface::stop(const mpp::STOP_TYPE stopType)
+	{
+		if (stopType == mpp::STOP_TYPE::EMERGENCY)
+		{
+			const auto cmd = getEmergencyStopCmd();
+			enqueued_motion_pending_ = false;
+			enqueued_motion_timeout_ = false;
+			changeSpeeds(*cmd);
+		}
+		else
+		{
+			const auto cmd = getStopCmd();
+			enqueued_motion_pending_ = false;
+			enqueued_motion_timeout_ = false;
+			changeSpeeds(*cmd);
+		}
+	}
+
+	mrpt::kinematics::CVehicleVelCmd::Ptr RobotInterface::getStopCmd()
+	{
+		mrpt::kinematics::CVehicleVelCmd::Ptr vel =
+			mrpt::kinematics::CVehicleVelCmd::Ptr(
+				new mrpt::kinematics::CVehicleVelCmd_DiffDriven);
+		vel->setToStop();
+		return vel;
+	}
+
+	mrpt::kinematics::CVehicleVelCmd::Ptr RobotInterface::getEmergencyStopCmd()
+	{
+		return getStopCmd();
+	}
+
+	void RobotInterface::stop_watchdog()
+	{
+		RCLCPP_INFO_STREAM(
+			parent_.get_logger(), "TPS_Astar_Navigator watchdog timer stopped");
+	}
+
+	void RobotInterface::start_watchdog(const size_t periodMilliseconds)
+	{
+		RCLCPP_INFO_STREAM(
+			parent_.get_logger(), "TPS_Astar_Navigator start watchdog timer");
+	}
+
+	void RobotInterface::on_nav_end_due_to_error()
+	{
+		RCLCPP_INFO_STREAM(
+			parent_.get_logger(), "[TPS_Astar_Navigator] Nav End due to error");
+		stop(mpp::STOP_TYPE::EMERGENCY);
+	}
+
+	void RobotInterface::on_nav_start()
+	{
+		RCLCPP_INFO_STREAM(
+			parent_.get_logger(), "[TPS_Astar_Navigator] Nav starting to Goal ="
+									  << parent_.nav_goal_.asString());
+	}
+
+	void RobotInterface::on_nav_end()
+	{
+		RCLCPP_INFO_STREAM(
+			parent_.get_logger(), "[TPS_Astar_Navigator] Nav End");
+		stop(mpp::STOP_TYPE::REGULAR);
+	}
+
+	void RobotInterface::on_path_seems_blocked()
+	{
+		RCLCPP_INFO_STREAM(
+			parent_.get_logger(), "[TPS_Astar_Navigator] Path Seems blocked");
+		stop(mpp::STOP_TYPE::REGULAR);
+	}
+
+	void RobotInterface::on_apparent_collision()
+	{
+		RCLCPP_INFO_STREAM(
+			parent_.get_logger(), "[TPS_Astar_Navigator] Apparent collision");
+		// stop(mpp::STOP_TYPE::REGULAR);
+	}
+
+	mrpt::maps::CPointsMap::Ptr RobotInterface::obstacles(
+		mrpt::system::TTimeStamp t)
+	{
+		return parent_.get_current_obstacles();
+	}
+
+	// ------------------------------------
+	int main(int argc, char** argv)
+	{
+		rclcpp::init(argc, argv);
+		auto node = std::make_shared<TPS_Astar_Nav_Node>();
+		rclcpp::spin(node);
+		rclcpp::shutdown();
+		return 0;
+	}
