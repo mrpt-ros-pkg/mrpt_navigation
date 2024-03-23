@@ -385,12 +385,9 @@ void PFLocalizationNode::callbackBeacon(
 		updateSensorPose(_msg.header.frame_id);
 	}
 	else if (state_ != IDLE)  // updating filter; we must be moving or
-	// update_while_stopped set to true
 	{
-		if (param()->update_sensor_pose)
-		{
-			updateSensorPose(_msg.header.frame_id);
-		}
+		updateSensorPose(_msg.header.frame_id);
+
 		// mrpt::poses::CPose3D pose = beacon_poses_[_msg.header.frame_id];
 		// MRPT_LOG_INFO_FMT("BEACON POSE %4.3f, %4.3f, %4.3f, %4.3f, %4.3f,
 		// %4.3f", pose.x(), pose.y(), pose.z(), pose.roll(), pose.pitch(),
@@ -810,4 +807,5 @@ void PFLocalizationNode::NodeParameters::loadFrom(
 
 	MCP_LOAD_OPT(cfg, topic_sensors_2d_scan);
 	MCP_LOAD_OPT(cfg, topic_sensors_point_clouds);
+	MCP_LOAD_OPT(cfg, topic_gnns);
 }

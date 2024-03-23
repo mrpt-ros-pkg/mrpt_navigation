@@ -18,6 +18,7 @@
 #include <mrpt/opengl/CPointCloud.h>
 #include <mrpt/ros2bridge/map.h>
 #include <mrpt/system/filesystem.h>
+#include <mrpt/system/hyperlink.h>
 #include <mrpt_pf_localization/mrpt_pf_localization_core.h>
 
 #include <chrono>
@@ -241,6 +242,7 @@ void PFLocalizationCore::Parameters::load_from(
 
 	//
 	MCP_LOAD_OPT(params, initial_particle_count);
+	MCP_LOAD_OPT(params, initialize_from_gnns);
 
 	// The map is not loaded here, but from independent methods in the parent
 	// class.
@@ -257,6 +259,10 @@ void PFLocalizationCore::on_observation(const mrpt::obs::CObservation::Ptr& obs)
 
 	auto lck = mrpt::lockHelper(pendingObsMtx_);
 	state_.pendingObs.push_back(obs);
+
+	if (auto gps = std::dynamic_pointer_cast<mrpt::obs::CObservationGPS>(obs);
+		gps)
+		state_.last_gnns = gps;
 }
 
 // The main API call: executes one PF step, taking into account all the
@@ -293,8 +299,12 @@ void PFLocalizationCore::onStateUninitialized()
 {
 	using namespace std::string_literals;
 
+	auto lck = mrpt::lockHelper(pendingObsMtx_);  // to protect state_.last_gnns
+
 	// Check if we have everything we need to get going:
-	if (params_.initial_pose.has_value() && params_.metric_map)
+	if ((params_.initial_pose.has_value() ||
+		 (params_.initialize_from_gnns && state_.last_gnns)) &&
+		params_.metric_map)
 	{
 		// Move:
 		state_.fsm_state = State::TO_BE_INITIALIZED;
@@ -307,14 +317,24 @@ void PFLocalizationCore::onStateUninitialized()
 
 	// We don't have parameters / map yet. Do nothing:
 	std::string excuses;
-	if (!params_.initial_pose) excuses += "No initial pose. ";
 	if (!params_.metric_map) excuses += "No reference metric map. ";
+	if (params_.initialize_from_gnns)
+	{
+		if (!state_.last_gnns) excuses += "No GNNS observation received yet. ";
+	}
+	else
+	{
+		if (!params_.initial_pose) excuses += "No initial pose. ";
+	}
 
 	MRPT_LOG_THROTTLE_WARN(
 		3.0,
 		"Doing nothing, state is UNINITIALIZED yet. "
 		"Excuses: "s +
-			excuses + "Refer to package documentation."s);
+			excuses + "Refer to "s +
+			mrpt::system::hyperlink(
+				"package documentation.",
+				"https://github.com/mrpt-ros-pkg/mrpt_navigation", true));
 }
 
 void PFLocalizationCore::onStateToBeInitialized()
@@ -350,11 +370,37 @@ void PFLocalizationCore::onStateToBeInitialized()
 		_.pdf2d.emplace();
 	}
 
-	// Get desired initial pose uncertainty:
-	MRPT_LOG_INFO_STREAM(
-		"[onStateToBeInitialized] Initial pose: " << *params_.initial_pose);
+	// Get desired initial pose uncertainty, either from
+	// direct pose, or from GNNS:
+	const auto [pCov, pMean] =
+		[&]() -> std::tuple<mrpt::math::CMatrixDouble66, mrpt::poses::CPose3D> {
+		if (!params_.initialize_from_gnns)
+		{
+			MRPT_LOG_INFO_STREAM(
+				"[onStateToBeInitialized] Initial pose: "
+				<< *params_.initial_pose);
 
-	const auto [pCov, pMean] = params_.initial_pose->getCovarianceAndMean();
+			const auto [pCov, pMean] =
+				params_.initial_pose->getCovarianceAndMean();
+			return {pCov, pMean};
+		}
+		else
+		{
+			auto lck = mrpt::lockHelper(
+				pendingObsMtx_);  // to protect state_.last_gnns
+			ASSERT_(state_.last_gnns);
+			auto gps = state_.last_gnns;
+			lck.unlock();
+
+			// ASSERTMSG_(state_.metric_map.georeferenced,"The provided metric
+			// map needs to be georeferenced for 'initialize_from_gnns' =
+			// 'true");
+
+			MRPT_TODO("todo");
+
+			return {};
+		}
+	}();
 
 	const double stdX = std::sqrt(pCov(0, 0));
 	const double stdY = std::sqrt(pCov(1, 1));

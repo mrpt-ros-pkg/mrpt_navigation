@@ -17,6 +17,7 @@
 #include <mrpt/maps/CPointsMap.h>  // TLikelihoodOptions
 #include <mrpt/obs/CActionRobotMovement2D.h>
 #include <mrpt/obs/CActionRobotMovement3D.h>
+#include <mrpt/obs/CObservationGPS.h>
 #include <mrpt/obs/CObservationOdometry.h>
 #include <mrpt/obs/CSensoryFrame.h>
 #include <mrpt/poses/CPose2D.h>
@@ -118,6 +119,12 @@ class PFLocalizationCore : public mrpt::system::COutputLogger
 		 */
 		unsigned int initial_particle_count = 2000;
 
+		/** If true, the particles will be initialized according to the first
+		 *  incomming GNNS observation, once the map has been also received.
+		 *  \note This requires a georeferencied metric_map_t.
+		 */
+		bool initialize_from_gnns = false;
+
 		/// This method loads all parameters from the YAML, except the
 		/// metric_map (handled in parent class):
 		void load_from(const mrpt::containers::yaml& params);
@@ -214,6 +221,7 @@ class PFLocalizationCore : public mrpt::system::COutputLogger
 		mrpt::Clock::time_point time_last_update;
 
 		mrpt::obs::CObservationOdometry::Ptr last_odom;
+		mrpt::obs::CObservationGPS::Ptr last_gnns;
 
 		/** Observations in the queue since the last run.
 		 *  This field is protected by an independent mutex.

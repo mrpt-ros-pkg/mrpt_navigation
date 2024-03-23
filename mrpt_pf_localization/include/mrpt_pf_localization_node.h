@@ -86,8 +86,8 @@ class PFLocalizationNode : public rclcpp::Node
 		/// Comma "," separated list of topics to subscribe for PointCloud2 msgs
 		std::string topic_sensors_point_clouds;
 
-		bool update_while_stopped;
-		bool update_sensor_pose;
+		/// Topic name to subscribe for GNNS msgs:
+		std::string topic_gnns = "/gps";
 	};
 
 	NodeParameters nodeParams_;
