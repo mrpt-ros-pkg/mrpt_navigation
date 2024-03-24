@@ -47,9 +47,11 @@ TEST(PF_Localization, RunRealDataset)
 {
 	PFLocalizationCore loc;
 
+	if (mrpt::get_env<bool>("VERBOSE"))
+		loc.setMinLoggingLevel(mrpt::system::LVL_DEBUG);
+
 	auto p = mrpt::containers::yaml::FromFile(TEST_PARAMS_YAML_FILE);
-	mrpt::containers::yaml params =
-		p["mrpt_pf_localization_node"]["ros__parameters"];
+	mrpt::containers::yaml params = p["/**"]["ros__parameters"];
 
 	if (!RUN_TESTS_WITH_GUI)
 	{
@@ -82,13 +84,7 @@ TEST(PF_Localization, RunRealDataset)
 		bool loadOk = mm.load_from_file(TEST_MM_FILE);
 		EXPECT_TRUE(loadOk);
 
-		auto mMap = mrpt::maps::CMultiMetricMap::Create();
-		for (const auto& [layerName, layerMap] : mm.layers)
-		{
-			mMap->maps.push_back(layerMap);
-			// TODO: Optionally override the map likelihood params?
-		}
-		loc.set_map_from_metric_map(mMap);
+		loc.set_map_from_metric_map(mm);
 	}
 
 	// Now, we should transition to TO_INITIALIZE:

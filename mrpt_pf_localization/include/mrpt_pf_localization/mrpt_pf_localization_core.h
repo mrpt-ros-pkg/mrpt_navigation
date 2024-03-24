@@ -8,6 +8,7 @@
 
 #pragma once
 
+#include <mp2p_icp/metricmap.h>
 #include <mrpt/bayes/CParticleFilter.h>
 #include <mrpt/containers/yaml.h>
 #include <mrpt/core/Clock.h>
@@ -57,6 +58,7 @@ class PFLocalizationCore : public mrpt::system::COutputLogger
 		std::optional<mrpt::poses::CPose3DPDFGaussian> initial_pose;
 
 		mrpt::maps::CMultiMetricMap::Ptr metric_map;  //!< Empty=uninitialized
+		std::optional<mp2p_icp::metric_map_t::Georeferencing> georeferencing;
 
 		/** Shows a custom MRPT GUI with the PF and map state
 		 *  Can be changed at any moment.
@@ -181,7 +183,14 @@ class PFLocalizationCore : public mrpt::system::COutputLogger
 	 * gridmaps, pointclouds, etc.
 	 */
 	void set_map_from_metric_map(
-		const mrpt::maps::CMultiMetricMap::Ptr& metricMap);
+		const mrpt::maps::CMultiMetricMap::Ptr& metricMap,
+		const std::optional<mp2p_icp::metric_map_t::Georeferencing>&
+			georeferencing = std::nullopt);
+
+	/** Defines the map to use from a metric_map_t map, with optional
+	 * georeferencing.
+	 */
+	void set_map_from_metric_map(const mp2p_icp::metric_map_t& mm);
 
 	void relocalize_here(const mrpt::poses::CPose3DPDFGaussian& pose);
 
@@ -208,6 +217,7 @@ class PFLocalizationCore : public mrpt::system::COutputLogger
 		State fsm_state = State::UNINITIALIZED;
 
 		mrpt::maps::CMultiMetricMap::Ptr metric_map;  //!< Empty=uninitialized
+		std::optional<mp2p_icp::metric_map_t::Georeferencing> georeferencing;
 
 		mrpt::bayes::CParticleFilter pf;  ///< interface for particle filters
 
@@ -221,7 +231,6 @@ class PFLocalizationCore : public mrpt::system::COutputLogger
 		mrpt::Clock::time_point time_last_update;
 
 		mrpt::obs::CObservationOdometry::Ptr last_odom;
-		mrpt::obs::CObservationGPS::Ptr last_gnns;
 
 		/** Observations in the queue since the last run.
 		 *  This field is protected by an independent mutex.
@@ -236,7 +245,9 @@ class PFLocalizationCore : public mrpt::system::COutputLogger
    private:
 	InternalState state_;
 	std::mutex stateMtx_;
+
 	std::mutex pendingObsMtx_;
+	mrpt::obs::CObservationGPS::Ptr last_gnns_;	 // use mtx: pendingObsMtx_
 
 	mrpt::system::CTimeLogger profiler_{
 		true /*enabled*/, "mrpt_pf_localization" /*name*/};

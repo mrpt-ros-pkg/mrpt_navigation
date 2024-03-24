@@ -19,8 +19,11 @@
 #include <mrpt/ros2bridge/map.h>
 #include <mrpt/system/filesystem.h>
 #include <mrpt/system/hyperlink.h>
+#include <mrpt/topography/conversions.h>  // geodeticToENU_WGS84
+#include <mrpt/topography/data_types.h>	 // TGeodeticCoords
 #include <mrpt_pf_localization/mrpt_pf_localization_core.h>
 
+#include <Eigen/Dense>
 #include <chrono>
 #include <thread>
 
@@ -261,8 +264,12 @@ void PFLocalizationCore::on_observation(const mrpt::obs::CObservation::Ptr& obs)
 	state_.pendingObs.push_back(obs);
 
 	if (auto gps = std::dynamic_pointer_cast<mrpt::obs::CObservationGPS>(obs);
-		gps)
-		state_.last_gnns = gps;
+		gps && gps->has_GGA_datum())
+	{
+		// for the PF, we only care about GPS observations with GGA positioning:
+		// (Note: all NavSatFix msgs are mapped into MRPT GGA GPS messages)
+		last_gnns_ = gps;
+	}
 }
 
 // The main API call: executes one PF step, taking into account all the
@@ -299,11 +306,11 @@ void PFLocalizationCore::onStateUninitialized()
 {
 	using namespace std::string_literals;
 
-	auto lck = mrpt::lockHelper(pendingObsMtx_);  // to protect state_.last_gnns
+	auto lck = mrpt::lockHelper(pendingObsMtx_);  // to protect last_gnns_
 
 	// Check if we have everything we need to get going:
-	if ((params_.initial_pose.has_value() ||
-		 (params_.initialize_from_gnns && state_.last_gnns)) &&
+	if (((!params_.initialize_from_gnns && params_.initial_pose.has_value()) ||
+		 (params_.initialize_from_gnns && last_gnns_)) &&
 		params_.metric_map)
 	{
 		// Move:
@@ -312,6 +319,7 @@ void PFLocalizationCore::onStateUninitialized()
 		MRPT_LOG_INFO(
 			"Required configuration has been set, changing to "
 			"'State::TO_BE_INITIALIZED'");
+
 		return;
 	}
 
@@ -320,7 +328,7 @@ void PFLocalizationCore::onStateUninitialized()
 	if (!params_.metric_map) excuses += "No reference metric map. ";
 	if (params_.initialize_from_gnns)
 	{
-		if (!state_.last_gnns) excuses += "No GNNS observation received yet. ";
+		if (!last_gnns_) excuses += "No GNNS observation received yet. ";
 	}
 	else
 	{
@@ -355,6 +363,7 @@ void PFLocalizationCore::onStateToBeInitialized()
 	// the map to use:
 	ASSERT_(params_.metric_map);
 	_.metric_map = params_.metric_map;
+	_.georeferencing = params_.georeferencing;
 
 	// Create the 2D or 3D particle filter object:
 	if (params_.use_se3_pf)
@@ -386,19 +395,70 @@ void PFLocalizationCore::onStateToBeInitialized()
 		}
 		else
 		{
-			auto lck = mrpt::lockHelper(
-				pendingObsMtx_);  // to protect state_.last_gnns
-			ASSERT_(state_.last_gnns);
-			auto gps = state_.last_gnns;
+			// to protect last_gnns_
+			auto lck = mrpt::lockHelper(pendingObsMtx_);
+			ASSERT_(last_gnns_);
+			auto gps = last_gnns_;
 			lck.unlock();
 
-			// ASSERTMSG_(state_.metric_map.georeferenced,"The provided metric
-			// map needs to be georeferenced for 'initialize_from_gnns' =
-			// 'true");
+			ASSERTMSG_(
+				_.georeferencing,
+				"The provided metric map needs to be georeferenced for "
+				"'initialize_from_gnns' = true");
 
-			MRPT_TODO("todo");
+			const auto gga =
+				gps->getMsgByClassPtr<mrpt::obs::gnss::Message_NMEA_GGA>();
+			const auto coords =
+				gga->getAsStruct<mrpt::topography::TGeodeticCoords>();
 
-			return {};
+			/* Scheme of transformations:
+			 *
+			 * enu_origin (+) T_enu_to_map = map_xyz_origin
+			 *
+			 * {}^{map}P_{meas} = {}^{map}T_{enu} {}^{enu}P_{meas}
+			 *
+			 */
+			const auto T_map2enu = -(_.georeferencing->T_enu_to_map);
+
+			// current GNNS measurement (ENU frame)
+			mrpt::math::TPoint3D P_enu_meas;
+			mrpt::topography::geodeticToENU_WGS84(
+				coords, P_enu_meas, _.georeferencing->geo_coord);
+
+			const mrpt::math::TPoint3D P_map_meas =
+				T_map2enu.composePoint(P_enu_meas);
+
+			mrpt::poses::CPose3DPDFGaussian gnnsMeasInMap;
+
+			gnnsMeasInMap.mean =
+				mrpt::poses::CPose3D::FromTranslation(P_map_meas);
+
+			gnnsMeasInMap.cov.fill(0);
+			if (gps->covariance_enu.has_value())
+			{
+				const auto& gpsCov = *gps->covariance_enu;
+
+				// XYZ: copy from GPS obs:
+				gnnsMeasInMap.cov.block(0, 0, 3, 3) = gpsCov.asEigen();
+			}
+			else
+			{
+				// Default uncertainty:
+				MRPT_LOG_WARN(
+					"Initializing from GNNS measurement without "
+					"covariance_enu, thus using default uncertainty");
+
+				// XYZ: default values:
+				gnnsMeasInMap.cov(0, 0) = gnnsMeasInMap.cov(1, 1) =
+					gnnsMeasInMap.cov(2, 2) = mrpt::square(5.0);
+			}
+			// Yaw: large uncertainty:
+			gnnsMeasInMap.cov(3, 3) = mrpt::square(M_PI);
+
+			MRPT_LOG_INFO_STREAM(
+				"Initializing from GNNS measurement with: " << gnnsMeasInMap);
+
+			return {gnnsMeasInMap.cov, gnnsMeasInMap.mean};
 		}
 	}();
 
@@ -699,7 +759,20 @@ bool PFLocalizationCore::set_map_from_simple_map(
 }
 
 void PFLocalizationCore::set_map_from_metric_map(
-	const mrpt::maps::CMultiMetricMap::Ptr& metricMap)
+	const mp2p_icp::metric_map_t& mm)
+{
+	// Convert it to CMultiMetricMap, and save the optional georeferrencing:
+	auto mMap = mrpt::maps::CMultiMetricMap::Create();
+
+	for (const auto& [layerName, layerMap] : mm.layers)
+		mMap->maps.push_back(layerMap);
+
+	this->set_map_from_metric_map(mMap, mm.georeferencing);
+}
+
+void PFLocalizationCore::set_map_from_metric_map(
+	const mrpt::maps::CMultiMetricMap::Ptr& metricMap,
+	const std::optional<mp2p_icp::metric_map_t::Georeferencing>& georeferencing)
 {
 	auto lck = mrpt::lockHelper(stateMtx_);
 
@@ -722,6 +795,7 @@ void PFLocalizationCore::set_map_from_metric_map(
 	}
 
 	params_.metric_map = metricMap;
+	params_.georeferencing = georeferencing;
 
 	// debug trace with full submap details: ----------------------------
 	MRPT_LOG_DEBUG_STREAM("set_map_from_metric_map: Map contents: " << [&]() {
