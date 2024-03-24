@@ -26,6 +26,7 @@
 #include <rclcpp/node.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/laser_scan.hpp>
+#include <sensor_msgs/msg/nav_sat_fix.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
 #include <std_msgs/msg/header.hpp>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
@@ -66,8 +67,6 @@ class PFLocalizationNode : public rclcpp::Node
 
 		/// maximum time without any observation before start complaining
 		double no_inputs_tolerance = 2.0;
-
-		int publish_particles_decimation = 1;
 
 		std::string base_footprint_frame_id = "base_footprint";
 		std::string odom_frame_id = "odom";
@@ -113,22 +112,21 @@ class PFLocalizationNode : public rclcpp::Node
 	void callbackPointCloud(
 		const sensor_msgs::msg::PointCloud2& msg, const std::string& topicName);
 
+	void callbackGNNS(const sensor_msgs::msg::NavSatFix& msg);
+
 	void callbackBeacon(const mrpt_msgs::msg::ObservationRangeBeacon&);
 	void callbackRobotPose(
 		const geometry_msgs::msg::PoseWithCovarianceStamped&);
-	void odometryForCallback(
-		CObservationOdometry::Ptr&, const std_msgs::msg::Header&);
 	void callbackInitialpose(
 		const geometry_msgs::msg::PoseWithCovarianceStamped& msg);
 	void callbackOdometry(const nav_msgs::msg::Odometry&);
 
 	void callbackMap(const mrpt_msgs::msg::GenericObject& obj);
 
-	void updateMap(const nav_msgs::msg::OccupancyGrid&);
+	/// Publish the PF output mean to /tf
 	void publishTF();
-	void publishPose();
-
-	// nav_msgs::srv::GetMap::Response resp_;
+	/// Publish the PF output as a PoseArray & PoseWithCovarianceStamped msg
+	void publishParticlesAndStampedPose();
 
 	/** Sub for /initialpose */
 	rclcpp::Subscription<geometry_msgs::msg::PoseWithCovarianceStamped>::
@@ -142,29 +140,20 @@ class PFLocalizationNode : public rclcpp::Node
 		subs_2dlaser_;
 	std::vector<rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr>
 		subs_point_clouds_;
+	rclcpp::Subscription<sensor_msgs::msg::NavSatFix>::SharedPtr subGNNS_;
 
 	rclcpp::Publisher<geometry_msgs::msg::PoseArray>::SharedPtr pubParticles_;
 
 	rclcpp::Publisher<geometry_msgs::msg::PoseWithCovarianceStamped>::SharedPtr
 		pubPose_;
 
-	// rclcpp::ServiceServer service_map_;
-
 	std::shared_ptr<tf2_ros::Buffer> tf_buffer_;
 	std::shared_ptr<tf2_ros::TransformListener> tf_listener_;
 
 	std::shared_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
 
-	std::map<std::string, mrpt::poses::CPose3D> laser_poses_;
-	std::map<std::string, mrpt::poses::CPose3D> beacon_poses_;
-
 	std::optional<mrpt::Clock::time_point> last_sensor_stamp_;
 
-	// methods
-	void update();
-	void updateSensorPose(std::string frame_id);
-
-	void publishParticles();
 	void useROSLogLevel();
 
 	bool waitForTransform(
