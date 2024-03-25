@@ -63,7 +63,7 @@ TEST(PF_Localization, RunRealDataset)
 	loc.init_from_yaml(params);
 
 	// Check params:
-	EXPECT_EQ(loc.getParams().initial_particle_count, 2500U);
+	EXPECT_EQ(loc.getParams().initial_particles_per_m2, 10U);
 
 	// Check that we are still in UNINITILIZED state, even after stepping,
 	// since we don't have a map yet:

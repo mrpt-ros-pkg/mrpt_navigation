@@ -60,6 +60,22 @@ def generate_launch_description():
         description="Topic to subscribe for NavSatFix msgs for georeferenced initialization"
     )
 
+    base_link_frame_id_arg = DeclareLaunchArgument(
+        "base_link_frame_id",
+        default_value='base_link',
+        description="frame_id for the vehicle base_link"
+    )
+    odom_frame_id_arg = DeclareLaunchArgument(
+        "odom_frame_id",
+        default_value='odom',
+        description="frame_id for the vehicle odom"
+    )
+    global_frame_id_arg = DeclareLaunchArgument(
+        "global_frame_id",
+        default_value='map',
+        description="frame_id for the vehicle global frame (typ: 'map')"
+    )
+
     gui_enable_arg = DeclareLaunchArgument(
         "gui_enable",
         default_value='False',
@@ -80,6 +96,9 @@ def generate_launch_description():
                 "topic_gnns": LaunchConfiguration('topic_gnns'),
                 "gui_enable": LaunchConfiguration('gui_enable'),
                 "log_level_core": LaunchConfiguration('log_level_core'),
+                "base_link_frame_id": LaunchConfiguration('base_link_frame_id'),
+                "odom_frame_id": LaunchConfiguration('odom_frame_id'),
+                "global_frame_id": LaunchConfiguration('global_frame_id'),
             }],
         arguments=['--ros-args', '--log-level',
                    LaunchConfiguration('log_level')]
@@ -94,6 +113,9 @@ def generate_launch_description():
         topic_sensors_point_clouds_arg,
         topic_gnns_args,
         gui_enable_arg,
+        base_link_frame_id_arg,
+        odom_frame_id_arg,
+        global_frame_id_arg,
         pf_localization_node,
     ])
 

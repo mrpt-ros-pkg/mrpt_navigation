@@ -116,16 +116,20 @@ class PFLocalizationCore : public mrpt::system::COutputLogger
 		std::optional<mrpt::maps::COccupancyGridMap2D::TLikelihoodOptions>
 			override_likelihood_gridmaps;
 
-		/** Number of particles upon initialization.
+		/** Number of particles/m² to use upon initialization.
 		 *  Can be changed while state = UNINITIALIZED.
 		 */
-		unsigned int initial_particle_count = 2000;
+		unsigned int initial_particles_per_m2 = 10;
 
 		/** If true, the particles will be initialized according to the first
 		 *  incomming GNNS observation, once the map has been also received.
 		 *  \note This requires a georeferencied metric_map_t.
 		 */
 		bool initialize_from_gnns = false;
+
+		/// If >0, new tentative particles will be generated from GNNS data,
+		/// to help re-localizing if using georeferenced maps:
+		uint32_t samples_drawn_from_gnns = 20;
 
 		/// This method loads all parameters from the YAML, except the
 		/// metric_map (handled in parent class):
@@ -194,6 +198,11 @@ class PFLocalizationCore : public mrpt::system::COutputLogger
 
 	void relocalize_here(const mrpt::poses::CPose3DPDFGaussian& pose);
 
+	bool input_queue_has_odometry();
+	std::optional<mrpt::Clock::time_point> input_queue_last_stamp();
+
+	void set_fake_odometry_increment(const mrpt::poses::CPose3D& incrPose);
+
 	// TODO: Getters
 	State getState() const { return state_.fsm_state; }
 
@@ -240,6 +249,8 @@ class PFLocalizationCore : public mrpt::system::COutputLogger
 		/** The last state of the filter, for sending as a copy to the user API
 		 */
 		mrpt::poses::CPose3DPDFParticles::Ptr lastResult;
+
+		std::optional<mrpt::poses::CPose3D> nextFakeOdometryIncrPose;
 	};
 
    private:
@@ -271,4 +282,6 @@ class PFLocalizationCore : public mrpt::system::COutputLogger
 	void update_gui(const mrpt::obs::CSensoryFrame& sf);
 
 	void internal_fill_state_lastResult();
+
+	std::optional<mrpt::poses::CPose3DPDFGaussian> get_gnns_pose_prediction();
 };

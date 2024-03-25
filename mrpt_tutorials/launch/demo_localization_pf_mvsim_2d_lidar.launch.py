@@ -26,6 +26,12 @@ def generate_launch_description():
             'log_level': 'INFO',
             'topic_sensors_2d_scan': '/laser1',
             'topic_sensors_point_clouds': '',
+
+            # For robots with odometry, use: 'base_link'->'odom'->'map'.
+            # For systems without wheels odometry, use: 'base_link'->'base_link'->'map'.
+            'base_link_frame_id': 'base_link',
+            'odom_frame_id': 'odom',
+            'global_frame_id': 'map',
         }.items()
     )
 

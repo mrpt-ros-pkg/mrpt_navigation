@@ -244,8 +244,9 @@ void PFLocalizationCore::Parameters::load_from(
 	}
 
 	//
-	MCP_LOAD_OPT(params, initial_particle_count);
+	MCP_LOAD_OPT(params, initial_particles_per_m2);
 	MCP_LOAD_OPT(params, initialize_from_gnns);
+	MCP_LOAD_OPT(params, samples_drawn_from_gnns);
 
 	// The map is not loaded here, but from independent methods in the parent
 	// class.
@@ -270,6 +271,37 @@ void PFLocalizationCore::on_observation(const mrpt::obs::CObservation::Ptr& obs)
 		// (Note: all NavSatFix msgs are mapped into MRPT GGA GPS messages)
 		last_gnns_ = gps;
 	}
+}
+
+bool PFLocalizationCore::input_queue_has_odometry()
+{
+	auto lck = mrpt::lockHelper(pendingObsMtx_);
+	for (const auto& o : state_.pendingObs)
+	{
+		if (auto oOdo =
+				std::dynamic_pointer_cast<mrpt::obs::CObservationOdometry>(o);
+			oOdo)
+			return true;
+	}
+	return false;
+}
+
+std::optional<mrpt::Clock::time_point>
+	PFLocalizationCore::input_queue_last_stamp()
+{
+	auto lck = mrpt::lockHelper(pendingObsMtx_);
+
+	std::optional<mrpt::Clock::time_point> lastStamp;
+	for (const auto& o : state_.pendingObs)
+	{
+		ASSERT_(o);
+		const auto t = o->timestamp;
+		if (!lastStamp)
+			lastStamp = t;
+		else
+			mrpt::keep_min(*lastStamp, t);
+	}
+	return lastStamp;
 }
 
 // The main API call: executes one PF step, taking into account all the
@@ -395,70 +427,18 @@ void PFLocalizationCore::onStateToBeInitialized()
 		}
 		else
 		{
-			// to protect last_gnns_
-			auto lck = mrpt::lockHelper(pendingObsMtx_);
-			ASSERT_(last_gnns_);
-			auto gps = last_gnns_;
-			lck.unlock();
-
 			ASSERTMSG_(
 				_.georeferencing,
 				"The provided metric map needs to be georeferenced for "
 				"'initialize_from_gnns' = true");
 
-			const auto gga =
-				gps->getMsgByClassPtr<mrpt::obs::gnss::Message_NMEA_GGA>();
-			const auto coords =
-				gga->getAsStruct<mrpt::topography::TGeodeticCoords>();
-
-			/* Scheme of transformations:
-			 *
-			 * enu_origin (+) T_enu_to_map = map_xyz_origin
-			 *
-			 * {}^{map}P_{meas} = {}^{map}T_{enu} {}^{enu}P_{meas}
-			 *
-			 */
-			const auto T_map2enu = -(_.georeferencing->T_enu_to_map);
-
-			// current GNNS measurement (ENU frame)
-			mrpt::math::TPoint3D P_enu_meas;
-			mrpt::topography::geodeticToENU_WGS84(
-				coords, P_enu_meas, _.georeferencing->geo_coord);
-
-			const mrpt::math::TPoint3D P_map_meas =
-				T_map2enu.composePoint(P_enu_meas);
-
-			mrpt::poses::CPose3DPDFGaussian gnnsMeasInMap;
-
-			gnnsMeasInMap.mean =
-				mrpt::poses::CPose3D::FromTranslation(P_map_meas);
-
-			gnnsMeasInMap.cov.fill(0);
-			if (gps->covariance_enu.has_value())
-			{
-				const auto& gpsCov = *gps->covariance_enu;
-
-				// XYZ: copy from GPS obs:
-				gnnsMeasInMap.cov.block(0, 0, 3, 3) = gpsCov.asEigen();
-			}
-			else
-			{
-				// Default uncertainty:
-				MRPT_LOG_WARN(
-					"Initializing from GNNS measurement without "
-					"covariance_enu, thus using default uncertainty");
-
-				// XYZ: default values:
-				gnnsMeasInMap.cov(0, 0) = gnnsMeasInMap.cov(1, 1) =
-					gnnsMeasInMap.cov(2, 2) = mrpt::square(5.0);
-			}
-			// Yaw: large uncertainty:
-			gnnsMeasInMap.cov(3, 3) = mrpt::square(M_PI);
+			const auto gnnsMeasInMap = get_gnns_pose_prediction();
+			ASSERT_(gnnsMeasInMap);
 
 			MRPT_LOG_INFO_STREAM(
-				"Initializing from GNNS measurement with: " << gnnsMeasInMap);
+				"Initializing from GNNS measurement with: " << *gnnsMeasInMap);
 
-			return {gnnsMeasInMap.cov, gnnsMeasInMap.mean};
+			return {gnnsMeasInMap->cov, gnnsMeasInMap->mean};
 		}
 	}();
 
@@ -483,6 +463,14 @@ void PFLocalizationCore::onStateToBeInitialized()
 
 	bool initDone = false;
 
+	const double area =
+		std::min<double>(10.0, (pMax.x - pMin.x) * (pMax.y - pMin.y));
+	const size_t initParticleCount =
+		static_cast<size_t>(params_.initial_particles_per_m2 * area);
+
+	// and also set it as the maximum sample size for dynamic sampling:
+	params_.kld_options.KLD_maxSampleSize = initParticleCount;
+
 	if (auto gridMap = _.metric_map->mapByClass<COccupancyGridMap2D>();
 		gridMap && _.pdf2d)
 	{
@@ -491,9 +479,8 @@ void PFLocalizationCore::onStateToBeInitialized()
 		{
 			const float gridFreenessThreshold = 0.7f;
 			_.pdf2d->resetUniformFreeSpace(
-				gridMap.get(), gridFreenessThreshold,
-				params_.initial_particle_count, pMin.x, pMax.x, pMin.y, pMax.y,
-				pMin.yaw, pMax.yaw);
+				gridMap.get(), gridFreenessThreshold, initParticleCount, pMin.x,
+				pMax.x, pMin.y, pMax.y, pMin.yaw, pMax.yaw);
 
 			initDone = true;
 		}
@@ -511,9 +498,9 @@ void PFLocalizationCore::onStateToBeInitialized()
 		if (_.pdf2d)
 			_.pdf2d->resetUniform(
 				pMin.x, pMax.x, pMin.y, pMax.y, pMin.yaw, pMax.yaw,
-				params_.initial_particle_count);
+				initParticleCount);
 		else
-			_.pdf3d->resetUniform(pMin, pMax, params_.initial_particle_count);
+			_.pdf3d->resetUniform(pMin, pMax, initParticleCount);
 	}
 
 	internal_fill_state_lastResult();
@@ -658,20 +645,28 @@ void PFLocalizationCore::onStateRunning()
 	else
 	{
 		// Use fake "null movement" motion model with the special uncertainty:
+		const mrpt::poses::CPose3D odoIncrPose =
+			state_.nextFakeOdometryIncrPose.has_value()
+				? *state_.nextFakeOdometryIncrPose
+				: mrpt::poses::CPose3D::Identity();
+
 		if (odomMove2D.has_value())
 		{
 			odomMove2D.value()->computeFromOdometry(
-				mrpt::poses::CPose2D::Identity(),
+				mrpt::poses::CPose2D(odoIncrPose),
 				params_.motion_model_no_odom_2d);
 		}
 		else
 		{
 			odomMove3D.value()->computeFromOdometry(
-				mrpt::poses::CPose3D::Identity(),
-				params_.motion_model_no_odom_3d);
+				odoIncrPose, params_.motion_model_no_odom_3d);
 		}
-		MRPT_LOG_DEBUG("onStateRunning: motion model= NONE (random walk)");
+		MRPT_LOG_DEBUG_STREAM(
+			"onStateRunning: motion model=NONE, with fake odo incrPose="
+			<< odoIncrPose.asString());
 	}
+
+	state_.nextFakeOdometryIncrPose.reset();  // In any case, forget this.
 
 	mrpt::obs::CActionCollection actions;
 	if (is_3D)
@@ -695,6 +690,34 @@ void PFLocalizationCore::onStateRunning()
 	{
 		state_.pdf3d->options = pdfPredictionOptions;
 		state_.pdf3d->options.metricMap = params_.metric_map;
+	}
+
+	// Draw additional helper samples from GNNS readings?
+	// ----------------------------------------------------
+	if (auto gnnsPos = get_gnns_pose_prediction();
+		gnnsPos && params_.samples_drawn_from_gnns > 0)
+	{
+		mrpt::poses::CPoseRandomSampler sampler;
+		sampler.setPosePDF(*gnnsPos);
+
+		for (size_t i = 0; i < params_.samples_drawn_from_gnns; i++)
+		{
+			mrpt::poses::CPose3D p;
+			sampler.drawSample(p);
+
+			if (state_.pdf2d)
+			{
+				auto& newPart = state_.pdf2d->m_particles.emplace_back();
+				newPart.log_w = .0;
+				newPart.d = mrpt::math::TPose2D(p.asTPose());
+			}
+			else
+			{
+				auto& newPart = state_.pdf3d->m_particles.emplace_back();
+				newPart.log_w = .0;
+				newPart.d = p.asTPose();
+			}
+		}
 	}
 
 	// Process PF
@@ -1096,4 +1119,74 @@ void PFLocalizationCore::internal_fill_state_lastResult()
 
 	MRPT_LOG_DEBUG_STREAM(
 		"internal_fill_state_lastResult: " << state_.lastResult->asString());
+}
+
+void PFLocalizationCore::set_fake_odometry_increment(
+	const mrpt::poses::CPose3D& incrPose)
+{
+	state_.nextFakeOdometryIncrPose = incrPose;
+}
+
+std::optional<mrpt::poses::CPose3DPDFGaussian>
+	PFLocalizationCore::get_gnns_pose_prediction()
+{
+	if (!state_.georeferencing) return {};
+
+	// to protect last_gnns_
+	auto lck = mrpt::lockHelper(pendingObsMtx_);
+	ASSERT_(last_gnns_);
+	auto gps = last_gnns_;
+	last_gnns_.reset();
+	lck.unlock();
+
+	if (!gps) return {};
+
+	const auto gga = gps->getMsgByClassPtr<mrpt::obs::gnss::Message_NMEA_GGA>();
+	if (!gga) return {};
+
+	const auto coords = gga->getAsStruct<mrpt::topography::TGeodeticCoords>();
+
+	/* Scheme of transformations:
+	 *
+	 * enu_origin (+) T_enu_to_map = map_xyz_origin
+	 *
+	 * {}^{map}P_{meas} = {}^{map}T_{enu} {}^{enu}P_{meas}
+	 *
+	 */
+	const auto T_map2enu = -(state_.georeferencing->T_enu_to_map);
+
+	// current GNNS measurement (ENU frame)
+	mrpt::math::TPoint3D P_enu_meas;
+	mrpt::topography::geodeticToENU_WGS84(
+		coords, P_enu_meas, state_.georeferencing->geo_coord);
+
+	const mrpt::math::TPoint3D P_map_meas = T_map2enu.composePoint(P_enu_meas);
+
+	mrpt::poses::CPose3DPDFGaussian gnnsMeasInMap;
+
+	gnnsMeasInMap.mean = mrpt::poses::CPose3D::FromTranslation(P_map_meas);
+
+	gnnsMeasInMap.cov.fill(0);
+	if (gps->covariance_enu.has_value())
+	{
+		const auto& gpsCov = *gps->covariance_enu;
+
+		// XYZ: copy from GPS obs:
+		gnnsMeasInMap.cov.block(0, 0, 3, 3) = gpsCov.asEigen();
+	}
+	else
+	{
+		// Default uncertainty:
+		MRPT_LOG_WARN(
+			"Initializing from GNNS measurement without "
+			"covariance_enu, thus using default uncertainty");
+
+		// XYZ: default values:
+		gnnsMeasInMap.cov(0, 0) = gnnsMeasInMap.cov(1, 1) =
+			gnnsMeasInMap.cov(2, 2) = mrpt::square(5.0);
+	}
+	// Yaw: large uncertainty:
+	gnnsMeasInMap.cov(3, 3) = mrpt::square(M_PI);
+
+	return gnnsMeasInMap;
 }

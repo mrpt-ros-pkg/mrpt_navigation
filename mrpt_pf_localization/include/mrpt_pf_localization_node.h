@@ -8,6 +8,7 @@
 
 #pragma once
 
+#include <mrpt/math/TTwist3D.h>
 #include <mrpt/obs/CObservationOdometry.h>
 #include <mrpt_pf_localization/mrpt_pf_localization_core.h>
 #include <tf2_ros/buffer.h>
@@ -128,6 +129,14 @@ class PFLocalizationNode : public rclcpp::Node
 	/// Publish the PF output as a PoseArray & PoseWithCovarianceStamped msg
 	void publishParticlesAndStampedPose();
 
+	void updateEstimatedTwist();
+	void createOdometryFromTwist();
+
+	// These two are used in updateEstimatedTwist()
+	std::optional<mrpt::poses::CPose3DPDFParticles> prevParts_;
+	std::optional<mrpt::Clock::time_point> prevStamp_;
+	std::optional<mrpt::math::TTwist3D> estimated_twist_;
+
 	/** Sub for /initialpose */
 	rclcpp::Subscription<geometry_msgs::msg::PoseWithCovarianceStamped>::
 		SharedPtr sub_init_pose_;
@@ -156,7 +165,7 @@ class PFLocalizationNode : public rclcpp::Node
 
 	void useROSLogLevel();
 
-	bool waitForTransform(
+	[[nodiscard]] bool waitForTransform(
 		mrpt::poses::CPose3D& des, const std::string& target_frame,
 		const std::string& source_frame, const int timeoutMilliseconds = 50);
 

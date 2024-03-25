@@ -15,6 +15,7 @@
 #include <mrpt/obs/CObservationOdometry.h>
 #include <mrpt/obs/CObservationPointCloud.h>
 #include <mrpt/obs/CObservationRobotPose.h>
+#include <mrpt/poses/Lie/SO.h>	// SO(3) logarithm
 #include <mrpt/ros2bridge/gps.h>
 #include <mrpt/ros2bridge/laser_scan.h>
 #include <mrpt/ros2bridge/map.h>
@@ -284,10 +285,15 @@ void PFLocalizationNode::reload_params_from_ros()
 
 void PFLocalizationNode::loop()
 {
-	RCLCPP_DEBUG(get_logger(), "loop");
+	// Populate PF input with a "fake" odometry from twist estimation
+	// if we have nothing better:
+	createOdometryFromTwist();
 
 	// PF algorithm:
 	core_.step();
+
+	// Estimate twist for the case of not having odometry:
+	updateEstimatedTwist();
 
 	// Publish to ROS:
 	publishParticlesAndStampedPose();
@@ -324,7 +330,7 @@ bool PFLocalizationNode::waitForTransform(
 	}
 	catch (const tf2::TransformException& ex)
 	{
-		RCLCPP_ERROR(get_logger(), "%s", ex.what());
+		RCLCPP_ERROR(get_logger(), "[waitForTransform] %s", ex.what());
 		return false;
 	}
 }
@@ -336,8 +342,9 @@ void PFLocalizationNode::callbackLaser(
 
 	// get sensor pose on the robot:
 	mrpt::poses::CPose3D sensorPose;
-	waitForTransform(
+	bool sensorPoseOK = waitForTransform(
 		sensorPose, msg.header.frame_id, nodeParams_.base_link_frame_id);
+	ASSERT_(sensorPoseOK);
 
 	auto obs = mrpt::obs::CObservation2DRangeScan::Create();
 	mrpt::ros2bridge::fromROS(msg, sensorPose, *obs);
@@ -356,8 +363,9 @@ void PFLocalizationNode::callbackPointCloud(
 
 	// get sensor pose on the robot:
 	mrpt::poses::CPose3D sensorPose;
-	waitForTransform(
+	bool sensorPoseOK = waitForTransform(
 		sensorPose, msg.header.frame_id, nodeParams_.base_link_frame_id);
+	ASSERT_(sensorPoseOK);
 
 	auto obs = mrpt::obs::CObservationPointCloud::Create();
 	obs->sensorLabel = topicName;
@@ -541,8 +549,9 @@ void PFLocalizationNode::callbackGNNS(const sensor_msgs::msg::NavSatFix& msg)
 
 	// get sensor pose on the robot:
 	mrpt::poses::CPose3D sensorPose;
-	waitForTransform(
+	bool sensorPoseOK = waitForTransform(
 		sensorPose, msg.header.frame_id, nodeParams_.base_link_frame_id);
+	ASSERT_(sensorPoseOK);
 
 	auto obs = mrpt::obs::CObservationGPS::Create();
 
@@ -576,10 +585,11 @@ void PFLocalizationNode::publishParticlesAndStampedPose()
 		return;
 	}
 
-	ASSERT_(last_sensor_stamp_.has_value());
+	if (!last_sensor_stamp_.has_value()) return;
 
 	const auto stamp = mrpt::ros2bridge::toROS(*last_sensor_stamp_);
 
+	// publish particles:
 	if (pubParticles_->get_subscription_count())
 	{
 		geometry_msgs::msg::PoseArray poseArray;
@@ -636,8 +646,15 @@ void PFLocalizationNode::update_tf_pub_data()
 	MRPT_TODO("Use param: no_update_tolerance");
 
 	mrpt::poses::CPose3D T_base_to_odom;
-	this->waitForTransform(T_base_to_odom, odom_frame_id, base_frame_id);
+	bool base_to_odom_ok =
+		this->waitForTransform(T_base_to_odom, odom_frame_id, base_frame_id);
 	// Note: this wait above typ takes ~50 us
+
+	if (!base_to_odom_ok)
+	{
+		// Ignore error and assume we don't have odom and this localization is
+		// the only source of localization?
+	}
 
 	// We want to send a transform that is good up until a tolerance time so
 	// that odom can be used
@@ -722,4 +739,102 @@ void PFLocalizationNode::NodeParameters::loadFrom(
 	MCP_LOAD_OPT(cfg, topic_sensors_2d_scan);
 	MCP_LOAD_OPT(cfg, topic_sensors_point_clouds);
 	MCP_LOAD_OPT(cfg, topic_gnns);
+}
+
+void PFLocalizationNode::updateEstimatedTwist()
+{
+	const mrpt::poses::CPose3DPDFParticles::Ptr parts =
+		core_.getLastPoseEstimation();
+
+	// No solution yet
+	if (!parts) return;
+
+	if (!last_sensor_stamp_) return;
+
+	const auto curStamp = *last_sensor_stamp_;
+
+	// estimate twist:
+	if (!prevParts_)
+	{
+		prevParts_ = *parts;
+		prevStamp_ = curStamp;
+		return;
+	}
+
+	// else, we can estimate the twist if we have two observations:
+	if (curStamp == prevStamp_)
+		return;	 // No new observation yet, keep waiting...
+
+	// get diff:
+	const auto prevPose = prevParts_->getMeanVal();
+	const auto curPose = parts->getMeanVal();
+
+	const double dt = mrpt::system::timeDifference(*prevStamp_, curStamp);
+
+	const double max_time_to_use_velocity_model = 5.0;	// [s]
+
+	if (dt < max_time_to_use_velocity_model)
+	{
+		ASSERT_GT_(dt, .0);
+
+		auto& tw = estimated_twist_.emplace();
+
+		const auto incrPose = curPose - prevPose;
+
+		tw.vx = incrPose.x() / dt;
+		tw.vy = incrPose.y() / dt;
+		tw.vz = incrPose.z() / dt;
+
+		const auto logRot =
+			mrpt::poses::Lie::SO<3>::log(incrPose.getRotationMatrix());
+
+		tw.wx = logRot[0] / dt;
+		tw.wy = logRot[1] / dt;
+		tw.wz = logRot[2] / dt;
+	}
+
+	// for the next iteration:
+	prevParts_ = *parts;
+	prevStamp_ = curStamp;
+}
+
+void PFLocalizationNode::createOdometryFromTwist()
+{
+	using mrpt::math::TVector3D;
+
+	// no twist estimation, cannot do anything
+	if (!estimated_twist_ || !prevStamp_) return;
+
+	if (core_.input_queue_has_odometry())
+		return;	 // already has a real odometry
+
+	const auto lastStamp = core_.input_queue_last_stamp();
+	if (!lastStamp) return;	 // no real observation with stamp
+
+	const double dt = mrpt::system::timeDifference(*prevStamp_, *lastStamp);
+
+	const TVector3D v(
+		estimated_twist_->vx, estimated_twist_->vy, estimated_twist_->vz);
+
+	const TVector3D w(
+		estimated_twist_->wx, estimated_twist_->wy, estimated_twist_->wz);
+
+	// Integrate rotation:
+	const TVector3D w_dt = w * dt;
+	const auto R =
+		mrpt::poses::Lie::SO<3>::exp(mrpt::math::CVectorFixedDouble<3>(w_dt));
+
+	// Integrate translation:
+	const TVector3D v_dt = v * dt;
+
+	// Build SE(3):
+	const auto deltaT =
+		mrpt::poses::CPose3D::FromRotationAndTranslation(R, v_dt);
+
+	// Set fake odometry:
+	core_.set_fake_odometry_increment(deltaT);
+
+	RCLCPP_DEBUG_STREAM(
+		get_logger(),
+		"createOdometryFromTwist: dt=" << dt << " deltaT=" << deltaT);
 }
