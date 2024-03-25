@@ -54,6 +54,12 @@ def generate_launch_description():
         description="Comma-separated list of topics to subscribe for PointCloud2 msgs as sensor inputs"
     )
 
+    topic_gnns_args = DeclareLaunchArgument(
+        "topic_gnns",
+        default_value='/gps',
+        description="Topic to subscribe for NavSatFix msgs for georeferenced initialization"
+    )
+
     gui_enable_arg = DeclareLaunchArgument(
         "gui_enable",
         default_value='False',
@@ -71,6 +77,7 @@ def generate_launch_description():
                 "mrpt_map_config_file": LaunchConfiguration('mrpt_map_config_file'),
                 "topic_sensors_2d_scan": LaunchConfiguration('topic_sensors_2d_scan'),
                 "topic_sensors_point_clouds": LaunchConfiguration('topic_sensors_point_clouds'),
+                "topic_gnns": LaunchConfiguration('topic_gnns'),
                 "gui_enable": LaunchConfiguration('gui_enable'),
                 "log_level_core": LaunchConfiguration('log_level_core'),
             }],
@@ -85,6 +92,7 @@ def generate_launch_description():
         pf_params_file_launch_arg,
         topic_sensors_2d_scan_arg,
         topic_sensors_point_clouds_arg,
+        topic_gnns_args,
         gui_enable_arg,
         pf_localization_node,
     ])
