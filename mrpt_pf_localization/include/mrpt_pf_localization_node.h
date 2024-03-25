@@ -68,7 +68,7 @@ class PFLocalizationNode : public rclcpp::Node
 		/// maximum time without any observation before start complaining
 		double no_inputs_tolerance = 2.0;
 
-		std::string base_footprint_frame_id = "base_footprint";
+		std::string base_link_frame_id = "base_link";
 		std::string odom_frame_id = "odom";
 		std::string global_frame_id = "map";
 
@@ -161,6 +161,6 @@ class PFLocalizationNode : public rclcpp::Node
 		const std::string& source_frame, const int timeoutMilliseconds = 50);
 
 	void update_tf_pub_data();
-	geometry_msgs::msg::TransformStamped tfMapOdomToPublish_;
+	std::optional<geometry_msgs::msg::TransformStamped> tfMapOdomToPublish_;
 	std::mutex tfMapOdomToPublishMtx_;
 };

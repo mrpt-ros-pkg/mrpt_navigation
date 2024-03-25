@@ -337,7 +337,7 @@ void PFLocalizationNode::callbackLaser(
 	// get sensor pose on the robot:
 	mrpt::poses::CPose3D sensorPose;
 	waitForTransform(
-		sensorPose, msg.header.frame_id, nodeParams_.base_footprint_frame_id);
+		sensorPose, msg.header.frame_id, nodeParams_.base_link_frame_id);
 
 	auto obs = mrpt::obs::CObservation2DRangeScan::Create();
 	mrpt::ros2bridge::fromROS(msg, sensorPose, *obs);
@@ -357,7 +357,7 @@ void PFLocalizationNode::callbackPointCloud(
 	// get sensor pose on the robot:
 	mrpt::poses::CPose3D sensorPose;
 	waitForTransform(
-		sensorPose, msg.header.frame_id, nodeParams_.base_footprint_frame_id);
+		sensorPose, msg.header.frame_id, nodeParams_.base_link_frame_id);
 
 	auto obs = mrpt::obs::CObservationPointCloud::Create();
 	obs->sensorLabel = topicName;
@@ -542,7 +542,7 @@ void PFLocalizationNode::callbackGNNS(const sensor_msgs::msg::NavSatFix& msg)
 	// get sensor pose on the robot:
 	mrpt::poses::CPose3D sensorPose;
 	waitForTransform(
-		sensorPose, msg.header.frame_id, nodeParams_.base_footprint_frame_id);
+		sensorPose, msg.header.frame_id, nodeParams_.base_link_frame_id);
 
 	auto obs = mrpt::obs::CObservationGPS::Create();
 
@@ -557,7 +557,10 @@ void PFLocalizationNode::callbackGNNS(const sensor_msgs::msg::NavSatFix& msg)
 
 	obs->sensorLabel = "gps";
 
-	// last_sensor_stamp_ = obs->timestamp;// dont count GPS for this
+	// Only count this as sensor timestamp if it's the first one for
+	// initialization, so we have a valid stamp to publish the first set of
+	// particles:
+	if (!last_sensor_stamp_) last_sensor_stamp_ = obs->timestamp;
 
 	core_.on_observation(obs);
 }
@@ -620,7 +623,7 @@ void PFLocalizationNode::publishParticlesAndStampedPose()
  */
 void PFLocalizationNode::update_tf_pub_data()
 {
-	std::string base_frame_id = nodeParams_.base_footprint_frame_id;
+	std::string base_frame_id = nodeParams_.base_link_frame_id;
 	std::string odom_frame_id = nodeParams_.odom_frame_id;
 	std::string global_frame_id = nodeParams_.global_frame_id;
 
@@ -658,22 +661,24 @@ void PFLocalizationNode::update_tf_pub_data()
 	auto lck = mrpt::lockHelper(tfMapOdomToPublishMtx_);
 
 	tfMapOdomToPublish_ = tf2::toMsg(tmp_tf_stamped);
-	tfMapOdomToPublish_.child_frame_id = odom_frame_id;
+	tfMapOdomToPublish_->child_frame_id = odom_frame_id;
 }
 
 void PFLocalizationNode::publishTF()
 {
 	auto lck = mrpt::lockHelper(tfMapOdomToPublishMtx_);
 
-	tf_broadcaster_->sendTransform(tfMapOdomToPublish_);
+	if (!tfMapOdomToPublish_.has_value()) return;
+
+	tf_broadcaster_->sendTransform(*tfMapOdomToPublish_);
 
 	const auto tf_tolerance =
 		tf2::durationFromSec(nodeParams_.transform_tolerance);
 
 	// Increase timestamp to keep it valid on next re-publish and until a better
 	// odom->map is found.
-	tfMapOdomToPublish_.header.stamp = tf2_ros::toMsg(
-		tf2_ros::fromMsg(tfMapOdomToPublish_.header.stamp) + tf_tolerance);
+	tfMapOdomToPublish_->header.stamp = tf2_ros::toMsg(
+		tf2_ros::fromMsg(tfMapOdomToPublish_->header.stamp) + tf_tolerance);
 }
 
 void PFLocalizationNode::useROSLogLevel()
@@ -703,7 +708,7 @@ void PFLocalizationNode::NodeParameters::loadFrom(
 	MCP_LOAD_OPT(cfg, no_update_tolerance);
 	MCP_LOAD_OPT(cfg, no_inputs_tolerance);
 
-	MCP_LOAD_OPT(cfg, base_footprint_frame_id);
+	MCP_LOAD_OPT(cfg, base_link_frame_id);
 	MCP_LOAD_OPT(cfg, odom_frame_id);
 	MCP_LOAD_OPT(cfg, global_frame_id);
 
