@@ -449,27 +449,28 @@ void PFLocalizationCore::onStateToBeInitialized()
 	const double stdPitch = std::sqrt(pCov(4, 4));
 	const double stdRoll = std::sqrt(pCov(5, 5));
 
-	const double nStds = 2.0;  // number of sigmas ("quantiles")
+	const double nStds = 6.0;  // number of sigmas ("quantiles")
 
 	const auto pMin = mrpt::math::TPose3D(
 		pMean.x() - nStds * stdX, pMean.y() - nStds * stdY,
-		pMean.z() - nStds * stdZ, pMean.yaw() - nStds * stdYaw,
-		pMean.pitch() - nStds * stdPitch, pMean.roll() - nStds * stdRoll);
+		pMean.z() - nStds * stdZ,  //
+		std::max(-M_PI, pMean.yaw() - nStds * stdYaw),
+		std::max(-M_PI, pMean.pitch() - nStds * stdPitch),
+		std::max(-M_PI, pMean.roll() - nStds * stdRoll));
 
 	const auto pMax = mrpt::math::TPose3D(
 		pMean.x() + nStds * stdX, pMean.y() + nStds * stdY,
-		pMean.z() + nStds * stdZ, pMean.yaw() + nStds * stdYaw,
-		pMean.pitch() + nStds * stdPitch, pMean.roll() + nStds * stdRoll);
+		pMean.z() + nStds * stdZ,  //
+		std::min(M_PI, pMean.yaw() + nStds * stdYaw),
+		std::min(M_PI, pMean.pitch() + nStds * stdPitch),
+		std::min(M_PI, pMean.roll() + nStds * stdRoll));
 
 	bool initDone = false;
 
 	const double area =
-		std::min<double>(10.0, (pMax.x - pMin.x) * (pMax.y - pMin.y));
+		std::max<double>(10.0, (pMax.x - pMin.x) * (pMax.y - pMin.y));
 	const size_t initParticleCount =
 		static_cast<size_t>(params_.initial_particles_per_m2 * area);
-
-	// and also set it as the maximum sample size for dynamic sampling:
-	params_.kld_options.KLD_maxSampleSize = initParticleCount;
 
 	if (auto gridMap = _.metric_map->mapByClass<COccupancyGridMap2D>();
 		gridMap && _.pdf2d)
