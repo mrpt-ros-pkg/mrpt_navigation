@@ -247,9 +247,7 @@ void PFLocalizationCore::Parameters::load_from(
 	MCP_LOAD_OPT(params, initial_particles_per_m2);
 	MCP_LOAD_OPT(params, initialize_from_gnns);
 	MCP_LOAD_OPT(params, samples_drawn_from_gnns);
-
-	// The map is not loaded here, but from independent methods in the parent
-	// class.
+	MCP_LOAD_OPT(params, gnns_samples_num_sigmas);
 }
 
 PFLocalizationCore::PFLocalizationCore()
@@ -449,7 +447,7 @@ void PFLocalizationCore::onStateToBeInitialized()
 	const double stdPitch = std::sqrt(pCov(4, 4));
 	const double stdRoll = std::sqrt(pCov(5, 5));
 
-	const double nStds = 6.0;  // number of sigmas ("quantiles")
+	const double nStds = params_.gnns_samples_num_sigmas;
 
 	const auto pMin = mrpt::math::TPose3D(
 		pMean.x() - nStds * stdX, pMean.y() - nStds * stdY,

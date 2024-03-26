@@ -13,7 +13,10 @@
     # If false (default), will use 2D (SE(2)) particle filter.
     # Otherwise,the 3D mode (SE(3)) is enabled.
     use_se3_pf: false
-    
+
+    # Execution rate (in Hz) of the particle filter main loop:
+    rate_hz: 1.0
+
     # Particle density (particles/m²) upon initialization:
     initial_particles_per_m2: 10
 
@@ -36,6 +39,16 @@
     # - A map is provided with georeferencing information, and
     # - The first GNNS observation arrives (with a GGA datum)
     #initialize_from_gnns: true
+
+    # If >0, new tentative particles will be generated from GNNS data,
+    # to help re-localizing if using georeferenced maps:
+    samples_drawn_from_gnns: 20
+
+    # If samples_drawn_from_gnns is enabled, the number of standard
+    # deviations ("sigmas") to use as the area in which to draw random
+    # samples around the GNNS prediction:
+    gnns_samples_num_sigmas: 6.0
+
 
     # For SE(2) mode: Uncertainty motion model for regular odometry-based motion
     # See docs for mrpt::obs::CActionRobotMovement2D::TMotionModelOptions or https://docs.mrpt.org/reference/latest/tutorial-motion-models.html

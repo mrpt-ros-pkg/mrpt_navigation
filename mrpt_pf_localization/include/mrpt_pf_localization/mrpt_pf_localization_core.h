@@ -131,6 +131,11 @@ class PFLocalizationCore : public mrpt::system::COutputLogger
 		/// to help re-localizing if using georeferenced maps:
 		uint32_t samples_drawn_from_gnns = 20;
 
+		/// If samples_drawn_from_gnns is enabled, the number of standard
+		/// deviations ("sigmas") to use as the area in which to draw random
+		/// samples around the GNNS prediction:
+		double gnns_samples_num_sigmas = 6.0;
+
 		/// This method loads all parameters from the YAML, except the
 		/// metric_map (handled in parent class):
 		void load_from(const mrpt::containers::yaml& params);
