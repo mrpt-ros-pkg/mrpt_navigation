@@ -689,13 +689,22 @@ void PFLocalizationNode::publishTF()
 
 	tf_broadcaster_->sendTransform(*tfMapOdomToPublish_);
 
-	const auto tf_tolerance =
-		tf2::durationFromSec(nodeParams_.transform_tolerance);
+	const auto tf_tolerance_1_2 =
+		tf2::durationFromSec(0.5 * nodeParams_.transform_tolerance);
+
+	RCLCPP_DEBUG_STREAM(
+		get_logger(),
+		"[publishTF] last_sensor_stamp="
+			<< mrpt::system::dateTimeToString(
+				   mrpt::ros2bridge::fromROS(tfMapOdomToPublish_->header.stamp))
+			<< " now="
+			<< mrpt::system::dateTimeToString(
+				   mrpt::ros2bridge::fromROS(get_clock()->now())));
 
 	// Increase timestamp to keep it valid on next re-publish and until a better
 	// odom->map is found.
 	tfMapOdomToPublish_->header.stamp = tf2_ros::toMsg(
-		tf2_ros::fromMsg(tfMapOdomToPublish_->header.stamp) + tf_tolerance);
+		tf2_ros::fromMsg(tfMapOdomToPublish_->header.stamp) + tf_tolerance_1_2);
 }
 
 void PFLocalizationNode::useROSLogLevel()

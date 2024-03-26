@@ -555,14 +555,26 @@ void PFLocalizationCore::onStateRunning()
 		for (const auto& kv : obsByLabel) sf.insert(kv.second);
 	}
 
-	// Do we have *any* observation?
-	if (sf.empty())
+	// Do we have *any* usable observation?
+	// Not any observation is usable with any map:
+	bool canComputeLikelihood = false;
+	for (const auto& m : state_.metric_map->maps)
 	{
-		MRPT_LOG_THROTTLE_WARN(
-			2.0, "No observation in the input queue at all...");
+		if (m->canComputeObservationsLikelihood(sf))
+		{
+			canComputeLikelihood = true;
+			break;
+		}
+	}
 
-		// Default timestamp to "now":
-		sfLastTimeStamp = mrpt::Clock::now();
+	if (!canComputeLikelihood)
+	{
+		MRPT_LOG_DEBUG(
+			"No usable observation in the input queue. Skipping PF update.");
+
+		internal_fill_state_lastResult();
+		if (params_.gui_enable) update_gui(sf);
+		return;
 	}
 
 	// --------------------------------------------
