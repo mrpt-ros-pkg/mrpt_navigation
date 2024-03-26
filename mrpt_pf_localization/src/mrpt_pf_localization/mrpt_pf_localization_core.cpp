@@ -739,6 +739,9 @@ void PFLocalizationCore::onStateRunning()
 
 	internal_fill_state_lastResult();
 
+	// clear last GNNS so we do not use it more than once:
+	last_gnns_.reset();
+
 	// GUI:
 	// -----------
 	// Init optional debug GUI:
@@ -1134,9 +1137,7 @@ std::optional<mrpt::poses::CPose3DPDFGaussian>
 
 	// to protect last_gnns_
 	auto lck = mrpt::lockHelper(pendingObsMtx_);
-	ASSERT_(last_gnns_);
 	auto gps = last_gnns_;
-	last_gnns_.reset();
 	lck.unlock();
 
 	if (!gps) return {};
