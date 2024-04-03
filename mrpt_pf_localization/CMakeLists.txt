@@ -14,6 +14,7 @@ find_package(mrpt_msgs_bridge REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(tf2_geometry_msgs REQUIRED)
 find_package(mp2p_icp_map REQUIRED)
+find_package(mola_relocalization) # OPTIONAL
 
 find_package(mrpt-ros2bridge REQUIRED)
 find_package(mrpt-gui REQUIRED)
@@ -32,15 +33,14 @@ if (CMAKE_COMPILER_IS_GNUCXX)
 	endif()
 endif()
 
-IF(CMAKE_COMPILER_IS_GNUCXX AND NOT CMAKE_BUILD_TYPE MATCHES "Debug")
-  add_compile_options(-O3)
-ENDIF()
+
+message(STATUS "mola_relocalization_FOUND: ${mola_relocalization_FOUND}")
 
 ###########
 ## Build ##
 ###########
 
-## Declare a cpp executable
+# non-ROS C++ library:
 add_library(${PROJECT_NAME}_core
     src/${PROJECT_NAME}/${PROJECT_NAME}_core.cpp
     include/${PROJECT_NAME}/${PROJECT_NAME}_core.h
@@ -57,7 +57,15 @@ target_link_libraries(${PROJECT_NAME}_core
   mrpt::ros2bridge
   mola::mp2p_icp_map
 )
+if (mola_relocalization_FOUND)
+  target_link_libraries(${PROJECT_NAME}_core
+    mola::mola_relocalization
+  )
+  target_compile_definitions(${PROJECT_NAME}_core PRIVATE HAVE_MOLA_RELOCALIZATION)
+endif()
 
+
+# ROS node:
 add_executable(${PROJECT_NAME}_node
     src/${PROJECT_NAME}_node.cpp
     include/${PROJECT_NAME}_node.h

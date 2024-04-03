@@ -16,6 +16,7 @@
 #include <mrpt/opengl/CEllipsoid2D.h>
 #include <mrpt/opengl/CEllipsoid3D.h>
 #include <mrpt/opengl/CPointCloud.h>
+#include <mrpt/random/RandomGenerators.h>
 #include <mrpt/ros2bridge/map.h>
 #include <mrpt/system/filesystem.h>
 #include <mrpt/system/hyperlink.h>
@@ -248,6 +249,22 @@ void PFLocalizationCore::Parameters::load_from(
 	MCP_LOAD_OPT(params, initialize_from_gnns);
 	MCP_LOAD_OPT(params, samples_drawn_from_gnns);
 	MCP_LOAD_OPT(params, gnns_samples_num_sigmas);
+	MCP_LOAD_OPT(params, relocalization_best_percentile);
+	MCP_LOAD_OPT(params, relocalization_resolution_xy);
+	MCP_LOAD_OPT_DEG(params, relocalization_resolution_phi);
+}
+
+struct PFLocalizationCore::InternalState::Relocalization
+{
+#ifdef HAVE_MOLA_RELOCALIZATION
+	std::optional<mola::Relocalization_SE2::Input> pending_se2;
+#endif
+};
+
+PFLocalizationCore::InternalState::InternalState()
+	: pendingRelocalization(
+		  mrpt::make_impl<PFLocalizationCore::InternalState::Relocalization>())
+{
 }
 
 PFLocalizationCore::PFLocalizationCore()
@@ -464,44 +481,78 @@ void PFLocalizationCore::onStateToBeInitialized()
 		std::min(M_PI, pMean.pitch() + nStds * stdPitch),
 		std::min(M_PI, pMean.roll() + nStds * stdRoll));
 
-	bool initDone = false;
+	// two options here:
+	// 1) pure particle filter
+	// 2) use mola_relocalization to help focus on the interesting areas:
+	bool use_mola_relocalization = false;
 
-	const double area =
-		std::max<double>(10.0, (pMax.x - pMin.x) * (pMax.y - pMin.y));
-	const size_t initParticleCount =
-		static_cast<size_t>(params_.initial_particles_per_m2 * area);
+#if defined(HAVE_MOLA_RELOCALIZATION)
+	// so far, only for SE(2) mode:
+	if (_.pdf2d) use_mola_relocalization = true;
+#endif
 
-	if (auto gridMap =
-			_.metric_map->mapByClass<mrpt::maps::COccupancyGridMap2D>();
-		gridMap && _.pdf2d)
-	{
-		// initialize over free space only:
-		try
+	if (!use_mola_relocalization)
+	{  // 1) pure PF:
+		bool initDone = false;
+
+		const double area =
+			std::max<double>(10.0, (pMax.x - pMin.x) * (pMax.y - pMin.y));
+		const size_t initParticleCount =
+			static_cast<size_t>(params_.initial_particles_per_m2 * area);
+
+		if (auto gridMap =
+				_.metric_map->mapByClass<mrpt::maps::COccupancyGridMap2D>();
+			gridMap && _.pdf2d)
 		{
-			const float gridFreenessThreshold = 0.7f;
-			_.pdf2d->resetUniformFreeSpace(
-				gridMap.get(), gridFreenessThreshold, initParticleCount, pMin.x,
-				pMax.x, pMin.y, pMax.y, pMin.yaw, pMax.yaw);
+			// initialize over free space only:
+			try
+			{
+				const float gridFreenessThreshold = 0.7f;
+				_.pdf2d->resetUniformFreeSpace(
+					gridMap.get(), gridFreenessThreshold, initParticleCount,
+					pMin.x, pMax.x, pMin.y, pMax.y, pMin.yaw, pMax.yaw);
 
-			initDone = true;
+				initDone = true;
+			}
+			catch (const std::exception& e)
+			{
+				MRPT_LOG_ERROR_STREAM(
+					"Error trying to initialize over gridmap empty space, "
+					"falling "
+					"back to provided initialPose. Error: "
+					<< e.what());
+			}
 		}
-		catch (const std::exception& e)
+
+		if (!initDone)
 		{
-			MRPT_LOG_ERROR_STREAM(
-				"Error trying to initialize over gridmap empty space, falling "
-				"back to provided initialPose. Error: "
-				<< e.what());
+			if (_.pdf2d)
+				_.pdf2d->resetUniform(
+					pMin.x, pMax.x, pMin.y, pMax.y, pMin.yaw, pMax.yaw,
+					initParticleCount);
+			else
+				_.pdf3d->resetUniform(pMin, pMax, initParticleCount);
 		}
 	}
-
-	if (!initDone)
+	else
 	{
-		if (_.pdf2d)
-			_.pdf2d->resetUniform(
-				pMin.x, pMax.x, pMin.y, pMax.y, pMin.yaw, pMax.yaw,
-				initParticleCount);
-		else
-			_.pdf3d->resetUniform(pMin, pMax, initParticleCount);
+#if defined(HAVE_MOLA_RELOCALIZATION)
+		// 2) Use mola_relocalization
+		auto& in = state_.pendingRelocalization->pending_se2.emplace();
+		in.corner_min = mrpt::math::TPose2D(pMin);
+		in.corner_max = mrpt::math::TPose2D(pMax);
+		// in.observations: to be populated in running state
+		in.resolution_xy = params_.relocalization_resolution_xy;
+		in.resolution_phi = params_.relocalization_resolution_phi;
+
+		// (shallow) copy metric maps into expected format:
+		const auto& maps = state_.metric_map->maps;
+		ASSERT_(!maps.empty());
+		for (size_t i = 0; i < maps.size(); i++)
+			in.reference_map.layers[std::to_string(i)] = maps.at(i);
+#else
+		THROW_EXCEPTION("Should not reach here");
+#endif
 	}
 
 	internal_fill_state_lastResult();
@@ -516,9 +567,9 @@ void PFLocalizationCore::onStateRunning()
 	mrpt::obs::CSensoryFrame sf;  // sorted, and thread-safe copy of all obs.
 	mrpt::Clock::time_point sfLastTimeStamp;
 	{
-		// If we have multiple observations of the same sensor for this single
-		// PF step, discard all but the latest one.
-		// Temporary storage of observations:
+		// If we have multiple observations of the same sensor for this
+		// single PF step, discard all but the latest one. Temporary storage
+		// of observations:
 		std::map<std::string, mrpt::obs::CObservation::Ptr> obsByLabel;
 		std::map<std::string, std::string> obsClassByLabel;
 
@@ -543,7 +594,8 @@ void PFLocalizationCore::onStateRunning()
 				{
 					THROW_EXCEPTION_FMT(
 						"ERROR: Received two observations with "
-						"sensorLabel='%s' and different classes: '%s' vs '%s'",
+						"sensorLabel='%s' and different classes: '%s' vs "
+						"'%s'",
 						o->sensorLabel.c_str(), it->second.c_str(),
 						thisObsClass.c_str());
 				}
@@ -572,7 +624,8 @@ void PFLocalizationCore::onStateRunning()
 	if (!canComputeLikelihood)
 	{
 		MRPT_LOG_DEBUG(
-			"No usable observation in the input queue. Skipping PF update.");
+			"No usable observation in the input queue. Skipping PF "
+			"update.");
 
 		internal_fill_state_lastResult();
 		if (params_.gui_enable) update_gui(sf);
@@ -583,7 +636,8 @@ void PFLocalizationCore::onStateRunning()
 
 	// "Action"
 	// ------------------------
-	// Build it from odometry, if we have, or from "fake null odometry" instead
+	// Build it from odometry, if we have, or from "fake null odometry"
+	// instead
 	mrpt::obs::CObservationOdometry::Ptr odomObs;
 	// get the LAST odometry reading, if we have many:
 	for (size_t i = 0;
@@ -664,7 +718,8 @@ void PFLocalizationCore::onStateRunning()
 	}
 	else
 	{
-		// Use fake "null movement" motion model with the special uncertainty:
+		// Use fake "null movement" motion model with the special
+		// uncertainty:
 		const mrpt::poses::CPose3D odoIncrPose =
 			state_.nextFakeOdometryIncrPose.has_value()
 				? *state_.nextFakeOdometryIncrPose
@@ -693,6 +748,59 @@ void PFLocalizationCore::onStateRunning()
 		actions.insertPtr(*odomMove3D);
 	else
 		actions.insertPtr(*odomMove2D);
+
+		// Any pending relocalization step?
+		// -----------------------------------------
+#if defined(HAVE_MOLA_RELOCALIZATION)
+	if (auto& in = state_.pendingRelocalization->pending_se2; in)
+	{
+		// add missing field to "in": the input observation
+		in->observations += sf;
+
+		const auto reloc = mola::Relocalization_SE2::run(*in);
+		MRPT_LOG_INFO_STREAM(
+			"Relocalization_SE2 took " << reloc.time_cost << " s.");
+
+		auto candidates = mola::find_best_poses_se2(
+			reloc.likelihood_grid, params_.relocalization_best_percentile);
+
+		ASSERT_(!candidates.empty());
+
+		MRPT_LOG_INFO_STREAM(
+			"Relocalization_SE2 best candidate (out of "
+			<< candidates.size()
+			<< " top): " << candidates.rbegin()->second.asString());
+
+		// Create a few particles around each best candidate:
+		ASSERT_(state_.pdf2d);
+		auto& parts = state_.pdf2d->m_particles;
+		parts.clear();
+		mrpt::random::CRandomGenerator rng;
+		const double sigmaXY = params_.relocalization_resolution_xy * 0.33;
+		const double sigmaPhi = params_.relocalization_resolution_phi * 0.33;
+
+		const size_t numCopies = std::max<size_t>(
+			2, mrpt::round(
+				   params_.initial_particles_per_m2 * mrpt::square(sigmaXY)));
+
+		for (const auto& [score, pose] : candidates)
+		{
+			for (size_t i = 0; i < numCopies; i++)
+			{
+				auto p = pose;
+				p.x += rng.drawGaussian1D(0, sigmaXY);
+				p.y += rng.drawGaussian1D(0, sigmaXY);
+				p.phi += rng.drawGaussian1D(0, sigmaPhi);
+				p.normalizePhi();
+				parts.emplace_back(p, 0.0 /*log weight*/);
+			}
+		}
+
+		// mark the relocalization as done:
+		state_.pendingRelocalization->pending_se2.reset();
+
+	}  // end relocalization
+#endif
 
 	// Make sure params are up-to-date in the PF
 	// (they may change on-the-fly by users):
@@ -1109,7 +1217,8 @@ void PFLocalizationCore::relocalize_here(
 	auto lck = mrpt::lockHelper(stateMtx_);
 
 	params_.initial_pose.emplace(pose);
-	// Only if we were already running, reset and restart with a relocalization:
+	// Only if we were already running, reset and restart with a
+	// relocalization:
 	if (state_.fsm_state == State::RUNNING)
 	{
 		state_.fsm_state = State::TO_BE_INITIALIZED;

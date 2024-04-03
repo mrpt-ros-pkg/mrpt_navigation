@@ -12,6 +12,7 @@
 #include <mrpt/bayes/CParticleFilter.h>
 #include <mrpt/containers/yaml.h>
 #include <mrpt/core/Clock.h>
+#include <mrpt/core/pimpl.h>
 #include <mrpt/gui/CDisplayWindow3D.h>
 #include <mrpt/maps/CMultiMetricMap.h>
 #include <mrpt/maps/COccupancyGridMap2D.h>	// TLikelihoodOptions
@@ -136,6 +137,13 @@ class PFLocalizationCore : public mrpt::system::COutputLogger
 		/// samples around the GNNS prediction:
 		double gnns_samples_num_sigmas = 6.0;
 
+		/// After relocalization runs, what top percentile of the best matched
+		/// poses are to be taken as real potential robot poses for tracking.
+		double relocalization_best_percentile = 0.99;
+
+		double relocalization_resolution_xy = 0.50;	 // [m]
+		double relocalization_resolution_phi = 0.20;  // [rad]
+
 		/// This method loads all parameters from the YAML, except the
 		/// metric_map (handled in parent class):
 		void load_from(const mrpt::containers::yaml& params);
@@ -226,7 +234,7 @@ class PFLocalizationCore : public mrpt::system::COutputLogger
 
 	struct InternalState
 	{
-		InternalState() = default;
+		InternalState();
 
 		State fsm_state = State::UNINITIALIZED;
 
@@ -256,6 +264,9 @@ class PFLocalizationCore : public mrpt::system::COutputLogger
 		mrpt::poses::CPose3DPDFParticles::Ptr lastResult;
 
 		std::optional<mrpt::poses::CPose3D> nextFakeOdometryIncrPose;
+
+		struct Relocalization;
+		mrpt::pimpl<Relocalization> pendingRelocalization;
 	};
 
    private:

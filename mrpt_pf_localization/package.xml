@@ -29,6 +29,7 @@
   <depend>sensor_msgs</depend>
   <depend>nav_msgs</depend>
   <depend>mp2p_icp</depend>
+  <depend>mola_relocalization</depend>
   <depend>mrpt_msgs</depend>
   <depend>mrpt_msgs_bridge</depend>
   <depend>pose_cov_ops</depend>

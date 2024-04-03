@@ -32,6 +32,8 @@ const std::string TEST_RAWLOG_FILE = mrpt::get_env<std::string>(
 	"TEST_RAWLOG_FILE", MRPT_LOCALIZATION_SOURCE_DIR
 	"/../mrpt_tutorials/datasets/driving_in_office_obs.rawlog");
 
+const size_t TEST_SKIP_FIRST_N = mrpt::get_env<size_t>("TEST_SKIP_FIRST_N", 0);
+
 TEST(PF_Localization, InitState)
 {
 	PFLocalizationCore loc;
@@ -96,7 +98,9 @@ TEST(PF_Localization, RunRealDataset)
 	EXPECT_EQ(loc.getState(), PFLocalizationCore::State::RUNNING);
 
 	// Check that number of particles is high:
+#if 0  // This won't work with the mola_relocalization method
 	ASSERT_GT(loc.getLastPoseEstimation()->size(), 500U);
+#endif
 
 	// Run for a small dataset:
 	mrpt::obs::CRawlog dataset;
@@ -104,8 +108,13 @@ TEST(PF_Localization, RunRealDataset)
 	EXPECT_GT(dataset.size(), 20U);
 
 	double lastStepTime = 0.0;
+	size_t datasetIndex = 0;
 	for (const auto& observation : dataset)
 	{
+		datasetIndex++;
+
+		if (datasetIndex <= TEST_SKIP_FIRST_N) continue;
+
 		const auto obs =
 			std::dynamic_pointer_cast<mrpt::obs::CObservation>(observation);
 

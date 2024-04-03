@@ -49,6 +49,13 @@
     # samples around the GNNS prediction:
     gnns_samples_num_sigmas: 6.0
 
+    # After relocalization runs, what top percentile of the best matched
+    # poses are to be taken as real potential robot poses for tracking.
+    relocalization_best_percentile: 0.95
+
+    relocalization_resolution_xy: 0.25  # [m]
+    relocalization_resolution_phi: 10.0 # [deg]
+
 
     # For SE(2) mode: Uncertainty motion model for regular odometry-based motion
     # See docs for mrpt::obs::CActionRobotMovement2D::TMotionModelOptions or https://docs.mrpt.org/reference/latest/tutorial-motion-models.html
