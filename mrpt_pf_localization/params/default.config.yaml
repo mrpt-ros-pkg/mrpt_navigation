@@ -18,7 +18,7 @@
     rate_hz: 1.0
 
     # Particle density (particles/m²) upon initialization:
-    initial_particles_per_m2: 10
+    initial_particles_per_m2: 50
 
     # You can include the initial pose here as parameter, or send it via a topic or service.
     initial_pose:
@@ -118,8 +118,8 @@
     #    KLD-sampling. The international Journal of robotics research, 22(12), 985-1003.
     # -----------------------------------------------------------------------------------
     kld_options:
-      KLD_minSampleSize: 250
-      KLD_maxSampleSize: 5000
+      KLD_minSampleSize: 50
+      KLD_maxSampleSize: 10000
       KLD_binSize_XY: 0.25    # [meters]
       KLD_binSize_PHI: 0.17   # [radians]
       KLD_delta: 0.05
@@ -128,8 +128,22 @@
       
     # If defined, this block will override the likelihoodOptions field of the 
     # de-serialized metric map (.mm) used as global map:
+    #
+    # Docs for mrpt::maps::CPointsMap::TLikelihoodOptions: https://docs.mrpt.org/reference/latest/struct_mrpt_maps_CPointsMap_TLikelihoodOptions.html
     override_likelihood_point_maps:
       sigma_dist: 0.10  # [m]
       max_corr_distance: 1.5 # [m]
       decimation: 50
 
+    # If defined, this block will override the likelihoodOptions field of the 
+    # de-serialized metric map (.mm) used as global map:
+    #
+    # Docs for mrpt::maps::COccupancyGridMap2D::TLikelihoodOptions: https://docs.mrpt.org/reference/latest/class_mrpt_maps_COccupancyGridMap2D_TLikelihoodOptions.html
+    override_likelihood_gridmaps:
+       likelihoodMethod: 'lmLikelihoodField_Thrun'
+       LF_stdHit: 2.0
+       LF_zHit: 0.90
+       LF_zRandom: 0.10
+       LF_maxRange: 81.0
+       LF_maxCorrsDistance: 1.0
+       LF_decimation: 1

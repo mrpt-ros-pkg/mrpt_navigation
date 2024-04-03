@@ -63,7 +63,7 @@ TEST(PF_Localization, RunRealDataset)
 	loc.init_from_yaml(params);
 
 	// Check params:
-	EXPECT_EQ(loc.getParams().initial_particles_per_m2, 10U);
+	EXPECT_EQ(loc.getParams().initial_particles_per_m2, 50U);
 
 	// Check that we are still in UNINITILIZED state, even after stepping,
 	// since we don't have a map yet:
@@ -95,7 +95,8 @@ TEST(PF_Localization, RunRealDataset)
 	loc.step();
 	EXPECT_EQ(loc.getState(), PFLocalizationCore::State::RUNNING);
 
-	MRPT_TODO("Check that number of particles is high");
+	// Check that number of particles is high:
+	ASSERT_GT(loc.getLastPoseEstimation()->size(), 500U);
 
 	// Run for a small dataset:
 	mrpt::obs::CRawlog dataset;
@@ -122,7 +123,26 @@ TEST(PF_Localization, RunRealDataset)
 		}
 	}
 
-	MRPT_TODO("Check PF convergence to ground truth");
+	{
+		// Check PF convergence to ground truth
+		const auto [cov, mean] =
+			loc.getLastPoseEstimation()->getCovarianceAndMean();
+
+		const double std_x = std::sqrt(cov(0, 0));
+		const double std_y = std::sqrt(cov(1, 1));
+		const double std_yaw = std::sqrt(cov(3, 3));
+
+		ASSERT_LT(std_x, 0.5);
+		ASSERT_LT(std_y, 0.5);
+		ASSERT_LT(std_yaw, 0.1);
+
+		using namespace mrpt::literals;	 // _deg
+
+		const auto gtPose = mrpt::poses::CPose3D::FromXYZYawPitchRoll(
+			-9.03, 4.5, 0.0000, 4.3_deg, 0.0_deg, 0.0_deg);
+
+		ASSERT_LT((mean - gtPose).asVectorVal().norm(), 0.25);
+	}
 }
 
 int main(int argc, char** argv)
