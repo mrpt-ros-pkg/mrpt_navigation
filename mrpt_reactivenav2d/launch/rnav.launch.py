@@ -42,6 +42,10 @@ def generate_launch_description():
         'topic_reactive_nav_goal',
         default_value='/goal_pose'
     )
+    topic_reactive_nav_waypoint_sequence_arg = DeclareLaunchArgument(
+        'topic_wp_seq',
+        default_value='/rnav_waypoint_sequence'
+    )
     nav_period_arg = DeclareLaunchArgument(
         'nav_period',
         default_value='0.20'
@@ -84,6 +88,7 @@ def generate_launch_description():
                 'topic_robot_shape': LaunchConfiguration('topic_robot_shape'),
                 'topic_obstacles': LaunchConfiguration('topic_obstacles'),
                 'topic_reactive_nav_goal': LaunchConfiguration('topic_reactive_nav_goal'),
+                'topic_wp_seq':  LaunchConfiguration('topic_wp_seq'),
                 'nav_period': LaunchConfiguration('nav_period'),
                 'frameid_reference': LaunchConfiguration('frameid_reference'),
                 'frameid_robot': LaunchConfiguration('frameid_robot'),
@@ -102,6 +107,7 @@ def generate_launch_description():
         topic_robot_shape_arg,
         topic_obstacles_arg,
         topic_reactive_nav_goal_arg,
+        topic_reactive_nav_waypoint_sequence_arg,
         nav_period_arg,
         frameid_reference_arg,
         frameid_robot_arg,
