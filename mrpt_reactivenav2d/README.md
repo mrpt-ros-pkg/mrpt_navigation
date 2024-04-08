@@ -97,6 +97,18 @@ XXX
 ### Published topics
 * xxx
 
+* `reactivenav_events` (`std_msgs/String`): One message with a string keyword will be published for each important navigation event. 
+  The list possible message strings are: 
+  * `START`: Start of navigation
+  * `END`: Successful end of navigation command (reach of single goal, or final waypoint of waypoint list).
+  * `WP_REACHED <INDEX> (REACHED|SKIPPED)`: Reached an intermediary waypoint in waypoint list navigation. The waypoint may have been physically reached or just skipped.
+  * `WP_NEW <INDEX>`: Heading towards a new intermediary/final waypoint in waypoint list navigation.
+  * `ERROR`: Error asking sensory data from robot or sending motor commands.
+  * `WAY_SEEMS_BLOCKED`: No progression made towards target for a predefined period of time.
+  * `APPARENT_COLLISION`: Apparent collision event (i.e. there is at least one obstacle point inside the robot shape).
+  * `CANNOT_GET_CLOSER`: Target seems to be blocked by an obstacle.
+
+
 ### Template ROS 2 launch files
 
 This package provides [launch/reactivenav.launch.py](launch/reactivenav.launch.py):

@@ -36,6 +36,7 @@
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/laser_scan.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
+#include <std_msgs/msg/string.hpp>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 #include <visualization_msgs/msg/marker_array.hpp>
 
@@ -85,6 +86,8 @@ class ReactiveNav2DNode : public rclcpp::Node
 	rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr
 		pubSelectedPtg_;
 
+	rclcpp::Publisher<std_msgs::msg::String>::SharedPtr pubNavEvents_;
+
 	std::shared_ptr<tf2_ros::Buffer> tfBuffer_;
 	std::shared_ptr<tf2_ros::TransformListener> tfListener_;
 	/** @} */
@@ -102,6 +105,7 @@ class ReactiveNav2DNode : public rclcpp::Node
 
 	std::string pubTopicCmdVel_ = "/cmd_vel";
 	std::string pubTopicSelectedPtg_ = "reactivenav_selected_ptg";
+	std::string pubTopicEvents_ = "reactivenav_events";
 
 	std::string frameidReference_ = "map";
 	std::string frameidRobot_ = "base_link";
@@ -127,6 +131,8 @@ class ReactiveNav2DNode : public rclcpp::Node
 
 	visualization_msgs::msg::MarkerArray log_to_margers(
 		const mrpt::nav::CLogFileRecord& lr);
+
+	void publish_event_message(const std::string& text);
 
 	struct MyReactiveInterface : public mrpt::nav::CRobot2NavInterface
 	{
@@ -263,10 +269,38 @@ class ReactiveNav2DNode : public rclcpp::Node
 			return ret;
 		}
 
-		void sendNavigationStartEvent() override {}
-		void sendNavigationEndEvent() override {}
-		void sendNavigationEndDueToErrorEvent() override {}
-		void sendWaySeemsBlockedEvent() override {}
+		/** Callback: Start of navigation command */
+		void sendNavigationStartEvent() override;
+
+		/** Callback: End of navigation command (reach of single goal, or final
+		 * waypoint of waypoint list) */
+		void sendNavigationEndEvent() override;
+
+		/** Callback: Reached an intermediary waypoint in waypoint list
+		 * navigation. reached_nSkipped will be `true` if the waypoint was
+		 * physically reached; `false` if it was actually "skipped".
+		 */
+		void sendWaypointReachedEvent(
+			int waypoint_index, bool reached_nSkipped) override;
+
+		/** Callback: Heading towards a new intermediary/final waypoint in
+		 * waypoint list navigation */
+		void sendNewWaypointTargetEvent(int waypoint_index) override;
+
+		/** Callback: Error asking sensory data from robot or sending motor
+		 * commands. */
+		void sendNavigationEndDueToErrorEvent() override;
+
+		/** Callback: No progression made towards target for a predefined period
+		 * of time. */
+		void sendWaySeemsBlockedEvent() override;
+
+		/** Callback: Apparent collision event (i.e. there is at least one
+		 * obstacle point inside the robot shape) */
+		void sendApparentCollisionEvent() override;
+
+		/** Callback: Target seems to be blocked by an obstacle. */
+		void sendCannotGetCloserToBlockedTargetEvent() override;
 	};
 
 	MyReactiveInterface reactiveInterface_{*this};

@@ -70,9 +70,8 @@ ReactiveNav2DNode::ReactiveNav2DNode(const rclcpp::NodeOptions& options)
 	{
 		subRobotShape_ = this->create_subscription<geometry_msgs::msg::Polygon>(
 			subTopicRobotShape_, 1,
-			[this](const geometry_msgs::msg::Polygon::SharedPtr poly) {
-				this->on_set_robot_shape(poly);
-			});
+			[this](const geometry_msgs::msg::Polygon::SharedPtr poly)
+			{ this->on_set_robot_shape(poly); });
 
 		RCLCPP_INFO(
 			this->get_logger(),
@@ -141,6 +140,9 @@ ReactiveNav2DNode::ReactiveNav2DNode(const rclcpp::NodeOptions& options)
 	pubSelectedPtg_ =
 		this->create_publisher<visualization_msgs::msg::MarkerArray>(
 			pubTopicSelectedPtg_, qos);
+
+	pubNavEvents_ =
+		this->create_publisher<std_msgs::msg::String>(pubTopicEvents_, 1);
 
 	// Init ROS subs:
 	// -----------------------
@@ -228,6 +230,11 @@ void ReactiveNav2DNode::read_parameters()
 	get_parameter("topic_cmd_vel", pubTopicCmdVel_);
 	RCLCPP_INFO(
 		this->get_logger(), "topic_cmd_vel: %s", pubTopicCmdVel_.c_str());
+
+	declare_parameter<std::string>("pubTopicEvents", pubTopicEvents_);
+	get_parameter("pubTopicEvents", pubTopicEvents_);
+	RCLCPP_INFO(
+		this->get_logger(), "pubTopicEvents: %s", pubTopicEvents_.c_str());
 
 	declare_parameter<std::string>("topic_obstacles", subTopicLocalObstacles_);
 	get_parameter("topic_obstacles", subTopicLocalObstacles_);
@@ -542,6 +549,60 @@ visualization_msgs::msg::MarkerArray ReactiveNav2DNode::log_to_margers(
 	}
 
 	return msg;
+}
+
+void ReactiveNav2DNode::publish_event_message(const std::string& text)
+{
+	std_msgs::msg::String msg;
+	msg.data = text;
+	pubNavEvents_->publish(msg);
+}
+
+void ReactiveNav2DNode::MyReactiveInterface::sendNavigationStartEvent()
+{
+	parent_.publish_event_message("START");
+}
+
+void ReactiveNav2DNode::MyReactiveInterface::sendNavigationEndEvent()
+{
+	parent_.publish_event_message("END");
+}
+
+void ReactiveNav2DNode::MyReactiveInterface::sendWaypointReachedEvent(
+	int waypoint_index, bool reached_nSkipped)
+{
+	using namespace std::string_literals;
+	parent_.publish_event_message(
+		"WP_REACHED "s + std::to_string(waypoint_index) + " "s +
+		(reached_nSkipped ? "REACHED" : "SKIPPED"));
+}
+
+void ReactiveNav2DNode::MyReactiveInterface::sendNewWaypointTargetEvent(
+	int waypoint_index)
+{
+	using namespace std::string_literals;
+	parent_.publish_event_message("WP_NEW "s + std::to_string(waypoint_index));
+}
+
+void ReactiveNav2DNode::MyReactiveInterface::sendNavigationEndDueToErrorEvent()
+{
+	parent_.publish_event_message("ERROR");
+}
+
+void ReactiveNav2DNode::MyReactiveInterface::sendWaySeemsBlockedEvent()
+{
+	parent_.publish_event_message("WAY_SEEMS_BLOCKED");
+}
+
+void ReactiveNav2DNode::MyReactiveInterface::sendApparentCollisionEvent()
+{
+	parent_.publish_event_message("APPARENT_COLLISION");
+}
+
+void ReactiveNav2DNode::MyReactiveInterface::
+	sendCannotGetCloserToBlockedTargetEvent()
+{
+	parent_.publish_event_message("CANNOT_GET_CLOSER");
 }
 
 int main(int argc, char** argv)
