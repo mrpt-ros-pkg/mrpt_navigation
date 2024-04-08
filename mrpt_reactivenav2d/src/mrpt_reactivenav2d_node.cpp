@@ -132,12 +132,14 @@ ReactiveNav2DNode::ReactiveNav2DNode(const rclcpp::NodeOptions& options)
 
 	// Init ROS publishers:
 	// -----------------------
+	auto qos = rclcpp::SystemDefaultsQoS();
+	
 	pubCmdVel_ =
-		this->create_publisher<geometry_msgs::msg::Twist>(pubTopicCmdVel_, 1);
+		this->create_publisher<geometry_msgs::msg::Twist>(pubTopicCmdVel_, qos);
 
 	pubSelectedPtg_ =
 		this->create_publisher<visualization_msgs::msg::MarkerArray>(
-			pubTopicSelectedPtg_, 1);
+			pubTopicSelectedPtg_, qos);
 
 	pubNavEvents_ =
 		this->create_publisher<std_msgs::msg::String>(pubTopicEvents_, 1);
@@ -145,24 +147,28 @@ ReactiveNav2DNode::ReactiveNav2DNode(const rclcpp::NodeOptions& options)
 	// Init ROS subs:
 	// -----------------------
 	subOdometry_ = this->create_subscription<nav_msgs::msg::Odometry>(
-		subTopicOdometry_, 1,
-		[this](const nav_msgs::msg::Odometry::SharedPtr odom)
-		{ this->on_odometry_received(odom); });
+		subTopicOdometry_, qos,
+		[this](const nav_msgs::msg::Odometry::SharedPtr odom) {
+			this->on_odometry_received(odom);
+		});
 
 	subWpSeq_ = this->create_subscription<mrpt_msgs::msg::WaypointSequence>(
-		subTopicWpSeq_, 1,
-		[this](const mrpt_msgs::msg::WaypointSequence::SharedPtr msg)
-		{ this->on_waypoint_seq_received(msg); });
+		subTopicWpSeq_, qos,
+		[this](const mrpt_msgs::msg::WaypointSequence::SharedPtr msg) {
+			this->on_waypoint_seq_received(msg);
+		});
 
 	subNavGoal_ = this->create_subscription<geometry_msgs::msg::PoseStamped>(
-		subTopicNavGoal_, 1,
-		[this](const geometry_msgs::msg::PoseStamped::SharedPtr msg)
-		{ this->on_goal_received(msg); });
+		subTopicNavGoal_, qos,
+		[this](const geometry_msgs::msg::PoseStamped::SharedPtr msg) {
+			this->on_goal_received(msg);
+		});
 
 	subLocalObs_ = this->create_subscription<sensor_msgs::msg::PointCloud2>(
-		subTopicLocalObstacles_, 1,
-		[this](const sensor_msgs::msg::PointCloud2::SharedPtr msg)
-		{ this->on_local_obstacles(msg); });
+		subTopicLocalObstacles_, qos,
+		[this](const sensor_msgs::msg::PointCloud2::SharedPtr msg) {
+			this->on_local_obstacles(msg);
+		});
 
 	// Init tf buffers
 	// ----------------------------------------------------
