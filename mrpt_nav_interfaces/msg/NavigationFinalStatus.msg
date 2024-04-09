@@ -1,0 +1,5 @@
+int8 navigation_status
+
+int8 STATUS_SUCCESS=0
+int8 STATUS_ERROR=1
+int8 STATUS_CANCELLED=2

@@ -1,0 +1,8 @@
+# Goal
+mrpt_msgs/WaypointSequence waypoints
+---
+# Result
+mrpt_nav_interfaces/NavigationFinalStatus state
+---
+# Feedback
+mrpt_nav_interfaces/NavigationFeedback state
