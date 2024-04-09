@@ -108,6 +108,103 @@ XXX
   * `APPARENT_COLLISION`: Apparent collision event (i.e. there is at least one obstacle point inside the robot shape).
   * `CANNOT_GET_CLOSER`: Target seems to be blocked by an obstacle.
 
+### Actions
+
+#### NavigateGoal
+
+Can be used to navigate to a single target SE(2) pose.
+
+Example CLI call:
+```bash
+ros2 action send_goal /rnav/navigate_goal mrpt_nav_interfaces/action/NavigateGoal  --feedback \
+"target:
+  header: {stamp: {sec: 0, nanosec: 0}, frame_id: 'map'}
+  pose: {position: {x: 3.0, y: 0.0, z: 0.0}, orientation: {x: 0.0, y: 0.0, z: 0.0, w: 1.0}}
+"
+```
+
+Example output:
+```
+Goal accepted with ID: 38d28cd7ad604e41bcfa7d50162fbd93
+
+Feedback:
+    state:
+  total_waypoints: 1
+  reached_waypoints: 0
+
+Feedback:
+    state:
+  total_waypoints: 1
+  reached_waypoints: 0
+
+[...]
+
+Feedback:
+    state:
+  total_waypoints: 1
+  reached_waypoints: 0
+
+Result:
+    state:
+  navigation_status: 0
+
+Goal finished with status: SUCCEEDED
+```
+
+#### NavigateWaypoints
+
+Can be used to navigate to a sequence of waypoints.
+
+Example CLI call:
+```bash
+ros2 action send_goal /rnav/navigate_waypoints mrpt_nav_interfaces/action/NavigateWaypoints  --feedback \
+"waypoints:
+  header: {stamp: {sec: 0, nanosec: 0}, frame_id: 'map'}
+  waypoints:
+    - target: {position: {x: 2.0, y: 0.0, z: 0.0}, orientation: {x: 0.0, y: 0.0, z: 0.0, w: 1.0}}
+      ignore_heading: true
+      allow_skip: false
+      allowed_distance: 0.30
+    - target: {position: {x: 4.0, y: 0.2, z: 0.0}, orientation: {x: 0.0, y: 0.0, z: 0.0, w: 1.0}}
+      ignore_heading: true
+      allow_skip: false
+      allowed_distance: 0.30
+"
+```
+
+Example output:
+```
+Goal accepted with ID: f8180e191f0d4f5ca8466c77acbab333
+
+Feedback:
+    state:
+  total_waypoints: 2
+  reached_waypoints: -1
+
+Feedback:
+    state:
+  total_waypoints: 2
+  reached_waypoints: 0
+
+Feedback:
+    state:
+  total_waypoints: 2
+  reached_waypoints: 1
+
+[...]
+
+Feedback:
+    state:
+  total_waypoints: 2
+  reached_waypoints: 1
+
+Result:
+    state:
+  navigation_status: 0
+
+Goal finished with status: SUCCEEDED
+```
+
 
 ### Template ROS 2 launch files
 

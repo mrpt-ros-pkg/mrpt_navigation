@@ -6,14 +6,17 @@
    | All rights reserved. Released under BSD 3-Clause license. See LICENSE  |
    +------------------------------------------------------------------------+ */
 
-#include "mrpt_reactivenav2d/mrpt_reactivenav2d_node.hpp"
-
-#include <stdexcept>
+#include <chrono>
+#include <mrpt_reactivenav2d/mrpt_reactivenav2d_node.hpp>
+#include <rclcpp_components/register_node_macro.hpp>
 
 using namespace mrpt::nav;
 using mrpt::maps::CSimplePointsMap;
 using namespace mrpt::system;
 using namespace mrpt::config;
+using namespace mrpt_reactivenav2d;
+
+RCLCPP_COMPONENTS_REGISTER_NODE(mrpt_reactivenav2d::ReactiveNav2DNode)
 
 /**  Constructor: Inits ROS system */
 ReactiveNav2DNode::ReactiveNav2DNode(const rclcpp::NodeOptions& options)
@@ -171,6 +174,22 @@ ReactiveNav2DNode::ReactiveNav2DNode(const rclcpp::NodeOptions& options)
 	tfBuffer_ = std::make_shared<tf2_ros::Buffer>(this->get_clock());
 	tfListener_ = std::make_shared<tf2_ros::TransformListener>(*tfBuffer_);
 
+	// Actions
+	// ----------------------------------------------------
+	using namespace std::placeholders;
+
+	action_server_goal_ = rclcpp_action::create_server<NavigateGoal>(
+		this, "navigate_goal",
+		std::bind(&ReactiveNav2DNode::handle_goal, this, _1, _2),
+		std::bind(&ReactiveNav2DNode::handle_cancel, this, _1),
+		std::bind(&ReactiveNav2DNode::handle_accepted, this, _1));
+
+	action_server_waypoints_ = rclcpp_action::create_server<NavigateWaypoints>(
+		this, "navigate_waypoints",
+		std::bind(&ReactiveNav2DNode::handle_goal_wp, this, _1, _2),
+		std::bind(&ReactiveNav2DNode::handle_cancel_wp, this, _1),
+		std::bind(&ReactiveNav2DNode::handle_accepted_wp, this, _1));
+
 	// Init timer:
 	// ----------------------------------------------------
 	timerRunNav_ = this->create_wall_timer(
@@ -294,6 +313,11 @@ void ReactiveNav2DNode::navigate_to(const mrpt::math::TPose2D& target)
 	// navParams.restrict_PTG_indices.push_back(1);
 
 	{
+		std::lock_guard<std::mutex> csl(currentNavEndedSuccessfullyMtx_);
+		currentNavEndedSuccessfully_.reset();
+	}
+
+	{
 		std::lock_guard<std::mutex> csl(rnavEngineMtx_);
 		rnavEngine_.navigate(&navParams);
 	}
@@ -359,21 +383,21 @@ void ReactiveNav2DNode::on_odometry_received(
 void ReactiveNav2DNode::on_waypoint_seq_received(
 	const mrpt_msgs::msg::WaypointSequence::SharedPtr& wps)
 {
-	update_waypoint_sequence(std::move(wps));
+	update_waypoint_sequence(*wps);
 }
 
 void ReactiveNav2DNode::update_waypoint_sequence(
-	const mrpt_msgs::msg::WaypointSequence::SharedPtr& msg)
+	const mrpt_msgs::msg::WaypointSequence& msg)
 {
 	mrpt::nav::TWaypointSequence wps;
 
 	mrpt::poses::CPose3D relPose = mrpt::poses::CPose3D::Identity();
 
 	// Convert to the "m_frameid_reference" frame of coordinates:
-	if (msg->header.frame_id != frameidReference_)
-		waitForTransform(relPose, frameidReference_, msg->header.frame_id);
+	if (msg.header.frame_id != frameidReference_)
+		waitForTransform(relPose, frameidReference_, msg.header.frame_id);
 
-	for (const auto& wp : msg->waypoints)
+	for (const auto& wp : msg.waypoints)
 	{
 		auto trg = mrpt::ros2bridge::fromROS(wp.target);
 		trg = relPose + trg;  // local to global frame, if needed.
@@ -389,6 +413,10 @@ void ReactiveNav2DNode::update_waypoint_sequence(
 	}
 
 	RCLCPP_INFO_STREAM(this->get_logger(), "New navigateWaypoints() command");
+	{
+		std::lock_guard<std::mutex> csl(currentNavEndedSuccessfullyMtx_);
+		currentNavEndedSuccessfully_.reset();
+	}
 	{
 		std::lock_guard<std::mutex> csl(rnavEngineMtx_);
 		rnavEngine_.navigateWaypoints(wps);
@@ -554,6 +582,326 @@ void ReactiveNav2DNode::publish_event_message(const std::string& text)
 	pubNavEvents_->publish(msg);
 }
 
+// ACTION INTERFACE: NavigateGoal
+// --------------------------------------
+rclcpp_action::GoalResponse ReactiveNav2DNode::handle_goal(
+	const rclcpp_action::GoalUUID& uuid,
+	std::shared_ptr<const NavigateGoal::Goal> goal)
+{
+	RCLCPP_INFO_STREAM(
+		get_logger(), "[NavigateGoal] Received request for: "
+						  << mrpt::ros2bridge::fromROS(goal->target.pose));
+	(void)uuid;
+	return rclcpp_action::GoalResponse::ACCEPT_AND_EXECUTE;
+}
+
+rclcpp_action::CancelResponse ReactiveNav2DNode::handle_cancel(
+	const std::shared_ptr<HandleNavigateGoal> goal_handle)
+{
+	RCLCPP_INFO(
+		this->get_logger(), "[NavigateGoal] Received request to cancel goal");
+	(void)goal_handle;
+	{
+		std::lock_guard<std::mutex> csl(rnavEngineMtx_);
+		rnavEngine_.cancel();
+	}
+	return rclcpp_action::CancelResponse::ACCEPT;
+}
+
+void ReactiveNav2DNode::handle_accepted(
+	const std::shared_ptr<HandleNavigateGoal> goal_handle)
+{
+	using namespace std::placeholders;
+
+	MRPT_TODO("Keep past actions and cancel them if we accept this one");
+
+	std::thread{
+		std::bind(&ReactiveNav2DNode::execute_action_goal, this, _1),
+		goal_handle}
+		.detach();
+}
+
+// this method will run in a detached thread when an action is invoked:
+void ReactiveNav2DNode::execute_action_goal(
+	const std::shared_ptr<HandleNavigateGoal> goal_handle)
+{
+	const auto trgPose =
+		mrpt::ros2bridge::fromROS(goal_handle->get_goal()->target.pose);
+
+	const mrpt::math::TPose2D trgPose2D = {
+		trgPose.x(), trgPose.y(), trgPose.yaw()};
+
+	RCLCPP_INFO_STREAM(
+		this->get_logger(),
+		"[execute_action_goal] Start for goal: " << trgPose2D);
+
+	this->navigate_to(trgPose2D);
+
+	rclcpp::Rate loop_rate(1);
+	auto feedback = std::make_shared<NavigateGoal::Feedback>();
+	auto result = std::make_shared<NavigateGoal::Result>();
+
+	auto getNavState = [this]()
+	{
+		std::lock_guard<std::mutex> csl(rnavEngineMtx_);
+		return rnavEngine_.getCurrentState();
+	};
+
+	while (rclcpp::ok())
+	{
+		// Check if there is a cancel request
+		if (goal_handle->is_canceling())
+		{
+			result->state.navigation_status = mrpt_nav_interfaces::msg::
+				NavigationFinalStatus::STATUS_CANCELLED;
+			goal_handle->canceled(result);
+			return;
+		}
+
+		const auto navState = getNavState();
+
+		currentNavEndedSuccessfullyMtx_.lock();
+		const auto curNavEnded = currentNavEndedSuccessfully_;
+		currentNavEndedSuccessfullyMtx_.unlock();
+
+		if (navState == mrpt::nav::CAbstractNavigator::NAV_ERROR ||
+			(curNavEnded.has_value() && *curNavEnded == false))
+		{
+			result->state.navigation_status =
+				mrpt_nav_interfaces::msg::NavigationFinalStatus::STATUS_ERROR;
+			goal_handle->abort(result);
+			return;
+		}
+
+		// Publish feedback
+		feedback->state.total_waypoints = 1;  // this is a single WP action
+		feedback->state.reached_waypoints = 0;
+
+		goal_handle->publish_feedback(feedback);
+
+		// end of nav?
+		if (curNavEnded.has_value() && *curNavEnded == true) break;	 // success
+
+		// wait and repeat
+		loop_rate.sleep();
+	}
+
+	// Check if goal is done
+	if (rclcpp::ok())
+	{
+		result->state.navigation_status =
+			mrpt_nav_interfaces::msg::NavigationFinalStatus::STATUS_SUCCESS;
+		goal_handle->succeed(result);
+		RCLCPP_INFO(this->get_logger(), "[execute_action_goal] Goal succeeded");
+	}
+}
+
+// ACTION INTERFACE: NavigateWaypoints
+// --------------------------------------
+rclcpp_action::GoalResponse ReactiveNav2DNode::handle_goal_wp(
+	const rclcpp_action::GoalUUID& uuid,
+	std::shared_ptr<const NavigateWaypoints::Goal> goal)
+{
+	RCLCPP_INFO_STREAM(
+		get_logger(), "[NavigateWaypoints] Received request with "
+						  << goal->waypoints.waypoints.size() << " waypoints.");
+	(void)uuid;
+	return rclcpp_action::GoalResponse::ACCEPT_AND_EXECUTE;
+}
+
+rclcpp_action::CancelResponse ReactiveNav2DNode::handle_cancel_wp(
+	const std::shared_ptr<HandleNavigateWaypoints> goal_handle)
+{
+	RCLCPP_INFO(
+		this->get_logger(),
+		"[NavigateWaypoints] Received request to cancel waypoints");
+	(void)goal_handle;
+	{
+		std::lock_guard<std::mutex> csl(rnavEngineMtx_);
+		rnavEngine_.cancel();
+	}
+	return rclcpp_action::CancelResponse::ACCEPT;
+}
+
+void ReactiveNav2DNode::handle_accepted_wp(
+	const std::shared_ptr<HandleNavigateWaypoints> goal_handle)
+{
+	using namespace std::placeholders;
+
+	MRPT_TODO("Keep past actions and cancel them if we accept this one");
+
+	std::thread{
+		std::bind(&ReactiveNav2DNode::execute_action_wp, this, _1), goal_handle}
+		.detach();
+}
+
+// this method will run in a detached thread when an action is invoked:
+void ReactiveNav2DNode::execute_action_wp(
+	const std::shared_ptr<HandleNavigateWaypoints> goal_handle)
+{
+	RCLCPP_INFO_STREAM(this->get_logger(), "[execute_action_wp] Start.");
+
+	update_waypoint_sequence(goal_handle->get_goal()->waypoints);
+
+	rclcpp::Rate loop_rate(1);
+	auto feedback = std::make_shared<NavigateWaypoints::Feedback>();
+	auto result = std::make_shared<NavigateWaypoints::Result>();
+
+	auto getNavState = [this]()
+	{
+		std::lock_guard<std::mutex> csl(rnavEngineMtx_);
+		return rnavEngine_.getCurrentState();
+	};
+	auto getWpStatus = [this]()
+	{
+		std::lock_guard<std::mutex> csl(rnavEngineMtx_);
+		return rnavEngine_.getWaypointNavStatus();
+	};
+
+	while (rclcpp::ok())
+	{
+		// Check if there is a cancel request
+		if (goal_handle->is_canceling())
+		{
+			result->state.navigation_status = mrpt_nav_interfaces::msg::
+				NavigationFinalStatus::STATUS_CANCELLED;
+			goal_handle->canceled(result);
+			return;
+		}
+
+		const auto navState = getNavState();
+
+		currentNavEndedSuccessfullyMtx_.lock();
+		const auto curNavEnded = currentNavEndedSuccessfully_;
+		currentNavEndedSuccessfullyMtx_.unlock();
+
+		if (navState == mrpt::nav::CAbstractNavigator::NAV_ERROR ||
+			(curNavEnded.has_value() && *curNavEnded == false))
+		{
+			result->state.navigation_status =
+				mrpt_nav_interfaces::msg::NavigationFinalStatus::STATUS_ERROR;
+			goal_handle->abort(result);
+			return;
+		}
+
+		// Publish feedback
+		const auto wps = getWpStatus();
+		feedback->state.total_waypoints = wps.waypoints.size();
+		feedback->state.reached_waypoints = wps.waypoint_index_current_goal;
+
+		goal_handle->publish_feedback(feedback);
+
+		// end of nav?
+		if (wps.final_goal_reached) break;	// successful
+
+		// wait and repeat
+		loop_rate.sleep();
+	}
+
+	// Check if goal is done
+	if (rclcpp::ok())
+	{
+		result->state.navigation_status =
+			mrpt_nav_interfaces::msg::NavigationFinalStatus::STATUS_SUCCESS;
+		goal_handle->succeed(result);
+		RCLCPP_INFO(this->get_logger(), "[execute_action_wp] Goal succeeded");
+	}
+}
+
+bool ReactiveNav2DNode::MyReactiveInterface::getCurrentPoseAndSpeeds(
+	mrpt::math::TPose2D& curPose, mrpt::math::TTwist2D& curVel,
+	mrpt::system::TTimeStamp& timestamp, mrpt::math::TPose2D& curOdometry,
+	std::string& frame_id)
+{
+	using mrpt::system::CTimeLoggerEntry;
+	double curV, curW;
+
+	CTimeLoggerEntry tle(parent_.profiler_, "getCurrentPoseAndSpeeds");
+
+	// rclcpp::Duration timeout(0.1);
+	rclcpp::Duration timeout(std::chrono::milliseconds(100));
+
+	geometry_msgs::msg::TransformStamped tfGeom;
+	try
+	{
+		CTimeLoggerEntry tle2(
+			parent_.profiler_,
+			"getCurrentPoseAndSpeeds.lookupTransform_sensor");
+
+		tfGeom = parent_.tfBuffer_->lookupTransform(
+			parent_.frameidReference_, parent_.frameidRobot_,
+			tf2::TimePointZero, tf2::durationFromSec(timeout.seconds()));
+	}
+	catch (const tf2::TransformException& ex)
+	{
+		RCLCPP_ERROR(parent_.get_logger(), "%s", ex.what());
+		return false;
+	}
+
+	tf2::Transform txRobotPose;
+	tf2::fromMsg(tfGeom.transform, txRobotPose);
+
+	const mrpt::poses::CPose3D curRobotPose =
+		mrpt::ros2bridge::fromROS(txRobotPose);
+
+	timestamp = mrpt::ros2bridge::fromROS(tfGeom.header.stamp);
+
+	// Explicit 3d->2d to confirm we know we're losing information
+	curPose = mrpt::poses::CPose2D(curRobotPose).asTPose();
+	curOdometry = curPose;
+
+	curV = curW = 0;
+	MRPT_TODO("Retrieve current speeds from /odom topic?");
+	RCLCPP_DEBUG(
+		parent_.get_logger(), "[getCurrentPoseAndSpeeds] Latest pose: %s",
+		curPose.asString().c_str());
+
+	// From local to global:
+	curVel = mrpt::math::TTwist2D(curV, .0, curW).rotated(curPose.phi);
+
+	return true;
+}
+
+bool ReactiveNav2DNode::MyReactiveInterface::changeSpeeds(
+	const mrpt::kinematics::CVehicleVelCmd& vel_cmd)
+{
+	using namespace mrpt::kinematics;
+	const CVehicleVelCmd_DiffDriven* vel_cmd_diff_driven =
+		dynamic_cast<const CVehicleVelCmd_DiffDriven*>(&vel_cmd);
+	ASSERT_(vel_cmd_diff_driven);
+
+	const double v = vel_cmd_diff_driven->lin_vel;
+	const double w = vel_cmd_diff_driven->ang_vel;
+	RCLCPP_DEBUG(
+		parent_.get_logger(), "changeSpeeds: v=%7.4f m/s  w=%8.3f deg/s", v,
+		w * 180.0f / M_PI);
+	geometry_msgs::msg::Twist cmd;
+	cmd.linear.x = v;
+	cmd.angular.z = w;
+	parent_.pubCmdVel_->publish(cmd);
+	return true;
+}
+
+bool ReactiveNav2DNode::MyReactiveInterface::stop(bool isEmergency)
+{
+	mrpt::kinematics::CVehicleVelCmd_DiffDriven vel_cmd;
+	vel_cmd.lin_vel = 0;
+	vel_cmd.ang_vel = 0;
+	return changeSpeeds(vel_cmd);
+}
+
+bool ReactiveNav2DNode::MyReactiveInterface::senseObstacles(
+	mrpt::maps::CSimplePointsMap& obstacles,
+	mrpt::system::TTimeStamp& timestamp)
+{
+	timestamp = mrpt::Clock::now();
+	std::lock_guard<std::mutex> csl(parent_.lastObstaclesMtx_);
+	obstacles = parent_.lastObstacles_;
+
+	MRPT_TODO("Check age of obstacles!");
+	return true;
+}
+
 void ReactiveNav2DNode::MyReactiveInterface::sendNavigationStartEvent()
 {
 	parent_.publish_event_message("START");
@@ -562,6 +910,9 @@ void ReactiveNav2DNode::MyReactiveInterface::sendNavigationStartEvent()
 void ReactiveNav2DNode::MyReactiveInterface::sendNavigationEndEvent()
 {
 	parent_.publish_event_message("END");
+
+	auto lck = mrpt::lockHelper(parent_.currentNavEndedSuccessfullyMtx_);
+	parent_.currentNavEndedSuccessfully_ = true;
 }
 
 void ReactiveNav2DNode::MyReactiveInterface::sendWaypointReachedEvent(
@@ -583,6 +934,9 @@ void ReactiveNav2DNode::MyReactiveInterface::sendNewWaypointTargetEvent(
 void ReactiveNav2DNode::MyReactiveInterface::sendNavigationEndDueToErrorEvent()
 {
 	parent_.publish_event_message("ERROR");
+
+	auto lck = mrpt::lockHelper(parent_.currentNavEndedSuccessfullyMtx_);
+	parent_.currentNavEndedSuccessfully_ = false;
 }
 
 void ReactiveNav2DNode::MyReactiveInterface::sendWaySeemsBlockedEvent()
@@ -599,6 +953,9 @@ void ReactiveNav2DNode::MyReactiveInterface::
 	sendCannotGetCloserToBlockedTargetEvent()
 {
 	parent_.publish_event_message("CANNOT_GET_CLOSER");
+
+	auto lck = mrpt::lockHelper(parent_.currentNavEndedSuccessfullyMtx_);
+	parent_.currentNavEndedSuccessfully_ = false;
 }
 
 int main(int argc, char** argv)

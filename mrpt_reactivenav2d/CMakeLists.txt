@@ -13,7 +13,7 @@ find_package(tf2 REQUIRED)
 find_package(tf2_ros)
 find_package(tf2_geometry_msgs REQUIRED)
 find_package(visualization_msgs REQUIRED)
-
+find_package(mrpt_nav_interfaces REQUIRED)
 
 ## System dependencies are found with CMake's conventions
 find_package(mrpt-ros2bridge REQUIRED)
@@ -78,6 +78,7 @@ ament_target_dependencies(
   "tf2_ros"
   "tf2_geometry_msgs"
   "visualization_msgs"
+  "mrpt_nav_interfaces"
 )
 
 #############
