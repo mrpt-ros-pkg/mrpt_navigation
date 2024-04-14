@@ -108,8 +108,11 @@ class ReactiveNav2DNode : public rclcpp::Node
 	std::string frameidReference_ = "map";
 	std::string frameidRobot_ = "base_link";
 
-	std::string pluginFile_;
-	std::string cfgFileReactive_;
+	/// If enabled, no obstacle avoidance will be attempted (!)
+	bool pure_pursuit_mode_ = false;
+
+	std::string pluginFile_ = {};
+	std::string cfgFileReactive_ = "reactive2d_config.ini";
 
 	bool saveNavLog_ = false;
 

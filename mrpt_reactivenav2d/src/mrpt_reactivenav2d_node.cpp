@@ -200,8 +200,7 @@ ReactiveNav2DNode::ReactiveNav2DNode(const rclcpp::NodeOptions& options)
 
 void ReactiveNav2DNode::read_parameters()
 {
-	declare_parameter<std::string>(
-		"cfg_file_reactive", "reactive2d_config.ini");
+	declare_parameter<std::string>("cfg_file_reactive", cfgFileReactive_);
 	get_parameter("cfg_file_reactive", cfgFileReactive_);
 	RCLCPP_INFO(
 		this->get_logger(), "cfg_file_reactive %s", cfgFileReactive_.c_str());
@@ -263,12 +262,18 @@ void ReactiveNav2DNode::read_parameters()
 		this->get_logger(), "topic_robot_shape: %s",
 		subTopicRobotShape_.c_str());
 
-	declare_parameter<bool>("save_nav_log", false);
+	declare_parameter<bool>("save_nav_log", saveNavLog_);
 	get_parameter("save_nav_log", saveNavLog_);
 	RCLCPP_INFO(
 		this->get_logger(), "save_nav_log: %s", saveNavLog_ ? "yes" : "no");
 
-	declare_parameter<std::string>("ptg_plugin_files", "");
+	declare_parameter<bool>("pure_pursuit_mode", pure_pursuit_mode_);
+	get_parameter("pure_pursuit_mode", pure_pursuit_mode_);
+	RCLCPP_INFO(
+		this->get_logger(), "pure_pursuit_mode: %s",
+		pure_pursuit_mode_ ? "yes" : "no");
+
+	declare_parameter<std::string>("ptg_plugin_files", pluginFile_);
 	get_parameter("ptg_plugin_files", pluginFile_);
 	RCLCPP_INFO(
 		this->get_logger(), "ptg_plugin_files: %s", pluginFile_.c_str());
@@ -895,10 +900,20 @@ bool ReactiveNav2DNode::MyReactiveInterface::senseObstacles(
 	mrpt::system::TTimeStamp& timestamp)
 {
 	timestamp = mrpt::Clock::now();
-	std::lock_guard<std::mutex> csl(parent_.lastObstaclesMtx_);
-	obstacles = parent_.lastObstacles_;
 
-	MRPT_TODO("Check age of obstacles!");
+	if (parent_.pure_pursuit_mode_)
+	{
+		// No obstacles, just follow the waypoints from the upper navigation
+		// layer:
+		obstacles.clear();
+	}
+	else
+	{
+		std::lock_guard<std::mutex> csl(parent_.lastObstaclesMtx_);
+		obstacles = parent_.lastObstacles_;
+
+		MRPT_TODO("Check age of obstacles!");
+	}
 	return true;
 }
 

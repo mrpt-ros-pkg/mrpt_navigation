@@ -66,6 +66,11 @@ def generate_launch_description():
         'topic_cmd_vel',
         default_value='/cmd_vel'
     )
+    pure_pursuit_mode_launch_arg = DeclareLaunchArgument(
+        "pure_pursuit_mode",
+        default_value=TextSubstitution(text=str("False")),
+        description="If enabled, no obstacle avoidance will be attempted"
+    )
 
     log_level_launch_arg = DeclareLaunchArgument(
         "log_level",
@@ -94,6 +99,7 @@ def generate_launch_description():
                 'frameid_robot': LaunchConfiguration('frameid_robot'),
                 'save_nav_log': LaunchConfiguration('save_nav_log'),
                 'topic_cmd_vel': LaunchConfiguration('topic_cmd_vel'),
+                'pure_pursuit_mode': LaunchConfiguration('pure_pursuit_mode'),
             }
         ],
         arguments=['--ros-args', '--log-level',
@@ -113,6 +119,7 @@ def generate_launch_description():
         frameid_robot_arg,
         save_nav_log_arg,
         topic_cmd_vel_arg,
+        pure_pursuit_mode_launch_arg,
         node_rnav2d_launch,
     ])
 
