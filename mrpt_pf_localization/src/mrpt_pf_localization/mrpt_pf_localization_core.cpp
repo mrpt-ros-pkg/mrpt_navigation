@@ -257,7 +257,7 @@ void PFLocalizationCore::Parameters::load_from(
 struct PFLocalizationCore::InternalState::Relocalization
 {
 #ifdef HAVE_MOLA_RELOCALIZATION
-	std::optional<mola::Relocalization_SE2::Input> pending_se2;
+	std::optional<mola::RelocalizationLikelihood_SE2::Input> pending_se2;
 #endif
 };
 
@@ -757,9 +757,9 @@ void PFLocalizationCore::onStateRunning()
 		// add missing field to "in": the input observation
 		in->observations += sf;
 
-		const auto reloc = mola::Relocalization_SE2::run(*in);
+		const auto reloc = mola::RelocalizationLikelihood_SE2::run(*in);
 		MRPT_LOG_INFO_STREAM(
-			"Relocalization_SE2 took " << reloc.time_cost << " s.");
+			"RelocalizationLikelihood_SE2 took " << reloc.time_cost << " s.");
 
 		auto candidates = mola::find_best_poses_se2(
 			reloc.likelihood_grid, params_.relocalization_best_percentile);
@@ -767,7 +767,7 @@ void PFLocalizationCore::onStateRunning()
 		ASSERT_(!candidates.empty());
 
 		MRPT_LOG_INFO_STREAM(
-			"Relocalization_SE2 best candidate (out of "
+			"RelocalizationLikelihood_SE2 best candidate (out of "
 			<< candidates.size()
 			<< " top): " << candidates.rbegin()->second.asString());
 
