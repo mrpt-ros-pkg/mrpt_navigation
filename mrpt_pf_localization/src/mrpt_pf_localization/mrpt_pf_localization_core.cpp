@@ -431,7 +431,11 @@ void PFLocalizationCore::onStateToBeInitialized()
 	const auto [pCov, pMean] =
 		[&]() -> std::tuple<mrpt::math::CMatrixDouble66, mrpt::poses::CPose3D>
 	{
-		if (!params_.initialize_from_gnns)
+		if (!params_.initialize_from_gnns ||
+			// because may be here after a manual click-to-relocalize in RViz,
+			// even if GNNS localization is enabled:
+			(!get_last_gnns_obs() && params_.initial_pose.has_value())	//
+		)
 		{
 			MRPT_LOG_INFO_STREAM(
 				"[onStateToBeInitialized] Initial pose: "
@@ -1271,10 +1275,7 @@ std::optional<mrpt::poses::CPose3DPDFGaussian>
 {
 	if (!state_.georeferencing) return {};
 
-	// to protect last_gnns_
-	auto lck = mrpt::lockHelper(pendingObsMtx_);
-	auto gps = last_gnns_;
-	lck.unlock();
+	auto gps = get_last_gnns_obs();
 
 	if (!gps) return {};
 

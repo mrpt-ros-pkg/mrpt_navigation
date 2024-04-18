@@ -269,6 +269,12 @@ class PFLocalizationCore : public mrpt::system::COutputLogger
 		mrpt::pimpl<Relocalization> pendingRelocalization;
 	};
 
+	mrpt::obs::CObservationGPS::Ptr get_last_gnns_obs() const
+	{
+		auto lck = mrpt::lockHelper(pendingObsMtx_);
+		return last_gnns_;
+	}
+
    private:
 	InternalState state_;
 	std::mutex stateMtx_;
