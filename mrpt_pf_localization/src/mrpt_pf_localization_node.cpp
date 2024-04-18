@@ -307,15 +307,15 @@ void PFLocalizationNode::loop()
 }
 
 bool PFLocalizationNode::waitForTransform(
-	mrpt::poses::CPose3D& des, const std::string& target_frame,
-	const std::string& source_frame, const int timeoutMilliseconds)
+	mrpt::poses::CPose3D& des, const std::string& frame,
+	const std::string& referenceFrame, const int timeoutMilliseconds)
 {
 	const rclcpp::Duration timeout(0, 1000 * timeoutMilliseconds);
 	try
 	{
 		geometry_msgs::msg::TransformStamped ref_to_trgFrame =
 			tf_buffer_->lookupTransform(
-				source_frame, target_frame, tf2::TimePointZero,
+				referenceFrame, frame, tf2::TimePointZero,
 				tf2::durationFromSec(timeout.seconds()));
 
 		tf2::Transform tf;
@@ -324,7 +324,7 @@ bool PFLocalizationNode::waitForTransform(
 
 		RCLCPP_DEBUG(
 			get_logger(), "[waitForTransform] Found pose %s -> %s: %s",
-			source_frame.c_str(), target_frame.c_str(), des.asString().c_str());
+			referenceFrame.c_str(), frame.c_str(), des.asString().c_str());
 
 		return true;
 	}
@@ -441,7 +441,7 @@ void PFLocalizationNode::callbackRobotPose(
 	catch (const tf2::TransformException& e)
 	{
 		ROS_WARN(
-			"Failed to get transform target_frame (%s) to source_frame (%s): "
+			"Failed to get transform frame (%s) to referenceFrame (%s): "
 			"%s",
 			global_frame_id.c_str(), _msg.header.frame_id.c_str(), e.what());
 		return;
