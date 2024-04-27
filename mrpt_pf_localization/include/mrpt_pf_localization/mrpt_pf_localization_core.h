@@ -8,7 +8,10 @@
 
 #pragma once
 
+#include <mp2p_icp/ICP.h>
+#include <mp2p_icp/Parameters.h>
 #include <mp2p_icp/metricmap.h>
+#include <mp2p_icp_filters/FilterBase.h>
 #include <mrpt/bayes/CParticleFilter.h>
 #include <mrpt/containers/yaml.h>
 #include <mrpt/core/Clock.h>
@@ -60,6 +63,7 @@ class PFLocalizationCore : public mrpt::system::COutputLogger
 
 		mrpt::maps::CMultiMetricMap::Ptr metric_map;  //!< Empty=uninitialized
 		std::optional<mp2p_icp::metric_map_t::Georeferencing> georeferencing;
+		std::vector<std::string> metric_map_layer_names;
 
 		/** Shows a custom MRPT GUI with the PF and map state
 		 *  Can be changed at any moment.
@@ -143,6 +147,11 @@ class PFLocalizationCore : public mrpt::system::COutputLogger
 
 		double relocalization_resolution_xy = 0.50;	 // [m]
 		double relocalization_resolution_phi = 0.20;  // [rad]
+		mp2p_icp::ICP::Ptr relocalization_icp;
+		mp2p_icp::Parameters relocalization_icp_params;
+
+		mp2p_icp_filters::FilterPipeline relocalization_obs_filter;
+		mp2p_icp::ParameterSource paramSource;
 
 		/// This method loads all parameters from the YAML, except the
 		/// metric_map (handled in parent class):
@@ -202,7 +211,8 @@ class PFLocalizationCore : public mrpt::system::COutputLogger
 	void set_map_from_metric_map(
 		const mrpt::maps::CMultiMetricMap::Ptr& metricMap,
 		const std::optional<mp2p_icp::metric_map_t::Georeferencing>&
-			georeferencing = std::nullopt);
+			georeferencing = std::nullopt,
+		const std::vector<std::string>& layerNames = {});
 
 	/** Defines the map to use from a metric_map_t map, with optional
 	 * georeferencing.

@@ -14,6 +14,7 @@ find_package(mrpt_msgs_bridge REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(tf2_geometry_msgs REQUIRED)
 find_package(mp2p_icp_map REQUIRED)
+find_package(mp2p_icp_filters REQUIRED)
 find_package(mola_relocalization) # OPTIONAL
 
 find_package(mrpt-ros2bridge REQUIRED)
@@ -56,6 +57,7 @@ target_link_libraries(${PROJECT_NAME}_core
   mrpt::slam
   mrpt::ros2bridge
   mola::mp2p_icp_map
+  mola::mp2p_icp_filters
 )
 if (mola_relocalization_FOUND)
   target_link_libraries(${PROJECT_NAME}_core

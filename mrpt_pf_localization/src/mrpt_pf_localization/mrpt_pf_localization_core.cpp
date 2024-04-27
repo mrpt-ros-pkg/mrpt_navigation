@@ -6,6 +6,7 @@
    | All rights reserved. Released under BSD 3-Clause license. See LICENSE  |
    +------------------------------------------------------------------------+ */
 
+#include <mp2p_icp/icp_pipeline_from_yaml.h>
 #include <mrpt/config/CConfigFile.h>
 #include <mrpt/config/CConfigFileMemory.h>
 #include <mrpt/core/lock_helper.h>
@@ -13,6 +14,7 @@
 #include <mrpt/maps/COccupancyGridMap2D.h>
 #include <mrpt/maps/CSimplePointsMap.h>
 #include <mrpt/obs/CActionCollection.h>
+#include <mrpt/obs/CObservationPointCloud.h>
 #include <mrpt/opengl/CEllipsoid2D.h>
 #include <mrpt/opengl/CEllipsoid3D.h>
 #include <mrpt/opengl/CPointCloud.h>
@@ -249,15 +251,45 @@ void PFLocalizationCore::Parameters::load_from(
 	MCP_LOAD_OPT(params, initialize_from_gnns);
 	MCP_LOAD_OPT(params, samples_drawn_from_gnns);
 	MCP_LOAD_OPT(params, gnns_samples_num_sigmas);
+
+	// relocalization:
 	MCP_LOAD_OPT(params, relocalization_best_percentile);
 	MCP_LOAD_OPT(params, relocalization_resolution_xy);
 	MCP_LOAD_OPT_DEG(params, relocalization_resolution_phi);
+
+#ifdef HAVE_MOLA_RELOCALIZATION
+	if (params.has("relocalization_icp_pipeline"))
+	{
+		// ICP pipeline:
+		const auto [icp, icpParams] = mp2p_icp::icp_pipeline_from_yaml(
+			params["relocalization_icp_pipeline"]);
+		relocalization_icp = icp;
+		relocalization_icp_params = icpParams;
+
+		paramSource.updateVariable("ADAPTIVE_THRESHOLD_SIGMA", 15.0);
+		relocalization_icp->attachToParameterSource(paramSource);
+
+		// filter?
+		if (params.has("relocalization_observation_pipeline"))
+		{
+			relocalization_obs_filter =
+				mp2p_icp_filters::filter_pipeline_from_yaml(
+					params["relocalization_observation_pipeline"]);
+		}
+	}
+	else
+	{
+		std::cout << "[PFLocalizationCore] Section "
+					 "'relocalization_icp_pipeline' not found in setup yaml "
+					 "file, so this feature will be disabled.\n";
+	}
+#endif
 }
 
 struct PFLocalizationCore::InternalState::Relocalization
 {
 #ifdef HAVE_MOLA_RELOCALIZATION
-	std::optional<mola::RelocalizationLikelihood_SE2::Input> pending_se2;
+	std::optional<mola::RelocalizationICP_SE2::Input> pending_se2;
 #endif
 };
 
@@ -543,17 +575,43 @@ void PFLocalizationCore::onStateToBeInitialized()
 #if defined(HAVE_MOLA_RELOCALIZATION)
 		// 2) Use mola_relocalization
 		auto& in = state_.pendingRelocalization->pending_se2.emplace();
-		in.corner_min = mrpt::math::TPose2D(pMin);
-		in.corner_max = mrpt::math::TPose2D(pMax);
-		// in.observations: to be populated in running state
-		in.resolution_xy = params_.relocalization_resolution_xy;
-		in.resolution_phi = params_.relocalization_resolution_phi;
+		in.icp_minimum_quality = 0.70;
+
+		in.icp_parameters = params_.relocalization_icp_params;
+		in.icp_pipeline = {params_.relocalization_icp};
+
+		MRPT_LOG_INFO_STREAM(
+			"Setting up relocalization with: pMin=" << pMin
+													<< " pMax=" << pMax);
+		const auto pDiag = pMax - pMin;
+
+		in.initial_guess_lattice.corner_min = mrpt::math::TPose2D(pMin);
+		in.initial_guess_lattice.corner_max = mrpt::math::TPose2D(pMax);
+		in.initial_guess_lattice.resolution_xy =
+			std::max<double>(0.5, pDiag.norm() / 3);
+		in.initial_guess_lattice.resolution_phi =
+			std::max<double>(mrpt::DEG2RAD(5.0), (pMax.yaw - pMin.yaw) / 3);
+
+		in.output_lattice.resolution_xyz = params_.relocalization_resolution_xy;
+		in.output_lattice.resolution_yaw =
+			params_.relocalization_resolution_phi;
+
+		// in.local_map: to be populated in running state
 
 		// (shallow) copy metric maps into expected format:
 		const auto& maps = state_.metric_map->maps;
 		ASSERT_(!maps.empty());
+		ASSERT_(
+			params_.metric_map_layer_names.empty() ||
+			params_.metric_map_layer_names.size() == maps.size());
 		for (size_t i = 0; i < maps.size(); i++)
-			in.reference_map.layers[std::to_string(i)] = maps.at(i);
+		{
+			const std::string layerName =
+				params_.metric_map_layer_names.empty()
+					? std::to_string(i)
+					: params_.metric_map_layer_names.at(i);
+			in.reference_map.layers[layerName] = maps.at(i);
+		}
 #else
 		THROW_EXCEPTION("Should not reach here");
 #endif
@@ -759,21 +817,31 @@ void PFLocalizationCore::onStateRunning()
 	if (auto& in = state_.pendingRelocalization->pending_se2; in)
 	{
 		// add missing field to "in": the input observation
-		in->observations += sf;
+		in->local_map.clear();
 
-		const auto reloc = mola::RelocalizationLikelihood_SE2::run(*in);
+		auto obs =
+			sf.getObservationByClass<mrpt::obs::CObservationPointCloud>(0);
+		ASSERTMSG_(
+			obs,
+			"Relocalization assumes input SF has one CObservationPointCloud");
+		ASSERT_(obs->pointcloud);
+
+		in->local_map.layers["raw"] = obs->pointcloud;
+
+		MRPT_LOG_INFO_STREAM("About to run Relocalization");
+
+		const auto reloc = mola::RelocalizationICP_SE2::run(*in);
 		MRPT_LOG_INFO_STREAM(
 			"RelocalizationLikelihood_SE2 took " << reloc.time_cost << " s.");
 
-		auto candidates = mola::find_best_poses_se2(
-			reloc.likelihood_grid, params_.relocalization_best_percentile);
-
-		ASSERT_(!candidates.empty());
+		std::vector<mrpt::math::TPose2D> candidates;
+		reloc.found_poses.visitAllPoses(
+			[&](const auto& p)
+			{ candidates.push_back(mrpt::math::TPose2D(p)); });
 
 		MRPT_LOG_INFO_STREAM(
-			"RelocalizationLikelihood_SE2 best candidate (out of "
-			<< candidates.size()
-			<< " top): " << candidates.rbegin()->second.asString());
+			"RelocalizationLikelihood_SE2 gave " << candidates.size()
+												 << " candidates");
 
 		// Create a few particles around each best candidate:
 		ASSERT_(state_.pdf2d);
@@ -787,7 +855,7 @@ void PFLocalizationCore::onStateRunning()
 			2, mrpt::round(
 				   params_.initial_particles_per_m2 * mrpt::square(sigmaXY)));
 
-		for (const auto& [score, pose] : candidates)
+		for (const auto& pose : candidates)
 		{
 			for (size_t i = 0; i < numCopies; i++)
 			{
@@ -922,15 +990,20 @@ void PFLocalizationCore::set_map_from_metric_map(
 	// Convert it to CMultiMetricMap, and save the optional georeferrencing:
 	auto mMap = mrpt::maps::CMultiMetricMap::Create();
 
+	std::vector<std::string> layerNames;
 	for (const auto& [layerName, layerMap] : mm.layers)
+	{
 		mMap->maps.push_back(layerMap);
+		layerNames.push_back(layerName);
+	}
 
-	this->set_map_from_metric_map(mMap, mm.georeferencing);
+	this->set_map_from_metric_map(mMap, mm.georeferencing, layerNames);
 }
 
 void PFLocalizationCore::set_map_from_metric_map(
 	const mrpt::maps::CMultiMetricMap::Ptr& metricMap,
-	const std::optional<mp2p_icp::metric_map_t::Georeferencing>& georeferencing)
+	const std::optional<mp2p_icp::metric_map_t::Georeferencing>& georeferencing,
+	const std::vector<std::string>& layerNames)
 {
 	auto lck = mrpt::lockHelper(stateMtx_);
 
@@ -954,6 +1027,7 @@ void PFLocalizationCore::set_map_from_metric_map(
 
 	params_.metric_map = metricMap;
 	params_.georeferencing = georeferencing;
+	params_.metric_map_layer_names = layerNames;
 
 	// debug trace with full submap details: ----------------------------
 	MRPT_LOG_DEBUG_STREAM(
