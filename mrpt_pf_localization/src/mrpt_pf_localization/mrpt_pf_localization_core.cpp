@@ -7,6 +7,7 @@
    +------------------------------------------------------------------------+ */
 
 #include <mp2p_icp/icp_pipeline_from_yaml.h>
+#include <mp2p_icp_filters/Generator.h>
 #include <mrpt/config/CConfigFile.h>
 #include <mrpt/config/CConfigFileMemory.h>
 #include <mrpt/core/lock_helper.h>
@@ -599,7 +600,7 @@ void PFLocalizationCore::onStateToBeInitialized()
 		// in.local_map: to be populated in running state
 
 		// (shallow) copy metric maps into expected format:
-		const auto& maps = state_.metric_map->maps;
+		const auto& maps = _.metric_map->maps;
 		ASSERT_(!maps.empty());
 		ASSERT_(
 			params_.metric_map_layer_names.empty() ||
@@ -612,6 +613,22 @@ void PFLocalizationCore::onStateToBeInitialized()
 					: params_.metric_map_layer_names.at(i);
 			in.reference_map.layers[layerName] = maps.at(i);
 		}
+
+		// If the referenceMap is a "plain old" gridMap, create an auxiliary
+		// point cloud for ICP to work fine:
+		if (auto gridMap =
+				_.metric_map->mapByClass<mrpt::maps::COccupancyGridMap2D>();
+			gridMap)
+		{
+			auto gridPts = mrpt::maps::CSimplePointsMap::Create();
+			gridMap->getAsPointCloud(*gridPts);
+			in.reference_map.layers["localmap"] = gridPts;
+
+			MRPT_LOG_INFO_STREAM(
+				"Creating localmap layer with "
+				<< gridPts->size() << " points from the occupied grid cells.");
+		}
+
 #else
 		THROW_EXCEPTION("Should not reach here");
 #endif
@@ -816,23 +833,26 @@ void PFLocalizationCore::onStateRunning()
 #if defined(HAVE_MOLA_RELOCALIZATION)
 	if (auto& in = state_.pendingRelocalization->pending_se2; in)
 	{
-		// add missing field to "in": the input observation
-		in->local_map.clear();
+		// populate the missing field to "in": "local_map"
 
-		auto obs =
-			sf.getObservationByClass<mrpt::obs::CObservationPointCloud>(0);
-		ASSERTMSG_(
-			obs,
-			"Relocalization assumes input SF has one CObservationPointCloud");
-		ASSERT_(obs->pointcloud);
+		// Use default generator: takes observations and populate a "raw" layer
+		auto gen = mp2p_icp_filters::Generator::Create();
+		gen->initialize({});
+		mp2p_icp_filters::GeneratorSet gens = {gen};
 
-		in->local_map.layers["raw"] = obs->pointcloud;
+		in->local_map = mp2p_icp_filters::apply_generators(gens, sf);
+		ASSERT_(in->local_map.layers.count("raw") == 1);
 
-		MRPT_LOG_INFO_STREAM("About to run Relocalization");
+		// Apply optional filtering
+		mp2p_icp_filters::apply_filter_pipeline(
+			params_.relocalization_obs_filter, in->local_map);
+
+		MRPT_LOG_INFO_STREAM(
+			"About to run Relocalization with local_map="
+			<< in->local_map.contents_summary()
+			<< " reference_map=" << in->reference_map.contents_summary());
 
 		const auto reloc = mola::RelocalizationICP_SE2::run(*in);
-		MRPT_LOG_INFO_STREAM(
-			"RelocalizationLikelihood_SE2 took " << reloc.time_cost << " s.");
 
 		std::vector<mrpt::math::TPose2D> candidates;
 		reloc.found_poses.visitAllPoses(
@@ -840,8 +860,13 @@ void PFLocalizationCore::onStateRunning()
 			{ candidates.push_back(mrpt::math::TPose2D(p)); });
 
 		MRPT_LOG_INFO_STREAM(
-			"RelocalizationLikelihood_SE2 gave " << candidates.size()
-												 << " candidates");
+			"RelocalizationICP_SE2 took " << reloc.time_cost << " s and gave "
+										  << candidates.size()
+										  << " candidates");
+#if 0
+		for (const auto& p : candidates)
+			MRPT_LOG_INFO_STREAM("Candidate: " << p);
+#endif
 
 		// Create a few particles around each best candidate:
 		ASSERT_(state_.pdf2d);
