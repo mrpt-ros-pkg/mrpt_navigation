@@ -58,5 +58,6 @@ relocalization_observation_pipeline:
     input_pointcloud_layer: 'raw'
     output_pointcloud_layer: 'decimated_for_icp'
     voxel_filter_resolution: 1.5 # [m]
+    minimum_input_points_to_filter: 1000  # don't decimate simpler 2D scans, etc.
     decimate_method: DecimateMethod::FirstPoint
     #decimate_method: DecimateMethod::ClosestToAverage
