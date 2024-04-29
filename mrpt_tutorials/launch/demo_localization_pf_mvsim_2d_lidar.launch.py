@@ -24,11 +24,12 @@ def generate_launch_description():
             'localization.launch.py')]),
         launch_arguments={
             'log_level': 'INFO',
+            'log_level_core': 'INFO',
             'topic_sensors_2d_scan': '/laser1',
             'topic_sensors_point_clouds': '',
 
-            # For robots with odometry, use: 'base_link'->'odom'->'map'.
-            # For systems without wheels odometry, use: 'base_link'->'base_link'->'map'.
+            # For robots with wheels odometry, use:     'base_link'-> 'odom'      -> 'map'
+            # For systems without wheels odometry, use: 'base_link'-> 'base_link' -> 'map'
             'base_link_frame_id': 'base_link',
             'odom_frame_id': 'odom',
             'global_frame_id': 'map',

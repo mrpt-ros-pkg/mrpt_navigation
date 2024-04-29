@@ -252,39 +252,13 @@ void PFLocalizationCore::Parameters::load_from(
 	MCP_LOAD_OPT(params, initialize_from_gnns);
 	MCP_LOAD_OPT(params, samples_drawn_from_gnns);
 	MCP_LOAD_OPT(params, gnns_samples_num_sigmas);
+	MCP_LOAD_OPT(params, relocalize_num_sigmas);
 
 	// relocalization:
-	MCP_LOAD_OPT(params, relocalization_best_percentile);
+	MCP_LOAD_OPT(params, relocalization_minimum_icp_quality);
+	MCP_LOAD_OPT(params, relocalization_icp_sigma);
 	MCP_LOAD_OPT(params, relocalization_resolution_xy);
 	MCP_LOAD_OPT_DEG(params, relocalization_resolution_phi);
-
-#ifdef HAVE_MOLA_RELOCALIZATION
-	if (params.has("relocalization_icp_pipeline"))
-	{
-		// ICP pipeline:
-		const auto [icp, icpParams] = mp2p_icp::icp_pipeline_from_yaml(
-			params["relocalization_icp_pipeline"]);
-		relocalization_icp = icp;
-		relocalization_icp_params = icpParams;
-
-		paramSource.updateVariable("ADAPTIVE_THRESHOLD_SIGMA", 15.0);
-		relocalization_icp->attachToParameterSource(paramSource);
-
-		// filter?
-		if (params.has("relocalization_observation_pipeline"))
-		{
-			relocalization_obs_filter =
-				mp2p_icp_filters::filter_pipeline_from_yaml(
-					params["relocalization_observation_pipeline"]);
-		}
-	}
-	else
-	{
-		std::cout << "[PFLocalizationCore] Section "
-					 "'relocalization_icp_pipeline' not found in setup yaml "
-					 "file, so this feature will be disabled.\n";
-	}
-#endif
 }
 
 struct PFLocalizationCore::InternalState::Relocalization
@@ -459,6 +433,8 @@ void PFLocalizationCore::onStateToBeInitialized()
 		_.pdf2d.emplace();
 	}
 
+	double gnns_std_factor = 1.0;
+
 	// Get desired initial pose uncertainty, either from
 	// direct pose, or from GNNS:
 	const auto [pCov, pMean] =
@@ -491,6 +467,9 @@ void PFLocalizationCore::onStateToBeInitialized()
 			MRPT_LOG_INFO_STREAM(
 				"Initializing from GNNS measurement with: " << *gnnsMeasInMap);
 
+			gnns_std_factor =
+				params_.gnns_samples_num_sigmas / params_.relocalize_num_sigmas;
+
 			return {gnnsMeasInMap->cov, gnnsMeasInMap->mean};
 		}
 	}();
@@ -502,7 +481,7 @@ void PFLocalizationCore::onStateToBeInitialized()
 	const double stdPitch = std::sqrt(pCov(4, 4));
 	const double stdRoll = std::sqrt(pCov(5, 5));
 
-	const double nStds = params_.gnns_samples_num_sigmas;
+	const double nStds = params_.relocalize_num_sigmas * gnns_std_factor;
 
 	const auto pMin = mrpt::math::TPose3D(
 		pMean.x() - nStds * stdX, pMean.y() - nStds * stdY,
@@ -576,7 +555,7 @@ void PFLocalizationCore::onStateToBeInitialized()
 #if defined(HAVE_MOLA_RELOCALIZATION)
 		// 2) Use mola_relocalization
 		auto& in = state_.pendingRelocalization->pending_se2.emplace();
-		in.icp_minimum_quality = 0.70;
+		in.icp_minimum_quality = params_.relocalization_minimum_icp_quality;
 
 		in.icp_parameters = params_.relocalization_icp_params;
 		in.icp_pipeline = {params_.relocalization_icp};
@@ -841,15 +820,23 @@ void PFLocalizationCore::onStateRunning()
 		mp2p_icp_filters::GeneratorSet gens = {gen};
 
 		in->local_map = mp2p_icp_filters::apply_generators(gens, sf);
-		ASSERT_(in->local_map.layers.count("raw") == 1);
 
 		// Apply optional filtering
 		mp2p_icp_filters::apply_filter_pipeline(
 			params_.relocalization_obs_filter, in->local_map);
 
+		if (auto rawPts = in->local_map.point_layer("raw");
+			!rawPts || rawPts->empty())
+		{
+			MRPT_LOG_WARN_STREAM(
+				"Relocalization skipped in this iteration, it seems no valid "
+				"observations have reached yet (empty local observation map)");
+			return;
+		}
+
 		MRPT_LOG_INFO_STREAM(
 			"About to run Relocalization with local_map="
-			<< in->local_map.contents_summary()
+			<< in->local_map.contents_summary() << " from |SF|=" << sf.size()
 			<< " reference_map=" << in->reference_map.contents_summary());
 
 		const auto reloc = mola::RelocalizationICP_SE2::run(*in);
@@ -863,10 +850,26 @@ void PFLocalizationCore::onStateRunning()
 			"RelocalizationICP_SE2 took " << reloc.time_cost << " s and gave "
 										  << candidates.size()
 										  << " candidates");
+
 #if 0
 		for (const auto& p : candidates)
 			MRPT_LOG_INFO_STREAM("Candidate: " << p);
 #endif
+
+		if (candidates.empty())
+		{
+			MRPT_LOG_WARN(
+				"Could not find any good match between the input observation "
+				"and the map (Is the correct map loaded?).");
+
+			// Create one candidate at the center of the requested
+			// initialization ROI:
+			const auto& igl = in->initial_guess_lattice;
+			candidates.emplace_back(
+				0.5 * (igl.corner_max.x + igl.corner_min.x),
+				0.5 * (igl.corner_max.y + igl.corner_min.y),
+				0.5 * (igl.corner_max.phi + igl.corner_min.phi));
+		}
 
 		// Create a few particles around each best candidate:
 		ASSERT_(state_.pdf2d);
@@ -1093,22 +1096,57 @@ void PFLocalizationCore::set_map_from_metric_map(
  *  This method loads all required params and put the system from
  * UNINITIALIZED into TO_BE_INITIALIZED.
  */
-void PFLocalizationCore::init_from_yaml(const mrpt::containers::yaml& params)
+void PFLocalizationCore::init_from_yaml(
+	const mrpt::containers::yaml& pf_params,
+	const mrpt::containers::yaml& relocalization_pipeline)
 {
 	MRPT_LOG_INFO("Called init_from_yaml()");
 
 	auto lck = mrpt::lockHelper(stateMtx_);
 
 	// Load all required and optional params:
-	params_.load_from(params);
+	params_.load_from(pf_params);
 
-	if (params.asMap().count("log_level_core"))
+	if (pf_params.asMap().count("log_level_core"))
 	{
 		const auto coreLogLevel =
 			mrpt::typemeta::str2enum<mrpt::system::VerbosityLevel>(
-				params["log_level_core"].as<std::string>());
+				pf_params["log_level_core"].as<std::string>());
 		this->setMinLoggingLevel(coreLogLevel);
 	}
+
+#ifdef HAVE_MOLA_RELOCALIZATION
+	if (!relocalization_pipeline.empty())
+	{
+		// ICP pipeline:
+		const auto [icp, icpParams] =
+			mp2p_icp::icp_pipeline_from_yaml(relocalization_pipeline);
+		params_.relocalization_icp = icp;
+		params_.relocalization_icp_params = icpParams;
+
+		params_.paramSource.updateVariable(
+			"ADAPTIVE_THRESHOLD_SIGMA", params_.relocalization_icp_sigma);
+		params_.paramSource.updateVariable("ICP_ITERATION", 0);
+		params_.relocalization_icp->attachToParameterSource(
+			params_.paramSource);
+		params_.paramSource.realize();
+
+		// filter?
+		if (relocalization_pipeline.has("relocalization_observation_pipeline"))
+		{
+			params_.relocalization_obs_filter =
+				mp2p_icp_filters::filter_pipeline_from_yaml(
+					relocalization_pipeline
+						["relocalization_observation_pipeline"]);
+		}
+	}
+	else
+	{
+		MRPT_LOG_WARN(
+			"No relocalization_pipeline YAML configuration provided, so this "
+			"feature will be disabled");
+	}
+#endif
 }
 
 void PFLocalizationCore::init_gui()

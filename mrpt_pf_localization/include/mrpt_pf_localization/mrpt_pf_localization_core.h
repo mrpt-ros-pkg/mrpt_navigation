@@ -141,12 +141,16 @@ class PFLocalizationCore : public mrpt::system::COutputLogger
 		/// samples around the GNNS prediction:
 		double gnns_samples_num_sigmas = 6.0;
 
-		/// After relocalization runs, what top percentile of the best matched
-		/// poses are to be taken as real potential robot poses for tracking.
-		double relocalization_best_percentile = 0.99;
+		/// The number of standard deviations ("sigmas") to use as the area in
+		/// which to draw random samples around the input initialization pose
+		/// (when NOT using GNNS as input)
+		double relocalize_num_sigmas = 3.0;
 
 		double relocalization_resolution_xy = 0.50;	 // [m]
 		double relocalization_resolution_phi = 0.20;  // [rad]
+		double relocalization_minimum_icp_quality = 0.50;
+		double relocalization_icp_sigma = 5.0;	// [m]
+
 		mp2p_icp::ICP::Ptr relocalization_icp;
 		mp2p_icp::Parameters relocalization_icp_params;
 
@@ -178,7 +182,9 @@ class PFLocalizationCore : public mrpt::system::COutputLogger
 	 *  This method loads all required params and put the system from
 	 * UNINITIALIZED into TO_BE_INITIALIZED.
 	 */
-	void init_from_yaml(const mrpt::containers::yaml& params);
+	void init_from_yaml(
+		const mrpt::containers::yaml& pf_params,
+		const mrpt::containers::yaml& relocalization_pipeline);
 
 	/** Must be called for each new observation that arrives from the robot:
 	 *  odometry, 2D or 3D lidar, GPS, etc.

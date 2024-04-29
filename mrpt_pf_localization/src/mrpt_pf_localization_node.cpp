@@ -66,7 +66,8 @@ PFLocalizationNode::PFLocalizationNode(const rclcpp::NodeOptions& options)
 		[this](
 			std::string_view msg, const mrpt::system::VerbosityLevel level,
 			[[maybe_unused]] std::string_view loggerName,
-			[[maybe_unused]] const mrpt::Clock::time_point timestamp) {
+			[[maybe_unused]] const mrpt::Clock::time_point timestamp)
+		{
 			switch (level)
 			{
 				case mrpt::system::LVL_DEBUG:
@@ -125,9 +126,8 @@ PFLocalizationNode::PFLocalizationNode(const rclcpp::NodeOptions& options)
 			subs_2dlaser_.push_back(
 				this->create_subscription<sensor_msgs::msg::LaserScan>(
 					topic, sensorQoS,
-					[topic, this](const sensor_msgs::msg::LaserScan& msg) {
-						callbackLaser(msg, topic);
-					}));
+					[topic, this](const sensor_msgs::msg::LaserScan& msg)
+					{ callbackLaser(msg, topic); }));
 		}
 	}
 	{
@@ -140,9 +140,8 @@ PFLocalizationNode::PFLocalizationNode(const rclcpp::NodeOptions& options)
 			subs_point_clouds_.push_back(
 				this->create_subscription<sensor_msgs::msg::PointCloud2>(
 					topic, sensorQoS,
-					[topic, this](const sensor_msgs::msg::PointCloud2& msg) {
-						callbackPointCloud(msg, topic);
-					}));
+					[topic, this](const sensor_msgs::msg::PointCloud2& msg)
+					{ callbackPointCloud(msg, topic); }));
 		}
 	}
 
@@ -202,7 +201,8 @@ PFLocalizationNode::PFLocalizationNode(const rclcpp::NodeOptions& options)
 	timerPubTF_ = this->create_wall_timer(
 		std::chrono::microseconds(
 			mrpt::round(0.5 * 1.0e6 * nodeParams_.transform_tolerance)),
-		[this]() {
+		[this]()
+		{
 			this->publishTF();
 			// publishParticles() && publishPose() are done inside loop()
 		});
@@ -271,15 +271,22 @@ void PFLocalizationNode::reload_params_from_ros()
 				break;
 			default:
 				RCLCPP_WARN(
-					get_logger(), "ROS2 parameter not handled: '%s'",
-					name.c_str());
+					get_logger(), "ROS2 parameter not handled: '%s' type: '%i'",
+					name.c_str(), static_cast<int>(kv.second.get_type()));
 				break;
 		}
 	}
 
 	RCLCPP_DEBUG_STREAM(get_logger(), paramsBlock);
 
-	core_.init_from_yaml(paramsBlock);
+	mrpt::containers::yaml relocalizationCfg;
+	if (paramsBlock.has("relocalization_params_file"))
+	{
+		relocalizationCfg.loadFromFile(
+			paramsBlock["relocalization_params_file"]);
+	}
+
+	core_.init_from_yaml(paramsBlock, relocalizationCfg);
 	nodeParams_.loadFrom(paramsBlock);
 }
 

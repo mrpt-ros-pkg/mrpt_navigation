@@ -11,7 +11,10 @@ from launch import LaunchDescription
 from launch.substitutions import TextSubstitution
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
-from launch.actions import DeclareLaunchArgument
+from launch.actions import (DeclareLaunchArgument,
+                            EmitEvent, LogInfo, RegisterEventHandler)
+from launch.event_handlers import OnProcessExit
+from launch.events import Shutdown
 from ament_index_python import get_package_share_directory
 from launch.actions import GroupAction
 from launch_ros.actions import PushRosNamespace
@@ -22,14 +25,13 @@ def generate_launch_description():
     pfLocDir = get_package_share_directory("mrpt_pf_localization")
     # print('pfLocDir       : ' + pfLocDir)
 
-    # args that can be set from the command line or a default will be used
-    mrpt_map_config_file_launch_arg = DeclareLaunchArgument(
-        "mrpt_map_config_file", default_value=TextSubstitution(
-            text=os.path.join(pfLocDir, 'params', 'map-occgrid2d.ini')))
-
     pf_params_file_launch_arg = DeclareLaunchArgument(
         "pf_params_file", default_value=TextSubstitution(
             text=os.path.join(pfLocDir, 'params', 'default.config.yaml')))
+
+    relocalization_params_file_launch_arg = DeclareLaunchArgument(
+        "relocalization_params_file", default_value=TextSubstitution(
+            text=os.path.join(pfLocDir, 'params', 'default-relocalization-pipeline.yaml')))
 
     pf_log_level_launch_arg = DeclareLaunchArgument(
         "log_level",
@@ -90,10 +92,10 @@ def generate_launch_description():
         parameters=[
             LaunchConfiguration('pf_params_file'),
             {
-                "mrpt_map_config_file": LaunchConfiguration('mrpt_map_config_file'),
                 "topic_sensors_2d_scan": LaunchConfiguration('topic_sensors_2d_scan'),
                 "topic_sensors_point_clouds": LaunchConfiguration('topic_sensors_point_clouds'),
                 "topic_gnns": LaunchConfiguration('topic_gnns'),
+                "relocalization_params_file": LaunchConfiguration('relocalization_params_file'),
                 "gui_enable": LaunchConfiguration('gui_enable'),
                 "log_level_core": LaunchConfiguration('log_level_core'),
                 "base_link_frame_id": LaunchConfiguration('base_link_frame_id'),
@@ -105,9 +107,9 @@ def generate_launch_description():
     )
 
     ld = LaunchDescription([
-        mrpt_map_config_file_launch_arg,
         pf_log_level_launch_arg,
         pf_log_level_core_launch_arg,
+        relocalization_params_file_launch_arg,
         pf_params_file_launch_arg,
         topic_sensors_2d_scan_arg,
         topic_sensors_point_clouds_arg,
@@ -117,6 +119,15 @@ def generate_launch_description():
         odom_frame_id_arg,
         global_frame_id_arg,
         pf_localization_node,
+        RegisterEventHandler(
+            OnProcessExit(
+                target_action=pf_localization_node,
+                on_exit=[
+                    LogInfo(msg=('mrpt_pf_localization ended')),
+                    EmitEvent(event=Shutdown(
+                        reason='mrpt_pf_localization ended'))
+                ])
+        )
     ])
 
     # Namespace to avoid clash launch argument names with the parent scope:

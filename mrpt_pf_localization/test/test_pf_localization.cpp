@@ -21,6 +21,8 @@ const auto TEST_MM_FILE = mrpt::get_env<std::string>("TEST_MM_FILE", "");
 
 const char* TEST_PARAMS_YAML_FILE =
 	MRPT_LOCALIZATION_SOURCE_DIR "/params/default.config.yaml";
+const char* TEST_RELOCALIZATION_YAML_FILE =
+	MRPT_LOCALIZATION_SOURCE_DIR "/params/default-relocalization-pipeline.yaml";
 
 const char* TEST_MAP_CONFIG_FILE =
 	MRPT_LOCALIZATION_SOURCE_DIR "/params/map-occgrid2d.ini";
@@ -55,6 +57,9 @@ TEST(PF_Localization, RunRealDataset)
 	auto p = mrpt::containers::yaml::FromFile(TEST_PARAMS_YAML_FILE);
 	mrpt::containers::yaml params = p["/**"]["ros__parameters"];
 
+	auto relocParams =
+		mrpt::containers::yaml::FromFile(TEST_RELOCALIZATION_YAML_FILE);
+
 	if (!RUN_TESTS_WITH_GUI)
 	{
 		// For running tests, disable GUI (comment out to see the GUI live):
@@ -62,7 +67,7 @@ TEST(PF_Localization, RunRealDataset)
 	}
 
 	// Load params:
-	loc.init_from_yaml(params);
+	loc.init_from_yaml(params, relocParams);
 
 	// Check params:
 	EXPECT_EQ(loc.getParams().initial_particles_per_m2, 50U);
