@@ -2,7 +2,7 @@
 <package format="3">
   <name>mrpt_tps_astar_planner</name>
   <version>1.0.3</version>
-  <description>ROS Navigator with A* in TP-Space Engine</description>
+  <description>ROS Path Planner with A* in TP-Space Engine</description>
 
   <maintainer email="jlblanco@ual.es">Jose-Luis Blanco-Claraco</maintainer>
   <maintainer email="shravansomashekara.rai@gmail.com">Shravan S Rai</maintainer>
