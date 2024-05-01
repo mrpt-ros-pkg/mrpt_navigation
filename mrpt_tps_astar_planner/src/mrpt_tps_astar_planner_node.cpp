@@ -102,6 +102,9 @@ class TPS_Astar_Planner_Node : public rclcpp::Node
 	/// Pointer to obstacle map
 	mrpt::maps::CPointsMap::Ptr obstacle_src_;
 
+	/// Subscriber to Goal position
+	rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr sub_goal_;
+
 	/// Subscriber to map
 	rclcpp::Subscription<nav_msgs::msg::OccupancyGrid>::SharedPtr sub_map_;
 
@@ -123,6 +126,9 @@ class TPS_Astar_Planner_Node : public rclcpp::Node
 
 	/// Flag for MRPT GUI
 	bool gui_mrpt_ = false;
+
+	/// goal topic subscriber name
+	std::string topic_goal_sub_;
 
 	/// map topic subscriber name
 	std::string topic_map_sub_;
@@ -181,6 +187,13 @@ class TPS_Astar_Planner_Node : public rclcpp::Node
 	 * @brief Initialize A* planner with required params
 	*/
 	void initialize_planner();
+
+	/**
+	 * @brief Callback function when a new goal location is received
+	 * @param _goal is a PoseStamped object pointer
+	*/
+	void callback_goal(const geometry_msgs::msg::PoseStamped::SharedPtr& _goal);
+
 	/**
 	 * @brief Callback function when a new map is received
 	 * @param _map is an occupancy grid object pointer
@@ -240,6 +253,14 @@ TPS_Astar_Planner_Node::TPS_Astar_Planner_Node() : rclcpp::Node(NODE_NAME)
 
 	// Init ROS subs:
 	// -----------------------
+
+	sub_goal_ = this->create_subscription<geometry_msgs::msg::PoseStamped>(
+		topic_goal_sub_, 1, 
+		[this] (const geometry_msgs::msg::PoseStamped::SharedPtr msg) {
+			this->callback_goal(msg);
+		}
+	);
+
 	sub_map_ = this->create_subscription<nav_msgs::msg::OccupancyGrid>(
 		topic_map_sub_, 1,
 		[this](const nav_msgs::msg::OccupancyGrid::SharedPtr msg) {
@@ -266,6 +287,8 @@ TPS_Astar_Planner_Node::TPS_Astar_Planner_Node() : rclcpp::Node(NODE_NAME)
 
 	pub_wp_seq_ = 
 		this->create_publisher<mrpt_msgs::msg::WaypointSequence>(topic_wp_seq_pub_, 1);
+
+	initialize_planner();
 
 }
 
@@ -320,7 +343,13 @@ void TPS_Astar_Planner_Node::read_parameters()
 	RCLCPP_INFO(
 		this->get_logger(), "MRPT GUI Enabled: %s", gui_mrpt_ ? "true" : "false");
 	
-	
+
+	this->declare_parameter<std::string>("topic_goal_sub", "");
+	this->get_parameter("topic_goal_sub", topic_goal_sub_);
+	RCLCPP_INFO(
+		this->get_logger(), "topic_goal_sub %s", topic_goal_sub_.c_str());
+		
+
 	this->declare_parameter<std::string>("topic_map_sub", "map");
 	this->get_parameter("topic_map_sub", topic_map_sub_);
 	RCLCPP_INFO(
@@ -406,8 +435,14 @@ void TPS_Astar_Planner_Node::initialize_planner()
 
 }
 
+void TPS_Astar_Planner_Node::callback_goal
+			(const geometry_msgs::msg::PoseStamped::SharedPtr& _goal)
+{
 
-void TPS_Astar_Planner_Node::callback_map(const nav_msgs::msg::OccupancyGrid::SharedPtr& _map)
+}
+
+void TPS_Astar_Planner_Node::callback_map
+			(const nav_msgs::msg::OccupancyGrid::SharedPtr& _map)
 {
 	RCLCPP_DEBUG_STREAM(
 		this->get_logger(), "Navigator Map received for planning");
