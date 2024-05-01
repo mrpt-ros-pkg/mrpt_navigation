@@ -1428,7 +1428,7 @@ std::optional<mrpt::poses::CPose3DPDFGaussian>
 	 * {}^{map}P_{meas} = {}^{map}T_{enu} {}^{enu}P_{meas}
 	 *
 	 */
-	const auto T_map2enu = -(state_.georeferencing->T_enu_to_map);
+	const auto T_map2enu = -(state_.georeferencing->T_enu_to_map.mean);
 
 	// current GNNS measurement (ENU frame)
 	mrpt::math::TPoint3D P_enu_meas;
