@@ -239,6 +239,13 @@ class TPS_Astar_Planner_Node : public rclcpp::Node
 	void init_3d_debug();
 
 	/**
+	 * @brief Method to check if a given pose is within map bounds
+	 * @param pose mrpt pose2D 
+	 * @return true if given pose is within map bounds 
+	*/
+	bool is_pose_within_map_bounds(const mrpt::math::TPose2D& pose);
+
+	/**
 	 * @brief Publisher method to publish waypoint sequence 
 	 * @param wps Waypoint sequence object
 	*/
@@ -348,7 +355,7 @@ void TPS_Astar_Planner_Node::read_parameters()
 	this->get_parameter("topic_goal_sub", topic_goal_sub_);
 	RCLCPP_INFO(
 		this->get_logger(), "topic_goal_sub %s", topic_goal_sub_.c_str());
-		
+
 
 	this->declare_parameter<std::string>("topic_map_sub", "map");
 	this->get_parameter("topic_map_sub", topic_map_sub_);
@@ -438,7 +445,36 @@ void TPS_Astar_Planner_Node::initialize_planner()
 void TPS_Astar_Planner_Node::callback_goal
 			(const geometry_msgs::msg::PoseStamped::SharedPtr& _goal)
 {
+	try{
+		if(_goal) {
+			RCLCPP_ERROR(
+				this->get_logger(), "Received null ptr in goal callback");
+			return;
+		}
 
+		tf2::Quaternion quat(
+		_goal->pose.orientation.x, _goal->pose.orientation.y,
+		_goal->pose.orientation.z, _goal->pose.orientation.w);
+		tf2::Matrix3x3 mat(quat);
+		double roll, pitch, yaw;
+		mat.getRPY(roll, pitch, yaw);
+
+		nav_goal_.x = _goal->pose.position.x;
+		nav_goal_.y = _goal->pose.position.y;
+		nav_goal_.phi = yaw;
+
+		if(!is_pose_within_map_bounds(nav_goal_)){
+			RCLCPP_WARN(
+				this->get_logger(), "Received goal is outside of the map");
+			return;
+		}
+
+		path_plan_done_ = do_path_plan(start_pose_, nav_goal_);
+
+	} catch (const std::exception& e) {
+		RCLCPP_ERROR(
+			this->get_logger(), "Exception in goal callback : %s", e.what());
+	}
 }
 
 void TPS_Astar_Planner_Node::callback_map
@@ -455,19 +491,30 @@ void TPS_Astar_Planner_Node::callback_map
 void TPS_Astar_Planner_Node::callback_replan
 	(const geometry_msgs::msg::PoseWithCovarianceStamped::SharedPtr& msg)
 {
-	mrpt::math::TPose2D current_pose;
-	tf2::Quaternion quat(
+	try{
+		if(!msg) {
+			RCLCPP_ERROR(
+				this->get_logger(), "Received null ptr as pose in replan callback");
+			return;
+		}
+
+		tf2::Quaternion quat(
 		msg->pose.pose.orientation.x, msg->pose.pose.orientation.y,
 		msg->pose.pose.orientation.z, msg->pose.pose.orientation.w);
-	tf2::Matrix3x3 mat(quat);
-	double roll, pitch, yaw;
-	mat.getRPY(roll, pitch, yaw);
+		tf2::Matrix3x3 mat(quat);
+		double roll, pitch, yaw;
+		mat.getRPY(roll, pitch, yaw);
 
-	current_pose.x = msg->pose.pose.position.x;
-	current_pose.y = msg->pose.pose.position.y;
-	current_pose.phi = yaw;
-	
-	path_plan_done_ = do_path_plan(current_pose, nav_goal_);
+		start_pose_.x = msg->pose.pose.position.x;
+		start_pose_.y = msg->pose.pose.position.y;
+		start_pose_.phi = yaw;
+		
+		path_plan_done_ = do_path_plan(start_pose_, nav_goal_);
+
+	} catch(std::exception& e){
+		RCLCPP_ERROR(
+			this->get_logger(), "Exception in replan callback : %s", e.what());
+	}
 }
 
 void TPS_Astar_Planner_Node::callback_obstacles(
@@ -495,6 +542,28 @@ void TPS_Astar_Planner_Node::publish_waypoint_sequence(
 	const mrpt_msgs::msg::WaypointSequence& wps)
 {
 	pub_wp_seq_->publish(wps);
+}
+
+bool TPS_Astar_Planner_Node::is_pose_within_map_bounds(
+							const mrpt::math::TPose2D& pose)
+{
+	if(!grid_map_)
+	{
+		RCLCPP_ERROR(this->get_logger(), 
+		"No map to check");
+		return false;
+	}
+
+	auto map_bbox = grid_map_->boundingBox();
+	if(pose.x >= map_bbox.min.x && 
+	   pose.x <= map_bbox.max.x && 
+	   pose.y >= map_bbox.min.y &&
+	   pose.y <= map_bbox.max.y)
+	{
+		return true;
+	} else {
+		return false;
+	}
 }
 
 void TPS_Astar_Planner_Node::init_3d_debug()
