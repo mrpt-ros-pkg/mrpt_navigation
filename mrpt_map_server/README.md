@@ -69,6 +69,11 @@ None.
 
 If using options 2 or 3 above, there will be just one layer named `map`.
 
+### Services
+* ``GetLayers``: Returns the list of map layer names.
+* ``GetGridmapLayer``: Can be used to request a given map layer of type gridmap.
+* ``GetPointmapLayer``: Can be used to request a given map layer of type point cloud.
+
 ### Template ROS 2 launch files
 
 This package provides [launch/mrpt_map_server.launch.py](launch/mrpt_map_server.launch.py):

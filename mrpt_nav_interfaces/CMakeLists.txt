@@ -14,14 +14,19 @@ endif()
 find_package(ament_cmake REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 find_package(mrpt_msgs REQUIRED)
+find_package(nav_msgs REQUIRED)
 
 rosidl_generate_interfaces(${PROJECT_NAME}
   "action/NavigateGoal.action"
   "action/NavigateWaypoints.action"
   "msg/NavigationFeedback.msg"
   "msg/NavigationFinalStatus.msg"
+  "srv/GetLayers.srv"
+  "srv/GetGridmapLayer.srv"
+  "srv/GetPointmapLayer.srv"
   DEPENDENCIES
   std_msgs
+  nav_msgs
   mrpt_msgs
 )
 
