@@ -6,8 +6,8 @@ find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(rclcpp_components REQUIRED)
 find_package(nav_msgs REQUIRED)
-# find_package(tf2 REQUIRED)
 find_package(mrpt_msgs REQUIRED)
+find_package(mrpt_nav_interfaces REQUIRED)
 
 find_package(mrpt-maps REQUIRED)
 find_package(mrpt-ros2bridge REQUIRED)
@@ -65,6 +65,7 @@ ament_target_dependencies(
   	"rclcpp_components"
   	"nav_msgs"
   	"mrpt_msgs"
+  	"mrpt_nav_interfaces"
 )
 
 #############

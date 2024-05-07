@@ -70,8 +70,29 @@ None.
 If using options 2 or 3 above, there will be just one layer named `map`.
 
 ### Services
-* ``GetLayers``: Returns the list of map layer names.
+* ``GetLayers``: Returns the list of map layer names:
+
+```bash
+# Example usage:
+ros2 service call /map_server_node/get_layers  mrpt_nav_interfaces/srv/GetLayers
+requester: making request: mrpt_nav_interfaces.srv.GetLayers_Request()
+
+response:
+mrpt_nav_interfaces.srv.GetLayers_Response(layers=['map'])
+```
+
 * ``GetGridmapLayer``: Can be used to request a given map layer of type gridmap.
+
+```bash
+# Example usage:
+ros2 service call /map_server_node/get_grid_layer mrpt_nav_interfaces/srv/GetGridmapLayer "layer_name:\
+ 'map'"
+requester: making request: mrpt_nav_interfaces.srv.GetGridmapLayer_Request(layer_name='map')
+
+response:
+mrpt_nav_interfaces.srv.GetGridmapLayer_Response(valid=True, grid=nav_msgs.msg.OccupancyGrid(...
+```
+
 * ``GetPointmapLayer``: Can be used to request a given map layer of type point cloud.
 
 ### Template ROS 2 launch files

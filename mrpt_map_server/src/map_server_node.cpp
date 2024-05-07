@@ -24,7 +24,6 @@
 #include <mrpt/serialization/CArchive.h>
 #include <mrpt/system/filesystem.h>	 // ASSERT_FILE_EXISTS_()
 
-#include <chrono>
 #include <nav_msgs/msg/occupancy_grid.hpp>
 
 using namespace mrpt::config;
@@ -37,6 +36,8 @@ MapServer::~MapServer() {}
 
 void MapServer::init()
 {
+	using namespace std::string_literals;
+
 	// See:
 	// https://github.com/mrpt-ros-pkg/mrpt_navigation/blob/ros2/mrpt_map_server/README.md
 
@@ -129,24 +130,30 @@ void MapServer::init()
 	RCLCPP_INFO(
 		this->get_logger(), "service_map: '%s'", service_map_str_.c_str());
 
-#if 0
-	m_service_map = this->create_service<nav_msgs::srv::GetMap>(
-		m_service_map_str,
+	srvMapLayers_ = this->create_service<mrpt_nav_interfaces::srv::GetLayers>(
+		this->get_fully_qualified_name() + "/get_layers"s,
 		[this](
-			const nav_msgs::srv::GetMap::Request::SharedPtr req,
-			const nav_msgs::srv::GetMap::Response::SharedPtr res) {
-			this->map_callback(req, res);
-		});
-#endif
-}
+			const mrpt_nav_interfaces::srv::GetLayers::Request::SharedPtr req,
+			mrpt_nav_interfaces::srv::GetLayers::Response::SharedPtr res)
+		{ srv_map_layers(req, res); });
 
-bool MapServer::map_callback(
-	const std::shared_ptr<nav_msgs::srv::GetMap::Request> req,
-	const std::shared_ptr<nav_msgs::srv::GetMap::Response> res)
-{
-	RCLCPP_INFO(this->get_logger(), "mapCallback: service requested");
-	//	*res = m_response_ros;
-	return true;
+	srvGetGrid_ = this->create_service<
+		mrpt_nav_interfaces::srv::GetGridmapLayer>(
+		this->get_fully_qualified_name() + "/get_grid_layer"s,
+		[this](
+			const mrpt_nav_interfaces::srv::GetGridmapLayer::Request::SharedPtr
+				req,
+			mrpt_nav_interfaces::srv::GetGridmapLayer::Response::SharedPtr res)
+		{ srv_get_gridmap(req, res); });
+
+	srvGetPoints_ = this->create_service<
+		mrpt_nav_interfaces::srv::GetPointmapLayer>(
+		this->get_fully_qualified_name() + "/get_pointcloud_layer"s,
+		[this](
+			const mrpt_nav_interfaces::srv::GetPointmapLayer::Request::SharedPtr
+				req,
+			mrpt_nav_interfaces::srv::GetPointmapLayer::Response::SharedPtr res)
+		{ srv_get_pointmap(req, res); });
 }
 
 void MapServer::publish_map()
@@ -209,35 +216,9 @@ void MapServer::publish_map()
 			if (pubPointMaps_[layerName].new_subscribers(
 					get_clock()->now(), force_republish_period_))
 			{
-				sensor_msgs::msg::PointCloud2 msg_pts;
+				const sensor_msgs::msg::PointCloud2 msg_pts =
+					pointmap_layer_to_msg(pts);
 
-				if (auto* xyzirt =
-						dynamic_cast<const mrpt::maps::CPointsMapXYZIRT*>(
-							pts.get());
-					xyzirt)
-				{
-					mrpt::ros2bridge::toROS(*xyzirt, msg_header, msg_pts);
-				}
-				else if (auto* xyzi =
-							 dynamic_cast<const mrpt::maps::CPointsMapXYZI*>(
-								 pts.get());
-						 xyzi)
-				{
-					mrpt::ros2bridge::toROS(*xyzi, msg_header, msg_pts);
-				}
-				else if (auto* sPts =
-							 dynamic_cast<const mrpt::maps::CSimplePointsMap*>(
-								 pts.get());
-						 sPts)
-				{
-					mrpt::ros2bridge::toROS(*sPts, msg_header, msg_pts);
-				}
-				else
-				{
-					THROW_EXCEPTION_FMT(
-						"Unexpected point cloud class: '%s'",
-						pts->GetRuntimeClass()->className);
-				}
 				pubPointMaps_[layerName].pub->publish(msg_pts);
 			}
 		}
@@ -318,6 +299,106 @@ void MapServer::loop()
 		publish_map();
 		rclcpp::spin(shared_from_this());
 	}
+}
+
+void MapServer::srv_map_layers(
+	const std::shared_ptr<mrpt_nav_interfaces::srv::GetLayers::Request> req,
+	const std::shared_ptr<mrpt_nav_interfaces::srv::GetLayers::Response> resp)
+{
+	auto lck = mrpt::lockHelper(theMapMtx_);
+
+	// req: empty
+	(void)req;
+
+	resp->layers.clear();
+	for (const auto& [layerName, _] : theMap_.layers)
+		resp->layers.push_back(layerName);
+}
+
+void MapServer::srv_get_gridmap(
+	const std::shared_ptr<mrpt_nav_interfaces::srv::GetGridmapLayer::Request>
+		req,
+	const std::shared_ptr<mrpt_nav_interfaces::srv::GetGridmapLayer::Response>
+		resp)
+{
+	auto lck = mrpt::lockHelper(theMapMtx_);
+
+	resp->valid = false;
+
+	if (theMap_.layers.count(req->layer_name) == 0) return;
+
+	auto m = theMap_.layers.at(req->layer_name);
+	auto grid = std::dynamic_pointer_cast<mrpt::maps::COccupancyGridMap2D>(m);
+	if (!grid) return;	// it's not a gridmap
+
+	std_msgs::msg::Header msg_header;
+	msg_header.stamp = this->get_clock()->now();
+	msg_header.frame_id = frame_id_;
+
+	mrpt::ros2bridge::toROS(*grid, resp->grid, msg_header);
+
+	resp->valid = true;
+}
+
+void MapServer::srv_get_pointmap(
+	const std::shared_ptr<mrpt_nav_interfaces::srv::GetPointmapLayer::Request>
+		req,
+	std::shared_ptr<mrpt_nav_interfaces::srv::GetPointmapLayer::Response> resp)
+{
+	auto lck = mrpt::lockHelper(theMapMtx_);
+
+	resp->valid = false;
+
+	if (theMap_.layers.count(req->layer_name) == 0) return;
+
+	auto m = theMap_.layers.at(req->layer_name);
+	auto pts = std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(m);
+	if (!pts) return;  // it's not a point cloud
+
+	std_msgs::msg::Header msg_header;
+	msg_header.stamp = this->get_clock()->now();
+	msg_header.frame_id = frame_id_;
+
+	resp->points = pointmap_layer_to_msg(pts);
+
+	resp->valid = true;
+}
+
+sensor_msgs::msg::PointCloud2 MapServer::pointmap_layer_to_msg(
+	const mrpt::maps::CPointsMap::Ptr& pts)
+{
+	std_msgs::msg::Header msg_header;
+	msg_header.stamp = this->get_clock()->now();
+	msg_header.frame_id = frame_id_;
+
+	sensor_msgs::msg::PointCloud2 msg_pts;
+
+	if (auto* xyzirt =
+			dynamic_cast<const mrpt::maps::CPointsMapXYZIRT*>(pts.get());
+		xyzirt)
+	{
+		mrpt::ros2bridge::toROS(*xyzirt, msg_header, msg_pts);
+	}
+	else if (auto* xyzi =
+				 dynamic_cast<const mrpt::maps::CPointsMapXYZI*>(pts.get());
+			 xyzi)
+	{
+		mrpt::ros2bridge::toROS(*xyzi, msg_header, msg_pts);
+	}
+	else if (auto* sPts =
+				 dynamic_cast<const mrpt::maps::CSimplePointsMap*>(pts.get());
+			 sPts)
+	{
+		mrpt::ros2bridge::toROS(*sPts, msg_header, msg_pts);
+	}
+	else
+	{
+		THROW_EXCEPTION_FMT(
+			"Unexpected point cloud class: '%s'",
+			pts->GetRuntimeClass()->className);
+	}
+
+	return msg_pts;
 }
 
 int main(int argc, char** argv)
