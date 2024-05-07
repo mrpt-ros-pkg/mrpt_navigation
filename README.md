@@ -36,6 +36,7 @@ Others:
 * [mrpt_rawlog](mrpt_rawlog): Nodes and CLI tools to convert between MRPT rawlog format and ROS rosbag2.
 * [mrpt_tutorials](mrpt_tutorials): Launch and configuration files for the various examples provided for the other packages.
 * [mrpt_msgs_bridge](mrpt_msgs_bridge): C++ library to convert between custom [mrpt_msgs](https://github.com/mrpt-ros-pkg/mrpt_msgs) messages and native MRPT classes
+* [mrpt_nav_interfaces](mrpt_nav_interfaces): Definition of msgs, srvs, and actions used by the other packages.
 
 
 General documentation
