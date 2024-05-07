@@ -7,6 +7,7 @@
 	* [ROS Parameters](#ROS-Parameters)
 	* [Subscribed topics](#Subscribed-topics)
 	* [Published topics](#Published-topics)
+        * [Services](#services)
 	* [Template ROS 2 launch files](#Template-ROS-2-launch-files)
 * [Demos](#Demos)
 
