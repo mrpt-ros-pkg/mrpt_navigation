@@ -125,6 +125,10 @@ if(BUILD_TESTING)
   )
   target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME}_core)
   target_compile_definitions(${PROJECT_NAME}-test PRIVATE MRPT_LOCALIZATION_SOURCE_DIR=\"${CMAKE_SOURCE_DIR}\")
+  install(
+    TARGETS ${PROJECT_NAME}-test
+    DESTINATION bin
+  )
 
   find_package(ament_lint_auto REQUIRED)
 

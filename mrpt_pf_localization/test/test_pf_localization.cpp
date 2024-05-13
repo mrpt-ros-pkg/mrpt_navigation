@@ -15,26 +15,35 @@
 
 #include <thread>
 
-const bool RUN_TESTS_WITH_GUI = mrpt::get_env("RUN_TESTS_WITH_GUI", false);
+struct TestParams
+{
+	const bool RUN_TESTS_WITH_GUI = mrpt::get_env("RUN_TESTS_WITH_GUI", false);
 
-const auto TEST_MM_FILE = mrpt::get_env<std::string>("TEST_MM_FILE", "");
+	const std::string TEST_MM_FILE =
+		mrpt::get_env<std::string>("TEST_MM_FILE", "");
 
-const char* TEST_PARAMS_YAML_FILE =
-	MRPT_LOCALIZATION_SOURCE_DIR "/params/default.config.yaml";
-const char* TEST_RELOCALIZATION_YAML_FILE =
-	MRPT_LOCALIZATION_SOURCE_DIR "/params/default-relocalization-pipeline.yaml";
+	const std::string TEST_PARAMS_YAML_FILE = mrpt::get_env<std::string>(
+		"TEST_PF_YAML_FILE",
+		MRPT_LOCALIZATION_SOURCE_DIR "/params/default.config.yaml");
 
-const char* TEST_MAP_CONFIG_FILE =
-	MRPT_LOCALIZATION_SOURCE_DIR "/params/map-occgrid2d.ini";
+	const std::string TEST_RELOCALIZATION_YAML_FILE =
+		mrpt::get_env<std::string>(
+			"TEST_RELOCALIZATION_YAML_FILE", MRPT_LOCALIZATION_SOURCE_DIR
+			"/params/default-relocalization-pipeline.yaml");
 
-const char* TEST_SIMPLEMAP_FILE = MRPT_LOCALIZATION_SOURCE_DIR
-	"/../mrpt_tutorials/maps/gh25_simulated.simplemap";
+	const char* TEST_MAP_CONFIG_FILE =
+		MRPT_LOCALIZATION_SOURCE_DIR "/params/map-occgrid2d.ini";
 
-const std::string TEST_RAWLOG_FILE = mrpt::get_env<std::string>(
-	"TEST_RAWLOG_FILE", MRPT_LOCALIZATION_SOURCE_DIR
-	"/../mrpt_tutorials/datasets/driving_in_office_obs.rawlog");
+	const char* TEST_SIMPLEMAP_FILE = MRPT_LOCALIZATION_SOURCE_DIR
+		"/../mrpt_tutorials/maps/gh25_simulated.simplemap";
 
-const size_t TEST_SKIP_FIRST_N = mrpt::get_env<size_t>("TEST_SKIP_FIRST_N", 0);
+	const std::string TEST_RAWLOG_FILE = mrpt::get_env<std::string>(
+		"TEST_RAWLOG_FILE", MRPT_LOCALIZATION_SOURCE_DIR
+		"/../mrpt_tutorials/datasets/driving_in_office_obs.rawlog");
+
+	const size_t TEST_SKIP_FIRST_N =
+		mrpt::get_env<size_t>("TEST_SKIP_FIRST_N", 0);
+};
 
 TEST(PF_Localization, InitState)
 {
@@ -49,18 +58,20 @@ TEST(PF_Localization, InitState)
 
 TEST(PF_Localization, RunRealDataset)
 {
+	TestParams _;
+
 	PFLocalizationCore loc;
 
 	if (mrpt::get_env<bool>("VERBOSE"))
 		loc.setMinLoggingLevel(mrpt::system::LVL_DEBUG);
 
-	auto p = mrpt::containers::yaml::FromFile(TEST_PARAMS_YAML_FILE);
+	auto p = mrpt::containers::yaml::FromFile(_.TEST_PARAMS_YAML_FILE);
 	mrpt::containers::yaml params = p["/**"]["ros__parameters"];
 
 	auto relocParams =
-		mrpt::containers::yaml::FromFile(TEST_RELOCALIZATION_YAML_FILE);
+		mrpt::containers::yaml::FromFile(_.TEST_RELOCALIZATION_YAML_FILE);
 
-	if (!RUN_TESTS_WITH_GUI)
+	if (!_.RUN_TESTS_WITH_GUI)
 	{
 		// For running tests, disable GUI (comment out to see the GUI live):
 		params["gui_enable"] = false;
@@ -79,16 +90,16 @@ TEST(PF_Localization, RunRealDataset)
 	EXPECT_EQ(loc.getState(), PFLocalizationCore::State::UNINITIALIZED);
 
 	// Now, load a map:
-	if (TEST_MM_FILE.empty())
+	if (_.TEST_MM_FILE.empty())
 	{
 		bool loadOk = loc.set_map_from_simple_map(
-			TEST_MAP_CONFIG_FILE, TEST_SIMPLEMAP_FILE);
+			_.TEST_MAP_CONFIG_FILE, _.TEST_SIMPLEMAP_FILE);
 		EXPECT_TRUE(loadOk);
 	}
 	else
 	{
 		mp2p_icp::metric_map_t mm;
-		bool loadOk = mm.load_from_file(TEST_MM_FILE);
+		bool loadOk = mm.load_from_file(_.TEST_MM_FILE);
 		EXPECT_TRUE(loadOk);
 
 		loc.set_map_from_metric_map(mm);
@@ -109,7 +120,7 @@ TEST(PF_Localization, RunRealDataset)
 
 	// Run for a small dataset:
 	mrpt::obs::CRawlog dataset;
-	dataset.loadFromRawLogFile(TEST_RAWLOG_FILE);
+	dataset.loadFromRawLogFile(_.TEST_RAWLOG_FILE);
 	EXPECT_GT(dataset.size(), 20U);
 
 	double lastStepTime = 0.0;
@@ -118,7 +129,7 @@ TEST(PF_Localization, RunRealDataset)
 	{
 		datasetIndex++;
 
-		if (datasetIndex <= TEST_SKIP_FIRST_N) continue;
+		if (datasetIndex <= _.TEST_SKIP_FIRST_N) continue;
 
 		const auto obs =
 			std::dynamic_pointer_cast<mrpt::obs::CObservation>(observation);
