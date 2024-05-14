@@ -146,6 +146,11 @@ class PFLocalizationCore : public mrpt::system::COutputLogger
 		/// (when NOT using GNNS as input)
 		double relocalize_num_sigmas = 3.0;
 
+		unsigned int relocalization_initial_divisions_xy = 4;
+		unsigned int relocalization_initial_divisions_phi = 4;
+
+		unsigned int relocalization_min_sample_copies_per_candidate = 4;
+
 		double relocalization_resolution_xy = 0.50;	 // [m]
 		double relocalization_resolution_phi = 0.20;  // [rad]
 		double relocalization_minimum_icp_quality = 0.50;

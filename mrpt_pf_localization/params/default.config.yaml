@@ -158,6 +158,9 @@
     relocalization_resolution_xy: 0.25  # [m]
     relocalization_resolution_phi: 10.0 # [deg]
 
+    relocalization_initial_divisions_xy: 4
+    relocalization_initial_divisions_phi: 4
+
     relocalization_minimum_icp_quality: 0.50 # [0,1]
     relocalization_icp_sigma: 5.0 # [m]
     

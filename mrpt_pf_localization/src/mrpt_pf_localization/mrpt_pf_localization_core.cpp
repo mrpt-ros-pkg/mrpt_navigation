@@ -258,7 +258,10 @@ void PFLocalizationCore::Parameters::load_from(
 	MCP_LOAD_OPT(params, relocalization_minimum_icp_quality);
 	MCP_LOAD_OPT(params, relocalization_icp_sigma);
 	MCP_LOAD_OPT(params, relocalization_resolution_xy);
+	MCP_LOAD_OPT(params, relocalization_min_sample_copies_per_candidate);
 	MCP_LOAD_OPT_DEG(params, relocalization_resolution_phi);
+	MCP_LOAD_OPT(params, relocalization_initial_divisions_xy);
+	MCP_LOAD_OPT(params, relocalization_initial_divisions_phi);
 }
 
 struct PFLocalizationCore::InternalState::Relocalization
@@ -567,10 +570,12 @@ void PFLocalizationCore::onStateToBeInitialized()
 
 		in.initial_guess_lattice.corner_min = mrpt::math::TPose2D(pMin);
 		in.initial_guess_lattice.corner_max = mrpt::math::TPose2D(pMax);
-		in.initial_guess_lattice.resolution_xy =
-			std::max<double>(0.5, pDiag.norm() / 3);
-		in.initial_guess_lattice.resolution_phi =
-			std::max<double>(mrpt::DEG2RAD(5.0), (pMax.yaw - pMin.yaw) / 3);
+		in.initial_guess_lattice.resolution_xy = std::max<double>(
+			0.5, pDiag.norm() / params_.relocalization_initial_divisions_xy);
+		in.initial_guess_lattice.resolution_phi = std::max<double>(
+			mrpt::DEG2RAD(5.0),
+			(pMax.yaw - pMin.yaw) /
+				params_.relocalization_initial_divisions_phi);
 
 		in.output_lattice.resolution_xyz = params_.relocalization_resolution_xy;
 		in.output_lattice.resolution_yaw =
@@ -846,11 +851,6 @@ void PFLocalizationCore::onStateRunning()
 			[&](const auto& p)
 			{ candidates.push_back(mrpt::math::TPose2D(p)); });
 
-		MRPT_LOG_INFO_STREAM(
-			"RelocalizationICP_SE2 took " << reloc.time_cost << " s and gave "
-										  << candidates.size()
-										  << " candidates");
-
 #if 0
 		for (const auto& p : candidates)
 			MRPT_LOG_INFO_STREAM("Candidate: " << p);
@@ -880,8 +880,14 @@ void PFLocalizationCore::onStateRunning()
 		const double sigmaPhi = params_.relocalization_resolution_phi * 0.33;
 
 		const size_t numCopies = std::max<size_t>(
-			2, mrpt::round(
-				   params_.initial_particles_per_m2 * mrpt::square(sigmaXY)));
+			params_.relocalization_min_sample_copies_per_candidate,
+			mrpt::round(
+				params_.initial_particles_per_m2 * mrpt::square(sigmaXY)));
+
+		MRPT_LOG_INFO_STREAM(
+			"RelocalizationICP_SE2 took "
+			<< reloc.time_cost << " s and gave " << candidates.size()
+			<< " candidates. Particles copies per candidate=" << numCopies);
 
 		for (const auto& pose : candidates)
 		{
