@@ -2,8 +2,8 @@
 Changelog for package mrpt_msgs_bridge
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+2.0.0 (2024-05-28)
+------------------
 * Prepare demo launch files
 * Port mrpt localization for ros2 and whole refactor
 * Add ament linter for testing builds

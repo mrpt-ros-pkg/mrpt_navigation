@@ -2,8 +2,8 @@
 Changelog for package mrpt_navigation
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+2.0.0 (2024-05-28)
+------------------
 * Add new package mrpt_nav_interfaces with action and msg defintions for navigation
 * Rename mrpt_map: mrpt_map_server
 * Renamed pkg mrpt_local_obstacles: mrpt_pointcloud_pipeline to reflect new capabilities

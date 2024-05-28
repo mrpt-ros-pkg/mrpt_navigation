@@ -2,8 +2,8 @@
 Changelog for package mrpt_reactivenav2d
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+2.0.0 (2024-05-28)
+------------------
 * rnav: add new pure_pursuit mode
 * Implement two action servers: NavigateGoal and NavigateWaypoints
 * Comply with ROS2 REP 2003

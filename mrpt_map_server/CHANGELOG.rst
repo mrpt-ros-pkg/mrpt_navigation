@@ -2,8 +2,8 @@
 Changelog for package mrpt_map_server
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+2.0.0 (2024-05-28)
+------------------
 * Implement map getter services
 * Define map_server services
 * Comply with ROS2 REP-2003

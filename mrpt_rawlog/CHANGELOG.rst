@@ -2,8 +2,8 @@
 Changelog for package mrpt_rawlog
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+2.0.0 (2024-05-28)
+------------------
 * rosbag2rawlog: BUGFIX: sensor poses were inverted
 * rosbag2rawlog: drop msgs if /tf data did not arrive yet instead of aborting
 * rosbag2rawlog: now also can convert from mrpt_msgs/GenericObservation messages
