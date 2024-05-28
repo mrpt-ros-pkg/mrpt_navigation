@@ -2,8 +2,8 @@
 Changelog for package mrpt_nav_interfaces
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+2.0.1 (2024-05-28)
+------------------
 * fix missing <depend> on action_msgs (should fix build on Humble)
 * Contributors: Jose Luis Blanco-Claraco
 
