@@ -15,6 +15,8 @@
 #include <mrpt/obs/CObservationOdometry.h>
 #include <mrpt/obs/CObservationPointCloud.h>
 #include <mrpt/obs/CObservationRobotPose.h>
+#include <mrpt/poses/Lie/SO.h>	// SO(3) logarithm
+#include <mrpt/ros2bridge/gps.h>
 #include <mrpt/ros2bridge/laser_scan.h>
 #include <mrpt/ros2bridge/map.h>
 #include <mrpt/ros2bridge/point_cloud2.h>
@@ -64,7 +66,8 @@ PFLocalizationNode::PFLocalizationNode(const rclcpp::NodeOptions& options)
 		[this](
 			std::string_view msg, const mrpt::system::VerbosityLevel level,
 			[[maybe_unused]] std::string_view loggerName,
-			[[maybe_unused]] const mrpt::Clock::time_point timestamp) {
+			[[maybe_unused]] const mrpt::Clock::time_point timestamp)
+		{
 			switch (level)
 			{
 				case mrpt::system::LVL_DEBUG:
@@ -110,7 +113,7 @@ PFLocalizationNode::PFLocalizationNode(const rclcpp::NodeOptions& options)
 		nodeParams_.topic_odometry, rclcpp::SystemDefaultsQoS(),
 		std::bind(&PFLocalizationNode::callbackOdometry, this, _1));
 
-	// Subscribe to one or more laser sources:
+	// Subscribe to one or more sensor sources:
 	size_t numSensors = 0;
 
 	{
@@ -123,9 +126,8 @@ PFLocalizationNode::PFLocalizationNode(const rclcpp::NodeOptions& options)
 			subs_2dlaser_.push_back(
 				this->create_subscription<sensor_msgs::msg::LaserScan>(
 					topic, sensorQoS,
-					[topic, this](const sensor_msgs::msg::LaserScan& msg) {
-						callbackLaser(msg, topic);
-					}));
+					[topic, this](const sensor_msgs::msg::LaserScan& msg)
+					{ callbackLaser(msg, topic); }));
 		}
 	}
 	{
@@ -138,9 +140,8 @@ PFLocalizationNode::PFLocalizationNode(const rclcpp::NodeOptions& options)
 			subs_point_clouds_.push_back(
 				this->create_subscription<sensor_msgs::msg::PointCloud2>(
 					topic, sensorQoS,
-					[topic, this](const sensor_msgs::msg::PointCloud2& msg) {
-						callbackPointCloud(msg, topic);
-					}));
+					[topic, this](const sensor_msgs::msg::PointCloud2& msg)
+					{ callbackPointCloud(msg, topic); }));
 		}
 	}
 
@@ -152,6 +153,12 @@ PFLocalizationNode::PFLocalizationNode(const rclcpp::NodeOptions& options)
 				"https://github.com/mrpt-ros-pkg/mrpt_navigation",
 				true /*force format*/));
 
+	// optionally, subscribe to GPS/GNNS:
+	subGNNS_ = this->create_subscription<sensor_msgs::msg::NavSatFix>(
+		nodeParams_.topic_gnns, sensorQoS,
+		[this](const sensor_msgs::msg::NavSatFix& msg) { callbackGNNS(msg); });
+
+	// Publishers:
 	pubParticles_ = this->create_publisher<geometry_msgs::msg::PoseArray>(
 		nodeParams_.pub_topic_particles, rclcpp::SystemDefaultsQoS());
 
@@ -193,17 +200,15 @@ PFLocalizationNode::PFLocalizationNode(const rclcpp::NodeOptions& options)
 	ASSERT_GT_(nodeParams_.transform_tolerance, 1e-3);
 	timerPubTF_ = this->create_wall_timer(
 		std::chrono::microseconds(
-			mrpt::round(1.0e6 * nodeParams_.transform_tolerance)),
-		[this]() {
-			this->publishPose();
+			mrpt::round(0.5 * 1.0e6 * nodeParams_.transform_tolerance)),
+		[this]()
+		{
 			this->publishTF();
+			// publishParticles() && publishPose() are done inside loop()
 		});
 }
 
-PFLocalizationNode::~PFLocalizationNode()
-{
-	// end
-}
+PFLocalizationNode::~PFLocalizationNode() = default;
 
 void PFLocalizationNode::reload_params_from_ros()
 {
@@ -266,46 +271,58 @@ void PFLocalizationNode::reload_params_from_ros()
 				break;
 			default:
 				RCLCPP_WARN(
-					get_logger(), "ROS2 parameter not handled: '%s'",
-					name.c_str());
+					get_logger(), "ROS2 parameter not handled: '%s' type: '%i'",
+					name.c_str(), static_cast<int>(kv.second.get_type()));
 				break;
 		}
 	}
 
 	RCLCPP_DEBUG_STREAM(get_logger(), paramsBlock);
 
-	core_.init_from_yaml(paramsBlock);
+	mrpt::containers::yaml relocalizationCfg;
+	if (paramsBlock.has("relocalization_params_file"))
+	{
+		relocalizationCfg.loadFromFile(
+			paramsBlock["relocalization_params_file"]);
+	}
+
+	core_.init_from_yaml(paramsBlock, relocalizationCfg);
 	nodeParams_.loadFrom(paramsBlock);
 }
 
 void PFLocalizationNode::loop()
 {
-	RCLCPP_DEBUG(get_logger(), "loop");
+	// Populate PF input with a "fake" odometry from twist estimation
+	// if we have nothing better:
+	createOdometryFromTwist();
 
 	// PF algorithm:
 	core_.step();
 
-	// Publish to ROS:
-	if (isTimeFor(nodeParams_.publish_particles_decimation))  //
-		publishParticles();
+	// Estimate twist for the case of not having odometry:
+	updateEstimatedTwist();
 
+	// Publish to ROS:
+	publishParticlesAndStampedPose();
+
+	// /tf data is published in its own timer, save data here in this thread:
 	update_tf_pub_data();
 
 	MRPT_TODO("pub quality metrics");
 
-	loopCount_++;
+	loopCount_++;  // used to compute decimation for publishing msgs
 }
 
 bool PFLocalizationNode::waitForTransform(
-	mrpt::poses::CPose3D& des, const std::string& target_frame,
-	const std::string& source_frame, const int timeoutMilliseconds)
+	mrpt::poses::CPose3D& des, const std::string& frame,
+	const std::string& referenceFrame, const int timeoutMilliseconds)
 {
 	const rclcpp::Duration timeout(0, 1000 * timeoutMilliseconds);
 	try
 	{
 		geometry_msgs::msg::TransformStamped ref_to_trgFrame =
 			tf_buffer_->lookupTransform(
-				source_frame, target_frame, tf2::TimePointZero,
+				referenceFrame, frame, tf2::TimePointZero,
 				tf2::durationFromSec(timeout.seconds()));
 
 		tf2::Transform tf;
@@ -314,13 +331,13 @@ bool PFLocalizationNode::waitForTransform(
 
 		RCLCPP_DEBUG(
 			get_logger(), "[waitForTransform] Found pose %s -> %s: %s",
-			source_frame.c_str(), target_frame.c_str(), des.asString().c_str());
+			referenceFrame.c_str(), frame.c_str(), des.asString().c_str());
 
 		return true;
 	}
 	catch (const tf2::TransformException& ex)
 	{
-		RCLCPP_ERROR(get_logger(), "%s", ex.what());
+		RCLCPP_ERROR(get_logger(), "[waitForTransform] %s", ex.what());
 		return false;
 	}
 }
@@ -332,8 +349,9 @@ void PFLocalizationNode::callbackLaser(
 
 	// get sensor pose on the robot:
 	mrpt::poses::CPose3D sensorPose;
-	waitForTransform(
-		sensorPose, msg.header.frame_id, nodeParams_.base_footprint_frame_id);
+	bool sensorPoseOK = waitForTransform(
+		sensorPose, msg.header.frame_id, nodeParams_.base_link_frame_id);
+	ASSERT_(sensorPoseOK);
 
 	auto obs = mrpt::obs::CObservation2DRangeScan::Create();
 	mrpt::ros2bridge::fromROS(msg, sensorPose, *obs);
@@ -352,8 +370,9 @@ void PFLocalizationNode::callbackPointCloud(
 
 	// get sensor pose on the robot:
 	mrpt::poses::CPose3D sensorPose;
-	waitForTransform(
-		sensorPose, msg.header.frame_id, nodeParams_.base_footprint_frame_id);
+	bool sensorPoseOK = waitForTransform(
+		sensorPose, msg.header.frame_id, nodeParams_.base_link_frame_id);
+	ASSERT_(sensorPoseOK);
 
 	auto obs = mrpt::obs::CObservationPointCloud::Create();
 	obs->sensorLabel = topicName;
@@ -380,17 +399,7 @@ void PFLocalizationNode::callbackBeacon(
 	// MRPT_LOG_INFO_FMT("callbackBeacon");
 	auto beacon = CObservationBeaconRanges::Create();
 	// printf("callbackBeacon %s\n", _msg.header.frame_id.c_str());
-	if (beacon_poses_.find(_msg.header.frame_id) == beacon_poses_.end())
 	{
-		updateSensorPose(_msg.header.frame_id);
-	}
-	else if (state_ != IDLE)  // updating filter; we must be moving or
-	// update_while_stopped set to true
-	{
-		if (param()->update_sensor_pose)
-		{
-			updateSensorPose(_msg.header.frame_id);
-		}
 		// mrpt::poses::CPose3D pose = beacon_poses_[_msg.header.frame_id];
 		// MRPT_LOG_INFO_FMT("BEACON POSE %4.3f, %4.3f, %4.3f, %4.3f, %4.3f,
 		// %4.3f", pose.x(), pose.y(), pose.z(), pose.roll(), pose.pitch(),
@@ -439,7 +448,7 @@ void PFLocalizationNode::callbackRobotPose(
 	catch (const tf2::TransformException& e)
 	{
 		ROS_WARN(
-			"Failed to get transform target_frame (%s) to source_frame (%s): "
+			"Failed to get transform frame (%s) to referenceFrame (%s): "
 			"%s",
 			global_frame_id.c_str(), _msg.header.frame_id.c_str(), e.what());
 		return;
@@ -485,29 +494,6 @@ void PFLocalizationNode::callbackRobotPose(
 #endif
 }
 
-void PFLocalizationNode::odometryForCallback(
-	CObservationOdometry::Ptr& _odometry,
-	const std_msgs::msg::Header& _msg_header)
-{
-#if 0
-	std::string base_frame_id = param()->base_frame_id;
-	std::string odom_frame_id = param()->odom_frame_id;
-	mrpt::poses::CPose3D poseOdom;
-	if (this->waitForTransform(
-			poseOdom, odom_frame_id, base_frame_id, _msg_header.stamp,
-			ros::Duration(1.0)))
-	{
-		_odometry = CObservationOdometry::Create();
-		_odometry->sensorLabel = odom_frame_id;
-		_odometry->hasEncodersInfo = false;
-		_odometry->hasVelocities = false;
-		_odometry->odometry.x() = poseOdom.x();
-		_odometry->odometry.y() = poseOdom.y();
-		_odometry->odometry.phi() = poseOdom.yaw();
-	}
-#endif
-}
-
 void PFLocalizationNode::callbackMap(const mrpt_msgs::msg::GenericObject& obj)
 {
 	RCLCPP_INFO(
@@ -527,59 +513,7 @@ void PFLocalizationNode::callbackMap(const mrpt_msgs::msg::GenericObject& obj)
 	RCLCPP_INFO_STREAM(
 		get_logger(), "[callbackMap] Map contents: " << mm->contents_summary());
 
-	auto mMap = mrpt::maps::CMultiMetricMap::Create();
-
-	for (const auto& [layerName, layerMap] : mm->layers)
-		mMap->maps.push_back(layerMap);
-
-	core_.set_map_from_metric_map(mMap);
-}
-
-void PFLocalizationNode::updateSensorPose(std::string _frame_id)
-{
-#if 0
-	mrpt::poses::CPose3D pose;
-
-	std::string base_frame_id = param()->base_frame_id;
-
-	geometry_msgs::TransformStamped transformStmp;
-	try
-	{
-		ros::Duration timeout(1.0);
-
-		transformStmp = tf_buffer_.lookupTransform(
-			base_frame_id, _frame_id, ros::Time(0), timeout);
-	}
-	catch (const tf2::TransformException& e)
-	{
-		ROS_WARN(
-			"Failed to get transform target_frame (%s) to source_frame (%s): "
-			"%s",
-			base_frame_id.c_str(), _frame_id.c_str(), e.what());
-		return;
-	}
-	tf2::Transform transform;
-	tf2::fromMsg(transformStmp.transform, transform);
-
-	tf2::Vector3 translation = transform.getOrigin();
-	tf2::Quaternion quat = transform.getRotation();
-	pose.x() = translation.x();
-	pose.y() = translation.y();
-	pose.z() = translation.z();
-	tf2::Matrix3x3 Rsrc(quat);
-	mrpt::math::CMatrixDouble33 Rdes;
-	for (int c = 0; c < 3; c++)
-	{
-		for (int r = 0; r < 3; r++)
-		{
-			Rdes(r, c) = Rsrc.getRow(r)[c];
-		}
-	}
-
-	pose.setRotationMatrix(Rdes);
-	laser_poses_[_frame_id] = pose;
-	beacon_poses_[_frame_id] = pose;
-#endif
+	core_.set_map_from_metric_map(*mm);
 }
 
 void PFLocalizationNode::callbackInitialpose(
@@ -616,49 +550,88 @@ void PFLocalizationNode::callbackOdometry(const nav_msgs::msg::Odometry& msg)
 	core_.on_observation(obs);
 }
 
-void PFLocalizationNode::updateMap(const nav_msgs::msg::OccupancyGrid& _msg)
+void PFLocalizationNode::callbackGNNS(const sensor_msgs::msg::NavSatFix& msg)
 {
-#if 0
-	ASSERT_(metric_map_->countMapsByClass<COccupancyGridMap2D>());
-	mrpt::ros2bridge::fromROS(
-		_msg, *metric_map_->mapByClass<COccupancyGridMap2D>());
-#endif
-}
+	RCLCPP_DEBUG_STREAM(get_logger(), "Received GNNS observation");
 
-void PFLocalizationNode::publishParticles()
-{
-	if (!pubParticles_->get_subscription_count()) return;
+	// get sensor pose on the robot:
+	mrpt::poses::CPose3D sensorPose;
+	bool sensorPoseOK = waitForTransform(
+		sensorPose, msg.header.frame_id, nodeParams_.base_link_frame_id);
+	ASSERT_(sensorPoseOK);
 
-	mrpt::poses::CPose3DPDFParticles::Ptr parts = core_.getLastPoseEstimation();
+	auto obs = mrpt::obs::CObservationGPS::Create();
 
-	geometry_msgs::msg::PoseArray poseArray;
-	poseArray.header.frame_id = nodeParams_.global_frame_id;
-
-#if 0
-	const auto tf_tolerance =
-		tf2::durationFromSec(nodeParams_.transform_tolerance);
-#endif
-
-	tf2::TimePoint transform_expiration =
-		tf2_ros::fromMsg(mrpt::ros2bridge::toROS(*last_sensor_stamp_));
-	//  +tf_tolerance;
-
-	poseArray.header.stamp = tf2_ros::toMsg(transform_expiration);
-
-	if (!parts)
-	{  // no solution yet
-		poseArray.poses.resize(0);
-		pubParticles_->publish(poseArray);
+	bool ok = mrpt::ros2bridge::fromROS(msg, *obs);
+	if (!ok)
+	{
+		RCLCPP_WARN_STREAM(
+			get_logger(),
+			"Could not convert ROS NavSatFix to an MRPT observation.");
 		return;
 	}
 
-	poseArray.poses.resize(parts->size());
-	for (size_t i = 0; i < parts->size(); i++)
+	obs->sensorLabel = "gps";
+
+	// Only count this as sensor timestamp if it's the first one for
+	// initialization, so we have a valid stamp to publish the first set of
+	// particles:
+	if (!last_sensor_stamp_) last_sensor_stamp_ = obs->timestamp;
+
+	core_.on_observation(obs);
+}
+
+void PFLocalizationNode::publishParticlesAndStampedPose()
+{
+	const mrpt::poses::CPose3DPDFParticles::Ptr parts =
+		core_.getLastPoseEstimation();
+
+	if (!parts)
 	{
-		const auto p = parts->getParticlePose(i);
-		poseArray.poses[i] = mrpt::ros2bridge::toROS_Pose(p);
+		// No solution yet
+		return;
 	}
-	pubParticles_->publish(poseArray);
+
+	if (!last_sensor_stamp_.has_value()) return;
+
+	const auto stamp = mrpt::ros2bridge::toROS(*last_sensor_stamp_);
+
+	// publish particles:
+	if (pubParticles_->get_subscription_count())
+	{
+		geometry_msgs::msg::PoseArray poseArray;
+		poseArray.header.frame_id = nodeParams_.global_frame_id;
+		poseArray.header.stamp = stamp;
+
+		if (!parts)
+		{  // no solution yet
+			poseArray.poses.resize(0);
+		}
+		else
+		{
+			poseArray.poses.resize(parts->size());
+			for (size_t i = 0; i < parts->size(); i++)
+			{
+				const auto p = parts->getParticlePose(i);
+				poseArray.poses[i] = mrpt::ros2bridge::toROS_Pose(p);
+			}
+		}
+		pubParticles_->publish(poseArray);
+	}
+
+	if (pubPose_->get_subscription_count())
+	{
+		geometry_msgs::msg::PoseWithCovarianceStamped p;
+		p.header.frame_id = nodeParams_.global_frame_id;
+		p.header.stamp = stamp;
+
+		mrpt::poses::CPose3DPDFGaussian pdf;
+		pdf.copyFrom(*parts);
+
+		p.pose = mrpt::ros2bridge::toROS_Pose(pdf);
+
+		pubPose_->publish(p);
+	}
 }
 
 /**
@@ -667,7 +640,7 @@ void PFLocalizationNode::publishParticles()
  */
 void PFLocalizationNode::update_tf_pub_data()
 {
-	std::string base_frame_id = nodeParams_.base_footprint_frame_id;
+	std::string base_frame_id = nodeParams_.base_link_frame_id;
 	std::string odom_frame_id = nodeParams_.odom_frame_id;
 	std::string global_frame_id = nodeParams_.global_frame_id;
 
@@ -680,8 +653,15 @@ void PFLocalizationNode::update_tf_pub_data()
 	MRPT_TODO("Use param: no_update_tolerance");
 
 	mrpt::poses::CPose3D T_base_to_odom;
-	this->waitForTransform(T_base_to_odom, odom_frame_id, base_frame_id);
+	bool base_to_odom_ok =
+		this->waitForTransform(T_base_to_odom, odom_frame_id, base_frame_id);
 	// Note: this wait above typ takes ~50 us
+
+	if (!base_to_odom_ok)
+	{
+		// Ignore error and assume we don't have odom and this localization is
+		// the only source of localization?
+	}
 
 	// We want to send a transform that is good up until a tolerance time so
 	// that odom can be used
@@ -705,68 +685,33 @@ void PFLocalizationNode::update_tf_pub_data()
 	auto lck = mrpt::lockHelper(tfMapOdomToPublishMtx_);
 
 	tfMapOdomToPublish_ = tf2::toMsg(tmp_tf_stamped);
-	tfMapOdomToPublish_.child_frame_id = odom_frame_id;
+	tfMapOdomToPublish_->child_frame_id = odom_frame_id;
 }
 
 void PFLocalizationNode::publishTF()
 {
 	auto lck = mrpt::lockHelper(tfMapOdomToPublishMtx_);
 
-	tf_broadcaster_->sendTransform(tfMapOdomToPublish_);
+	if (!tfMapOdomToPublish_.has_value()) return;
 
-	const auto tf_tolerance =
-		tf2::durationFromSec(nodeParams_.transform_tolerance);
+	tf_broadcaster_->sendTransform(*tfMapOdomToPublish_);
+
+	const auto tf_tolerance_1_2 =
+		tf2::durationFromSec(0.5 * nodeParams_.transform_tolerance);
+
+	RCLCPP_DEBUG_STREAM(
+		get_logger(),
+		"[publishTF] last_sensor_stamp="
+			<< mrpt::system::dateTimeToString(
+				   mrpt::ros2bridge::fromROS(tfMapOdomToPublish_->header.stamp))
+			<< " now="
+			<< mrpt::system::dateTimeToString(
+				   mrpt::ros2bridge::fromROS(get_clock()->now())));
 
 	// Increase timestamp to keep it valid on next re-publish and until a better
 	// odom->map is found.
-	tfMapOdomToPublish_.header.stamp = tf2_ros::toMsg(
-		tf2_ros::fromMsg(tfMapOdomToPublish_.header.stamp) + tf_tolerance);
-}
-
-/**
- * @brief Publish the current pose of the robot
- **/
-void PFLocalizationNode::publishPose()
-{
-#if 0
-	// cov for x, y, phi (meter, meter, radian)
-	const auto [cov, mean] = pdf_.getCovarianceAndMean();
-
-	geometry_msgs::PoseWithCovarianceStamped p;
-
-	// Fill in the header
-	p.header.frame_id = param()->global_frame_id;
-	if (loop_count_ < 10 || state_ == IDLE)
-	{
-		// on first iterations timestamp differs a lot from ROS time
-		p.header.stamp = ros::Time::now();
-	}
-	else
-	{
-		p.header.stamp = mrpt::ros2bridge::toROS(time_last_update_);
-	}
-
-	// Copy in the pose
-	p.pose.pose = mrpt::ros2bridge::toROS_Pose(mean);
-
-	// Copy in the covariance, converting from 3-D to 6-D
-	for (int i = 0; i < 3; i++)
-	{
-		for (int j = 0; j < 3; j++)
-		{
-			int ros_i = i;
-			int ros_j = j;
-			if (i == 2 || j == 2)
-			{
-				ros_i = i == 2 ? 5 : i;
-				ros_j = j == 2 ? 5 : j;
-			}
-			p.pose.covariance[ros_i * 6 + ros_j] = cov(i, j);
-		}
-	}
-
-	pub_pose_.publish(p);
-#endif
+	tfMapOdomToPublish_->header.stamp = tf2_ros::toMsg(
+		tf2_ros::fromMsg(tfMapOdomToPublish_->header.stamp) + tf_tolerance_1_2);
 }
 
 void PFLocalizationNode::useROSLogLevel()
@@ -795,9 +740,8 @@ void PFLocalizationNode::NodeParameters::loadFrom(
 	MCP_LOAD_OPT(cfg, transform_tolerance);
 	MCP_LOAD_OPT(cfg, no_update_tolerance);
 	MCP_LOAD_OPT(cfg, no_inputs_tolerance);
-	MCP_LOAD_OPT(cfg, publish_particles_decimation);
 
-	MCP_LOAD_OPT(cfg, base_footprint_frame_id);
+	MCP_LOAD_OPT(cfg, base_link_frame_id);
 	MCP_LOAD_OPT(cfg, odom_frame_id);
 	MCP_LOAD_OPT(cfg, global_frame_id);
 
@@ -810,4 +754,103 @@ void PFLocalizationNode::NodeParameters::loadFrom(
 
 	MCP_LOAD_OPT(cfg, topic_sensors_2d_scan);
 	MCP_LOAD_OPT(cfg, topic_sensors_point_clouds);
+	MCP_LOAD_OPT(cfg, topic_gnns);
+}
+
+void PFLocalizationNode::updateEstimatedTwist()
+{
+	const mrpt::poses::CPose3DPDFParticles::Ptr parts =
+		core_.getLastPoseEstimation();
+
+	// No solution yet
+	if (!parts) return;
+
+	if (!last_sensor_stamp_) return;
+
+	const auto curStamp = *last_sensor_stamp_;
+
+	// estimate twist:
+	if (!prevParts_)
+	{
+		prevParts_ = *parts;
+		prevStamp_ = curStamp;
+		return;
+	}
+
+	// else, we can estimate the twist if we have two observations:
+	if (curStamp == prevStamp_)
+		return;	 // No new observation yet, keep waiting...
+
+	// get diff:
+	const auto prevPose = prevParts_->getMeanVal();
+	const auto curPose = parts->getMeanVal();
+
+	const double dt = mrpt::system::timeDifference(*prevStamp_, curStamp);
+
+	const double max_time_to_use_velocity_model = 5.0;	// [s]
+
+	if (dt < max_time_to_use_velocity_model)
+	{
+		ASSERT_GT_(dt, .0);
+
+		auto& tw = estimated_twist_.emplace();
+
+		const auto incrPose = curPose - prevPose;
+
+		tw.vx = incrPose.x() / dt;
+		tw.vy = incrPose.y() / dt;
+		tw.vz = incrPose.z() / dt;
+
+		const auto logRot =
+			mrpt::poses::Lie::SO<3>::log(incrPose.getRotationMatrix());
+
+		tw.wx = logRot[0] / dt;
+		tw.wy = logRot[1] / dt;
+		tw.wz = logRot[2] / dt;
+	}
+
+	// for the next iteration:
+	prevParts_ = *parts;
+	prevStamp_ = curStamp;
+}
+
+void PFLocalizationNode::createOdometryFromTwist()
+{
+	using mrpt::math::TVector3D;
+
+	// no twist estimation, cannot do anything
+	if (!estimated_twist_ || !prevStamp_) return;
+
+	if (core_.input_queue_has_odometry())
+		return;	 // already has a real odometry
+
+	const auto lastStamp = core_.input_queue_last_stamp();
+	if (!lastStamp) return;	 // no real observation with stamp
+
+	const double dt = mrpt::system::timeDifference(*prevStamp_, *lastStamp);
+
+	const TVector3D v(
+		estimated_twist_->vx, estimated_twist_->vy, estimated_twist_->vz);
+
+	const TVector3D w(
+		estimated_twist_->wx, estimated_twist_->wy, estimated_twist_->wz);
+
+	// Integrate rotation:
+	const TVector3D w_dt = w * dt;
+	const auto R =
+		mrpt::poses::Lie::SO<3>::exp(mrpt::math::CVectorFixedDouble<3>(w_dt));
+
+	// Integrate translation:
+	const TVector3D v_dt = v * dt;
+
+	// Build SE(3):
+	const auto deltaT =
+		mrpt::poses::CPose3D::FromRotationAndTranslation(R, v_dt);
+
+	// Set fake odometry:
+	core_.set_fake_odometry_increment(deltaT);
+
+	RCLCPP_DEBUG_STREAM(
+		get_logger(),
+		"createOdometryFromTwist: dt=" << dt << " deltaT=" << deltaT);
 }

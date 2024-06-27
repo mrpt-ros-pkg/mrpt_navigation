@@ -1,6 +1,36 @@
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Changelog for package mrpt_pf_localization
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+2.0.1 (2024-05-28)
+------------------
+
+2.0.0 (2024-05-28)
+------------------
+* unit test executable now accepts many env var arguments for use in batch tests
+* More relocalization parameters
+* pf-test: fix static not POD warnings, and support env var-based config file too
+* Fix for latest mp2p_icp api
+* Implement relocalization based on ICP
+* fix relocalization with reference pointmaps
+* code clean up; check convergence in unit test
+* Do not update the PF if there are no usable observations
+* use pf/m² to initialize; estimate twist
+* Expose gnns topic in the launch file
+* GNNS-based initialization
+* Comply with ROS2 REP-2003
+* use namespaces for launch files
+* allow overriding map likelihood options
+* Show more debug info on metric map likelihood options
+* New param for core-only debug level
+* enable running the test from an MM file
+* Receive gridmap from ROS topic
+* Clearer warn messages
+* Reorganize launch and demo files
+* Prepare demo launch files
+* Port mrpt localization to ROS 2 and whole refactor
+* Renamed: mrpt_localization: mrpt_pf_localization
+* Contributors: Jose Luis Blanco-Claraco
 
 1.0.3 (2022-06-25)
 ------------------

@@ -1,0 +1,2 @@
+int16 total_waypoints
+int16 reached_waypoints

@@ -1,6 +1,18 @@
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Changelog for package mrpt_pointcloud_pipeline
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+2.0.1 (2024-05-28)
+------------------
+
+2.0.0 (2024-05-28)
+------------------
+* use namespaces for launch files
+* Use just one pipeline generator+filter definition file
+* split filtering into per-observation and final pipelines
+* generic launch for pipeline
+* Renamed pkg mrpt_local_obstacles: mrpt_pointcloud_pipeline to reflect new capabilities
+* Contributors: Jose Luis Blanco-Claraco
 
 1.0.3 (2022-06-25)
 ------------------

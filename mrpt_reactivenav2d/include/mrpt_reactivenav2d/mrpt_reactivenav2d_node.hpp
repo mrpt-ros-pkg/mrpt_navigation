@@ -26,24 +26,24 @@
 #include <tf2_ros/buffer.h>
 #include <tf2_ros/transform_listener.h>
 
-#include <chrono>
 #include <geometry_msgs/msg/polygon.hpp>
 #include <geometry_msgs/msg/pose_stamped.hpp>
 #include <mrpt_msgs/msg/waypoint.hpp>
 #include <mrpt_msgs/msg/waypoint_sequence.hpp>
+#include <mrpt_nav_interfaces/action/navigate_goal.hpp>
+#include <mrpt_nav_interfaces/action/navigate_waypoints.hpp>
 #include <mutex>
 #include <nav_msgs/msg/odometry.hpp>
 #include <rclcpp/rclcpp.hpp>
+#include <rclcpp_action/rclcpp_action.hpp>
 #include <sensor_msgs/msg/laser_scan.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
+#include <std_msgs/msg/string.hpp>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 #include <visualization_msgs/msg/marker_array.hpp>
 
-using namespace mrpt::nav;
-using mrpt::maps::CSimplePointsMap;
-using namespace mrpt::system;
-using namespace mrpt::config;
-
+namespace mrpt_reactivenav2d
+{
 // The ROS node
 class ReactiveNav2DNode : public rclcpp::Node
 {
@@ -66,8 +66,7 @@ class ReactiveNav2DNode : public rclcpp::Node
 	void on_set_robot_shape(
 		const geometry_msgs::msg::Polygon::SharedPtr& newShape);
 	void on_odometry_received(const nav_msgs::msg::Odometry::SharedPtr& odom);
-	void update_waypoint_sequence(
-		const mrpt_msgs::msg::WaypointSequence::SharedPtr& wp);
+	void update_waypoint_sequence(const mrpt_msgs::msg::WaypointSequence& wp);
 	void on_waypoint_seq_received(
 		const mrpt_msgs::msg::WaypointSequence::SharedPtr& wps);
 
@@ -85,12 +84,19 @@ class ReactiveNav2DNode : public rclcpp::Node
 	rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr
 		pubSelectedPtg_;
 
+	rclcpp::Publisher<std_msgs::msg::String>::SharedPtr pubNavEvents_;
+
 	std::shared_ptr<tf2_ros::Buffer> tfBuffer_;
 	std::shared_ptr<tf2_ros::TransformListener> tfListener_;
 	/** @} */
 
-	CTimeLogger profiler_;
+	mrpt::system::CTimeLogger profiler_;
 	bool initialized_ = false;	//!< Reactive initialization done?
+
+	std::shared_ptr<rclcpp::ParameterEventHandler> param_subscriber_;
+
+	// Used for single goal commands. For waypoints, the node will use
+	// the distances in the waypoints msg:
 	double targetAllowedDistance_ = 0.40;
 	double navPeriod_ = 0.10;
 
@@ -102,12 +108,17 @@ class ReactiveNav2DNode : public rclcpp::Node
 
 	std::string pubTopicCmdVel_ = "/cmd_vel";
 	std::string pubTopicSelectedPtg_ = "reactivenav_selected_ptg";
+	std::string pubTopicEvents_ = "reactivenav_events";
 
 	std::string frameidReference_ = "map";
 	std::string frameidRobot_ = "base_link";
 
-	std::string pluginFile_;
-	std::string cfgFileReactive_;
+	/// If enabled, no obstacle avoidance will be attempted (!)
+	bool pure_pursuit_mode_ = false;
+	std::shared_ptr<rclcpp::ParameterCallbackHandle> cb_pure_pursuit_mode_;
+
+	std::string pluginFile_ = {};
+	std::string cfgFileReactive_ = "reactive2d_config.ini";
 
 	bool saveNavLog_ = false;
 
@@ -116,7 +127,7 @@ class ReactiveNav2DNode : public rclcpp::Node
 	mrpt::obs::CObservationOdometry odometry_;
 	std::mutex odometryMtx_;
 
-	CSimplePointsMap lastObstacles_;
+	mrpt::maps::CSimplePointsMap lastObstacles_;
 	std::mutex lastObstaclesMtx_;
 
 	bool waitForTransform(
@@ -127,6 +138,8 @@ class ReactiveNav2DNode : public rclcpp::Node
 
 	visualization_msgs::msg::MarkerArray log_to_margers(
 		const mrpt::nav::CLogFileRecord& lr);
+
+	void publish_event_message(const std::string& text);
 
 	struct MyReactiveInterface : public mrpt::nav::CRobot2NavInterface
 	{
@@ -143,57 +156,7 @@ class ReactiveNav2DNode : public rclcpp::Node
 		bool getCurrentPoseAndSpeeds(
 			mrpt::math::TPose2D& curPose, mrpt::math::TTwist2D& curVel,
 			mrpt::system::TTimeStamp& timestamp,
-			mrpt::math::TPose2D& curOdometry, std::string& frame_id) override
-		{
-			double curV, curW;
-
-			CTimeLoggerEntry tle(parent_.profiler_, "getCurrentPoseAndSpeeds");
-
-			// rclcpp::Duration timeout(0.1);
-			rclcpp::Duration timeout(std::chrono::milliseconds(100));
-
-			geometry_msgs::msg::TransformStamped tfGeom;
-			try
-			{
-				CTimeLoggerEntry tle2(
-					parent_.profiler_,
-					"getCurrentPoseAndSpeeds.lookupTransform_sensor");
-
-				tfGeom = parent_.tfBuffer_->lookupTransform(
-					parent_.frameidReference_, parent_.frameidRobot_,
-					tf2::TimePointZero,
-					tf2::durationFromSec(timeout.seconds()));
-			}
-			catch (const tf2::TransformException& ex)
-			{
-				RCLCPP_ERROR(parent_.get_logger(), "%s", ex.what());
-				return false;
-			}
-
-			tf2::Transform txRobotPose;
-			tf2::fromMsg(tfGeom.transform, txRobotPose);
-
-			const mrpt::poses::CPose3D curRobotPose =
-				mrpt::ros2bridge::fromROS(txRobotPose);
-
-			timestamp = mrpt::ros2bridge::fromROS(tfGeom.header.stamp);
-
-			// Explicit 3d->2d to confirm we know we're losing information
-			curPose = mrpt::poses::CPose2D(curRobotPose).asTPose();
-			curOdometry = curPose;
-
-			curV = curW = 0;
-			MRPT_TODO("Retrieve current speeds from /odom topic?");
-			RCLCPP_DEBUG(
-				parent_.get_logger(),
-				"[getCurrentPoseAndSpeeds] Latest pose: %s",
-				curPose.asString().c_str());
-
-			// From local to global:
-			curVel = mrpt::math::TTwist2D(curV, .0, curW).rotated(curPose.phi);
-
-			return true;
-		}
+			mrpt::math::TPose2D& curOdometry, std::string& frame_id) override;
 
 		/** Change the instantaneous speeds of robot.
 		 *   \param v Linear speed, in meters per second.
@@ -201,75 +164,116 @@ class ReactiveNav2DNode : public rclcpp::Node
 		 * \return false on any error.
 		 */
 		bool changeSpeeds(
-			const mrpt::kinematics::CVehicleVelCmd& vel_cmd) override
-		{
-			using namespace mrpt::kinematics;
-			const CVehicleVelCmd_DiffDriven* vel_cmd_diff_driven =
-				dynamic_cast<const CVehicleVelCmd_DiffDriven*>(&vel_cmd);
-			ASSERT_(vel_cmd_diff_driven);
+			const mrpt::kinematics::CVehicleVelCmd& vel_cmd) override;
 
-			const double v = vel_cmd_diff_driven->lin_vel;
-			const double w = vel_cmd_diff_driven->ang_vel;
-			RCLCPP_DEBUG(
-				parent_.get_logger(),
-				"changeSpeeds: v=%7.4f m/s  w=%8.3f deg/s", v,
-				w * 180.0f / M_PI);
-			geometry_msgs::msg::Twist cmd;
-			cmd.linear.x = v;
-			cmd.angular.z = w;
-			parent_.pubCmdVel_->publish(cmd);
-			return true;
-		}
-
-		bool stop(bool isEmergency) override
-		{
-			mrpt::kinematics::CVehicleVelCmd_DiffDriven vel_cmd;
-			vel_cmd.lin_vel = 0;
-			vel_cmd.ang_vel = 0;
-			return changeSpeeds(vel_cmd);
-		}
+		bool stop(bool isEmergency) override;
 
 		/** Start the watchdog timer of the robot platform, if any.
 		 * \param T_ms Period, in ms.
 		 * \return false on any error. */
-		virtual bool startWatchdog(float T_ms) override { return true; }
+		bool startWatchdog(float T_ms) override { return true; }
+
 		/** Stop the watchdog timer.
 		 * \return false on any error. */
-		virtual bool stopWatchdog() override { return true; }
+		bool stopWatchdog() override { return true; }
+
 		/** Return the current set of obstacle points.
 		 * \return false on any error. */
 		bool senseObstacles(
-			CSimplePointsMap& obstacles,
-			mrpt::system::TTimeStamp& timestamp) override
-		{
-			timestamp = mrpt::Clock::now();
-			std::lock_guard<std::mutex> csl(parent_.lastObstaclesMtx_);
-			obstacles = parent_.lastObstacles_;
-
-			MRPT_TODO("TODO: Check age of obstacles!");
-			return true;
-		}
+			mrpt::maps::CSimplePointsMap& obstacles,
+			mrpt::system::TTimeStamp& timestamp) override;
 
 		mrpt::kinematics::CVehicleVelCmd::Ptr getEmergencyStopCmd() override
 		{
 			return getStopCmd();
 		}
+
 		mrpt::kinematics::CVehicleVelCmd::Ptr getStopCmd() override
 		{
-			mrpt::kinematics::CVehicleVelCmd::Ptr ret =
-				mrpt::kinematics::CVehicleVelCmd::Ptr(
-					new mrpt::kinematics::CVehicleVelCmd_DiffDriven);
+			auto ret = mrpt::kinematics::CVehicleVelCmd_DiffDriven::Create();
 			ret->setToStop();
 			return ret;
 		}
 
-		void sendNavigationStartEvent() override {}
-		void sendNavigationEndEvent() override {}
-		void sendNavigationEndDueToErrorEvent() override {}
-		void sendWaySeemsBlockedEvent() override {}
+		/** Callback: Start of navigation command */
+		void sendNavigationStartEvent() override;
+
+		/** Callback: End of navigation command (reach of single goal, or final
+		 * waypoint of waypoint list) */
+		void sendNavigationEndEvent() override;
+
+		/** Callback: Reached an intermediary waypoint in waypoint list
+		 * navigation. reached_nSkipped will be `true` if the waypoint was
+		 * physically reached; `false` if it was actually "skipped".
+		 */
+		void sendWaypointReachedEvent(
+			int waypoint_index, bool reached_nSkipped) override;
+
+		/** Callback: Heading towards a new intermediary/final waypoint in
+		 * waypoint list navigation */
+		void sendNewWaypointTargetEvent(int waypoint_index) override;
+
+		/** Callback: Error asking sensory data from robot or sending motor
+		 * commands. */
+		void sendNavigationEndDueToErrorEvent() override;
+
+		/** Callback: No progression made towards target for a predefined period
+		 * of time. */
+		void sendWaySeemsBlockedEvent() override;
+
+		/** Callback: Apparent collision event (i.e. there is at least one
+		 * obstacle point inside the robot shape) */
+		void sendApparentCollisionEvent() override;
+
+		/** Callback: Target seems to be blocked by an obstacle. */
+		void sendCannotGetCloserToBlockedTargetEvent() override;
 	};
 
 	MyReactiveInterface reactiveInterface_{*this};
-	CReactiveNavigationSystem rnavEngine_{reactiveInterface_};
+	mrpt::nav::CReactiveNavigationSystem rnavEngine_{reactiveInterface_};
 	std::mutex rnavEngineMtx_;
+
+	// ACTION INTERFACE: NavigateGoal
+	// --------------------------------------
+	using NavigateGoal = mrpt_nav_interfaces::action::NavigateGoal;
+	using HandleNavigateGoal = rclcpp_action::ServerGoalHandle<NavigateGoal>;
+
+	rclcpp_action::Server<NavigateGoal>::SharedPtr action_server_goal_;
+
+	rclcpp_action::GoalResponse handle_goal(
+		const rclcpp_action::GoalUUID& uuid,
+		std::shared_ptr<const NavigateGoal::Goal> goal);
+
+	rclcpp_action::CancelResponse handle_cancel(
+		const std::shared_ptr<HandleNavigateGoal> goal_handle);
+
+	void handle_accepted(const std::shared_ptr<HandleNavigateGoal> goal_handle);
+	void execute_action_goal(
+		const std::shared_ptr<HandleNavigateGoal> goal_handle);
+
+	std::optional<bool> currentNavEndedSuccessfully_;
+	std::mutex currentNavEndedSuccessfullyMtx_;
+
+	// ACTION INTERFACE: NavigateWaypoints
+	// --------------------------------------
+	using NavigateWaypoints = mrpt_nav_interfaces::action::NavigateWaypoints;
+	using HandleNavigateWaypoints =
+		rclcpp_action::ServerGoalHandle<NavigateWaypoints>;
+
+	rclcpp_action::Server<NavigateWaypoints>::SharedPtr
+		action_server_waypoints_;
+
+	rclcpp_action::GoalResponse handle_goal_wp(
+		const rclcpp_action::GoalUUID& uuid,
+		std::shared_ptr<const NavigateWaypoints::Goal> goal);
+
+	rclcpp_action::CancelResponse handle_cancel_wp(
+		const std::shared_ptr<HandleNavigateWaypoints> goal_handle);
+
+	void handle_accepted_wp(
+		const std::shared_ptr<HandleNavigateWaypoints> goal_handle);
+	void execute_action_wp(
+		const std::shared_ptr<HandleNavigateWaypoints> goal_handle);
 };
+
+}  // namespace mrpt_reactivenav2d

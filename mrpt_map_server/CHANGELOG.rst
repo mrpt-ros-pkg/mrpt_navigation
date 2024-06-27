@@ -1,6 +1,20 @@
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Changelog for package mrpt_map_server
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+2.0.1 (2024-05-28)
+------------------
+
+2.0.0 (2024-05-28)
+------------------
+* Implement map getter services
+* Define map_server services
+* Comply with ROS2 REP-2003
+* new param force_republish_period
+* map_server: publish voxelmaps as points too
+* map_server: Implement publishing from .mm files
+* Rename mrpt_map: mrpt_map_server
+* Contributors: Jose Luis Blanco-Claraco
 
 1.0.3 (2022-06-25)
 ------------------

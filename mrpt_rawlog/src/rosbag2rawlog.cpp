@@ -202,8 +202,8 @@ class RosSynchronizer
 std::shared_ptr<tf2::BufferCore> tfBuffer;
 
 bool findOutSensorPose(
-	mrpt::poses::CPose3D& des, const std::string& target_frame,
-	const std::string& source_frame,
+	mrpt::poses::CPose3D& des, const std::string& frame,
+	const std::string& referenceFrame,
 	const std::optional<mrpt::poses::CPose3D>& fixedSensorPose)
 {
 	if (fixedSensorPose)
@@ -218,7 +218,7 @@ bool findOutSensorPose(
 
 		geometry_msgs::msg::TransformStamped ref_to_trgFrame =
 			tfBuffer->lookupTransform(
-				target_frame, source_frame, {} /*latest value*/);
+				referenceFrame, frame, {} /*latest value*/);
 
 		tf2::Transform tf;
 		tf2::fromMsg(ref_to_trgFrame.transform, tf);
@@ -227,7 +227,7 @@ bool findOutSensorPose(
 #if 0
 		std::cout << mrpt::format(
 			"[findOutSensorPose] Found pose %s -> %s: %s\n",
-			source_frame.c_str(), target_frame.c_str(), des.asString().c_str());
+			referenceFrame.c_str(), frame.c_str(), des.asString().c_str());
 #endif
 
 		return true;
@@ -256,7 +256,12 @@ Obs toPointCloud2(
 	bool sensorPoseOK = findOutSensorPose(
 		ptsObs->sensorPose, pts.header.frame_id, arg_base_link_frame.getValue(),
 		fixedSensorPose);
-	ASSERT_(sensorPoseOK);
+	if (!sensorPoseOK)
+	{
+		std::cerr << "Warning: dropping one observation of type '" << msg
+				  << "' due to missing /tf data.\n";
+		return {};
+	}
 
 	// Convert points:
 	std::set<std::string> fields = mrpt::ros2bridge::extractFields(pts);
@@ -342,7 +347,12 @@ Obs toLidar2D(
 	bool sensorPoseOK = findOutSensorPose(
 		scanObs->sensorPose, scan.header.frame_id,
 		arg_base_link_frame.getValue(), fixedSensorPose);
-	ASSERT_(sensorPoseOK);
+	if (!sensorPoseOK)
+	{
+		std::cerr << "Warning: dropping one observation of type '" << msg
+				  << "' due to missing /tf data.\n";
+		return {};
+	}
 
 	return {scanObs};
 }
@@ -382,7 +392,12 @@ Obs toRotatingScan(
 	bool sensorPoseOK = findOutSensorPose(
 		obsRotScan->sensorPose, pts.header.frame_id,
 		arg_base_link_frame.getValue(), fixedSensorPose);
-	ASSERT_(sensorPoseOK);
+	if (!sensorPoseOK)
+	{
+		std::cerr << "Warning: dropping one observation of type '" << msg
+				  << "' due to missing /tf data.\n";
+		return {};
+	}
 
 	return {obsRotScan};
 }
@@ -408,7 +423,12 @@ Obs toIMU(
 	bool sensorPoseOK = findOutSensorPose(
 		mrptObs->sensorPose, imu.header.frame_id,
 		arg_base_link_frame.getValue(), fixedSensorPose);
-	ASSERT_(sensorPoseOK);
+	if (!sensorPoseOK)
+	{
+		std::cerr << "Warning: dropping one observation of type '" << msg
+				  << "' due to missing /tf data.\n";
+		return {};
+	}
 
 	return {mrptObs};
 }
@@ -434,7 +454,12 @@ Obs toGPS(
 	bool sensorPoseOK = findOutSensorPose(
 		mrptObs->sensorPose, gps.header.frame_id,
 		arg_base_link_frame.getValue(), fixedSensorPose);
-	ASSERT_(sensorPoseOK);
+	if (!sensorPoseOK)
+	{
+		std::cerr << "Warning: dropping one observation of type '" << msg
+				  << "' due to missing /tf data.\n";
+		return {};
+	}
 
 	return {mrptObs};
 }
@@ -487,7 +512,12 @@ Obs toImage(
 	bool sensorPoseOK = findOutSensorPose(
 		imgObs->cameraPose, image->header.frame_id,
 		arg_base_link_frame.getValue(), fixedSensorPose);
-	ASSERT_(sensorPoseOK);
+	if (!sensorPoseOK)
+	{
+		std::cerr << "Warning: dropping one observation of type '" << msg
+				  << "' due to missing /tf data.\n";
+		return {};
+	}
 
 	return {imgObs};
 }

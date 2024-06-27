@@ -1,0 +1,8 @@
+# Goal
+geometry_msgs/PoseStamped target
+---
+# Result
+mrpt_nav_interfaces/NavigationFinalStatus state
+---
+# Feedback
+mrpt_nav_interfaces/NavigationFeedback state

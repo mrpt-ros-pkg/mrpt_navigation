@@ -6,6 +6,8 @@
    | All rights reserved. Released under BSD 3-Clause license. See LICENSE  |
    +------------------------------------------------------------------------+ */
 
+#include <mp2p_icp/icp_pipeline_from_yaml.h>
+#include <mp2p_icp_filters/Generator.h>
 #include <mrpt/config/CConfigFile.h>
 #include <mrpt/config/CConfigFileMemory.h>
 #include <mrpt/core/lock_helper.h>
@@ -13,32 +15,25 @@
 #include <mrpt/maps/COccupancyGridMap2D.h>
 #include <mrpt/maps/CSimplePointsMap.h>
 #include <mrpt/obs/CActionCollection.h>
+#include <mrpt/obs/CObservationPointCloud.h>
 #include <mrpt/opengl/CEllipsoid2D.h>
 #include <mrpt/opengl/CEllipsoid3D.h>
 #include <mrpt/opengl/CPointCloud.h>
+#include <mrpt/random/RandomGenerators.h>
 #include <mrpt/ros2bridge/map.h>
 #include <mrpt/system/filesystem.h>
+#include <mrpt/system/hyperlink.h>
+#include <mrpt/topography/conversions.h>  // geodeticToENU_WGS84
+#include <mrpt/topography/data_types.h>	 // TGeodeticCoords
 #include <mrpt_pf_localization/mrpt_pf_localization_core.h>
 
+#ifdef HAVE_MOLA_RELOCALIZATION
+#include <mola_relocalization/relocalization.h>
+#endif
+
+#include <Eigen/Dense>
 #include <chrono>
-#include <thread>
 
-using namespace mrpt;
-using namespace mrpt::slam;
-using namespace mrpt::opengl;
-using namespace mrpt::math;
-using namespace mrpt::system;
-using namespace mrpt::gui;
-using namespace mrpt::bayes;
-using namespace mrpt::poses;
-using namespace mrpt::maps;
-using namespace mrpt::obs;
-using namespace mrpt::img;
-using namespace mrpt::config;
-using namespace std;
-
-using mrpt::maps::CLandmarksMap;
-using mrpt::maps::COccupancyGridMap2D;
 using mrpt::maps::CSimplePointsMap;
 
 template <typename T>
@@ -80,14 +75,15 @@ PFLocalizationCore::Parameters::Parameters()
 	else                                                                       \
 		Trg__ = Yaml__[#Var__].as<decltype(Trg__)>()
 
-#define MCP_LOAD_OPT_HERE(Yaml__, Var__, Trg__)                             \
-	if constexpr (std::is_enum_v<decltype(Trg__)>)                          \
-	{                                                                       \
-		if (!Yaml__.empty() && Yaml__.has(#Var__))                          \
-			Trg__ = mrpt::typemeta::TEnumType<std::remove_cv_t<decltype(    \
-				Trg__)>>::name2value(Yaml__[#Var__].as<std::string>());     \
-	}                                                                       \
-	else if (!Yaml__.isNullNode() && !Yaml__.empty() && Yaml__.has(#Var__)) \
+#define MCP_LOAD_OPT_HERE(Yaml__, Var__, Trg__)                                \
+	if constexpr (std::is_enum_v<decltype(Trg__)>)                             \
+	{                                                                          \
+		if (!Yaml__.empty() && Yaml__.has(#Var__))                             \
+			Trg__ =                                                            \
+				mrpt::typemeta::TEnumType<std::remove_cv_t<decltype(Trg__)>>:: \
+					name2value(Yaml__[#Var__].as<std::string>());              \
+	}                                                                          \
+	else if (!Yaml__.isNullNode() && !Yaml__.empty() && Yaml__.has(#Var__))    \
 	Trg__ = Yaml__[#Var__].as<decltype(Trg__)>()
 
 #define MCP_LOAD_OPT_DEG_HERE(Yaml__, Var__, Trg__)                    \
@@ -239,11 +235,46 @@ void PFLocalizationCore::Parameters::load_from(
 		likOpts.loadFromConfigFile(cfg, "");
 	}
 
-	//
-	MCP_LOAD_OPT(params, initial_particle_count);
+	// override_likelihood_gridmaps
+	if (params.has("override_likelihood_gridmaps"))
+	{
+		auto& likOpts = override_likelihood_gridmaps.emplace();
 
-	// The map is not loaded here, but from independent methods in the parent
-	// class.
+		mrpt::config::CConfigFileMemory cfg;
+		std::stringstream ss;
+		ss << params["override_likelihood_gridmaps"];
+		cfg.setContentFromYAML(ss.str());
+		likOpts.loadFromConfigFile(cfg, "");
+	}
+
+	//
+	MCP_LOAD_OPT(params, initial_particles_per_m2);
+	MCP_LOAD_OPT(params, initialize_from_gnns);
+	MCP_LOAD_OPT(params, samples_drawn_from_gnns);
+	MCP_LOAD_OPT(params, gnns_samples_num_sigmas);
+	MCP_LOAD_OPT(params, relocalize_num_sigmas);
+
+	// relocalization:
+	MCP_LOAD_OPT(params, relocalization_minimum_icp_quality);
+	MCP_LOAD_OPT(params, relocalization_icp_sigma);
+	MCP_LOAD_OPT(params, relocalization_resolution_xy);
+	MCP_LOAD_OPT(params, relocalization_min_sample_copies_per_candidate);
+	MCP_LOAD_OPT_DEG(params, relocalization_resolution_phi);
+	MCP_LOAD_OPT(params, relocalization_initial_divisions_xy);
+	MCP_LOAD_OPT(params, relocalization_initial_divisions_phi);
+}
+
+struct PFLocalizationCore::InternalState::Relocalization
+{
+#ifdef HAVE_MOLA_RELOCALIZATION
+	std::optional<mola::RelocalizationICP_SE2::Input> pending_se2;
+#endif
+};
+
+PFLocalizationCore::InternalState::InternalState()
+	: pendingRelocalization(
+		  mrpt::make_impl<PFLocalizationCore::InternalState::Relocalization>())
+{
 }
 
 PFLocalizationCore::PFLocalizationCore()
@@ -257,6 +288,45 @@ void PFLocalizationCore::on_observation(const mrpt::obs::CObservation::Ptr& obs)
 
 	auto lck = mrpt::lockHelper(pendingObsMtx_);
 	state_.pendingObs.push_back(obs);
+
+	if (auto gps = std::dynamic_pointer_cast<mrpt::obs::CObservationGPS>(obs);
+		gps && gps->has_GGA_datum())
+	{
+		// for the PF, we only care about GPS observations with GGA positioning:
+		// (Note: all NavSatFix msgs are mapped into MRPT GGA GPS messages)
+		last_gnns_ = gps;
+	}
+}
+
+bool PFLocalizationCore::input_queue_has_odometry()
+{
+	auto lck = mrpt::lockHelper(pendingObsMtx_);
+	for (const auto& o : state_.pendingObs)
+	{
+		if (auto oOdo =
+				std::dynamic_pointer_cast<mrpt::obs::CObservationOdometry>(o);
+			oOdo)
+			return true;
+	}
+	return false;
+}
+
+std::optional<mrpt::Clock::time_point>
+	PFLocalizationCore::input_queue_last_stamp()
+{
+	auto lck = mrpt::lockHelper(pendingObsMtx_);
+
+	std::optional<mrpt::Clock::time_point> lastStamp;
+	for (const auto& o : state_.pendingObs)
+	{
+		ASSERT_(o);
+		const auto t = o->timestamp;
+		if (!lastStamp)
+			lastStamp = t;
+		else
+			mrpt::keep_min(*lastStamp, t);
+	}
+	return lastStamp;
 }
 
 // The main API call: executes one PF step, taking into account all the
@@ -293,8 +363,12 @@ void PFLocalizationCore::onStateUninitialized()
 {
 	using namespace std::string_literals;
 
+	auto lck = mrpt::lockHelper(pendingObsMtx_);  // to protect last_gnns_
+
 	// Check if we have everything we need to get going:
-	if (params_.initial_pose.has_value() && params_.metric_map)
+	if (((!params_.initialize_from_gnns && params_.initial_pose.has_value()) ||
+		 (params_.initialize_from_gnns && last_gnns_)) &&
+		params_.metric_map)
 	{
 		// Move:
 		state_.fsm_state = State::TO_BE_INITIALIZED;
@@ -302,19 +376,30 @@ void PFLocalizationCore::onStateUninitialized()
 		MRPT_LOG_INFO(
 			"Required configuration has been set, changing to "
 			"'State::TO_BE_INITIALIZED'");
+
 		return;
 	}
 
 	// We don't have parameters / map yet. Do nothing:
 	std::string excuses;
-	if (!params_.initial_pose) excuses += "No initial pose. ";
 	if (!params_.metric_map) excuses += "No reference metric map. ";
+	if (params_.initialize_from_gnns)
+	{
+		if (!last_gnns_) excuses += "No GNNS observation received yet. ";
+	}
+	else
+	{
+		if (!params_.initial_pose) excuses += "No initial pose. ";
+	}
 
 	MRPT_LOG_THROTTLE_WARN(
 		3.0,
 		"Doing nothing, state is UNINITIALIZED yet. "
 		"Excuses: "s +
-			excuses + "Refer to package documentation."s);
+			excuses + "Refer to "s +
+			mrpt::system::hyperlink(
+				"package documentation.",
+				"https://github.com/mrpt-ros-pkg/mrpt_navigation", true));
 }
 
 void PFLocalizationCore::onStateToBeInitialized()
@@ -335,6 +420,7 @@ void PFLocalizationCore::onStateToBeInitialized()
 	// the map to use:
 	ASSERT_(params_.metric_map);
 	_.metric_map = params_.metric_map;
+	_.georeferencing = params_.georeferencing;
 
 	// Create the 2D or 3D particle filter object:
 	if (params_.use_se3_pf)
@@ -350,11 +436,46 @@ void PFLocalizationCore::onStateToBeInitialized()
 		_.pdf2d.emplace();
 	}
 
-	// Get desired initial pose uncertainty:
-	MRPT_LOG_INFO_STREAM(
-		"[onStateToBeInitialized] Initial pose: " << *params_.initial_pose);
+	double gnns_std_factor = 1.0;
 
-	const auto [pCov, pMean] = params_.initial_pose->getCovarianceAndMean();
+	// Get desired initial pose uncertainty, either from
+	// direct pose, or from GNNS:
+	const auto [pCov, pMean] =
+		[&]() -> std::tuple<mrpt::math::CMatrixDouble66, mrpt::poses::CPose3D>
+	{
+		if (!params_.initialize_from_gnns ||
+			// because may be here after a manual click-to-relocalize in RViz,
+			// even if GNNS localization is enabled:
+			(!get_last_gnns_obs() && params_.initial_pose.has_value())	//
+		)
+		{
+			MRPT_LOG_INFO_STREAM(
+				"[onStateToBeInitialized] Initial pose: "
+				<< *params_.initial_pose);
+
+			const auto [pCov, pMean] =
+				params_.initial_pose->getCovarianceAndMean();
+			return {pCov, pMean};
+		}
+		else
+		{
+			ASSERTMSG_(
+				_.georeferencing,
+				"The provided metric map needs to be georeferenced for "
+				"'initialize_from_gnns' = true");
+
+			const auto gnnsMeasInMap = get_gnns_pose_prediction();
+			ASSERT_(gnnsMeasInMap);
+
+			MRPT_LOG_INFO_STREAM(
+				"Initializing from GNNS measurement with: " << *gnnsMeasInMap);
+
+			gnns_std_factor =
+				params_.gnns_samples_num_sigmas / params_.relocalize_num_sigmas;
+
+			return {gnnsMeasInMap->cov, gnnsMeasInMap->mean};
+		}
+	}();
 
 	const double stdX = std::sqrt(pCov(0, 0));
 	const double stdY = std::sqrt(pCov(1, 1));
@@ -363,51 +484,138 @@ void PFLocalizationCore::onStateToBeInitialized()
 	const double stdPitch = std::sqrt(pCov(4, 4));
 	const double stdRoll = std::sqrt(pCov(5, 5));
 
-	const double nStds = 2.0;  // number of sigmas ("quantiles")
+	const double nStds = params_.relocalize_num_sigmas * gnns_std_factor;
 
 	const auto pMin = mrpt::math::TPose3D(
 		pMean.x() - nStds * stdX, pMean.y() - nStds * stdY,
-		pMean.z() - nStds * stdZ, pMean.yaw() - nStds * stdYaw,
-		pMean.pitch() - nStds * stdPitch, pMean.roll() - nStds * stdRoll);
+		pMean.z() - nStds * stdZ,  //
+		std::max(-M_PI, pMean.yaw() - nStds * stdYaw),
+		std::max(-M_PI, pMean.pitch() - nStds * stdPitch),
+		std::max(-M_PI, pMean.roll() - nStds * stdRoll));
 
 	const auto pMax = mrpt::math::TPose3D(
 		pMean.x() + nStds * stdX, pMean.y() + nStds * stdY,
-		pMean.z() + nStds * stdZ, pMean.yaw() + nStds * stdYaw,
-		pMean.pitch() + nStds * stdPitch, pMean.roll() + nStds * stdRoll);
+		pMean.z() + nStds * stdZ,  //
+		std::min(M_PI, pMean.yaw() + nStds * stdYaw),
+		std::min(M_PI, pMean.pitch() + nStds * stdPitch),
+		std::min(M_PI, pMean.roll() + nStds * stdRoll));
 
-	bool initDone = false;
+	// two options here:
+	// 1) pure particle filter
+	// 2) use mola_relocalization to help focus on the interesting areas:
+	bool use_mola_relocalization = false;
 
-	if (auto gridMap = _.metric_map->mapByClass<COccupancyGridMap2D>();
-		gridMap && _.pdf2d)
-	{
-		// initialize over free space only:
-		try
+#if defined(HAVE_MOLA_RELOCALIZATION)
+	// so far, only for SE(2) mode:
+	if (_.pdf2d) use_mola_relocalization = true;
+#endif
+
+	if (!use_mola_relocalization)
+	{  // 1) pure PF:
+		bool initDone = false;
+
+		const double area =
+			std::max<double>(10.0, (pMax.x - pMin.x) * (pMax.y - pMin.y));
+		const size_t initParticleCount =
+			static_cast<size_t>(params_.initial_particles_per_m2 * area);
+
+		if (auto gridMap =
+				_.metric_map->mapByClass<mrpt::maps::COccupancyGridMap2D>();
+			gridMap && _.pdf2d)
 		{
-			const float gridFreenessThreshold = 0.7f;
-			_.pdf2d->resetUniformFreeSpace(
-				gridMap.get(), gridFreenessThreshold,
-				params_.initial_particle_count, pMin.x, pMax.x, pMin.y, pMax.y,
-				pMin.yaw, pMax.yaw);
+			// initialize over free space only:
+			try
+			{
+				const float gridFreenessThreshold = 0.7f;
+				_.pdf2d->resetUniformFreeSpace(
+					gridMap.get(), gridFreenessThreshold, initParticleCount,
+					pMin.x, pMax.x, pMin.y, pMax.y, pMin.yaw, pMax.yaw);
 
-			initDone = true;
+				initDone = true;
+			}
+			catch (const std::exception& e)
+			{
+				MRPT_LOG_ERROR_STREAM(
+					"Error trying to initialize over gridmap empty space, "
+					"falling "
+					"back to provided initialPose. Error: "
+					<< e.what());
+			}
 		}
-		catch (const std::exception& e)
+
+		if (!initDone)
 		{
-			MRPT_LOG_ERROR_STREAM(
-				"Error trying to initialize over gridmap empty space, falling "
-				"back to provided initialPose. Error: "
-				<< e.what());
+			if (_.pdf2d)
+				_.pdf2d->resetUniform(
+					pMin.x, pMax.x, pMin.y, pMax.y, pMin.yaw, pMax.yaw,
+					initParticleCount);
+			else
+				_.pdf3d->resetUniform(pMin, pMax, initParticleCount);
 		}
 	}
-
-	if (!initDone)
+	else
 	{
-		if (_.pdf2d)
-			_.pdf2d->resetUniform(
-				pMin.x, pMax.x, pMin.y, pMax.y, pMin.yaw, pMax.yaw,
-				params_.initial_particle_count);
-		else
-			_.pdf3d->resetUniform(pMin, pMax, params_.initial_particle_count);
+#if defined(HAVE_MOLA_RELOCALIZATION)
+		// 2) Use mola_relocalization
+		auto& in = state_.pendingRelocalization->pending_se2.emplace();
+		in.icp_minimum_quality = params_.relocalization_minimum_icp_quality;
+
+		in.icp_parameters = params_.relocalization_icp_params;
+		in.icp_pipeline = {params_.relocalization_icp};
+
+		MRPT_LOG_INFO_STREAM(
+			"Setting up relocalization with: pMin=" << pMin
+													<< " pMax=" << pMax);
+		const auto pDiag = pMax - pMin;
+
+		in.initial_guess_lattice.corner_min = mrpt::math::TPose2D(pMin);
+		in.initial_guess_lattice.corner_max = mrpt::math::TPose2D(pMax);
+		in.initial_guess_lattice.resolution_xy = std::max<double>(
+			0.5, pDiag.norm() / params_.relocalization_initial_divisions_xy);
+		in.initial_guess_lattice.resolution_phi = std::max<double>(
+			mrpt::DEG2RAD(5.0),
+			(pMax.yaw - pMin.yaw) /
+				params_.relocalization_initial_divisions_phi);
+
+		in.output_lattice.resolution_xyz = params_.relocalization_resolution_xy;
+		in.output_lattice.resolution_yaw =
+			params_.relocalization_resolution_phi;
+
+		// in.local_map: to be populated in running state
+
+		// (shallow) copy metric maps into expected format:
+		const auto& maps = _.metric_map->maps;
+		ASSERT_(!maps.empty());
+		ASSERT_(
+			params_.metric_map_layer_names.empty() ||
+			params_.metric_map_layer_names.size() == maps.size());
+		for (size_t i = 0; i < maps.size(); i++)
+		{
+			const std::string layerName =
+				params_.metric_map_layer_names.empty()
+					? std::to_string(i)
+					: params_.metric_map_layer_names.at(i);
+			in.reference_map.layers[layerName] = maps.at(i);
+		}
+
+		// If the referenceMap is a "plain old" gridMap, create an auxiliary
+		// point cloud for ICP to work fine:
+		if (auto gridMap =
+				_.metric_map->mapByClass<mrpt::maps::COccupancyGridMap2D>();
+			gridMap)
+		{
+			auto gridPts = mrpt::maps::CSimplePointsMap::Create();
+			gridMap->getAsPointCloud(*gridPts);
+			in.reference_map.layers["localmap"] = gridPts;
+
+			MRPT_LOG_INFO_STREAM(
+				"Creating localmap layer with "
+				<< gridPts->size() << " points from the occupied grid cells.");
+		}
+
+#else
+		THROW_EXCEPTION("Should not reach here");
+#endif
 	}
 
 	internal_fill_state_lastResult();
@@ -422,9 +630,9 @@ void PFLocalizationCore::onStateRunning()
 	mrpt::obs::CSensoryFrame sf;  // sorted, and thread-safe copy of all obs.
 	mrpt::Clock::time_point sfLastTimeStamp;
 	{
-		// If we have multiple observations of the same sensor for this single
-		// PF step, discard all but the latest one.
-		// Temporary storage of observations:
+		// If we have multiple observations of the same sensor for this
+		// single PF step, discard all but the latest one. Temporary storage
+		// of observations:
 		std::map<std::string, mrpt::obs::CObservation::Ptr> obsByLabel;
 		std::map<std::string, std::string> obsClassByLabel;
 
@@ -449,7 +657,8 @@ void PFLocalizationCore::onStateRunning()
 				{
 					THROW_EXCEPTION_FMT(
 						"ERROR: Received two observations with "
-						"sensorLabel='%s' and different classes: '%s' vs '%s'",
+						"sensorLabel='%s' and different classes: '%s' vs "
+						"'%s'",
 						o->sensorLabel.c_str(), it->second.c_str(),
 						thisObsClass.c_str());
 				}
@@ -463,21 +672,35 @@ void PFLocalizationCore::onStateRunning()
 		for (const auto& kv : obsByLabel) sf.insert(kv.second);
 	}
 
-	// Do we have *any* observation?
-	if (sf.empty())
+	// Do we have *any* usable observation?
+	// Not any observation is usable with any map:
+	bool canComputeLikelihood = false;
+	for (const auto& m : state_.metric_map->maps)
 	{
-		MRPT_LOG_THROTTLE_WARN(
-			2.0, "No observation in the input queue at all...");
+		if (m->canComputeObservationsLikelihood(sf))
+		{
+			canComputeLikelihood = true;
+			break;
+		}
+	}
 
-		// Default timestamp to "now":
-		sfLastTimeStamp = mrpt::Clock::now();
+	if (!canComputeLikelihood)
+	{
+		MRPT_LOG_DEBUG(
+			"No usable observation in the input queue. Skipping PF "
+			"update.");
+
+		internal_fill_state_lastResult();
+		if (params_.gui_enable) update_gui(sf);
+		return;
 	}
 
 	// --------------------------------------------
 
 	// "Action"
 	// ------------------------
-	// Build it from odometry, if we have, or from "fake null odometry" instead
+	// Build it from odometry, if we have, or from "fake null odometry"
+	// instead
 	mrpt::obs::CObservationOdometry::Ptr odomObs;
 	// get the LAST odometry reading, if we have many:
 	for (size_t i = 0;
@@ -490,7 +713,8 @@ void PFLocalizationCore::onStateRunning()
 	MRPT_LOG_DEBUG_STREAM(
 		"onStateRunning: " << sf.size() << " observations=\n"
 						   <<
-		[&]() {
+		[&]()
+		{
 			std::stringstream ss;
 			for (const auto& obs : sf)
 				ss << " - " << obs->sensorLabel
@@ -528,11 +752,14 @@ void PFLocalizationCore::onStateRunning()
 			odomMove2D.value()->computeFromOdometry(
 				incOdoPose, params_.motion_model_2d);
 
-			MRPT_LOG_DEBUG_STREAM("onStateRunning: motion model= " << [&]() {
-				std::stringstream ss;
-				odomMove2D.value()->getDescriptionAsText(ss);
-				return ss.str();
-			}());
+			MRPT_LOG_DEBUG_STREAM(
+				"onStateRunning: motion model= " <<
+				[&]()
+				{
+					std::stringstream ss;
+					odomMove2D.value()->getDescriptionAsText(ss);
+					return ss.str();
+				}());
 		}
 		else
 		{
@@ -542,30 +769,42 @@ void PFLocalizationCore::onStateRunning()
 			odomMove3D.value()->computeFromOdometry(
 				mrpt::poses::CPose3D(incOdoPose), params_.motion_model_3d);
 
-			MRPT_LOG_DEBUG_STREAM("onStateRunning: motion model= " << [&]() {
-				std::stringstream ss;
-				odomMove3D.value()->getDescriptionAsText(ss);
-				return ss.str();
-			}());
+			MRPT_LOG_DEBUG_STREAM(
+				"onStateRunning: motion model= " <<
+				[&]()
+				{
+					std::stringstream ss;
+					odomMove3D.value()->getDescriptionAsText(ss);
+					return ss.str();
+				}());
 		}
 	}
 	else
 	{
-		// Use fake "null movement" motion model with the special uncertainty:
+		// Use fake "null movement" motion model with the special
+		// uncertainty:
+		const mrpt::poses::CPose3D odoIncrPose =
+			state_.nextFakeOdometryIncrPose.has_value()
+				? *state_.nextFakeOdometryIncrPose
+				: mrpt::poses::CPose3D::Identity();
+
 		if (odomMove2D.has_value())
 		{
 			odomMove2D.value()->computeFromOdometry(
-				mrpt::poses::CPose2D::Identity(),
+				mrpt::poses::CPose2D(odoIncrPose),
 				params_.motion_model_no_odom_2d);
 		}
 		else
 		{
 			odomMove3D.value()->computeFromOdometry(
-				mrpt::poses::CPose3D::Identity(),
-				params_.motion_model_no_odom_3d);
+				odoIncrPose, params_.motion_model_no_odom_3d);
 		}
-		MRPT_LOG_DEBUG("onStateRunning: motion model= NONE (random walk)");
+		MRPT_LOG_DEBUG_STREAM(
+			"onStateRunning: motion model=NONE, with fake odo incrPose="
+			<< odoIncrPose.asString());
 	}
+
+	state_.nextFakeOdometryIncrPose.reset();  // In any case, forget this.
 
 	mrpt::obs::CActionCollection actions;
 	if (is_3D)
@@ -573,11 +812,107 @@ void PFLocalizationCore::onStateRunning()
 	else
 		actions.insertPtr(*odomMove2D);
 
+		// Any pending relocalization step?
+		// -----------------------------------------
+#if defined(HAVE_MOLA_RELOCALIZATION)
+	if (auto& in = state_.pendingRelocalization->pending_se2; in)
+	{
+		// populate the missing field to "in": "local_map"
+
+		// Use default generator: takes observations and populate a "raw" layer
+		auto gen = mp2p_icp_filters::Generator::Create();
+		gen->initialize({});
+		mp2p_icp_filters::GeneratorSet gens = {gen};
+
+		in->local_map = mp2p_icp_filters::apply_generators(gens, sf);
+
+		// Apply optional filtering
+		mp2p_icp_filters::apply_filter_pipeline(
+			params_.relocalization_obs_filter, in->local_map);
+
+		if (auto rawPts = in->local_map.point_layer("raw");
+			!rawPts || rawPts->empty())
+		{
+			MRPT_LOG_WARN_STREAM(
+				"Relocalization skipped in this iteration, it seems no valid "
+				"observations have reached yet (empty local observation map)");
+			return;
+		}
+
+		MRPT_LOG_INFO_STREAM(
+			"About to run Relocalization with local_map="
+			<< in->local_map.contents_summary() << " from |SF|=" << sf.size()
+			<< " reference_map=" << in->reference_map.contents_summary());
+
+		const auto reloc = mola::RelocalizationICP_SE2::run(*in);
+
+		std::vector<mrpt::math::TPose2D> candidates;
+		reloc.found_poses.visitAllPoses(
+			[&](const auto& p)
+			{ candidates.push_back(mrpt::math::TPose2D(p)); });
+
+#if 0
+		for (const auto& p : candidates)
+			MRPT_LOG_INFO_STREAM("Candidate: " << p);
+#endif
+
+		if (candidates.empty())
+		{
+			MRPT_LOG_WARN(
+				"Could not find any good match between the input observation "
+				"and the map (Is the correct map loaded?).");
+
+			// Create one candidate at the center of the requested
+			// initialization ROI:
+			const auto& igl = in->initial_guess_lattice;
+			candidates.emplace_back(
+				0.5 * (igl.corner_max.x + igl.corner_min.x),
+				0.5 * (igl.corner_max.y + igl.corner_min.y),
+				0.5 * (igl.corner_max.phi + igl.corner_min.phi));
+		}
+
+		// Create a few particles around each best candidate:
+		ASSERT_(state_.pdf2d);
+		auto& parts = state_.pdf2d->m_particles;
+		parts.clear();
+		mrpt::random::CRandomGenerator rng;
+		const double sigmaXY = params_.relocalization_resolution_xy * 0.33;
+		const double sigmaPhi = params_.relocalization_resolution_phi * 0.33;
+
+		const size_t numCopies = std::max<size_t>(
+			params_.relocalization_min_sample_copies_per_candidate,
+			mrpt::round(
+				params_.initial_particles_per_m2 * mrpt::square(sigmaXY)));
+
+		MRPT_LOG_INFO_STREAM(
+			"RelocalizationICP_SE2 took "
+			<< reloc.time_cost << " s and gave " << candidates.size()
+			<< " candidates. Particles copies per candidate=" << numCopies);
+
+		for (const auto& pose : candidates)
+		{
+			for (size_t i = 0; i < numCopies; i++)
+			{
+				auto p = pose;
+				p.x += rng.drawGaussian1D(0, sigmaXY);
+				p.y += rng.drawGaussian1D(0, sigmaXY);
+				p.phi += rng.drawGaussian1D(0, sigmaPhi);
+				p.normalizePhi();
+				parts.emplace_back(p, 0.0 /*log weight*/);
+			}
+		}
+
+		// mark the relocalization as done:
+		state_.pendingRelocalization->pending_se2.reset();
+
+	}  // end relocalization
+#endif
+
 	// Make sure params are up-to-date in the PF
 	// (they may change on-the-fly by users):
 	// -----------------------------------------
 	state_.pf.m_options = params_.pf_options;
-	TMonteCarloLocalizationParams pdfPredictionOptions;
+	mrpt::slam::TMonteCarloLocalizationParams pdfPredictionOptions;
 	pdfPredictionOptions.KLD_params = params_.kld_options;
 
 	if (state_.pdf2d)
@@ -589,6 +924,34 @@ void PFLocalizationCore::onStateRunning()
 	{
 		state_.pdf3d->options = pdfPredictionOptions;
 		state_.pdf3d->options.metricMap = params_.metric_map;
+	}
+
+	// Draw additional helper samples from GNNS readings?
+	// ----------------------------------------------------
+	if (auto gnnsPos = get_gnns_pose_prediction();
+		gnnsPos && params_.samples_drawn_from_gnns > 0)
+	{
+		mrpt::poses::CPoseRandomSampler sampler;
+		sampler.setPosePDF(*gnnsPos);
+
+		for (size_t i = 0; i < params_.samples_drawn_from_gnns; i++)
+		{
+			mrpt::poses::CPose3D p;
+			sampler.drawSample(p);
+
+			if (state_.pdf2d)
+			{
+				auto& newPart = state_.pdf2d->m_particles.emplace_back();
+				newPart.log_w = .0;
+				newPart.d = mrpt::math::TPose2D(p.asTPose());
+			}
+			else
+			{
+				auto& newPart = state_.pdf3d->m_particles.emplace_back();
+				newPart.log_w = .0;
+				newPart.d = p.asTPose();
+			}
+		}
 	}
 
 	// Process PF
@@ -609,6 +972,9 @@ void PFLocalizationCore::onStateRunning()
 	state_.time_last_update = sfLastTimeStamp;
 
 	internal_fill_state_lastResult();
+
+	// clear last GNNS so we do not use it more than once:
+	last_gnns_.reset();
 
 	// GUI:
 	// -----------
@@ -653,7 +1019,25 @@ bool PFLocalizationCore::set_map_from_simple_map(
 }
 
 void PFLocalizationCore::set_map_from_metric_map(
-	const mrpt::maps::CMultiMetricMap::Ptr& metricMap)
+	const mp2p_icp::metric_map_t& mm)
+{
+	// Convert it to CMultiMetricMap, and save the optional georeferrencing:
+	auto mMap = mrpt::maps::CMultiMetricMap::Create();
+
+	std::vector<std::string> layerNames;
+	for (const auto& [layerName, layerMap] : mm.layers)
+	{
+		mMap->maps.push_back(layerMap);
+		layerNames.push_back(layerName);
+	}
+
+	this->set_map_from_metric_map(mMap, mm.georeferencing, layerNames);
+}
+
+void PFLocalizationCore::set_map_from_metric_map(
+	const mrpt::maps::CMultiMetricMap::Ptr& metricMap,
+	const std::optional<mp2p_icp::metric_map_t::Georeferencing>& georeferencing,
+	const std::vector<std::string>& layerNames)
 {
 	auto lck = mrpt::lockHelper(stateMtx_);
 
@@ -676,35 +1060,41 @@ void PFLocalizationCore::set_map_from_metric_map(
 	}
 
 	params_.metric_map = metricMap;
+	params_.georeferencing = georeferencing;
+	params_.metric_map_layer_names = layerNames;
 
 	// debug trace with full submap details: ----------------------------
-	MRPT_LOG_DEBUG_STREAM("set_map_from_metric_map: Map contents: " << [&]() {
-		std::stringstream ss;
-		ss << metricMap->asString() << ". Maps:\n";
-		for (const auto& m : metricMap->maps)
+	MRPT_LOG_DEBUG_STREAM(
+		"set_map_from_metric_map: Map contents: " <<
+		[&]()
 		{
-			ASSERT_(m);
-			ss << " - " << m->asString() << "\n";
-			if (auto pts = std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(m);
-				pts)
+			std::stringstream ss;
+			ss << metricMap->asString() << ". Maps:\n";
+			for (const auto& m : metricMap->maps)
 			{
-				ss << "  CPointsMap::likelihoodOptions:\n";
+				ASSERT_(m);
+				ss << " - " << m->asString() << "\n";
+				if (auto pts =
+						std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(m);
+					pts)
+				{
+					ss << "  CPointsMap::likelihoodOptions:\n";
 
-				pts->likelihoodOptions.dumpToTextStream(ss);
+					pts->likelihoodOptions.dumpToTextStream(ss);
+					ss << "\n";
+				}
+				else if (auto occ2D = std::dynamic_pointer_cast<
+							 mrpt::maps::COccupancyGridMap2D>(m);
+						 occ2D)
+				{
+					ss << "  COccupancyGridMap2D::likelihoodOptions:\n";
+					occ2D->likelihoodOptions.dumpToTextStream(ss);
+					ss << "\n";
+				}
 				ss << "\n";
 			}
-			else if (auto occ2D = std::dynamic_pointer_cast<
-						 mrpt::maps::COccupancyGridMap2D>(m);
-					 occ2D)
-			{
-				ss << "  COccupancyGridMap2D::likelihoodOptions:\n";
-				occ2D->likelihoodOptions.dumpToTextStream(ss);
-				ss << "\n";
-			}
-			ss << "\n";
-		}
-		return ss.str();
-	}());
+			return ss.str();
+		}());
 	// end of debug trace ^^^^^^^^^^^^^^^^^
 }
 
@@ -712,32 +1102,68 @@ void PFLocalizationCore::set_map_from_metric_map(
  *  This method loads all required params and put the system from
  * UNINITIALIZED into TO_BE_INITIALIZED.
  */
-void PFLocalizationCore::init_from_yaml(const mrpt::containers::yaml& params)
+void PFLocalizationCore::init_from_yaml(
+	const mrpt::containers::yaml& pf_params,
+	const mrpt::containers::yaml& relocalization_pipeline)
 {
 	MRPT_LOG_INFO("Called init_from_yaml()");
 
 	auto lck = mrpt::lockHelper(stateMtx_);
 
 	// Load all required and optional params:
-	params_.load_from(params);
+	params_.load_from(pf_params);
 
-	if (params.asMap().count("log_level_core"))
+	if (pf_params.asMap().count("log_level_core"))
 	{
 		const auto coreLogLevel =
 			mrpt::typemeta::str2enum<mrpt::system::VerbosityLevel>(
-				params["log_level_core"].as<std::string>());
+				pf_params["log_level_core"].as<std::string>());
 		this->setMinLoggingLevel(coreLogLevel);
 	}
+
+#ifdef HAVE_MOLA_RELOCALIZATION
+	if (!relocalization_pipeline.empty())
+	{
+		// ICP pipeline:
+		const auto [icp, icpParams] =
+			mp2p_icp::icp_pipeline_from_yaml(relocalization_pipeline);
+		params_.relocalization_icp = icp;
+		params_.relocalization_icp_params = icpParams;
+
+		params_.paramSource.updateVariable(
+			"ADAPTIVE_THRESHOLD_SIGMA", params_.relocalization_icp_sigma);
+		params_.paramSource.updateVariable("ICP_ITERATION", 0);
+		params_.relocalization_icp->attachToParameterSource(
+			params_.paramSource);
+		params_.paramSource.realize();
+
+		// filter?
+		if (relocalization_pipeline.has("relocalization_observation_pipeline"))
+		{
+			params_.relocalization_obs_filter =
+				mp2p_icp_filters::filter_pipeline_from_yaml(
+					relocalization_pipeline
+						["relocalization_observation_pipeline"]);
+		}
+	}
+	else
+	{
+		MRPT_LOG_WARN(
+			"No relocalization_pipeline YAML configuration provided, so this "
+			"feature will be disabled");
+	}
+#endif
 }
 
 void PFLocalizationCore::init_gui()
 {
-	MRPT_LOG_INFO("init3DDebug");
+	MRPT_LOG_DEBUG("Initializing GUI");
 
 	if (!params_.gui_enable) return;
 	if (win3D_) return;	 // already done.
 
-	win3D_ = CDisplayWindow3D::Create("mrpt_pf_localization", 1000, 600);
+	win3D_ =
+		mrpt::gui::CDisplayWindow3D::Create("mrpt_pf_localization", 1000, 600);
 	win3D_->setCameraZoom(20);
 	win3D_->setCameraAzimuthDeg(-45);
 
@@ -752,8 +1178,10 @@ void PFLocalizationCore::init_gui()
 	}
 }
 
-void PFLocalizationCore::update_gui(const CSensoryFrame& sf)
+void PFLocalizationCore::update_gui(const mrpt::obs::CSensoryFrame& sf)
 {
+	using namespace mrpt::opengl;
+
 	auto tle = mrpt::system::CTimeLoggerEntry(profiler_, "show3DDebug");
 
 #if !MRPT_HAS_WXWIDGETS
@@ -765,7 +1193,7 @@ void PFLocalizationCore::update_gui(const CSensoryFrame& sf)
 	// Create 3D window if requested:
 	if (!win3D_) init_gui();
 
-	TTimeStamp cur_obs_timestamp = INVALID_TIMESTAMP;
+	mrpt::system::TTimeStamp cur_obs_timestamp = INVALID_TIMESTAMP;
 	if (!sf.empty()) cur_obs_timestamp = sf.getObservationByIndex(0)->timestamp;
 
 	// Get current estimation as 3D pose PDF:
@@ -797,7 +1225,7 @@ void PFLocalizationCore::update_gui(const CSensoryFrame& sf)
 			estimatedPose.mean.x(), estimatedPose.mean.y(), 0);
 
 		mrpt::opengl::TFontParams fp;
-		fp.color = TColorf(.8f, .8f, .8f);
+		fp.color = mrpt::img::TColorf(.8f, .8f, .8f);
 		fp.vfont_name = "mono";
 		fp.vfont_scale = 15;
 
@@ -894,8 +1322,8 @@ void PFLocalizationCore::update_gui(const CSensoryFrame& sf)
 				scene->insert(scan_pts);
 			}
 
-			CSimplePointsMap map;
-			static CSimplePointsMap last_map;
+			mrpt::maps::CSimplePointsMap map;
+			static mrpt::maps::CSimplePointsMap last_map;
 
 			map.clear();
 			sf.insertObservationsInto(map);
@@ -936,7 +1364,8 @@ void PFLocalizationCore::relocalize_here(
 	auto lck = mrpt::lockHelper(stateMtx_);
 
 	params_.initial_pose.emplace(pose);
-	// Only if we were already running, reset and restart with a relocalization:
+	// Only if we were already running, reset and restart with a
+	// relocalization:
 	if (state_.fsm_state == State::RUNNING)
 	{
 		state_.fsm_state = State::TO_BE_INITIALIZED;
@@ -976,4 +1405,69 @@ void PFLocalizationCore::internal_fill_state_lastResult()
 
 	MRPT_LOG_DEBUG_STREAM(
 		"internal_fill_state_lastResult: " << state_.lastResult->asString());
+}
+
+void PFLocalizationCore::set_fake_odometry_increment(
+	const mrpt::poses::CPose3D& incrPose)
+{
+	state_.nextFakeOdometryIncrPose = incrPose;
+}
+
+std::optional<mrpt::poses::CPose3DPDFGaussian>
+	PFLocalizationCore::get_gnns_pose_prediction()
+{
+	if (!state_.georeferencing) return {};
+
+	auto gps = get_last_gnns_obs();
+
+	if (!gps) return {};
+
+	const auto gga = gps->getMsgByClassPtr<mrpt::obs::gnss::Message_NMEA_GGA>();
+	if (!gga) return {};
+
+	const auto coords = gga->getAsStruct<mrpt::topography::TGeodeticCoords>();
+
+	/* Scheme of transformations:
+	 *
+	 * enu_origin (+) T_enu_to_map = map_xyz_origin
+	 *
+	 * {}^{map}P_{meas} = {}^{map}T_{enu} {}^{enu}P_{meas}
+	 *
+	 */
+	const auto T_map2enu = -(state_.georeferencing->T_enu_to_map.mean);
+
+	// current GNNS measurement (ENU frame)
+	mrpt::math::TPoint3D P_enu_meas;
+	mrpt::topography::geodeticToENU_WGS84(
+		coords, P_enu_meas, state_.georeferencing->geo_coord);
+
+	const mrpt::math::TPoint3D P_map_meas = T_map2enu.composePoint(P_enu_meas);
+
+	mrpt::poses::CPose3DPDFGaussian gnnsMeasInMap;
+
+	gnnsMeasInMap.mean = mrpt::poses::CPose3D::FromTranslation(P_map_meas);
+
+	gnnsMeasInMap.cov.fill(0);
+	if (gps->covariance_enu.has_value())
+	{
+		const auto& gpsCov = *gps->covariance_enu;
+
+		// XYZ: copy from GPS obs:
+		gnnsMeasInMap.cov.block(0, 0, 3, 3) = gpsCov.asEigen();
+	}
+	else
+	{
+		// Default uncertainty:
+		MRPT_LOG_WARN(
+			"Initializing from GNNS measurement without "
+			"covariance_enu, thus using default uncertainty");
+
+		// XYZ: default values:
+		gnnsMeasInMap.cov(0, 0) = gnnsMeasInMap.cov(1, 1) =
+			gnnsMeasInMap.cov(2, 2) = mrpt::square(5.0);
+	}
+	// Yaw: large uncertainty:
+	gnnsMeasInMap.cov(3, 3) = mrpt::square(M_PI);
+
+	return gnnsMeasInMap;
 }

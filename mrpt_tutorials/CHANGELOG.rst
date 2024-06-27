@@ -2,6 +2,14 @@
 Changelog for package mrpt_tutorials
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+2.0.1 (2024-05-28)
+------------------
+
+2.0.0 (2024-05-28)
+------------------
+* Port to ROS2
+* Contributors: Jose Luis Blanco-Claraco
+
 1.0.3 (2022-06-25)
 ------------------
 

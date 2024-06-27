@@ -2,6 +2,25 @@
 Changelog for package mrpt_reactivenav2d
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+2.0.1 (2024-05-28)
+------------------
+
+2.0.0 (2024-05-28)
+------------------
+* rnav: add new pure_pursuit mode
+* Implement two action servers: NavigateGoal and NavigateWaypoints
+* Comply with ROS2 REP 2003
+* expose waypoint sequence launch argument
+* use namespaces for launch files
+* rnav node: publish selected PTG as marker
+* FIX: waypoints should also observe frame_id
+* Fix obsolete tf2_geometry_msgs.h header
+* Unify and clarify license headers in all files
+* Merge pull request `#134 <https://github.com/mrpt-ros-pkg/mrpt_navigation/issues/134>`_ from SRai22/ros2
+  Merge from SRai22 fork
+* Port to ROS 2
+* Contributors: Jose Luis Blanco-Claraco, Raúl Aguilera López, SRai22
+
 1.0.3 (2022-06-25)
 ------------------
 

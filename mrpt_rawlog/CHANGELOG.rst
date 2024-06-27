@@ -2,6 +2,29 @@
 Changelog for package mrpt_rawlog
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+2.0.1 (2024-05-28)
+------------------
+
+2.0.0 (2024-05-28)
+------------------
+* rosbag2rawlog: BUGFIX: sensor poses were inverted
+* rosbag2rawlog: drop msgs if /tf data did not arrive yet instead of aborting
+* rosbag2rawlog: now also can convert from mrpt_msgs/GenericObservation messages
+* Import GNNS observations
+* Fix build with older versions of cv_bridge
+* rosbag2rawlog: Implement automatic detection of sensorPose from /tf, and added option to override poses from config yaml
+* rosbag2rawlog: Add support for XYZIRT pointcloud observations
+* Add support for CObservationRotatingScan in rosbag2rawlog
+* Fix rosbag2rawlog install path should be 'bin'
+* rosbag2rawlog: add conversion for LaserScan msgs
+* Fix missing build dep
+* Add ament linter for testing builds
+* mrpt_rawlog: remove all record nodes. The package will only provide a play rawlog node, and offline tool to convert rosbag2 to rawlog
+* Fix obsolete tf2_geometry_msgs.h header
+* Unify and clarify license headers in all files
+* Port to ROS 2
+* Contributors: Jose Luis Blanco-Claraco
+
 1.0.3 (2022-06-25)
 ------------------
 

@@ -1,0 +1,63 @@
+# mp2p_icp ICP pipeline configuration.
+# YAML configuration file for use with the CLI tool mp2p-icp-run or
+# programmatically from function mp2p_icp::icp_pipeline_from_yaml()
+class_name: mp2p_icp::ICP
+
+# See: mp2p_icp::Parameter
+params:
+  maxIterations: 300
+  minAbsStep_trans: 1e-4
+  minAbsStep_rot: 5e-5
+
+  #debugPrintIterationProgress: true  # Print iteration progress
+  generateDebugFiles: true  # Can be override with env var "MP2P_ICP_GENERATE_DEBUG_FILES=1"
+  saveIterationDetails: true  # Store partial solutions and pairings for each ICP iteration
+  decimationIterationDetails: 3
+  debugFileNameFormat: "/tmp/pf-icp-run-$UNIQUE_ID-local_$LOCAL_ID$LOCAL_LABEL-to-global_$GLOBAL_ID$GLOBAL_LABEL.icplog"
+  decimationDebugFiles: 1
+
+solvers:
+  - class: mp2p_icp::Solver_GaussNewton
+    params:
+      maxIterations: 2
+      robustKernel: 'RobustKernel::GemanMcClure'
+      #robustKernelParam: '0.5*ADAPTIVE_THRESHOLD_SIGMA'  # [m]  # (adaptive)
+      robustKernelParam: '0.5*max(0.5*ADAPTIVE_THRESHOLD_SIGMA, 2.0*ADAPTIVE_THRESHOLD_SIGMA-(2.0*ADAPTIVE_THRESHOLD_SIGMA-0.5*ADAPTIVE_THRESHOLD_SIGMA)*ICP_ITERATION/100)'
+      #innerLoopVerbose: true
+
+# Sequence of one or more pairs (class, params) defining mp2p_icp::Matcher
+# instances to pair geometric entities between pointclouds.
+matchers:
+  - class: mp2p_icp::Matcher_Points_DistanceThreshold
+    params:
+      #threshold: '2.0*ADAPTIVE_THRESHOLD_SIGMA'   # [m]
+      threshold: '2.0*max(0.5*ADAPTIVE_THRESHOLD_SIGMA, 2.0*ADAPTIVE_THRESHOLD_SIGMA-(2.0*ADAPTIVE_THRESHOLD_SIGMA-0.5*ADAPTIVE_THRESHOLD_SIGMA)*ICP_ITERATION/100)'
+      thresholdAngularDeg: 1.0  # deg
+      pairingsPerPoint: 1
+      allowMatchAlreadyMatchedGlobalPoints: true # faster
+      pointLayerMatches:
+        - {global: "localmap", local: "decimated_for_icp", weight: 1.0}
+        - {global: "points_map", local: "decimated_for_icp", weight: 1.0}
+
+quality:
+  - class: mp2p_icp::QualityEvaluator_PairedRatio
+    params:
+      ~  # none required
+
+# This pipeline will be applied to the (probably already-filtered) input pointcloud that
+# arrived at the pf_localization node, which will be exposed here as a layer "raw":
+relocalization_observation_pipeline:
+# Filters:
+#
+# One filter object will be created for each entry, instancing the given class,
+# and with the given parameters. Filters are run in definition order on the
+# input metric_map_t object.
+#
+- class_name: mp2p_icp_filters::FilterDecimateVoxels
+  params:
+    input_pointcloud_layer: 'raw'
+    output_pointcloud_layer: 'decimated_for_icp'
+    voxel_filter_resolution: 1.5 # [m]
+    minimum_input_points_to_filter: 1000  # don't decimate simpler 2D scans, etc.
+    decimate_method: DecimateMethod::FirstPoint
+    #decimate_method: DecimateMethod::ClosestToAverage

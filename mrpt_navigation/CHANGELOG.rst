@@ -2,6 +2,20 @@
 Changelog for package mrpt_navigation
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+2.0.1 (2024-05-28)
+------------------
+
+2.0.0 (2024-05-28)
+------------------
+* Add new package mrpt_nav_interfaces with action and msg defintions for navigation
+* Rename mrpt_map: mrpt_map_server
+* Renamed pkg mrpt_local_obstacles: mrpt_pointcloud_pipeline to reflect new capabilities
+* Fix missing build dep
+* Renamed: mrpt_localization: mrpt_pf_localization
+* Add ament linter for testing builds
+* ROS2 port metapackage
+* Contributors: Jose Luis Blanco-Claraco, SRai22
+
 1.0.3 (2022-06-25)
 ------------------
 
