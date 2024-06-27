@@ -5,20 +5,15 @@ from launch.substitutions import LaunchConfiguration
 from launch.substitutions import Command
 from ament_index_python.packages import get_package_share_directory
 
+
 def generate_launch_description():
     # Declare launch arguments
-    nav_goal = DeclareLaunchArgument(
-        'nav_goal', default_value='[0.0, 0.0, 0.0]',
-        description='Navigation goal position')
-    start_pose = DeclareLaunchArgument(
-        'start_pose', default_value='[0.0, 0.0, 0.0]',
-        description='Starting pose')
-    start_vel = DeclareLaunchArgument(
-        'start_vel', default_value='[0.0, 0.0, 0.0]',
-        description='Starting velocity')
-    mrpt_gui = DeclareLaunchArgument(
-        'mrpt_gui', default_value='false',
-        description='Enable MRPT GUI')
+    topic_goal_sub = DeclareLaunchArgument(
+        'topic_goal_sub', default_value='tps_astar_nav_goal',
+        description='Goal subscription topic')
+    show_gui = DeclareLaunchArgument(
+        'show_gui', default_value='false',
+        description='Enable package GUI')
     topic_map_sub = DeclareLaunchArgument(
         'topic_map_sub', default_value='map',
         description='Map subscription topic')
@@ -48,20 +43,15 @@ def generate_launch_description():
         name='mrpt_tps_astar_planner_node',
         output='screen',
         parameters=[
-            get_package_share_directory('mrpt_tps_astar_planner') + '/configs/params/planner-params.yaml',
-            get_package_share_directory('mrpt_tps_astar_planner') + '/configs/params/costmap-obstacles.yaml',
-            get_package_share_directory('mrpt_tps_astar_planner') + '/configs/params/nav-engine-params.yaml',
-            get_package_share_directory('mrpt_tps_astar_planner') + '/configs/params/costmap-obstacles.yaml',
-            get_package_share_directory('mrpt_tps_astar_planner') + '/configs/params/costmap-prefer-waypoints.yaml',
-            get_package_share_directory('mrpt_tps_astar_planner') + '/configs/ini/ptgs_jackal.ini',
-            {'nav_goal': LaunchConfiguration('nav_goal')},
-            {'start_pose': LaunchConfiguration('start_pose')},
-            {'start_vel': LaunchConfiguration('start_vel')},
-            {'mrpt_gui': LaunchConfiguration('mrpt_gui')},
+            #            get_package_share_directory('mrpt_tps_astar_planner') + '/configs/params/planner-params.yaml',
+            {'topic_goal_sub': LaunchConfiguration('topic_goal_sub')},
+            {'show_gui': LaunchConfiguration('show_gui')},
             {'topic_map_sub': LaunchConfiguration('topic_map_sub')},
-            {'topic_localization_sub': LaunchConfiguration('topic_localization_sub')},
+            {'topic_localization_sub': LaunchConfiguration(
+                'topic_localization_sub')},
             {'topic_odometry_sub': LaunchConfiguration('topic_odometry_sub')},
-            {'topic_obstacles_sub': LaunchConfiguration('topic_obstacles_sub')},
+            {'topic_obstacles_sub': LaunchConfiguration(
+                'topic_obstacles_sub')},
             {'topic_replan_sub': LaunchConfiguration('topic_replan_sub')},
             {'topic_cmd_vel_pub': LaunchConfiguration('topic_cmd_vel_pub')},
             {'topic_wp_seq_pub': LaunchConfiguration('topic_wp_seq_pub')}
@@ -70,10 +60,8 @@ def generate_launch_description():
 
     # Launch description
     return LaunchDescription([
-        nav_goal,
-        start_pose,
-        start_vel,
-        mrpt_gui,
+        topic_goal_sub,
+        show_gui,
         topic_map_sub,
         topic_localization_sub,
         topic_odometry_sub,

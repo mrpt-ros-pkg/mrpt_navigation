@@ -120,14 +120,11 @@ class TPS_Astar_Planner_Node : public rclcpp::Node
 	/// Mutex for obstacle data
 	std::mutex obstacles_cs_;
 
-	/// Debug flag
-	bool debug_ = true;
-
 	/// Flag for MRPT GUI
 	bool gui_mrpt_ = false;
 
 	/// goal topic subscriber name
-	std::string topic_goal_sub_;
+	std::string topic_goal_sub_ = "tps_astar_nav_goal";
 
 	/// map topic subscriber name
 	std::string topic_map_sub_;
@@ -264,24 +261,24 @@ TPS_Astar_Planner_Node::TPS_Astar_Planner_Node() : rclcpp::Node(NODE_NAME)
 	// -----------------------
 
 	sub_goal_ = this->create_subscription<geometry_msgs::msg::PoseStamped>(
-		topic_goal_sub_, 1,
+		topic_goal_sub_, qos,
 		[this](const geometry_msgs::msg::PoseStamped::SharedPtr msg)
 		{ this->callback_goal(msg); });
 
 	sub_map_ = this->create_subscription<nav_msgs::msg::OccupancyGrid>(
-		topic_map_sub_, 1,
+		topic_map_sub_, qos,
 		[this](const nav_msgs::msg::OccupancyGrid::SharedPtr msg)
 		{ this->callback_map(msg); });
 
 	sub_replan_ = this->create_subscription<
 		geometry_msgs::msg::PoseWithCovarianceStamped>(
-		topic_replan_sub_, 1,
+		topic_replan_sub_, qos,
 		[this](
 			const geometry_msgs::msg::PoseWithCovarianceStamped::SharedPtr msg)
 		{ this->callback_replan(msg); });
 
 	sub_obstacles_ = this->create_subscription<sensor_msgs::msg::PointCloud2>(
-		topic_obstacles_sub_, 1,
+		topic_obstacles_sub_, qos,
 		[this](const sensor_msgs::msg::PointCloud2::SharedPtr msg)
 		{ this->callback_obstacles(msg); });
 
@@ -289,7 +286,7 @@ TPS_Astar_Planner_Node::TPS_Astar_Planner_Node() : rclcpp::Node(NODE_NAME)
 	// -----------------------
 
 	pub_wp_seq_ = this->create_publisher<mrpt_msgs::msg::WaypointSequence>(
-		topic_wp_seq_pub_, 1);
+		topic_wp_seq_pub_, qos);
 
 	initialize_planner();
 }
@@ -338,13 +335,13 @@ void TPS_Astar_Planner_Node::read_parameters()
 		this->get_logger(), "[TPS_Astar_Planner_Node] starting velocity ="
 								<< start_vel_.asString());
 
-	this->declare_parameter<bool>("mrpt_gui", false);
-	this->get_parameter("mrpt_gui", gui_mrpt_);
+	this->declare_parameter<bool>("show_gui", false);
+	this->get_parameter("show_gui", gui_mrpt_);
 	RCLCPP_INFO(
 		this->get_logger(), "MRPT GUI Enabled: %s",
 		gui_mrpt_ ? "true" : "false");
 
-	this->declare_parameter<std::string>("topic_goal_sub", "");
+	this->declare_parameter<std::string>("topic_goal_sub", topic_goal_sub_);
 	this->get_parameter("topic_goal_sub", topic_goal_sub_);
 	RCLCPP_INFO(
 		this->get_logger(), "topic_goal_sub %s", topic_goal_sub_.c_str());
@@ -439,23 +436,17 @@ void TPS_Astar_Planner_Node::callback_goal(
 			return;
 		}
 
-		tf2::Quaternion quat(
-			_goal->pose.orientation.x, _goal->pose.orientation.y,
-			_goal->pose.orientation.z, _goal->pose.orientation.w);
-		tf2::Matrix3x3 mat(quat);
-		double roll, pitch, yaw;
-		mat.getRPY(roll, pitch, yaw);
+		const auto p = mrpt::ros2bridge::fromROS(_goal->pose);
+		nav_goal_ = mrpt::math::TPose2D(p.asTPose());
 
-		nav_goal_.x = _goal->pose.position.x;
-		nav_goal_.y = _goal->pose.position.y;
-		nav_goal_.phi = yaw;
-
+#if 0  // JLBC: does this make sense with pointcloud obstacles?
 		if (!is_pose_within_map_bounds(nav_goal_))
 		{
 			RCLCPP_WARN(
 				this->get_logger(), "Received goal is outside of the map");
 			return;
 		}
+#endif
 
 		path_plan_done_ = do_path_plan(start_pose_, nav_goal_);
 	}
@@ -595,7 +586,7 @@ void TPS_Astar_Planner_Node::update_map(
 	RCLCPP_INFO_STREAM(this->get_logger(), "Setting gridmap for planning");
 	grid_map_ = std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(obsPts);
 
-	path_plan_done_ = do_path_plan(start_pose_, nav_goal_);
+	// path_plan_done_ = do_path_plan(start_pose_, nav_goal_);
 }
 
 bool TPS_Astar_Planner_Node::do_path_plan(
