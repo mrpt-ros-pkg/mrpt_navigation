@@ -37,8 +37,7 @@
 #include <tf2/LinearMath/Matrix3x3.h>
 #include <tf2/LinearMath/Quaternion.h>
 
-#include <cmath>
-#include <functional>
+#include <cassert>
 #include <geometry_msgs/msg/pose_array.hpp>
 #include <geometry_msgs/msg/pose_stamped.hpp>
 #include <geometry_msgs/msg/pose_with_covariance_stamped.hpp>
@@ -52,10 +51,8 @@
 #include <optional>
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
-#include <sstream>
 #include <std_msgs/msg/bool.hpp>
 #include <string>
-#include <cassert>
 
 // for debugging
 #include <mrpt/gui/CDisplayWindow3D.h>
@@ -109,11 +106,13 @@ class TPS_Astar_Planner_Node : public rclcpp::Node
 	rclcpp::Subscription<nav_msgs::msg::OccupancyGrid>::SharedPtr sub_map_;
 
 	/// Subscriber to obstacle map info
-	rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr sub_obstacles_;
+	rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr
+		sub_obstacles_;
 
 	/// Subscriber to topic from rnav that tells to replan
 	/// TODO(JL): Switch into a service!
-	rclcpp::Subscription<geometry_msgs::msg::PoseWithCovarianceStamped>::SharedPtr sub_replan_;
+	rclcpp::Subscription<
+		geometry_msgs::msg::PoseWithCovarianceStamped>::SharedPtr sub_replan_;
 
 	/// Publisher for waypoint sequence
 	rclcpp::Publisher<mrpt_msgs::msg::WaypointSequence>::SharedPtr pub_wp_seq_;
@@ -133,26 +132,26 @@ class TPS_Astar_Planner_Node : public rclcpp::Node
 	/// map topic subscriber name
 	std::string topic_map_sub_;
 
-	/// obstacles topic subscriber name 
+	/// obstacles topic subscriber name
 	std::string topic_obstacles_sub_;
 
-	/// replan topic subscriber name 
+	/// replan topic subscriber name
 	std::string topic_replan_sub_;
 
-	/// waypoint sequence topic publisher name 
+	/// waypoint sequence topic publisher name
 	std::string topic_wp_seq_pub_;
 
 	/// Parameter file for PTGs
-    std::string ptg_ini_file_;
+	std::string ptg_ini_file_;
 
-    /// Parameters file for Costmap evaluator
-    std::string costmap_params_file_;
+	/// Parameters file for Costmap evaluator
+	std::string costmap_params_file_;
 
-    /// Parameters file for waypoints preferences
-    std::string wp_params_file_;
+	/// Parameters file for waypoints preferences
+	std::string wp_params_file_;
 
-    /// Parameters file for planner
-    std::string planner_params_file_;
+	/// Parameters file for planner
+	std::string planner_params_file_;
 
 	/// Pointer to MRPT 3D display window
 	mrpt::gui::CDisplayWindow3D::Ptr win_3d_;
@@ -161,9 +160,9 @@ class TPS_Astar_Planner_Node : public rclcpp::Node
 	mrpt::opengl::COpenGLScene scene_;
 
 	/// Path planner algorithm
-	mpp::Planner::Ptr planner_; 
+	mpp::Planner::Ptr planner_;
 
-	/// Path planner input 
+	/// Path planner input
 	mpp::PlannerInput planner_input_;
 
 	/// Parameters for the cost evaluator
@@ -176,79 +175,82 @@ class TPS_Astar_Planner_Node : public rclcpp::Node
 	bool path_plan_done_ = false;
 
    private:
-    /**
-     * @brief Reads a parameter from the node's parameter server.
-     *
-     * This function attempts to retrieve parameters and assign it to class member vars.
-    */
+	/**
+	 * @brief Reads a parameter from the node's parameter server.
+	 *
+	 * This function attempts to retrieve parameters and assign it to class
+	 * member vars.
+	 */
 	void read_parameters();
 
 	/**
 	 * @brief Initialize A* planner with required params
-	*/
+	 */
 	void initialize_planner();
 
 	/**
 	 * @brief Callback function when a new goal location is received
 	 * @param _goal is a PoseStamped object pointer
-	*/
+	 */
 	void callback_goal(const geometry_msgs::msg::PoseStamped::SharedPtr& _goal);
 
 	/**
 	 * @brief Callback function when a new map is received
 	 * @param _map is an occupancy grid object pointer
-	*/
+	 */
 	void callback_map(const nav_msgs::msg::OccupancyGrid::SharedPtr& _map);
 
 	/**
-	 * @brief Callback function to update the obstacles around the Robot in case of replan
+	 * @brief Callback function to update the obstacles around the Robot in case
+	 * of replan
 	 * @param _pc pointcloud object pointer from sensors
-	*/
-	void callback_obstacles(const sensor_msgs::msg::PointCloud2::SharedPtr& _pc);
+	 */
+	void callback_obstacles(
+		const sensor_msgs::msg::PointCloud2::SharedPtr& _pc);
 
-	/** 
+	/**
 	 * @brief Callback function to prompt for a replan
 	 * @param _pose current localization location of the robot on the map
-	*/
+	 */
 	void callback_replan(
 		const geometry_msgs::msg::PoseWithCovarianceStamped::SharedPtr& _pose);
 
 	/**
 	 * @brief Mutex locked method to update the map when new one is received
 	 * @param _map is an occupancy grid object pointer
-	*/
+	 */
 	void update_map(const nav_msgs::msg::OccupancyGrid::SharedPtr& _msg);
 
 	/**
-     * @brief Mutex locked method to update local obstacle map
-     * @param _pc PointCloud2 object
-    */
+	 * @brief Mutex locked method to update local obstacle map
+	 * @param _pc PointCloud2 object
+	 */
 	void update_obstacles(const sensor_msgs::msg::PointCloud2::SharedPtr& _pc);
 
 	/**
 	 * @brief Method to perform the path plan
-	 * @param start robot initial pose 
+	 * @param start robot initial pose
 	 * @param goal  robot goal pose
 	 * @return true if path plan was successful false if path plan failed
-	*/
+	 */
 	bool do_path_plan(mrpt::math::TPose2D& start, mrpt::math::TPose2D& goal);
 
 	/**
 	 * @brief Debug method to visualize the planning
-	*/
+	 */
 	void init_3d_debug();
 
 	/**
 	 * @brief Method to check if a given pose is within map bounds
-	 * @param pose mrpt pose2D 
-	 * @return true if given pose is within map bounds 
-	*/
+	 * @param pose mrpt pose2D
+	 * @return true if given pose is within map bounds
+	 */
 	bool is_pose_within_map_bounds(const mrpt::math::TPose2D& pose);
 
 	/**
-	 * @brief Publisher method to publish waypoint sequence 
+	 * @brief Publisher method to publish waypoint sequence
 	 * @param wps Waypoint sequence object
-	*/
+	 */
 	void publish_waypoint_sequence(const mrpt_msgs::msg::WaypointSequence& wps);
 };
 
@@ -262,41 +264,34 @@ TPS_Astar_Planner_Node::TPS_Astar_Planner_Node() : rclcpp::Node(NODE_NAME)
 	// -----------------------
 
 	sub_goal_ = this->create_subscription<geometry_msgs::msg::PoseStamped>(
-		topic_goal_sub_, 1, 
-		[this] (const geometry_msgs::msg::PoseStamped::SharedPtr msg) {
-			this->callback_goal(msg);
-		}
-	);
+		topic_goal_sub_, 1,
+		[this](const geometry_msgs::msg::PoseStamped::SharedPtr msg)
+		{ this->callback_goal(msg); });
 
 	sub_map_ = this->create_subscription<nav_msgs::msg::OccupancyGrid>(
 		topic_map_sub_, 1,
-		[this](const nav_msgs::msg::OccupancyGrid::SharedPtr msg) {
-			this->callback_map(msg);
-		}
-	); 
-	
-	sub_replan_ = this->create_subscription<geometry_msgs::msg::PoseWithCovarianceStamped>(
-		topic_replan_sub_, 1, 
-		[this](const geometry_msgs::msg::PoseWithCovarianceStamped::SharedPtr msg){
-			this->callback_replan(msg);
-		}
-	);
+		[this](const nav_msgs::msg::OccupancyGrid::SharedPtr msg)
+		{ this->callback_map(msg); });
+
+	sub_replan_ = this->create_subscription<
+		geometry_msgs::msg::PoseWithCovarianceStamped>(
+		topic_replan_sub_, 1,
+		[this](
+			const geometry_msgs::msg::PoseWithCovarianceStamped::SharedPtr msg)
+		{ this->callback_replan(msg); });
 
 	sub_obstacles_ = this->create_subscription<sensor_msgs::msg::PointCloud2>(
-		topic_obstacles_sub_, 1, 
-		[this](const sensor_msgs::msg::PointCloud2::SharedPtr msg){
-			this->callback_obstacles(msg);
-		}
-	);
+		topic_obstacles_sub_, 1,
+		[this](const sensor_msgs::msg::PointCloud2::SharedPtr msg)
+		{ this->callback_obstacles(msg); });
 
 	// Init ROS publishers:
 	// -----------------------
 
-	pub_wp_seq_ = 
-		this->create_publisher<mrpt_msgs::msg::WaypointSequence>(topic_wp_seq_pub_, 1);
+	pub_wp_seq_ = this->create_publisher<mrpt_msgs::msg::WaypointSequence>(
+		topic_wp_seq_pub_, 1);
 
 	initialize_planner();
-
 }
 
 void TPS_Astar_Planner_Node::read_parameters()
@@ -312,13 +307,11 @@ void TPS_Astar_Planner_Node::read_parameters()
 		RCLCPP_ERROR(this->get_logger(), "Invalid nav_goal parameter");
 		return;
 	}
-	nav_goal_ =
-		mrpt::math::TPose2D(nav_goal[0], nav_goal[1], nav_goal[2]);
+	nav_goal_ = mrpt::math::TPose2D(nav_goal[0], nav_goal[1], nav_goal[2]);
 
 	RCLCPP_INFO_STREAM(
 		this->get_logger(),
 		"[TPS_Astar_Planner_Node] nav goal =" << nav_goal_.asString());
-	
 
 	this->declare_parameter<std::vector<double>>("start_pose", {0.0, 0.0, 0.0});
 	this->get_parameter("start_pose", start_pose);
@@ -330,10 +323,10 @@ void TPS_Astar_Planner_Node::read_parameters()
 	start_pose_ =
 		mrpt::math::TPose2D(start_pose[0], start_pose[1], start_pose[2]);
 	RCLCPP_INFO_STREAM(
-		this->get_logger(), "[TPS_Astar_Planner_Node] start pose ="
-								<< start_pose_.asString());
+		this->get_logger(),
+		"[TPS_Astar_Planner_Node] start pose =" << start_pose_.asString());
 
-	this->declare_parameter<std::vector<double>>("start_vel",{0.0, 0.0, 0.0});
+	this->declare_parameter<std::vector<double>>("start_vel", {0.0, 0.0, 0.0});
 	this->get_parameter("start_vel", start_vel);
 	if (start_vel.size() != 3)
 	{
@@ -342,82 +335,77 @@ void TPS_Astar_Planner_Node::read_parameters()
 	}
 	start_vel_ = mrpt::math::TTwist2D(start_vel[0], start_vel[1], start_vel[2]);
 	RCLCPP_INFO_STREAM(
-		this->get_logger(),
-		"[TPS_Astar_Planner_Node] starting velocity =" << start_vel_.asString());
+		this->get_logger(), "[TPS_Astar_Planner_Node] starting velocity ="
+								<< start_vel_.asString());
 
 	this->declare_parameter<bool>("mrpt_gui", false);
 	this->get_parameter("mrpt_gui", gui_mrpt_);
 	RCLCPP_INFO(
-		this->get_logger(), "MRPT GUI Enabled: %s", gui_mrpt_ ? "true" : "false");
-	
+		this->get_logger(), "MRPT GUI Enabled: %s",
+		gui_mrpt_ ? "true" : "false");
 
 	this->declare_parameter<std::string>("topic_goal_sub", "");
 	this->get_parameter("topic_goal_sub", topic_goal_sub_);
 	RCLCPP_INFO(
 		this->get_logger(), "topic_goal_sub %s", topic_goal_sub_.c_str());
 
-
 	this->declare_parameter<std::string>("topic_map_sub", "map");
 	this->get_parameter("topic_map_sub", topic_map_sub_);
-	RCLCPP_INFO(
-		this->get_logger(), "topic_map_sub %s", topic_map_sub_.c_str());
+	RCLCPP_INFO(this->get_logger(), "topic_map_sub %s", topic_map_sub_.c_str());
 
-
-	this->declare_parameter<std::string>("topic_obstacles_sub", "/map_pointcloud");
+	this->declare_parameter<std::string>(
+		"topic_obstacles_sub", "/map_pointcloud");
 	this->get_parameter("topic_obstacles_sub", topic_obstacles_sub_);
 	RCLCPP_INFO(
-		this->get_logger(), "topic_obstacles_sub %s", topic_obstacles_sub_.c_str());
+		this->get_logger(), "topic_obstacles_sub %s",
+		topic_obstacles_sub_.c_str());
 
 	this->declare_parameter<std::string>("topic_replan_sub", "/replan");
 	this->get_parameter("topic_replan_sub", topic_replan_sub_);
 	RCLCPP_INFO(
 		this->get_logger(), "topic_replan_sub %s", topic_replan_sub_.c_str());
-	
 
 	this->declare_parameter<std::string>("topic_wp_seq_pub", "/waypoints");
 	this->get_parameter("topic_wp_seq_pub", topic_wp_seq_pub_);
 	RCLCPP_INFO(
 		this->get_logger(), "topic_wp_seq_pub%s", topic_wp_seq_pub_.c_str());
 
-	    this->declare_parameter<std::string>("ptg_ini", "");
-    this->get_parameter("ptg_ini", ptg_ini_file_);
-    RCLCPP_INFO(
-        this->get_logger(), "ptg_ini_file %s", ptg_ini_file_.c_str());
+	this->declare_parameter<std::string>("ptg_ini", "");
+	this->get_parameter("ptg_ini", ptg_ini_file_);
+	RCLCPP_INFO(this->get_logger(), "ptg_ini_file %s", ptg_ini_file_.c_str());
 
-    assert(mrpt::system::fileExists(ptg_ini_file_) &&
-            "PTG ini file not found");
+	assert(mrpt::system::fileExists(ptg_ini_file_) && "PTG ini file not found");
 
-    this->declare_parameter<std::string>("global_costmap_parameters", "");
-    this->get_parameter("global_costmap_parameters", costmap_params_file_);
-    RCLCPP_INFO(
-        this->get_logger(), "global_costmap_params_file %s", 
-            costmap_params_file_.c_str());
+	this->declare_parameter<std::string>("global_costmap_parameters", "");
+	this->get_parameter("global_costmap_parameters", costmap_params_file_);
+	RCLCPP_INFO(
+		this->get_logger(), "global_costmap_params_file %s",
+		costmap_params_file_.c_str());
 
-    assert(mrpt::system::fileExists(costmap_params_file_) && 
-            "costmap params file not found");
+	assert(
+		mrpt::system::fileExists(costmap_params_file_) &&
+		"costmap params file not found");
 
-    this->declare_parameter<std::string>("prefer_waypoints_parameters", "");
-    this->get_parameter("prefer_waypoints_parameters", wp_params_file_);
-    RCLCPP_INFO(
-        this->get_logger(), "prefer_waypoints_parameters_file %s", 
-            wp_params_file_.c_str());
+	this->declare_parameter<std::string>("prefer_waypoints_parameters", "");
+	this->get_parameter("prefer_waypoints_parameters", wp_params_file_);
+	RCLCPP_INFO(
+		this->get_logger(), "prefer_waypoints_parameters_file %s",
+		wp_params_file_.c_str());
 
-    assert(
-        mrpt::system::fileExists(wp_params_file_) &&
-        "Prefer waypoints params file not found");
+	assert(
+		mrpt::system::fileExists(wp_params_file_) &&
+		"Prefer waypoints params file not found");
 
-    this->declare_parameter<std::string>("planner_parameters", "");
-    this->get_parameter("planner_parameters", planner_params_file_);
-    RCLCPP_INFO(
-        this->get_logger(), "planner_parameters_file %s", 
-            planner_params_file_.c_str());
+	this->declare_parameter<std::string>("planner_parameters", "");
+	this->get_parameter("planner_parameters", planner_params_file_);
+	RCLCPP_INFO(
+		this->get_logger(), "planner_parameters_file %s",
+		planner_params_file_.c_str());
 
-    assert(
-        mrpt::system::fileExists(planner_params_file_) &&
-        "Planner params file not found");
-
+	assert(
+		mrpt::system::fileExists(planner_params_file_) &&
+		"Planner params file not found");
 }
-
 
 void TPS_Astar_Planner_Node::initialize_planner()
 {
@@ -426,35 +414,34 @@ void TPS_Astar_Planner_Node::initialize_planner()
 	// Enable time profiler:
 	planner_->profiler_().enable(true);
 
-	const auto c =
-			mrpt::containers::yaml::FromFile(planner_params_file_);
+	const auto c = mrpt::containers::yaml::FromFile(planner_params_file_);
 	planner_->params_from_yaml(c);
 	RCLCPP_INFO_STREAM(
-		this->get_logger(),  "Loaded these planner params:" <<
-		planner_->params_as_yaml());
+		this->get_logger(),
+		"Loaded these planner params:" << planner_->params_as_yaml());
 
 	mrpt::config::CConfigFile cfg(ptg_ini_file_);
 	planner_input_.ptgs.initFromConfigFile(cfg, "SelfDriving");
 
-	costMapParams_ =
-		mpp::CostEvaluatorCostMap::Parameters::FromYAML(
-			mrpt::containers::yaml::FromFile(costmap_params_file_));
-
+	costMapParams_ = mpp::CostEvaluatorCostMap::Parameters::FromYAML(
+		mrpt::containers::yaml::FromFile(costmap_params_file_));
 }
 
-void TPS_Astar_Planner_Node::callback_goal
-			(const geometry_msgs::msg::PoseStamped::SharedPtr& _goal)
+void TPS_Astar_Planner_Node::callback_goal(
+	const geometry_msgs::msg::PoseStamped::SharedPtr& _goal)
 {
-	try{
-		if(_goal) {
+	try
+	{
+		if (_goal)
+		{
 			RCLCPP_ERROR(
 				this->get_logger(), "Received null ptr in goal callback");
 			return;
 		}
 
 		tf2::Quaternion quat(
-		_goal->pose.orientation.x, _goal->pose.orientation.y,
-		_goal->pose.orientation.z, _goal->pose.orientation.w);
+			_goal->pose.orientation.x, _goal->pose.orientation.y,
+			_goal->pose.orientation.z, _goal->pose.orientation.w);
 		tf2::Matrix3x3 mat(quat);
 		double roll, pitch, yaw;
 		mat.getRPY(roll, pitch, yaw);
@@ -463,22 +450,24 @@ void TPS_Astar_Planner_Node::callback_goal
 		nav_goal_.y = _goal->pose.position.y;
 		nav_goal_.phi = yaw;
 
-		if(!is_pose_within_map_bounds(nav_goal_)){
+		if (!is_pose_within_map_bounds(nav_goal_))
+		{
 			RCLCPP_WARN(
 				this->get_logger(), "Received goal is outside of the map");
 			return;
 		}
 
 		path_plan_done_ = do_path_plan(start_pose_, nav_goal_);
-
-	} catch (const std::exception& e) {
+	}
+	catch (const std::exception& e)
+	{
 		RCLCPP_ERROR(
 			this->get_logger(), "Exception in goal callback : %s", e.what());
 	}
 }
 
-void TPS_Astar_Planner_Node::callback_map
-			(const nav_msgs::msg::OccupancyGrid::SharedPtr& _map)
+void TPS_Astar_Planner_Node::callback_map(
+	const nav_msgs::msg::OccupancyGrid::SharedPtr& _map)
 {
 	RCLCPP_DEBUG_STREAM(
 		this->get_logger(), "Navigator Map received for planning");
@@ -486,21 +475,23 @@ void TPS_Astar_Planner_Node::callback_map
 		map_received_flag_, [this, &_map]() { this->update_map(_map); });
 }
 
-
 // Add current obstacles to make better plan
-void TPS_Astar_Planner_Node::callback_replan
-	(const geometry_msgs::msg::PoseWithCovarianceStamped::SharedPtr& msg)
+void TPS_Astar_Planner_Node::callback_replan(
+	const geometry_msgs::msg::PoseWithCovarianceStamped::SharedPtr& msg)
 {
-	try{
-		if(!msg) {
+	try
+	{
+		if (!msg)
+		{
 			RCLCPP_ERROR(
-				this->get_logger(), "Received null ptr as pose in replan callback");
+				this->get_logger(),
+				"Received null ptr as pose in replan callback");
 			return;
 		}
 
 		tf2::Quaternion quat(
-		msg->pose.pose.orientation.x, msg->pose.pose.orientation.y,
-		msg->pose.pose.orientation.z, msg->pose.pose.orientation.w);
+			msg->pose.pose.orientation.x, msg->pose.pose.orientation.y,
+			msg->pose.pose.orientation.z, msg->pose.pose.orientation.w);
 		tf2::Matrix3x3 mat(quat);
 		double roll, pitch, yaw;
 		mat.getRPY(roll, pitch, yaw);
@@ -508,10 +499,11 @@ void TPS_Astar_Planner_Node::callback_replan
 		start_pose_.x = msg->pose.pose.position.x;
 		start_pose_.y = msg->pose.pose.position.y;
 		start_pose_.phi = yaw;
-		
-		path_plan_done_ = do_path_plan(start_pose_, nav_goal_);
 
-	} catch(std::exception& e){
+		path_plan_done_ = do_path_plan(start_pose_, nav_goal_);
+	}
+	catch (std::exception& e)
+	{
 		RCLCPP_ERROR(
 			this->get_logger(), "Exception in replan callback : %s", e.what());
 	}
@@ -523,13 +515,15 @@ void TPS_Astar_Planner_Node::callback_obstacles(
 	update_obstacles(_pc);
 }
 
-void TPS_Astar_Planner_Node::update_obstacles(const sensor_msgs::msg::PointCloud2::SharedPtr& _pc)
+void TPS_Astar_Planner_Node::update_obstacles(
+	const sensor_msgs::msg::PointCloud2::SharedPtr& _pc)
 {
 	mrpt::maps::CSimplePointsMap point_cloud;
 	if (!mrpt::ros2bridge::fromROS(*_pc, point_cloud))
 	{
 		RCLCPP_ERROR(
-			this->get_logger(), "Failed to convert Point Cloud to MRPT Points Map");
+			this->get_logger(),
+			"Failed to convert Point Cloud to MRPT Points Map");
 	}
 	std::lock_guard<std::mutex> csl(obstacles_cs_);
 	obstacle_src_ = std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(
@@ -545,23 +539,22 @@ void TPS_Astar_Planner_Node::publish_waypoint_sequence(
 }
 
 bool TPS_Astar_Planner_Node::is_pose_within_map_bounds(
-							const mrpt::math::TPose2D& pose)
+	const mrpt::math::TPose2D& pose)
 {
-	if(!grid_map_)
+	if (!grid_map_)
 	{
-		RCLCPP_ERROR(this->get_logger(), 
-		"No map to check");
+		RCLCPP_ERROR(this->get_logger(), "No map to check");
 		return false;
 	}
 
 	auto map_bbox = grid_map_->boundingBox();
-	if(pose.x >= map_bbox.min.x && 
-	   pose.x <= map_bbox.max.x && 
-	   pose.y >= map_bbox.min.y &&
-	   pose.y <= map_bbox.max.y)
+	if (pose.x >= map_bbox.min.x && pose.x <= map_bbox.max.x &&
+		pose.y >= map_bbox.min.y && pose.y <= map_bbox.max.y)
 	{
 		return true;
-	} else {
+	}
+	else
+	{
 		return false;
 	}
 }
@@ -591,9 +584,8 @@ void TPS_Astar_Planner_Node::init_3d_debug()
 	}  // Show 3D?
 }
 
-
-
-void TPS_Astar_Planner_Node::update_map(const nav_msgs::msg::OccupancyGrid::SharedPtr& msg)
+void TPS_Astar_Planner_Node::update_map(
+	const nav_msgs::msg::OccupancyGrid::SharedPtr& msg)
 {
 	mrpt::maps::COccupancyGridMap2D grid;
 	// ASSERT_(grid.countMapsByClass<mrpt::maps::COccupancyGridMap2D>());
@@ -606,9 +598,8 @@ void TPS_Astar_Planner_Node::update_map(const nav_msgs::msg::OccupancyGrid::Shar
 	path_plan_done_ = do_path_plan(start_pose_, nav_goal_);
 }
 
-
 bool TPS_Astar_Planner_Node::do_path_plan(
-	mrpt::math::TPose2D & start, mrpt::math::TPose2D & goal)
+	mrpt::math::TPose2D& start, mrpt::math::TPose2D& goal)
 {
 	RCLCPP_INFO_STREAM(this->get_logger(), "Do path planning");
 	auto obs = mpp::ObstacleSource::FromStaticPointcloud(grid_map_);
@@ -622,8 +613,8 @@ bool TPS_Astar_Planner_Node::do_path_plan(
 	{
 		const auto bboxMargin = mrpt::math::TPoint3Df(2.0, 2.0, .0);
 		const auto ptStart = mrpt::math::TPoint3Df(
-			planner_input_.stateStart.pose.x,
-			planner_input_.stateStart.pose.y, 0);
+			planner_input_.stateStart.pose.x, planner_input_.stateStart.pose.y,
+			0);
 		const auto ptGoal = mrpt::math::TPoint3Df(
 			planner_input_.stateGoal.asSE2KinState().pose.x,
 			planner_input_.stateGoal.asSE2KinState().pose.y, 0);
@@ -637,14 +628,14 @@ bool TPS_Astar_Planner_Node::do_path_plan(
 	planner_input_.worldBboxMin = {bbox.min.x, bbox.min.y, -M_PI};
 
 	RCLCPP_INFO_STREAM(
-		this->get_logger(), "Start state: " <<
-		planner_input_.stateStart.asString() <<
-		"\n Goal state: " << planner_input_.stateGoal.asString() <<
-		"\n Obstacles : "<< obs->obstacles()->size() <<
-		"points \n  World bbox : "<< 
-		planner_input_.worldBboxMin.asString() <<"-" <<
-		planner_input_.worldBboxMax.asString()
-	);
+		this->get_logger(),
+		"Start state: " << planner_input_.stateStart.asString()
+						<< "\n Goal state: "
+						<< planner_input_.stateGoal.asString()
+						<< "\n Obstacles : " << obs->obstacles()->size()
+						<< "points \n  World bbox : "
+						<< planner_input_.worldBboxMin.asString() << "-"
+						<< planner_input_.worldBboxMax.asString());
 
 	auto costmap = mpp::CostEvaluatorCostMap::FromStaticPointObstacles(
 		*grid_map_, costMapParams_, planner_input_.stateStart.pose);
@@ -652,12 +643,12 @@ bool TPS_Astar_Planner_Node::do_path_plan(
 	planner_->costEvaluators_.push_back(costmap);
 
 	// Insert custom progress callback:
-	planner_->progressCallback_ = [](const mpp::ProgressCallbackData& pcd) {
+	planner_->progressCallback_ = [](const mpp::ProgressCallbackData& pcd)
+	{
 		std::cout << "[progressCallback] bestCostFromStart: "
-					<< pcd.bestCostFromStart
-					<< " bestCostToGoal: " << pcd.bestCostToGoal
-					<< " bestPathLength: " << pcd.bestPath.size()
-					<< std::endl;
+				  << pcd.bestCostFromStart
+				  << " bestCostToGoal: " << pcd.bestCostToGoal
+				  << " bestPathLength: " << pcd.bestPath.size() << std::endl;
 	};
 
 	const mpp::PlannerOutput plan = planner_->plan(planner_input_);
@@ -665,8 +656,8 @@ bool TPS_Astar_Planner_Node::do_path_plan(
 	std::cout << "\nDone.\n";
 	std::cout << "Success: " << (plan.success ? "YES" : "NO") << "\n";
 	std::cout << "Plan has " << plan.motionTree.edges_to_children.size()
-				<< " overall edges, " << plan.motionTree.nodes().size()
-				<< " nodes\n";
+			  << " overall edges, " << plan.motionTree.nodes().size()
+			  << " nodes\n";
 
 	if (!plan.bestNodeId.has_value())
 	{
@@ -727,7 +718,7 @@ mpp::refine_trajectory(plannedPath, pathEdges, planner_input.ptgs);
 		{
 			const auto& goal_state = kv.second.state;
 			std::cout << "Waypoint: x = " << goal_state.pose.x
-						<< ", y= " << goal_state.pose.y << std::endl;
+					  << ", y= " << goal_state.pose.y << std::endl;
 			auto wp_msg = mrpt_msgs::msg::Waypoint();
 			wp_msg.target.position.x = goal_state.pose.x;
 			wp_msg.target.position.y = goal_state.pose.y;
@@ -764,7 +755,6 @@ mpp::refine_trajectory(plannedPath, pathEdges, planner_input.ptgs);
 
 	return plan.success;
 }
-
 
 // ------------------------------------
 int main(int argc, char** argv)
