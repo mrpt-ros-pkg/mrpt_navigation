@@ -22,6 +22,9 @@ RCLCPP_COMPONENTS_REGISTER_NODE(mrpt_reactivenav2d::ReactiveNav2DNode)
 ReactiveNav2DNode::ReactiveNav2DNode(const rclcpp::NodeOptions& options)
 	: Node("mrpt_reactivenav2d", options)
 {
+	// Create subscriber that can be used to monitor parameter changes
+	param_subscriber_ = std::make_shared<rclcpp::ParameterEventHandler>(this);
+
 	// Load params
 	read_parameters();
 
@@ -272,6 +275,16 @@ void ReactiveNav2DNode::read_parameters()
 	RCLCPP_INFO(
 		this->get_logger(), "pure_pursuit_mode: %s",
 		pure_pursuit_mode_ ? "yes" : "no");
+
+	auto cb = [this](const rclcpp::Parameter& p)
+	{
+		pure_pursuit_mode_ = p.as_bool();
+		RCLCPP_INFO(
+			this->get_logger(), "pure_pursuit_mode: %s",
+			pure_pursuit_mode_ ? "yes" : "no");
+	};
+	cb_pure_pursuit_mode_ =
+		param_subscriber_->add_parameter_callback("pure_pursuit_mode", cb);
 
 	declare_parameter<std::string>("ptg_plugin_files", pluginFile_);
 	get_parameter("ptg_plugin_files", pluginFile_);

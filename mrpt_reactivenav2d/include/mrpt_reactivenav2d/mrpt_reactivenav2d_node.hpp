@@ -92,6 +92,11 @@ class ReactiveNav2DNode : public rclcpp::Node
 
 	mrpt::system::CTimeLogger profiler_;
 	bool initialized_ = false;	//!< Reactive initialization done?
+
+	std::shared_ptr<rclcpp::ParameterEventHandler> param_subscriber_;
+
+	// Used for single goal commands. For waypoints, the node will use
+	// the distances in the waypoints msg:
 	double targetAllowedDistance_ = 0.40;
 	double navPeriod_ = 0.10;
 
@@ -110,6 +115,7 @@ class ReactiveNav2DNode : public rclcpp::Node
 
 	/// If enabled, no obstacle avoidance will be attempted (!)
 	bool pure_pursuit_mode_ = false;
+	std::shared_ptr<rclcpp::ParameterCallbackHandle> cb_pure_pursuit_mode_;
 
 	std::string pluginFile_ = {};
 	std::string cfgFileReactive_ = "reactive2d_config.ini";
