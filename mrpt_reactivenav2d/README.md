@@ -114,6 +114,9 @@ XXX
 
 Can be used to navigate to a single target SE(2) pose.
 
+<details>
+  <summary>Example output</summary>
+
 Example CLI call:
 ```bash
 ros2 action send_goal /rnav/navigate_goal mrpt_nav_interfaces/action/NavigateGoal  --feedback \
@@ -150,10 +153,14 @@ Result:
 
 Goal finished with status: SUCCEEDED
 ```
+</details>
 
 #### NavigateWaypoints
 
 Can be used to navigate to a sequence of waypoints.
+
+<details>
+  <summary>Example output</summary>
 
 Example CLI call:
 ```bash
@@ -204,6 +211,7 @@ Result:
 
 Goal finished with status: SUCCEEDED
 ```
+</details>
 
 
 ### Template ROS 2 launch files
