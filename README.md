@@ -32,6 +32,7 @@ Related to sensor pipelines:
 
 Related to autonomous navigation:
 * [mrpt_reactivenav2d](mrpt_reactivenav2d): A pure reactive navigator for polygonal robots on 2D worlds.
+* [mrpt_tps_astar_planner](mrpt_tps_astar_planner): A path planner based on PTG trajectories using A* in a SE(2) lattice.
 
 Others:
 * [mrpt_rawlog](mrpt_rawlog): Nodes and CLI tools to convert between MRPT rawlog format and ROS rosbag2.
