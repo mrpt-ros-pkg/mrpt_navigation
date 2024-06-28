@@ -1,0 +1,39 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>mrpt_tps_astar_planner</name>
+  <version>1.0.3</version>
+  <description>ROS Path Planner with A* in TP-Space Engine</description>
+
+  <maintainer email="jlblanco@ual.es">Jose-Luis Blanco-Claraco</maintainer>
+  <maintainer email="shravansomashekara.rai@gmail.com">Shravan S Rai</maintainer>
+
+  <author email="shravansomashekara.rai@gmail.com">Shravan_S_Rai</author>
+  <author email="jlblanco@ual.es">Jose-Luis Blanco-Claraco</author>
+
+  <license>BSD</license>
+
+  <url type="website">https://github.com/mrpt-ros-pkg/mrpt_navigation</url>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <depend>mrpt2</depend>
+
+  <depend>rclcpp</depend>
+  <depend>rclcpp_components</depend>
+  <depend>nav_msgs</depend>
+  <depend>sensor_msgs</depend>
+  <depend>geometry_msgs</depend>
+  <depend>mrpt_msgs</depend>
+  <depend>tf2</depend>
+  <depend>tf2_ros</depend>
+  <depend>tf2_geometry_msgs</depend>
+  <depend>visualization_msgs</depend>
+  <depend>mrpt_path_planning</depend>
+
+  <depend>ament_lint_common</depend>
+  <depend>ament_lint_auto</depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

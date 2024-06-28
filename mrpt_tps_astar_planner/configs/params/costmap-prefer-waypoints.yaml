@@ -1,0 +1,5 @@
+%YAML 1.2
+---
+waypointInfluenceRadius: 1.5
+costScale: 0.5
+useAverageOfPath: true

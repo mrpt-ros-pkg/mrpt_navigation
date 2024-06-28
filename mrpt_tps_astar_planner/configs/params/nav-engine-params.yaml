@@ -1,0 +1,18 @@
+%YAML 1.2
+---
+planner_bbox_margin: 4.0   # [m]
+
+enqueuedActionsToleranceXY: 0.05  # [m]
+enqueuedActionsTolerancePhi: 15.0  # [deg]
+
+enqueuedActionsTimeoutMultiplier: 4   # (ratio)
+
+minEdgeTimeToRefinePath: 0.75  # [seconds]
+
+lookAheadImmediateCollisionChecking: 2.5 # [seconds]
+
+maxDistanceForTargetApproach: 1.0 # [m]
+maxRelativeHeadingForTargetApproach: 180 # [deg]
+
+# For debugging later with the MRPT navlog-viewer app:
+#generateNavLogFiles: true
