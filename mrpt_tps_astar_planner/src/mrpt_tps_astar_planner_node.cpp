@@ -37,7 +37,6 @@
 #include <tf2/LinearMath/Matrix3x3.h>
 #include <tf2/LinearMath/Quaternion.h>
 
-#include <cassert>
 #include <geometry_msgs/msg/pose_array.hpp>
 #include <geometry_msgs/msg/pose_stamped.hpp>
 #include <geometry_msgs/msg/pose_with_covariance_stamped.hpp>
@@ -81,8 +80,10 @@ class TPS_Astar_Planner_Node : public rclcpp::Node
 	/// Flag for receiving map once
 	std::once_flag map_received_flag_;
 
-	/// Pointer to a grid map
-	mrpt::maps::CPointsMap::Ptr grid_map_;
+	/// Obstacle points, in global "map" frame.
+	/// (default: no obstacles)
+	mrpt::maps::CPointsMap::Ptr obstacles_ =
+		mrpt::maps::CSimplePointsMap::Create();
 
 	/// Message for waypoint sequence
 	mrpt_msgs::msg::WaypointSequence wps_msg_;
@@ -127,7 +128,7 @@ class TPS_Astar_Planner_Node : public rclcpp::Node
 	std::string topic_goal_sub_ = "tps_astar_nav_goal";
 
 	/// map topic subscriber name
-	std::string topic_map_sub_;
+	std::string topic_obstacles_gridmap_sub_;
 
 	/// obstacles topic subscriber name
 	std::string topic_obstacles_sub_;
@@ -139,16 +140,19 @@ class TPS_Astar_Planner_Node : public rclcpp::Node
 	std::string topic_wp_seq_pub_;
 
 	/// Parameter file for PTGs
-	std::string ptg_ini_file_;
+	std::string ptg_ini_file_ = "ptgs.ini";
 
 	/// Parameters file for Costmap evaluator
-	std::string costmap_params_file_;
+	std::string costmap_params_file_ = "global-costmap-params.yaml";
 
 	/// Parameters file for waypoints preferences
-	std::string wp_params_file_;
+	std::string wp_params_file_ = "waypoints-params.yaml";
 
 	/// Parameters file for planner
-	std::string planner_params_file_;
+	std::string planner_params_file_ = "planner-params.yaml";
+
+	double mid_waypoints_allowed_distance_ = 0.5;
+	double final_waypoint_allowed_distance_ = 0.4;
 
 	/// Pointer to MRPT 3D display window
 	mrpt::gui::CDisplayWindow3D::Ptr win_3d_;
@@ -189,7 +193,7 @@ class TPS_Astar_Planner_Node : public rclcpp::Node
 	 * @brief Callback function when a new goal location is received
 	 * @param _goal is a PoseStamped object pointer
 	 */
-	void callback_goal(const geometry_msgs::msg::PoseStamped::SharedPtr& _goal);
+	void callback_goal(const geometry_msgs::msg::PoseStamped& _goal);
 
 	/**
 	 * @brief Callback function when a new map is received
@@ -262,25 +266,27 @@ TPS_Astar_Planner_Node::TPS_Astar_Planner_Node() : rclcpp::Node(NODE_NAME)
 
 	sub_goal_ = this->create_subscription<geometry_msgs::msg::PoseStamped>(
 		topic_goal_sub_, qos,
-		[this](const geometry_msgs::msg::PoseStamped::SharedPtr msg)
-		{ this->callback_goal(msg); });
+		[this](const geometry_msgs::msg::PoseStamped& msg) {
+			this->callback_goal(msg);
+		});
 
 	sub_map_ = this->create_subscription<nav_msgs::msg::OccupancyGrid>(
-		topic_map_sub_, qos,
-		[this](const nav_msgs::msg::OccupancyGrid::SharedPtr msg)
-		{ this->callback_map(msg); });
+		topic_obstacles_gridmap_sub_, qos,
+		[this](const nav_msgs::msg::OccupancyGrid::SharedPtr msg) {
+			this->callback_map(msg);
+		});
 
 	sub_replan_ = this->create_subscription<
 		geometry_msgs::msg::PoseWithCovarianceStamped>(
 		topic_replan_sub_, qos,
-		[this](
-			const geometry_msgs::msg::PoseWithCovarianceStamped::SharedPtr msg)
-		{ this->callback_replan(msg); });
+		[this](const geometry_msgs::msg::PoseWithCovarianceStamped::SharedPtr
+				   msg) { this->callback_replan(msg); });
 
 	sub_obstacles_ = this->create_subscription<sensor_msgs::msg::PointCloud2>(
 		topic_obstacles_sub_, qos,
-		[this](const sensor_msgs::msg::PointCloud2::SharedPtr msg)
-		{ this->callback_obstacles(msg); });
+		[this](const sensor_msgs::msg::PointCloud2::SharedPtr msg) {
+			this->callback_obstacles(msg);
+		});
 
 	// Init ROS publishers:
 	// -----------------------
@@ -346,9 +352,12 @@ void TPS_Astar_Planner_Node::read_parameters()
 	RCLCPP_INFO(
 		this->get_logger(), "topic_goal_sub %s", topic_goal_sub_.c_str());
 
-	this->declare_parameter<std::string>("topic_map_sub", "map");
-	this->get_parameter("topic_map_sub", topic_map_sub_);
-	RCLCPP_INFO(this->get_logger(), "topic_map_sub %s", topic_map_sub_.c_str());
+	this->declare_parameter<std::string>("topic_obstacles_gridmap_sub", "map");
+	this->get_parameter(
+		"topic_obstacles_gridmap_sub", topic_obstacles_gridmap_sub_);
+	RCLCPP_INFO(
+		this->get_logger(), "topic_obstacles_gridmap_sub %s",
+		topic_obstacles_gridmap_sub_.c_str());
 
 	this->declare_parameter<std::string>(
 		"topic_obstacles_sub", "/map_pointcloud");
@@ -367,41 +376,48 @@ void TPS_Astar_Planner_Node::read_parameters()
 	RCLCPP_INFO(
 		this->get_logger(), "topic_wp_seq_pub%s", topic_wp_seq_pub_.c_str());
 
-	this->declare_parameter<std::string>("ptg_ini", "");
+	this->declare_parameter<std::string>("ptg_ini", ptg_ini_file_);
 	this->get_parameter("ptg_ini", ptg_ini_file_);
 	RCLCPP_INFO(this->get_logger(), "ptg_ini_file %s", ptg_ini_file_.c_str());
 
-	assert(mrpt::system::fileExists(ptg_ini_file_) && "PTG ini file not found");
+	ASSERT_FILE_EXISTS_(ptg_ini_file_);
 
-	this->declare_parameter<std::string>("global_costmap_parameters", "");
+	this->declare_parameter<std::string>(
+		"global_costmap_parameters", costmap_params_file_);
 	this->get_parameter("global_costmap_parameters", costmap_params_file_);
 	RCLCPP_INFO(
 		this->get_logger(), "global_costmap_params_file %s",
 		costmap_params_file_.c_str());
 
-	assert(
-		mrpt::system::fileExists(costmap_params_file_) &&
-		"costmap params file not found");
+	ASSERT_FILE_EXISTS_(costmap_params_file_);
 
-	this->declare_parameter<std::string>("prefer_waypoints_parameters", "");
+	this->declare_parameter<std::string>(
+		"prefer_waypoints_parameters", wp_params_file_);
 	this->get_parameter("prefer_waypoints_parameters", wp_params_file_);
 	RCLCPP_INFO(
 		this->get_logger(), "prefer_waypoints_parameters_file %s",
 		wp_params_file_.c_str());
 
-	assert(
-		mrpt::system::fileExists(wp_params_file_) &&
-		"Prefer waypoints params file not found");
+	ASSERT_FILE_EXISTS_(wp_params_file_);
 
-	this->declare_parameter<std::string>("planner_parameters", "");
+	this->declare_parameter<std::string>(
+		"planner_parameters", planner_params_file_);
 	this->get_parameter("planner_parameters", planner_params_file_);
 	RCLCPP_INFO(
 		this->get_logger(), "planner_parameters_file %s",
 		planner_params_file_.c_str());
 
-	assert(
-		mrpt::system::fileExists(planner_params_file_) &&
-		"Planner params file not found");
+	ASSERT_FILE_EXISTS_(planner_params_file_);
+
+	this->declare_parameter<double>(
+		"mid_waypoints_allowed_distance", mid_waypoints_allowed_distance_);
+	this->get_parameter(
+		"mid_waypoints_allowed_distance", mid_waypoints_allowed_distance_);
+
+	this->declare_parameter<double>(
+		"final_waypoint_allowed_distance", final_waypoint_allowed_distance_);
+	this->get_parameter(
+		"final_waypoint_allowed_distance", final_waypoint_allowed_distance_);
 }
 
 void TPS_Astar_Planner_Node::initialize_planner()
@@ -425,18 +441,11 @@ void TPS_Astar_Planner_Node::initialize_planner()
 }
 
 void TPS_Astar_Planner_Node::callback_goal(
-	const geometry_msgs::msg::PoseStamped::SharedPtr& _goal)
+	const geometry_msgs::msg::PoseStamped& _goal)
 {
 	try
 	{
-		if (_goal)
-		{
-			RCLCPP_ERROR(
-				this->get_logger(), "Received null ptr in goal callback");
-			return;
-		}
-
-		const auto p = mrpt::ros2bridge::fromROS(_goal->pose);
+		const auto p = mrpt::ros2bridge::fromROS(_goal.pose);
 		nav_goal_ = mrpt::math::TPose2D(p.asTPose());
 
 #if 0  // JLBC: does this make sense with pointcloud obstacles?
@@ -532,13 +541,13 @@ void TPS_Astar_Planner_Node::publish_waypoint_sequence(
 bool TPS_Astar_Planner_Node::is_pose_within_map_bounds(
 	const mrpt::math::TPose2D& pose)
 {
-	if (!grid_map_)
+	if (!obstacles_)
 	{
 		RCLCPP_ERROR(this->get_logger(), "No map to check");
 		return false;
 	}
 
-	auto map_bbox = grid_map_->boundingBox();
+	auto map_bbox = obstacles_->boundingBox();
 	if (pose.x >= map_bbox.min.x && pose.x <= map_bbox.max.x &&
 		pose.y >= map_bbox.min.y && pose.y <= map_bbox.max.y)
 	{
@@ -559,7 +568,7 @@ void TPS_Astar_Planner_Node::init_3d_debug()
 		win_3d_->setCameraZoom(20);
 		win_3d_->setCameraAzimuthDeg(-45);
 
-		auto plane = grid_map_->getVisualization();
+		auto plane = obstacles_->getVisualization();
 		scene_.insert(plane);
 
 		{
@@ -584,7 +593,7 @@ void TPS_Astar_Planner_Node::update_map(
 	auto obsPts = mrpt::maps::CSimplePointsMap::Create();
 	grid.getAsPointCloud(*obsPts);
 	RCLCPP_INFO_STREAM(this->get_logger(), "Setting gridmap for planning");
-	grid_map_ = std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(obsPts);
+	obstacles_ = std::dynamic_pointer_cast<mrpt::maps::CPointsMap>(obsPts);
 
 	// path_plan_done_ = do_path_plan(start_pose_, nav_goal_);
 }
@@ -593,7 +602,7 @@ bool TPS_Astar_Planner_Node::do_path_plan(
 	mrpt::math::TPose2D& start, mrpt::math::TPose2D& goal)
 {
 	RCLCPP_INFO_STREAM(this->get_logger(), "Do path planning");
-	auto obs = mpp::ObstacleSource::FromStaticPointcloud(grid_map_);
+	auto obs = mpp::ObstacleSource::FromStaticPointcloud(obstacles_);
 
 	planner_input_.stateStart.pose = start;
 	planner_input_.stateStart.vel = start_vel_;
@@ -629,13 +638,12 @@ bool TPS_Astar_Planner_Node::do_path_plan(
 						<< planner_input_.worldBboxMax.asString());
 
 	auto costmap = mpp::CostEvaluatorCostMap::FromStaticPointObstacles(
-		*grid_map_, costMapParams_, planner_input_.stateStart.pose);
+		*obstacles_, costMapParams_, planner_input_.stateStart.pose);
 
 	planner_->costEvaluators_.push_back(costmap);
 
 	// Insert custom progress callback:
-	planner_->progressCallback_ = [](const mpp::ProgressCallbackData& pcd)
-	{
+	planner_->progressCallback_ = [](const mpp::ProgressCallbackData& pcd) {
 		std::cout << "[progressCallback] bestCostFromStart: "
 				  << pcd.bestCostFromStart
 				  << " bestCostToGoal: " << pcd.bestCostToGoal
@@ -711,32 +719,18 @@ mpp::refine_trajectory(plannedPath, pathEdges, planner_input.ptgs);
 			std::cout << "Waypoint: x = " << goal_state.pose.x
 					  << ", y= " << goal_state.pose.y << std::endl;
 			auto wp_msg = mrpt_msgs::msg::Waypoint();
-			wp_msg.target.position.x = goal_state.pose.x;
-			wp_msg.target.position.y = goal_state.pose.y;
-			wp_msg.target.position.z = 0.0;
-			wp_msg.target.orientation.x = 0.0;
-			wp_msg.target.orientation.y = 0.0;
-			wp_msg.target.orientation.z = 0.0;
-			wp_msg.target.orientation.w = 0.0;
+			wp_msg.target = mrpt::ros2bridge::toROS_Pose(goal_state.pose);
 
-			wp_msg.allowed_distance = 1.5;	// TODO: Make a param
+			wp_msg.allowed_distance = mid_waypoints_allowed_distance_;
 			wp_msg.allow_skip = true;
 
 			wps_msg_.waypoints.push_back(wp_msg);
 		}
 
 		auto wp_msg = mrpt_msgs::msg::Waypoint();
-		wp_msg.target.position.x = nav_goal_.x;
-		wp_msg.target.position.y = nav_goal_.y;
-		wp_msg.target.position.z = 0.0;
-		tf2::Quaternion quaternion;
-		quaternion.setRPY(0.0, 0.0, nav_goal_.phi);
-		wp_msg.target.orientation.x = quaternion.x();
-		wp_msg.target.orientation.y = quaternion.y();
-		wp_msg.target.orientation.z = quaternion.z();
-		wp_msg.target.orientation.w = quaternion.w();
+		wp_msg.target = mrpt::ros2bridge::toROS_Pose(nav_goal_);
 
-		wp_msg.allowed_distance = 0.4;	// TODO: Make a param
+		wp_msg.allowed_distance = final_waypoint_allowed_distance_;
 		wp_msg.allow_skip = false;
 
 		wps_msg_.waypoints.push_back(wp_msg);
