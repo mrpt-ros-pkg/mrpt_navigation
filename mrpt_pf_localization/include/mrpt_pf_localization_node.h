@@ -86,8 +86,8 @@ class PFLocalizationNode : public rclcpp::Node
 		/// Comma "," separated list of topics to subscribe for PointCloud2 msgs
 		std::string topic_sensors_point_clouds;
 
-		/// Topic name to subscribe for GNNS msgs:
-		std::string topic_gnns = "/gps";
+		/// Topic name to subscribe for GNSS msgs:
+		std::string topic_gnss = "/gps";
 	};
 
 	NodeParameters nodeParams_;
@@ -113,7 +113,7 @@ class PFLocalizationNode : public rclcpp::Node
 	void callbackPointCloud(
 		const sensor_msgs::msg::PointCloud2& msg, const std::string& topicName);
 
-	void callbackGNNS(const sensor_msgs::msg::NavSatFix& msg);
+	void callbackGNSS(const sensor_msgs::msg::NavSatFix& msg);
 
 	void callbackBeacon(const mrpt_msgs::msg::ObservationRangeBeacon&);
 	void callbackRobotPose(
@@ -149,7 +149,7 @@ class PFLocalizationNode : public rclcpp::Node
 		subs_2dlaser_;
 	std::vector<rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr>
 		subs_point_clouds_;
-	rclcpp::Subscription<sensor_msgs::msg::NavSatFix>::SharedPtr subGNNS_;
+	rclcpp::Subscription<sensor_msgs::msg::NavSatFix>::SharedPtr subGNSS_;
 
 	rclcpp::Publisher<geometry_msgs::msg::PoseArray>::SharedPtr pubParticles_;
 

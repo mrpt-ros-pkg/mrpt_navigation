@@ -153,10 +153,10 @@ PFLocalizationNode::PFLocalizationNode(const rclcpp::NodeOptions& options)
 				"https://github.com/mrpt-ros-pkg/mrpt_navigation",
 				true /*force format*/));
 
-	// optionally, subscribe to GPS/GNNS:
-	subGNNS_ = this->create_subscription<sensor_msgs::msg::NavSatFix>(
-		nodeParams_.topic_gnns, sensorQoS,
-		[this](const sensor_msgs::msg::NavSatFix& msg) { callbackGNNS(msg); });
+	// optionally, subscribe to GPS/GNSS:
+	subGNSS_ = this->create_subscription<sensor_msgs::msg::NavSatFix>(
+		nodeParams_.topic_gnss, sensorQoS,
+		[this](const sensor_msgs::msg::NavSatFix& msg) { callbackGNSS(msg); });
 
 	// Publishers:
 	pubParticles_ = this->create_publisher<geometry_msgs::msg::PoseArray>(
@@ -550,9 +550,9 @@ void PFLocalizationNode::callbackOdometry(const nav_msgs::msg::Odometry& msg)
 	core_.on_observation(obs);
 }
 
-void PFLocalizationNode::callbackGNNS(const sensor_msgs::msg::NavSatFix& msg)
+void PFLocalizationNode::callbackGNSS(const sensor_msgs::msg::NavSatFix& msg)
 {
-	RCLCPP_DEBUG_STREAM(get_logger(), "Received GNNS observation");
+	RCLCPP_DEBUG_STREAM(get_logger(), "Received GNSS observation");
 
 	// get sensor pose on the robot:
 	mrpt::poses::CPose3D sensorPose;
@@ -754,7 +754,7 @@ void PFLocalizationNode::NodeParameters::loadFrom(
 
 	MCP_LOAD_OPT(cfg, topic_sensors_2d_scan);
 	MCP_LOAD_OPT(cfg, topic_sensors_point_clouds);
-	MCP_LOAD_OPT(cfg, topic_gnns);
+	MCP_LOAD_OPT(cfg, topic_gnss);
 }
 
 void PFLocalizationNode::updateEstimatedTwist()

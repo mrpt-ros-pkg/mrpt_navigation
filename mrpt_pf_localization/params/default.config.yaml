@@ -37,22 +37,22 @@
 
     # If set to true, the PF will not be initialized until:
     # - A map is provided with georeferencing information, and
-    # - The first GNNS observation arrives (with a GGA datum)
-    #initialize_from_gnns: true
+    # - The first GNSS observation arrives (with a GGA datum)
+    #initialize_from_gnss: true
 
-    # If >0, new tentative particles will be generated from GNNS data,
+    # If >0, new tentative particles will be generated from GNSS data,
     # to help re-localizing if using georeferenced maps:
-    samples_drawn_from_gnns: 20
+    samples_drawn_from_gnss: 20
 
     # The number of standard deviations ("sigmas") to use as the area in
     # which to draw random samples around the input initialization pose
-    # (when NOT using GNNS as input)
+    # (when NOT using GNSS as input)
     relocalize_num_sigmas: 3.0
 
-    # If samples_drawn_from_gnns is enabled, the number of standard
+    # If samples_drawn_from_gnss is enabled, the number of standard
     # deviations ("sigmas") to use as the area in which to draw random
-    # samples around the GNNS prediction:
-    gnns_samples_num_sigmas: 6.0
+    # samples around the GNSS prediction:
+    gnss_samples_num_sigmas: 6.0
 
 
     # For SE(2) mode: Uncertainty motion model for regular odometry-based motion

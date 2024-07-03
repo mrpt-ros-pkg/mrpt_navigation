@@ -127,23 +127,23 @@ class PFLocalizationCore : public mrpt::system::COutputLogger
 		unsigned int initial_particles_per_m2 = 10;
 
 		/** If true, the particles will be initialized according to the first
-		 *  incomming GNNS observation, once the map has been also received.
+		 *  incomming GNSS observation, once the map has been also received.
 		 *  \note This requires a georeferencied metric_map_t.
 		 */
-		bool initialize_from_gnns = false;
+		bool initialize_from_gnss = false;
 
-		/// If >0, new tentative particles will be generated from GNNS data,
+		/// If >0, new tentative particles will be generated from GNSS data,
 		/// to help re-localizing if using georeferenced maps:
-		uint32_t samples_drawn_from_gnns = 20;
+		uint32_t samples_drawn_from_gnss = 20;
 
-		/// If samples_drawn_from_gnns is enabled, the number of standard
+		/// If samples_drawn_from_gnss is enabled, the number of standard
 		/// deviations ("sigmas") to use as the area in which to draw random
-		/// samples around the GNNS prediction:
-		double gnns_samples_num_sigmas = 6.0;
+		/// samples around the GNSS prediction:
+		double gnss_samples_num_sigmas = 6.0;
 
 		/// The number of standard deviations ("sigmas") to use as the area in
 		/// which to draw random samples around the input initialization pose
-		/// (when NOT using GNNS as input)
+		/// (when NOT using GNSS as input)
 		double relocalize_num_sigmas = 3.0;
 
 		unsigned int relocalization_initial_divisions_xy = 4;
@@ -290,10 +290,10 @@ class PFLocalizationCore : public mrpt::system::COutputLogger
 		mrpt::pimpl<Relocalization> pendingRelocalization;
 	};
 
-	mrpt::obs::CObservationGPS::Ptr get_last_gnns_obs() const
+	mrpt::obs::CObservationGPS::Ptr get_last_gnss_obs() const
 	{
 		auto lck = mrpt::lockHelper(pendingObsMtx_);
-		return last_gnns_;
+		return last_gnss_;
 	}
 
    private:
@@ -301,7 +301,7 @@ class PFLocalizationCore : public mrpt::system::COutputLogger
 	std::mutex stateMtx_;
 
 	std::mutex pendingObsMtx_;
-	mrpt::obs::CObservationGPS::Ptr last_gnns_;	 // use mtx: pendingObsMtx_
+	mrpt::obs::CObservationGPS::Ptr last_gnss_;	 // use mtx: pendingObsMtx_
 
 	mrpt::system::CTimeLogger profiler_{
 		true /*enabled*/, "mrpt_pf_localization" /*name*/};
@@ -326,5 +326,5 @@ class PFLocalizationCore : public mrpt::system::COutputLogger
 
 	void internal_fill_state_lastResult();
 
-	std::optional<mrpt::poses::CPose3DPDFGaussian> get_gnns_pose_prediction();
+	std::optional<mrpt::poses::CPose3DPDFGaussian> get_gnss_pose_prediction();
 };

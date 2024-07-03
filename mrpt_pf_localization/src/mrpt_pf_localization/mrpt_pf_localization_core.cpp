@@ -249,9 +249,9 @@ void PFLocalizationCore::Parameters::load_from(
 
 	//
 	MCP_LOAD_OPT(params, initial_particles_per_m2);
-	MCP_LOAD_OPT(params, initialize_from_gnns);
-	MCP_LOAD_OPT(params, samples_drawn_from_gnns);
-	MCP_LOAD_OPT(params, gnns_samples_num_sigmas);
+	MCP_LOAD_OPT(params, initialize_from_gnss);
+	MCP_LOAD_OPT(params, samples_drawn_from_gnss);
+	MCP_LOAD_OPT(params, gnss_samples_num_sigmas);
 	MCP_LOAD_OPT(params, relocalize_num_sigmas);
 
 	// relocalization:
@@ -294,7 +294,7 @@ void PFLocalizationCore::on_observation(const mrpt::obs::CObservation::Ptr& obs)
 	{
 		// for the PF, we only care about GPS observations with GGA positioning:
 		// (Note: all NavSatFix msgs are mapped into MRPT GGA GPS messages)
-		last_gnns_ = gps;
+		last_gnss_ = gps;
 	}
 }
 
@@ -363,11 +363,11 @@ void PFLocalizationCore::onStateUninitialized()
 {
 	using namespace std::string_literals;
 
-	auto lck = mrpt::lockHelper(pendingObsMtx_);  // to protect last_gnns_
+	auto lck = mrpt::lockHelper(pendingObsMtx_);  // to protect last_gnss_
 
 	// Check if we have everything we need to get going:
-	if (((!params_.initialize_from_gnns && params_.initial_pose.has_value()) ||
-		 (params_.initialize_from_gnns && last_gnns_)) &&
+	if (((!params_.initialize_from_gnss && params_.initial_pose.has_value()) ||
+		 (params_.initialize_from_gnss && last_gnss_)) &&
 		params_.metric_map)
 	{
 		// Move:
@@ -383,9 +383,9 @@ void PFLocalizationCore::onStateUninitialized()
 	// We don't have parameters / map yet. Do nothing:
 	std::string excuses;
 	if (!params_.metric_map) excuses += "No reference metric map. ";
-	if (params_.initialize_from_gnns)
+	if (params_.initialize_from_gnss)
 	{
-		if (!last_gnns_) excuses += "No GNNS observation received yet. ";
+		if (!last_gnss_) excuses += "No GNSS observation received yet. ";
 	}
 	else
 	{
@@ -436,17 +436,17 @@ void PFLocalizationCore::onStateToBeInitialized()
 		_.pdf2d.emplace();
 	}
 
-	double gnns_std_factor = 1.0;
+	double gnss_std_factor = 1.0;
 
 	// Get desired initial pose uncertainty, either from
-	// direct pose, or from GNNS:
+	// direct pose, or from GNSS:
 	const auto [pCov, pMean] =
 		[&]() -> std::tuple<mrpt::math::CMatrixDouble66, mrpt::poses::CPose3D>
 	{
-		if (!params_.initialize_from_gnns ||
+		if (!params_.initialize_from_gnss ||
 			// because may be here after a manual click-to-relocalize in RViz,
-			// even if GNNS localization is enabled:
-			(!get_last_gnns_obs() && params_.initial_pose.has_value())	//
+			// even if GNSS localization is enabled:
+			(!get_last_gnss_obs() && params_.initial_pose.has_value())	//
 		)
 		{
 			MRPT_LOG_INFO_STREAM(
@@ -462,18 +462,18 @@ void PFLocalizationCore::onStateToBeInitialized()
 			ASSERTMSG_(
 				_.georeferencing,
 				"The provided metric map needs to be georeferenced for "
-				"'initialize_from_gnns' = true");
+				"'initialize_from_gnss' = true");
 
-			const auto gnnsMeasInMap = get_gnns_pose_prediction();
-			ASSERT_(gnnsMeasInMap);
+			const auto gnssMeasInMap = get_gnss_pose_prediction();
+			ASSERT_(gnssMeasInMap);
 
 			MRPT_LOG_INFO_STREAM(
-				"Initializing from GNNS measurement with: " << *gnnsMeasInMap);
+				"Initializing from GNSS measurement with: " << *gnssMeasInMap);
 
-			gnns_std_factor =
-				params_.gnns_samples_num_sigmas / params_.relocalize_num_sigmas;
+			gnss_std_factor =
+				params_.gnss_samples_num_sigmas / params_.relocalize_num_sigmas;
 
-			return {gnnsMeasInMap->cov, gnnsMeasInMap->mean};
+			return {gnssMeasInMap->cov, gnssMeasInMap->mean};
 		}
 	}();
 
@@ -484,7 +484,7 @@ void PFLocalizationCore::onStateToBeInitialized()
 	const double stdPitch = std::sqrt(pCov(4, 4));
 	const double stdRoll = std::sqrt(pCov(5, 5));
 
-	const double nStds = params_.relocalize_num_sigmas * gnns_std_factor;
+	const double nStds = params_.relocalize_num_sigmas * gnss_std_factor;
 
 	const auto pMin = mrpt::math::TPose3D(
 		pMean.x() - nStds * stdX, pMean.y() - nStds * stdY,
@@ -926,15 +926,15 @@ void PFLocalizationCore::onStateRunning()
 		state_.pdf3d->options.metricMap = params_.metric_map;
 	}
 
-	// Draw additional helper samples from GNNS readings?
+	// Draw additional helper samples from GNSS readings?
 	// ----------------------------------------------------
-	if (auto gnnsPos = get_gnns_pose_prediction();
-		gnnsPos && params_.samples_drawn_from_gnns > 0)
+	if (auto gnssPos = get_gnss_pose_prediction();
+		gnssPos && params_.samples_drawn_from_gnss > 0)
 	{
 		mrpt::poses::CPoseRandomSampler sampler;
-		sampler.setPosePDF(*gnnsPos);
+		sampler.setPosePDF(*gnssPos);
 
-		for (size_t i = 0; i < params_.samples_drawn_from_gnns; i++)
+		for (size_t i = 0; i < params_.samples_drawn_from_gnss; i++)
 		{
 			mrpt::poses::CPose3D p;
 			sampler.drawSample(p);
@@ -973,8 +973,8 @@ void PFLocalizationCore::onStateRunning()
 
 	internal_fill_state_lastResult();
 
-	// clear last GNNS so we do not use it more than once:
-	last_gnns_.reset();
+	// clear last GNSS so we do not use it more than once:
+	last_gnss_.reset();
 
 	// GUI:
 	// -----------
@@ -1414,11 +1414,11 @@ void PFLocalizationCore::set_fake_odometry_increment(
 }
 
 std::optional<mrpt::poses::CPose3DPDFGaussian>
-	PFLocalizationCore::get_gnns_pose_prediction()
+	PFLocalizationCore::get_gnss_pose_prediction()
 {
 	if (!state_.georeferencing) return {};
 
-	auto gps = get_last_gnns_obs();
+	auto gps = get_last_gnss_obs();
 
 	if (!gps) return {};
 
@@ -1436,38 +1436,38 @@ std::optional<mrpt::poses::CPose3DPDFGaussian>
 	 */
 	const auto T_map2enu = -(state_.georeferencing->T_enu_to_map.mean);
 
-	// current GNNS measurement (ENU frame)
+	// current GNSS measurement (ENU frame)
 	mrpt::math::TPoint3D P_enu_meas;
 	mrpt::topography::geodeticToENU_WGS84(
 		coords, P_enu_meas, state_.georeferencing->geo_coord);
 
 	const mrpt::math::TPoint3D P_map_meas = T_map2enu.composePoint(P_enu_meas);
 
-	mrpt::poses::CPose3DPDFGaussian gnnsMeasInMap;
+	mrpt::poses::CPose3DPDFGaussian gnssMeasInMap;
 
-	gnnsMeasInMap.mean = mrpt::poses::CPose3D::FromTranslation(P_map_meas);
+	gnssMeasInMap.mean = mrpt::poses::CPose3D::FromTranslation(P_map_meas);
 
-	gnnsMeasInMap.cov.fill(0);
+	gnssMeasInMap.cov.fill(0);
 	if (gps->covariance_enu.has_value())
 	{
 		const auto& gpsCov = *gps->covariance_enu;
 
 		// XYZ: copy from GPS obs:
-		gnnsMeasInMap.cov.block(0, 0, 3, 3) = gpsCov.asEigen();
+		gnssMeasInMap.cov.block(0, 0, 3, 3) = gpsCov.asEigen();
 	}
 	else
 	{
 		// Default uncertainty:
 		MRPT_LOG_WARN(
-			"Initializing from GNNS measurement without "
+			"Initializing from GNSS measurement without "
 			"covariance_enu, thus using default uncertainty");
 
 		// XYZ: default values:
-		gnnsMeasInMap.cov(0, 0) = gnnsMeasInMap.cov(1, 1) =
-			gnnsMeasInMap.cov(2, 2) = mrpt::square(5.0);
+		gnssMeasInMap.cov(0, 0) = gnssMeasInMap.cov(1, 1) =
+			gnssMeasInMap.cov(2, 2) = mrpt::square(5.0);
 	}
 	// Yaw: large uncertainty:
-	gnnsMeasInMap.cov(3, 3) = mrpt::square(M_PI);
+	gnssMeasInMap.cov(3, 3) = mrpt::square(M_PI);
 
-	return gnnsMeasInMap;
+	return gnssMeasInMap;
 }

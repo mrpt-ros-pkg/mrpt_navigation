@@ -10,7 +10,7 @@ Changelog for package mrpt_rawlog
 * rosbag2rawlog: BUGFIX: sensor poses were inverted
 * rosbag2rawlog: drop msgs if /tf data did not arrive yet instead of aborting
 * rosbag2rawlog: now also can convert from mrpt_msgs/GenericObservation messages
-* Import GNNS observations
+* Import GNSS observations
 * Fix build with older versions of cv_bridge
 * rosbag2rawlog: Implement automatic detection of sensorPose from /tf, and added option to override poses from config yaml
 * rosbag2rawlog: Add support for XYZIRT pointcloud observations
