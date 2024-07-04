@@ -36,10 +36,6 @@ def generate_launch_description():
         'frame_id',
         default_value='map'
     )
-    frequency_arg = DeclareLaunchArgument(
-        'frequency',
-        default_value='1.0'
-    )
     pub_mm_topic_arg = DeclareLaunchArgument(
         'pub_mm_topic',
         default_value='mrpt_map'
@@ -55,7 +51,6 @@ def generate_launch_description():
             {'map_yaml_file': LaunchConfiguration('map_yaml_file')},
             {'mm_file': LaunchConfiguration('mm_file')},
             {'frame_id': LaunchConfiguration('frame_id')},
-            {'frequency': LaunchConfiguration('frequency')},
             {'mrpt_metricmap_file': LaunchConfiguration('mrpt_metricmap_file')},
             {'pub_mm_topic': LaunchConfiguration('pub_mm_topic')},
         ],
@@ -66,7 +61,6 @@ def generate_launch_description():
         mm_file_arg,
         mrpt_metricmap_file_arg,
         frame_id_arg,
-        frequency_arg,
         pub_mm_topic_arg,
         mrpt_map_server_node
     ])

@@ -31,11 +31,6 @@ class MapServer : public rclcpp::Node
 	void loop();
 
    private:
-	// member variables
-	double frequency_ = 1.0;  //!< rate at which the ros map is published
-
-	double force_republish_period_ = 0;	 //!< [s] (0:disabled)
-
 	// params that come from launch file
 	std::string pub_mm_topic_ = "map_server";
 
@@ -63,6 +58,8 @@ class MapServer : public rclcpp::Node
 	struct PerTopicData
 	{
 		typename rclcpp::Publisher<msg_t>::SharedPtr pub;
+
+#if 0  // disabled
 		size_t subscribers = 0;
 		double lastPublishTime = 0;
 
@@ -83,6 +80,7 @@ class MapServer : public rclcpp::Node
 			if (ret) lastPublishTime = now.seconds();
 			return ret;
 		}
+#endif
 	};
 
 	// for the top-level mm metric map:

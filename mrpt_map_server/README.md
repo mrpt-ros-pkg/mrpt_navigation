@@ -19,7 +19,9 @@ Unlike classic ROS 1 ``map_server``, this node can publish a range of different 
 
 ### Working rationale
 The C++ ROS 2 node loads all parameters at start up, loads the map
-as requested by parameters, and publishes the metric map in the corresponding topics. Messages are automatically re-sent when new subscribers are detected.
+as requested by parameters, and publishes the metric map in the corresponding topics.
+Messages are sent as transient local, so new subscribers can receive them even 
+if they start afterwards.
 
 There are **three formats** in which maps can be read:
 
@@ -54,8 +56,6 @@ of usage of each of these methods.
 * `pub_mm_topic` (Default=`mrpt_map`). Despite the map source, it will be eventually stored as a `mp2p_icp`'s `metric_map_t` (`*.mm`) structure, then each layer will be published using its **layer name** as a **topic name** and with the appropriate type
 (e.g. PointCloud2, OccupancyGrid,...). Also, the whole metric map is published as a generic serialized object to the topic defined by the 
 parameter `pub_mm_topic`.
-* `frequency` (Default=``1``) Rate in Hz at which all published topics will be checked for new subscribers and, if new ones found, publish the map messages.
-* `force_republish_period` (Default=``5``) Maximum period in seconds between re-publishing events for all map topics. Can be disabled setting it to ``0``.
 
 ### Subscribed topics
 None.
