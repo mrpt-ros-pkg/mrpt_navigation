@@ -33,6 +33,10 @@ Uses A* over a SE(2) lattice and PTGs to sample collision-free paths. The implem
 
 * `show_gui`: Shows its own MRPT GUI with the planned paths.
 
+* `topic_gridmap_sub`: One or more (comma separated) topic names to subscribe for occupancy grid maps.
+
+* `topic_obstacle_points_sub`: One or more (comma separated) topic names to subscribe for obstacle points.
+
 ### Subscribed topics
 * xxx
 
