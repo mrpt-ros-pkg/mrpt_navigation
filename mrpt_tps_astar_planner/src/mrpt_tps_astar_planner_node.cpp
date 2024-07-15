@@ -272,8 +272,11 @@ TPS_Astar_Planner_Node::TPS_Astar_Planner_Node() : rclcpp::Node(NODE_NAME)
 		{ this->callback_goal(msg); });
 
 	// parse lists:
-	std::set<std::string> lstStaticTopics;
-	mrpt::system::tokenize(topic_static_maps_, ", \t\r\n", lstStaticTopics);
+	std::vector<std::string> vecStaticTopics;
+	mrpt::system::tokenize(topic_static_maps_, ", \t\r\n", vecStaticTopics);
+	// more convenient as a set:
+	std::set<std::string> staticTopics;
+	for (const auto& s : vecStaticTopics) staticTopics.insert(s);
 
 	std::vector<std::string> lstGridTopics;
 	mrpt::system::tokenize(topic_gridmap_sub_, ", \t\r\n", lstGridTopics);
@@ -284,7 +287,7 @@ TPS_Astar_Planner_Node::TPS_Astar_Planner_Node() : rclcpp::Node(NODE_NAME)
 	for (const auto& topic : lstGridTopics)
 	{
 		auto& e = gridmaps_.emplace_back();
-		const bool isStatic = lstStaticTopics.count(topic) != 0;
+		const bool isStatic = staticTopics.count(topic) != 0;
 
 		e.sub = this->create_subscription<nav_msgs::msg::OccupancyGrid>(
 			topic, isStatic ? mapQoS : qos,
@@ -298,7 +301,7 @@ TPS_Astar_Planner_Node::TPS_Astar_Planner_Node() : rclcpp::Node(NODE_NAME)
 	for (const auto& topic : lstPointTopics)
 	{
 		auto& e = obstacle_points_.emplace_back();
-		const bool isStatic = lstStaticTopics.count(topic) != 0;
+		const bool isStatic = staticTopics.count(topic) != 0;
 
 		e.sub = this->create_subscription<sensor_msgs::msg::PointCloud2>(
 			topic, isStatic ? mapQoS : qos,
