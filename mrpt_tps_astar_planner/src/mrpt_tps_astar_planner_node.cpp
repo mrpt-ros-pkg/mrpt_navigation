@@ -100,7 +100,7 @@ class TPS_Astar_Planner_Node : public rclcpp::Node
 		mrpt::maps::COccupancyGridMap2D::Ptr grid;
 		mrpt::maps::CSimplePointsMap::Ptr grid_obstacles;
 	};
-	std::vector<InfoPerGridMapSource> gridmaps_;
+	std::deque<InfoPerGridMapSource> gridmaps_;
 
 	/// Subscriber to obstacle points
 	struct InfoPerPointMapSource
@@ -109,7 +109,7 @@ class TPS_Astar_Planner_Node : public rclcpp::Node
 		mrpt::maps::CPointsMap::Ptr obstacle_points;
 	};
 
-	std::vector<InfoPerPointMapSource> obstacle_points_;
+	std::deque<InfoPerPointMapSource> obstacle_points_;
 
 	/// Subscriber to topic from rnav that tells to replan
 	/// TODO(JL): Switch into a service!
@@ -130,6 +130,11 @@ class TPS_Astar_Planner_Node : public rclcpp::Node
 
 	/// obstacles topic subscriber name(s) (multiple if separated by ',')
 	std::string topic_obstacle_points_sub_ = "";
+
+	/// topics (from topic_gridmap_sub_, topic_obstacle_points_sub_) that shall
+	/// be subscribed with transient QoS (normally, all static maps) (multiple
+	/// if separated by ',')
+	std::string topic_static_maps_ = "/map";
 
 	/// replan topic subscriber name
 	std::string topic_replan_sub_;
@@ -253,6 +258,9 @@ class TPS_Astar_Planner_Node : public rclcpp::Node
 TPS_Astar_Planner_Node::TPS_Astar_Planner_Node() : rclcpp::Node(NODE_NAME)
 {
 	const auto qos = rclcpp::SystemDefaultsQoS();
+	// See: REP-2003: https://ros.org/reps/rep-2003.html
+	const auto mapQoS =
+		rclcpp::QoS(rclcpp::KeepLast(1)).transient_local().reliable();
 
 	read_parameters();
 
@@ -264,6 +272,9 @@ TPS_Astar_Planner_Node::TPS_Astar_Planner_Node() : rclcpp::Node(NODE_NAME)
 		{ this->callback_goal(msg); });
 
 	// parse lists:
+	std::set<std::string> lstStaticTopics;
+	mrpt::system::tokenize(topic_static_maps_, ", \t\r\n", lstStaticTopics);
+
 	std::vector<std::string> lstGridTopics;
 	mrpt::system::tokenize(topic_gridmap_sub_, ", \t\r\n", lstGridTopics);
 
@@ -273,9 +284,10 @@ TPS_Astar_Planner_Node::TPS_Astar_Planner_Node() : rclcpp::Node(NODE_NAME)
 	for (const auto& topic : lstGridTopics)
 	{
 		auto& e = gridmaps_.emplace_back();
+		const bool isStatic = lstStaticTopics.count(topic) != 0;
 
 		e.sub = this->create_subscription<nav_msgs::msg::OccupancyGrid>(
-			topic, qos,
+			topic, isStatic ? mapQoS : qos,
 			[this, &e](const nav_msgs::msg::OccupancyGrid::SharedPtr msg)
 			{ this->callback_map(msg, e); });
 	}
@@ -286,9 +298,10 @@ TPS_Astar_Planner_Node::TPS_Astar_Planner_Node() : rclcpp::Node(NODE_NAME)
 	for (const auto& topic : lstPointTopics)
 	{
 		auto& e = obstacle_points_.emplace_back();
+		const bool isStatic = lstStaticTopics.count(topic) != 0;
 
 		e.sub = this->create_subscription<sensor_msgs::msg::PointCloud2>(
-			topic, qos,
+			topic, isStatic ? mapQoS : qos,
 			[this, &e](const sensor_msgs::msg::PointCloud2::SharedPtr msg)
 			{ this->callback_obstacles(msg, e); });
 	}
@@ -326,15 +339,22 @@ void TPS_Astar_Planner_Node::read_parameters()
 		"topic_obstacles_gridmap_sub", topic_gridmap_sub_);
 	this->get_parameter("topic_obstacles_gridmap_sub", topic_gridmap_sub_);
 	RCLCPP_INFO(
-		this->get_logger(), "topic_obstacles_gridmap_sub %s",
+		this->get_logger(), "topic_obstacles_gridmap_sub: %s",
 		topic_gridmap_sub_.c_str());
 
 	this->declare_parameter<std::string>(
 		"topic_obstacles_sub", topic_obstacle_points_sub_);
 	this->get_parameter("topic_obstacles_sub", topic_obstacle_points_sub_);
 	RCLCPP_INFO(
-		this->get_logger(), "topic_obstacles_sub %s",
+		this->get_logger(), "topic_obstacles_sub: %s",
 		topic_obstacle_points_sub_.c_str());
+
+	this->declare_parameter<std::string>(
+		"topic_static_maps", topic_static_maps_);
+	this->get_parameter("topic_static_maps", topic_static_maps_);
+	RCLCPP_INFO(
+		this->get_logger(), "topic_static_maps: %s",
+		topic_static_maps_.c_str());
 
 	this->declare_parameter<std::string>("topic_replan_sub", "/replan");
 	this->get_parameter("topic_replan_sub", topic_replan_sub_);
