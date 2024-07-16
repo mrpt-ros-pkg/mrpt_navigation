@@ -27,6 +27,7 @@
 #include <mrpt/math/TPose2D.h>
 #include <mrpt/math/TTwist2D.h>
 #include <mrpt/obs/CObservationOdometry.h>
+#include <mrpt/poses/CPose3D.h>
 #include <mrpt/ros2bridge/map.h>
 #include <mrpt/ros2bridge/point_cloud2.h>
 #include <mrpt/ros2bridge/pose.h>
@@ -37,10 +38,13 @@
 #include <mrpt/system/string_utils.h>
 #include <tf2/LinearMath/Matrix3x3.h>
 #include <tf2/LinearMath/Quaternion.h>
+#include <tf2_ros/buffer.h>
+#include <tf2_ros/transform_listener.h>
 
 #include <geometry_msgs/msg/pose_array.hpp>
 #include <geometry_msgs/msg/pose_stamped.hpp>
 #include <geometry_msgs/msg/pose_with_covariance_stamped.hpp>
+#include <geometry_msgs/msg/transform_stamped.hpp>
 #include <geometry_msgs/msg/twist.hpp>
 #include <memory>
 #include <mrpt_msgs/msg/waypoint.hpp>
@@ -53,6 +57,7 @@
 #include <sensor_msgs/msg/point_cloud2.hpp>
 #include <std_msgs/msg/bool.hpp>
 #include <string>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 
 // for debugging
 #include <mrpt/gui/CDisplayWindow3D.h>
@@ -119,6 +124,10 @@ class TPS_Astar_Planner_Node : public rclcpp::Node
 	/// Publisher for waypoint sequence
 	rclcpp::Publisher<mrpt_msgs::msg::WaypointSequence>::SharedPtr pub_wp_seq_;
 
+	// tf2 buffer and listener
+	std::shared_ptr<tf2_ros::Buffer> tf_buffer_;
+	std::shared_ptr<tf2_ros::TransformListener> tf_listener_;
+
 	/// Flag for MRPT GUI
 	bool gui_mrpt_ = false;
 
@@ -176,6 +185,20 @@ class TPS_Astar_Planner_Node : public rclcpp::Node
 	bool path_plan_done_ = false;
 
    private:
+	/**
+	 * @brief wait for transform between map frame and the robot frame
+	 *
+	 * @param des position of the robot with respect to map frame
+	 * @param target_frame the robot tf frame
+	 * @param source_frame the map tf frame
+	 * @param timeout_milliseconds timeout for transform wait
+	 *
+	 * @return true if there is transform from map to the robot
+	 */
+	[[nodiscard]] bool wait_for_transform(
+		mrpt::poses::CPose3D& des, const std::string& target_frame,
+		const std::string& source_frame, const int timeout_milliseconds = 50);
+
 	/**
 	 * @brief Reads a parameter from the node's parameter server.
 	 *
@@ -264,6 +287,12 @@ TPS_Astar_Planner_Node::TPS_Astar_Planner_Node() : rclcpp::Node(NODE_NAME)
 
 	read_parameters();
 
+	// Create the tf2 buffer and listener
+	// ----------------------------------------
+
+	tf_buffer_ = std::make_shared<tf2_ros::Buffer>(this->get_clock());
+	tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
+
 	// Init ROS subs:
 	// -----------------------
 	sub_goal_ = this->create_subscription<geometry_msgs::msg::PoseStamped>(
@@ -323,6 +352,36 @@ TPS_Astar_Planner_Node::TPS_Astar_Planner_Node() : rclcpp::Node(NODE_NAME)
 		topic_wp_seq_pub_, qos);
 
 	initialize_planner();
+}
+
+bool TPS_Astar_Planner_Node::wait_for_transform(
+	mrpt::poses::CPose3D& des, const std::string& target_frame,
+	const std::string& source_frame, const int timeout_milliseconds)
+
+{
+	const rclcpp::Duration timeout(0, 1000 * timeout_milliseconds);
+	try
+	{
+		geometry_msgs::msg::TransformStamped src_to_trg_frame =
+			tf_buffer_->lookupTransform(
+				source_frame, target_frame, tf2::TimePointZero,
+				tf2::durationFromSec(timeout.seconds()));
+
+		tf2::Transform tf;
+		tf2::fromMsg(src_to_trg_frame.transform, tf);
+		des = mrpt::ros2bridge::fromROS(tf);
+
+		RCLCPP_DEBUG(
+			get_logger(), "[wait_for_transform] Found pose %s -> %s: %s",
+			source_frame.c_str(), target_frame.c_str(), des.asString().c_str());
+
+		return true;
+	}
+	catch (const tf2::TransformException& ex)
+	{
+		RCLCPP_ERROR(get_logger(), "[wait_for_transform] %s", ex.what());
+		return false;
+	}
 }
 
 void TPS_Astar_Planner_Node::read_parameters()
@@ -440,6 +499,16 @@ void TPS_Astar_Planner_Node::callback_goal(
 	{
 		const auto p = mrpt::ros2bridge::fromROS(_goal.pose);
 		nav_goal_ = mrpt::math::TPose2D(p.asTPose());
+
+		mrpt::poses::CPose3D robot_pose;
+		const bool robot_pose_ok =
+			wait_for_transform(robot_pose, "base_link", "map");
+
+		ASSERT_(robot_pose_ok);
+
+		start_pose_.x = robot_pose.x();
+		start_pose_.y = robot_pose.y();
+		start_pose_.phi = robot_pose.yaw();
 
 		path_plan_done_ = do_path_plan(start_pose_, nav_goal_);
 	}
