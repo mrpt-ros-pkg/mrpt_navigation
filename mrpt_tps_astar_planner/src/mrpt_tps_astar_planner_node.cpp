@@ -178,9 +178,6 @@ class TPS_Astar_Planner_Node : public rclcpp::Node
 	/// Parameters for the cost evaluator
 	mpp::CostEvaluatorCostMap::Parameters costMapParams_;
 
-	/// Path plan cost evaluators
-	std::vector<mpp::CostEvaluator::Ptr> costEvaluators_;
-
 	/// bool indicating path plan is done
 	bool path_plan_done_ = false;
 
@@ -654,6 +651,9 @@ bool TPS_Astar_Planner_Node::do_path_plan(
 	// --------------------------------------------------------------
 	auto lckObs = mrpt::lockHelper(obstacles_cs_);
 
+	planner_->costEvaluators_.clear();
+	planner_input_.obstacles.clear();
+
 	size_t obstacleSources = 0, totalObstaclePoints = 0;
 	// gridmaps:
 	for (const auto& e : gridmaps_)
@@ -741,10 +741,11 @@ bool TPS_Astar_Planner_Node::do_path_plan(
 		return false;
 	}
 
-	if (plan.success)
+	// if (plan.success) { activePlanOutput_ = plan; }
+
+	if (!plan.success)
 	{
-		// activePlanOutput_ = plan;
-		costEvaluators_ = planner_->costEvaluators_;
+		planner_->costEvaluators_.clear();
 	}
 
 	// backtrack:
