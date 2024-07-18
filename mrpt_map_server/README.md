@@ -25,19 +25,20 @@ if they start afterwards.
 
 There are **three formats** in which maps can be read:
 
-1. The **preferred format** is as an [mp2p_icp](https://github.com/MOLAorg/mp2p_icp)'s metric map files (`*.mm`), normally generated
-   via [sm2mm](https://github.com/MOLAorg/mp2p_icp/tree/master/apps/sm2mm) from a [MRPT "simplemap"](https://docs.mrpt.org/reference/latest/class_mrpt_maps_CSimpleMap.html) (``*.simplemap``) that comes from a SLAM session,
-   e.g. using the forthcoming package [mola_lidar_odometry](https://github.com/MOLAorg/mola_lidar_odometry).
+1. The **preferred format** is as an [mp2p_icp](https://github.com/MOLAorg/mp2p_icp)'s metric map file (`*.mm`), normally generated
+   via [sm2mm](https://github.com/MOLAorg/mp2p_icp/tree/master/apps/sm2mm) from a [MRPT "simplemap"](https://docs.mrpt.org/reference/latest/class_mrpt_maps_CSimpleMap.html) (``*.simplemap``)
+   that comes from a SLAM session, e.g. using [mola_lidar_odometry](https://docs.mola-slam.org/latest/).
 
-2. As a [ROS standard YAML file](https://wiki.ros.org/map_server). Here, a ``*.yaml`` file specifies the metadata of a 2D occupancy gridmap, which is stored as an accompanying image file. The map will be actually encapsulated into a `metric_map_t` map with layer name `map`.
+3. As a [ROS standard YAML file](https://wiki.ros.org/map_server). Here, a ``*.yaml`` file specifies the metadata of a 2D occupancy gridmap,
+   which is stored as an accompanying image file. The map will be actually encapsulated into a `metric_map_t` map with layer name `map`.
 
-3. As a [serialized](https://docs.mrpt.org/reference/latest/group_mrpt_serialization_grp.html) MRPT metric map file.
+4. As a [serialized](https://docs.mrpt.org/reference/latest/group_mrpt_serialization_grp.html) MRPT metric map file.
 A ``*.metricmap`` file contains any of the existing 
 [MRPT metric maps](https://docs.mrpt.org/reference/latest/group_mrpt_maps_grp.html)
 (point clouds, grid maps, etc.), which may come from custom applications or other SLAM packages.
 The map will be actually encapsulated into a `metric_map_t` map with layer name `map`.
 
-So, whatever is the map source, this node will internally build a [`metric_map_t`](https://docs.mola-slam.org/mp2p_icp/)
+So, whatever is the map source, this node will internally build a [`metric_map_t`](https://docs.mola-slam.org/latest/mp2p_icp_basics.html)
 with one or more map layers, so it gets published in a uniform way to subscribers.
 
 Refer to example launch files at the end of this file for examples
