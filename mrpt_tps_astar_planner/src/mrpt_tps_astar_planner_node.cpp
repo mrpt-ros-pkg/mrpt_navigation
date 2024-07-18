@@ -600,6 +600,15 @@ void TPS_Astar_Planner_Node::update_obstacles(
 			this->get_logger(),
 			"Failed to convert Point Cloud to MRPT Points Map");
 	}
+
+	// Transform the cloud to its global pose in the map:
+	mrpt::poses::CPose3D sensorPoseInMap;
+	const bool tfOk = wait_for_transform(
+		sensorPoseInMap, pcMsg->header.frame_id, frame_id_map_);
+	ASSERT_(tfOk);
+
+	pc->changeCoordinatesReference(sensorPoseInMap);
+
 	e.obstacle_points = pc;
 }
 
