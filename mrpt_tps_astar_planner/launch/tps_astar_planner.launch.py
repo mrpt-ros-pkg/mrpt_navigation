@@ -39,6 +39,14 @@ def generate_launch_description():
         'topic_wp_seq_pub', default_value='/waypoints',
         description='Waypoints sequence publish topic')
 
+    frame_id_robot = DeclareLaunchArgument(
+        'frame_id_robot', default_value='base_link',
+        description='frame_id for the robot')
+
+    frame_id_map = DeclareLaunchArgument(
+        'frame_id_map', default_value='map',
+        description='frame_id for the map')
+
     planner_parameters_arg = DeclareLaunchArgument(
         'planner_parameters', default_value=os.path.join(myDir, 'configs', 'params', 'planner-params.yaml'),
         description='Path to planner-params.yaml configuration file')
@@ -71,6 +79,8 @@ def generate_launch_description():
             {'topic_static_maps': LaunchConfiguration('topic_static_maps')},
             {'topic_replan_sub': LaunchConfiguration('topic_replan_sub')},
             {'topic_wp_seq_pub': LaunchConfiguration('topic_wp_seq_pub')},
+            {'frame_id_robot': LaunchConfiguration('frame_id_robot')},
+            {'frame_id_map': LaunchConfiguration('frame_id_map')},
             # Param files:
             {'planner_parameters': LaunchConfiguration('planner_parameters')},
             {'global_costmap_parameters': LaunchConfiguration(
@@ -90,6 +100,8 @@ def generate_launch_description():
         topic_static_maps,
         topic_replan_sub,
         topic_wp_seq_pub,
+        frame_id_robot,
+        frame_id_map,
         planner_parameters_arg,
         ptg_ini_arg,
         global_costmap_parameters_arg,

@@ -131,6 +131,12 @@ class TPS_Astar_Planner_Node : public rclcpp::Node
 	/// Flag for MRPT GUI
 	bool gui_mrpt_ = false;
 
+	/// frame_id for "map"
+	std::string frame_id_map_ = "map";
+
+	/// frame_id for the robot
+	std::string frame_id_robot_ = "base_link";
+
 	/// goal topic subscriber name
 	std::string topic_goal_sub_ = "tps_astar_nav_goal";
 
@@ -389,6 +395,15 @@ void TPS_Astar_Planner_Node::read_parameters()
 		this->get_logger(), "MRPT GUI Enabled: %s",
 		gui_mrpt_ ? "true" : "false");
 
+	this->declare_parameter<std::string>("frame_id_map", frame_id_map_);
+	this->get_parameter("frame_id_map", frame_id_map_);
+	RCLCPP_INFO(this->get_logger(), "frame_id_map %s", frame_id_map_.c_str());
+
+	this->declare_parameter<std::string>("frame_id_robot", frame_id_robot_);
+	this->get_parameter("frame_id_robot", frame_id_robot_);
+	RCLCPP_INFO(
+		this->get_logger(), "frame_id_robot %s", frame_id_robot_.c_str());
+
 	this->declare_parameter<std::string>("topic_goal_sub", topic_goal_sub_);
 	this->get_parameter("topic_goal_sub", topic_goal_sub_);
 	RCLCPP_INFO(
@@ -499,7 +514,7 @@ void TPS_Astar_Planner_Node::callback_goal(
 
 		mrpt::poses::CPose3D robot_pose;
 		const bool robot_pose_ok =
-			wait_for_transform(robot_pose, "base_link", "map");
+			wait_for_transform(robot_pose, frame_id_robot_, frame_id_map_);
 
 		ASSERT_(robot_pose_ok);
 
@@ -794,8 +809,10 @@ mpp::refine_trajectory(plannedPath, pathEdges, planner_input.ptgs);
 		for (auto& kv : interpPath)
 		{
 			const auto& goal_state = kv.second.state;
+#if 0
 			std::cout << "Waypoint: x = " << goal_state.pose.x
 					  << ", y= " << goal_state.pose.y << std::endl;
+#endif
 			auto wp_msg = mrpt_msgs::msg::Waypoint();
 			wp_msg.target = mrpt::ros2bridge::toROS_Pose(goal_state.pose);
 
