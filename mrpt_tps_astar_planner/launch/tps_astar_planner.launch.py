@@ -31,10 +31,6 @@ def generate_launch_description():
         'topic_static_maps', default_value='',
         description='Topic(s) (comma-separated) that shall be subscribed using transient local QoS. To be used with static map sources. Topic(s) are to be provided also in the lists "topic_obstacles_gridmap_sub" or "topic_obstacles_sub"')
 
-    topic_replan_sub = DeclareLaunchArgument(
-        'topic_replan_sub', default_value='/replan',
-        description='Replan subscription topic')
-
     topic_wp_seq_pub = DeclareLaunchArgument(
         'topic_wp_seq_pub', default_value='/waypoints',
         description='Waypoints sequence publish topic')
@@ -77,7 +73,6 @@ def generate_launch_description():
             {'topic_obstacles_sub': LaunchConfiguration(
                 'topic_obstacles_sub')},
             {'topic_static_maps': LaunchConfiguration('topic_static_maps')},
-            {'topic_replan_sub': LaunchConfiguration('topic_replan_sub')},
             {'topic_wp_seq_pub': LaunchConfiguration('topic_wp_seq_pub')},
             {'frame_id_robot': LaunchConfiguration('frame_id_robot')},
             {'frame_id_map': LaunchConfiguration('frame_id_map')},
@@ -98,7 +93,6 @@ def generate_launch_description():
         topic_obstacles_gridmap_sub,
         topic_obstacles_sub,
         topic_static_maps,
-        topic_replan_sub,
         topic_wp_seq_pub,
         frame_id_robot,
         frame_id_map,

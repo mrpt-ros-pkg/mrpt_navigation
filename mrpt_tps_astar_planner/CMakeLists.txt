@@ -9,6 +9,7 @@ find_package(nav_msgs REQUIRED)
 find_package(geometry_msgs)
 find_package(sensor_msgs REQUIRED)
 find_package(mrpt_msgs REQUIRED)
+find_package(mrpt_nav_interfaces REQUIRED)
 find_package(tf2 REQUIRED)
 find_package(tf2_ros)
 find_package(tf2_geometry_msgs REQUIRED)
@@ -83,6 +84,7 @@ ament_target_dependencies(
   "sensor_msgs"
   "geometry_msgs"
   "mrpt_msgs"
+  "mrpt_nav_interfaces"
   "tf2"
   "tf2_ros"
   "tf2_geometry_msgs"

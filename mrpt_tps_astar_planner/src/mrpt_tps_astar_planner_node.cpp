@@ -49,6 +49,8 @@
 #include <memory>
 #include <mrpt_msgs/msg/waypoint.hpp>
 #include <mrpt_msgs/msg/waypoint_sequence.hpp>
+#include <mrpt_nav_interfaces/srv/make_plan_from_to.hpp>
+#include <mrpt_nav_interfaces/srv/make_plan_to.hpp>
 #include <mutex>
 #include <nav_msgs/msg/occupancy_grid.hpp>
 #include <nav_msgs/msg/odometry.hpp>
@@ -80,18 +82,6 @@ class TPS_Astar_Planner_Node : public rclcpp::Node
 	/// CTimeLogger instance for profiling
 	mrpt::system::CTimeLogger profiler_;
 
-	/// Message for waypoint sequence
-	mrpt_msgs::msg::WaypointSequence wps_msg_;
-
-	/// Navigation goal position
-	mrpt::math::TPose2D nav_goal_{0, 0, 0};
-
-	/// Navigation start position
-	mrpt::math::TPose2D start_pose_{0, 0, 0};
-
-	/// Robot velocity at start
-	mrpt::math::TTwist2D start_vel_{0, 0, 0};
-
 	/// Subscriber to Goal position
 	rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr sub_goal_;
 
@@ -115,11 +105,6 @@ class TPS_Astar_Planner_Node : public rclcpp::Node
 	};
 
 	std::deque<InfoPerPointMapSource> obstacle_points_;
-
-	/// Subscriber to topic from rnav that tells to replan
-	/// TODO(JL): Switch into a service!
-	rclcpp::Subscription<
-		geometry_msgs::msg::PoseWithCovarianceStamped>::SharedPtr sub_replan_;
 
 	/// Publisher for waypoint sequence
 	rclcpp::Publisher<mrpt_msgs::msg::WaypointSequence>::SharedPtr pub_wp_seq_;
@@ -151,9 +136,6 @@ class TPS_Astar_Planner_Node : public rclcpp::Node
 	/// if separated by ',')
 	std::string topic_static_maps_ = "/map";
 
-	/// replan topic subscriber name
-	std::string topic_replan_sub_;
-
 	/// waypoint sequence topic publisher name
 	std::string topic_wp_seq_pub_;
 
@@ -178,14 +160,10 @@ class TPS_Astar_Planner_Node : public rclcpp::Node
 	/// Path planner algorithm
 	mpp::Planner::Ptr planner_;
 
-	/// Path planner input
-	mpp::PlannerInput planner_input_;
+	mpp::TrajectoriesAndRobotShape ptgs_;
 
 	/// Parameters for the cost evaluator
 	mpp::CostEvaluatorCostMap::Parameters costMapParams_;
-
-	/// bool indicating path plan is done
-	bool path_plan_done_ = false;
 
    private:
 	/**
@@ -261,13 +239,40 @@ class TPS_Astar_Planner_Node : public rclcpp::Node
 		const sensor_msgs::msg::PointCloud2::SharedPtr& _pc,
 		InfoPerPointMapSource& e);
 
+	struct PlanResult
+	{
+		PlanResult() = default;
+
+		bool valid = false;
+		mpp::PlannerOutput plan_output;
+		mrpt_msgs::msg::WaypointSequence wps{};
+	};
+
 	/**
 	 * @brief Method to perform the path plan
 	 * @param start robot initial pose
 	 * @param goal  robot goal pose
-	 * @return true if path plan was successful false if path plan failed
+	 * @return the plan results
 	 */
-	bool do_path_plan(mrpt::math::TPose2D& start, mrpt::math::TPose2D& goal);
+	PlanResult do_path_plan(
+		const mrpt::math::TPose2D& start, const mrpt::math::TPose2D& goal);
+
+	void srv_make_plan_to(
+		const std::shared_ptr<mrpt_nav_interfaces::srv::MakePlanTo::Request>
+			req,
+		std::shared_ptr<mrpt_nav_interfaces::srv::MakePlanTo::Response> resp);
+
+	rclcpp::Service<mrpt_nav_interfaces::srv::MakePlanTo>::SharedPtr
+		srvMakePlanTo_;
+
+	void srv_make_plan_from_to(
+		const std::shared_ptr<mrpt_nav_interfaces::srv::MakePlanFromTo::Request>
+			req,
+		std::shared_ptr<mrpt_nav_interfaces::srv::MakePlanFromTo::Response>
+			resp);
+
+	rclcpp::Service<mrpt_nav_interfaces::srv::MakePlanFromTo>::SharedPtr
+		srvMakePlanFromTo_;
 
 	/**
 	 * @brief Debug method to visualize the planning
@@ -283,6 +288,8 @@ class TPS_Astar_Planner_Node : public rclcpp::Node
 
 TPS_Astar_Planner_Node::TPS_Astar_Planner_Node() : rclcpp::Node(NODE_NAME)
 {
+	using namespace std::string_literals;
+
 	const auto qos = rclcpp::SystemDefaultsQoS();
 	// See: REP-2003: https://ros.org/reps/rep-2003.html
 	const auto mapQoS =
@@ -341,19 +348,31 @@ TPS_Astar_Planner_Node::TPS_Astar_Planner_Node() : rclcpp::Node(NODE_NAME)
 			{ this->callback_obstacles(msg, e); });
 	}
 
-	sub_replan_ = this->create_subscription<
-		geometry_msgs::msg::PoseWithCovarianceStamped>(
-		topic_replan_sub_, qos,
-		[this](
-			const geometry_msgs::msg::PoseWithCovarianceStamped::SharedPtr msg)
-		{ this->callback_replan(msg); });
-
 	// Init ROS publishers:
 	// -----------------------
-
 	pub_wp_seq_ = this->create_publisher<mrpt_msgs::msg::WaypointSequence>(
 		topic_wp_seq_pub_, qos);
 
+	// Init services:
+	// --------------------------
+	srvMakePlanTo_ = this->create_service<mrpt_nav_interfaces::srv::MakePlanTo>(
+		this->get_fully_qualified_name() + "/make_plan_to"s,
+		[this](
+			const mrpt_nav_interfaces::srv::MakePlanTo::Request::SharedPtr req,
+			mrpt_nav_interfaces::srv::MakePlanTo::Response::SharedPtr res)
+		{ srv_make_plan_to(req, res); });
+
+	srvMakePlanFromTo_ = this->create_service<
+		mrpt_nav_interfaces::srv::MakePlanFromTo>(
+		this->get_fully_qualified_name() + "/make_plan_from_to"s,
+		[this](
+			const mrpt_nav_interfaces::srv::MakePlanFromTo::Request::SharedPtr
+				req,
+			mrpt_nav_interfaces::srv::MakePlanFromTo::Response::SharedPtr res)
+		{ srv_make_plan_from_to(req, res); });
+
+	// Init planner:
+	// --------------------------
 	initialize_planner();
 }
 
@@ -430,11 +449,6 @@ void TPS_Astar_Planner_Node::read_parameters()
 		this->get_logger(), "topic_static_maps: %s",
 		topic_static_maps_.c_str());
 
-	this->declare_parameter<std::string>("topic_replan_sub", "/replan");
-	this->get_parameter("topic_replan_sub", topic_replan_sub_);
-	RCLCPP_INFO(
-		this->get_logger(), "topic_replan_sub %s", topic_replan_sub_.c_str());
-
 	this->declare_parameter<std::string>("topic_wp_seq_pub", "/waypoints");
 	this->get_parameter("topic_wp_seq_pub", topic_wp_seq_pub_);
 	RCLCPP_INFO(
@@ -498,7 +512,7 @@ void TPS_Astar_Planner_Node::initialize_planner()
 		"Loaded these planner params:" << planner_->params_as_yaml());
 
 	mrpt::config::CConfigFile cfg(ptg_ini_file_);
-	planner_input_.ptgs.initFromConfigFile(cfg, "SelfDriving");
+	ptgs_.initFromConfigFile(cfg, "SelfDriving");
 
 	costMapParams_ = mpp::CostEvaluatorCostMap::Parameters::FromYAML(
 		mrpt::containers::yaml::FromFile(costmap_params_file_));
@@ -510,7 +524,7 @@ void TPS_Astar_Planner_Node::callback_goal(
 	try
 	{
 		const auto p = mrpt::ros2bridge::fromROS(_goal.pose);
-		nav_goal_ = mrpt::math::TPose2D(p.asTPose());
+		mrpt::math::TPose2D nav_goal = mrpt::math::TPose2D(p.asTPose());
 
 		mrpt::poses::CPose3D robot_pose;
 		const bool robot_pose_ok =
@@ -518,11 +532,16 @@ void TPS_Astar_Planner_Node::callback_goal(
 
 		ASSERT_(robot_pose_ok);
 
-		start_pose_.x = robot_pose.x();
-		start_pose_.y = robot_pose.y();
-		start_pose_.phi = robot_pose.yaw();
+		/// Navigation start position
+		mrpt::math::TPose2D start_pose;
+		start_pose.x = robot_pose.x();
+		start_pose.y = robot_pose.y();
+		start_pose.phi = robot_pose.yaw();
 
-		path_plan_done_ = do_path_plan(start_pose_, nav_goal_);
+		const auto res = do_path_plan(start_pose, nav_goal);
+
+		// Publish:
+		if (res.valid) publish_waypoint_sequence(res.wps);
 	}
 	catch (const std::exception& e)
 	{
@@ -540,40 +559,6 @@ void TPS_Astar_Planner_Node::callback_map(
 		"Received gridmap from topic: " << e.sub->get_topic_name());
 
 	update_map(grid, e);
-}
-
-// Add current obstacles to make better plan
-void TPS_Astar_Planner_Node::callback_replan(
-	const geometry_msgs::msg::PoseWithCovarianceStamped::SharedPtr& msg)
-{
-	try
-	{
-		if (!msg)
-		{
-			RCLCPP_ERROR(
-				this->get_logger(),
-				"Received null ptr as pose in replan callback");
-			return;
-		}
-
-		tf2::Quaternion quat(
-			msg->pose.pose.orientation.x, msg->pose.pose.orientation.y,
-			msg->pose.pose.orientation.z, msg->pose.pose.orientation.w);
-		tf2::Matrix3x3 mat(quat);
-		double roll, pitch, yaw;
-		mat.getRPY(roll, pitch, yaw);
-
-		start_pose_.x = msg->pose.pose.position.x;
-		start_pose_.y = msg->pose.pose.position.y;
-		start_pose_.phi = yaw;
-
-		path_plan_done_ = do_path_plan(start_pose_, nav_goal_);
-	}
-	catch (std::exception& e)
-	{
-		RCLCPP_ERROR(
-			this->get_logger(), "Exception in replan callback : %s", e.what());
-	}
 }
 
 void TPS_Astar_Planner_Node::callback_obstacles(
@@ -655,18 +640,25 @@ void TPS_Astar_Planner_Node::update_map(
 	e.grid->getAsPointCloud(*e.grid_obstacles);
 }
 
-bool TPS_Astar_Planner_Node::do_path_plan(
-	mrpt::math::TPose2D& start, mrpt::math::TPose2D& goal)
+TPS_Astar_Planner_Node::PlanResult TPS_Astar_Planner_Node::do_path_plan(
+	const mrpt::math::TPose2D& start, const mrpt::math::TPose2D& goal)
 {
 	RCLCPP_INFO_STREAM(this->get_logger(), "Do path planning");
 
 	auto bbox = mrpt::math::TBoundingBoxf::PlusMinusInfinity();
 
+	// Path planner input
+	mpp::PlannerInput pi;
+	pi.ptgs = ptgs_;
+
 	// Start => Goal
 	// --------------------------------------------------------------
-	planner_input_.stateStart.pose = start;
-	planner_input_.stateStart.vel = start_vel_;
-	planner_input_.stateGoal.state = goal;
+	// TODO(jlbc): get velocities
+	mrpt::math::TTwist2D start_vel = {0, 0, 0};
+
+	pi.stateStart.pose = start;
+	pi.stateStart.vel = start_vel;
+	pi.stateGoal.state = goal;
 
 	bbox.updateWithPoint(mrpt::math::TPoint3D(start.translation()));
 	bbox.updateWithPoint(mrpt::math::TPoint3D(goal.translation()));
@@ -676,14 +668,14 @@ bool TPS_Astar_Planner_Node::do_path_plan(
 	auto lckObs = mrpt::lockHelper(obstacles_cs_);
 
 	planner_->costEvaluators_.clear();
-	planner_input_.obstacles.clear();
+	pi.obstacles.clear();
 
 	size_t obstacleSources = 0, totalObstaclePoints = 0;
 	// gridmaps:
 	for (const auto& e : gridmaps_)
 	{
 		auto obs = mpp::ObstacleSource::FromStaticPointcloud(e.grid_obstacles);
-		planner_input_.obstacles.emplace_back(obs);
+		pi.obstacles.emplace_back(obs);
 
 		auto bb = e.grid_obstacles->boundingBox();
 		bbox = bbox.unionWith(bb);
@@ -692,14 +684,14 @@ bool TPS_Astar_Planner_Node::do_path_plan(
 		totalObstaclePoints += e.grid_obstacles->size();
 
 		auto costmap = mpp::CostEvaluatorCostMap::FromStaticPointObstacles(
-			*e.grid_obstacles, costMapParams_, planner_input_.stateStart.pose);
+			*e.grid_obstacles, costMapParams_, pi.stateStart.pose);
 		planner_->costEvaluators_.push_back(costmap);
 	}
 	// points:
 	for (const auto& e : obstacle_points_)
 	{
 		auto obs = mpp::ObstacleSource::FromStaticPointcloud(e.obstacle_points);
-		planner_input_.obstacles.emplace_back(obs);
+		pi.obstacles.emplace_back(obs);
 
 		auto bb = obs->obstacles()->boundingBox();
 		bbox = bbox.unionWith(bb);
@@ -708,7 +700,7 @@ bool TPS_Astar_Planner_Node::do_path_plan(
 		totalObstaclePoints += e.obstacle_points->size();
 
 		auto costmap = mpp::CostEvaluatorCostMap::FromStaticPointObstacles(
-			*e.obstacle_points, costMapParams_, planner_input_.stateStart.pose);
+			*e.obstacle_points, costMapParams_, pi.stateStart.pose);
 		planner_->costEvaluators_.push_back(costmap);
 	}
 
@@ -717,30 +709,27 @@ bool TPS_Astar_Planner_Node::do_path_plan(
 	{
 		const auto bboxMargin = mrpt::math::TPoint3Df(2.0, 2.0, .0);
 		const auto ptStart = mrpt::math::TPoint3Df(
-			planner_input_.stateStart.pose.x, planner_input_.stateStart.pose.y,
-			0);
+			pi.stateStart.pose.x, pi.stateStart.pose.y, 0);
 		const auto ptGoal = mrpt::math::TPoint3Df(
-			planner_input_.stateGoal.asSE2KinState().pose.x,
-			planner_input_.stateGoal.asSE2KinState().pose.y, 0);
+			pi.stateGoal.asSE2KinState().pose.x,
+			pi.stateGoal.asSE2KinState().pose.y, 0);
 		bbox.updateWithPoint(ptStart - bboxMargin);
 		bbox.updateWithPoint(ptStart + bboxMargin);
 		bbox.updateWithPoint(ptGoal - bboxMargin);
 		bbox.updateWithPoint(ptGoal + bboxMargin);
 	}
 
-	planner_input_.worldBboxMax = {bbox.max.x, bbox.max.y, M_PI};
-	planner_input_.worldBboxMin = {bbox.min.x, bbox.min.y, -M_PI};
+	pi.worldBboxMax = {bbox.max.x, bbox.max.y, M_PI};
+	pi.worldBboxMin = {bbox.min.x, bbox.min.y, -M_PI};
 
 	RCLCPP_INFO_STREAM(
 		this->get_logger(),
-		"Start state: " << planner_input_.stateStart.asString()
-						<< "\n Goal state: "
-						<< planner_input_.stateGoal.asString()
+		"Start state: " << pi.stateStart.asString()
+						<< "\n Goal state: " << pi.stateGoal.asString()
 						<< "\n Obstacle sources: " << obstacleSources
 						<< "\n Total obstacle points: " << totalObstaclePoints
-						<< "\n  World bbox : "
-						<< planner_input_.worldBboxMin.asString() << "-"
-						<< planner_input_.worldBboxMax.asString());
+						<< "\n  World bbox : " << pi.worldBboxMin.asString()
+						<< "-" << pi.worldBboxMax.asString());
 
 	// Insert custom progress callback:
 	planner_->progressCallback_ = [](const mpp::ProgressCallbackData& pcd)
@@ -751,7 +740,7 @@ bool TPS_Astar_Planner_Node::do_path_plan(
 				  << " bestPathLength: " << pcd.bestPath.size() << std::endl;
 	};
 
-	const mpp::PlannerOutput plan = planner_->plan(planner_input_);
+	const mpp::PlannerOutput plan = planner_->plan(pi);
 
 	std::cout << "\nDone.\n";
 	std::cout << "Success: " << (plan.success ? "YES" : "NO") << "\n";
@@ -761,8 +750,10 @@ bool TPS_Astar_Planner_Node::do_path_plan(
 
 	if (!plan.bestNodeId.has_value())
 	{
-		std::cerr << "No bestNodeId in plan output.\n";
-		return false;
+		RCLCPP_ERROR_STREAM(
+			this->get_logger(), "No bestNodeId in plan output.");
+
+		return {};
 	}
 
 	// if (plan.success) { activePlanOutput_ = plan; }
@@ -800,8 +791,7 @@ mpp::refine_trajectory(plannedPath, pathEdges, planner_input.ptgs);
 	{
 		const double interpPeriod = 0.25;  // [s]
 
-		interpPath = mpp::plan_to_trajectory(
-			pathEdges, planner_input_.ptgs, interpPeriod);
+		interpPath = mpp::plan_to_trajectory(pathEdges, pi.ptgs, interpPeriod);
 
 		// Note: trajectory is in local frame of reference
 		// of plan.originalInput.stateStart.pose
@@ -812,7 +802,11 @@ mpp::refine_trajectory(plannedPath, pathEdges, planner_input.ptgs);
 			kv.second.state.pose = startPose + kv.second.state.pose;
 	}
 
-	wps_msg_ = mrpt_msgs::msg::WaypointSequence();
+	// Prepare return data:
+	PlanResult res;
+	res.valid = plan.success;
+	res.plan_output = plan;
+
 	if (plan.success)
 	{
 		for (auto& kv : interpPath)
@@ -828,21 +822,78 @@ mpp::refine_trajectory(plannedPath, pathEdges, planner_input.ptgs);
 			wp_msg.allowed_distance = mid_waypoints_allowed_distance_;
 			wp_msg.allow_skip = true;
 
-			wps_msg_.waypoints.push_back(wp_msg);
+			res.wps.waypoints.push_back(wp_msg);
 		}
 
 		auto wp_msg = mrpt_msgs::msg::Waypoint();
-		wp_msg.target = mrpt::ros2bridge::toROS_Pose(nav_goal_);
+		wp_msg.target = mrpt::ros2bridge::toROS_Pose(goal);
 
 		wp_msg.allowed_distance = final_waypoint_allowed_distance_;
 		wp_msg.allow_skip = false;
 
-		wps_msg_.waypoints.push_back(wp_msg);
+		res.wps.waypoints.push_back(wp_msg);
 	}
 
-	publish_waypoint_sequence(wps_msg_);
+	return res;
+}
 
-	return plan.success;
+void TPS_Astar_Planner_Node::srv_make_plan_to(
+	const std::shared_ptr<mrpt_nav_interfaces::srv::MakePlanTo::Request> req,
+	std::shared_ptr<mrpt_nav_interfaces::srv::MakePlanTo::Response> resp)
+{
+	try
+	{
+		const auto p = mrpt::ros2bridge::fromROS(req->target.pose);
+		const auto nav_goal = mrpt::math::TPose2D(p.asTPose());
+
+		mrpt::poses::CPose3D robot_pose;
+		const bool robot_pose_ok =
+			wait_for_transform(robot_pose, frame_id_robot_, frame_id_map_);
+
+		ASSERT_(robot_pose_ok);
+
+		const auto start_pose = mrpt::poses::CPose2D(robot_pose).asTPose();
+
+		const auto res = do_path_plan(start_pose, nav_goal);
+
+		resp->valid_path_found = res.valid;
+		resp->waypoints = res.wps;
+	}
+	catch (const std::exception& e)
+	{
+		RCLCPP_ERROR(
+			this->get_logger(), "Exception in srv_make_plan_to: %s", e.what());
+	}
+}
+
+void TPS_Astar_Planner_Node::srv_make_plan_from_to(
+	const std::shared_ptr<mrpt_nav_interfaces::srv::MakePlanFromTo::Request>
+		req,
+	std::shared_ptr<mrpt_nav_interfaces::srv::MakePlanFromTo::Response> resp)
+{
+	try
+	{
+		const auto p = mrpt::ros2bridge::fromROS(req->target);
+		const auto nav_goal = mrpt::math::TPose2D(p.asTPose());
+
+		mrpt::poses::CPose3D robot_pose;
+		const bool robot_pose_ok =
+			wait_for_transform(robot_pose, frame_id_robot_, frame_id_map_);
+
+		ASSERT_(robot_pose_ok);
+
+		const auto start_pose = mrpt::poses::CPose2D(robot_pose).asTPose();
+
+		const auto res = do_path_plan(start_pose, nav_goal);
+
+		resp->valid_path_found = res.valid;
+		resp->waypoints = res.wps;
+	}
+	catch (const std::exception& e)
+	{
+		RCLCPP_ERROR(
+			this->get_logger(), "Exception in srv_make_plan_to: %s", e.what());
+	}
 }
 
 // ------------------------------------
