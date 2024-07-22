@@ -1,0 +1,11 @@
+# This service requests a given server node to:
+# - Use all current obstacles from all configured obstacle sources in the node configuration,
+# - Use /tf to find out the current robot pose,
+# - Make a plan to go from the current robot pose, to the requested pose in this service request.
+
+# Goal
+geometry_msgs/PoseStamped target
+---
+# Result
+bool valid_path_found
+mrpt_msgs/WaypointSequence waypoints

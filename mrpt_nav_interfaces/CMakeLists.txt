@@ -24,6 +24,8 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "srv/GetLayers.srv"
   "srv/GetGridmapLayer.srv"
   "srv/GetPointmapLayer.srv"
+  "srv/MakePlanFromTo.srv"
+  "srv/MakePlanTo.srv"
   DEPENDENCIES
   std_msgs
   nav_msgs
