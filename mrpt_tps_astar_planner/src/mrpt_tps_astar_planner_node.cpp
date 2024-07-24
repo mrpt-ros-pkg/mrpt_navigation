@@ -832,6 +832,9 @@ mpp::refine_trajectory(plannedPath, pathEdges, planner_input.ptgs);
 		wp_msg.allow_skip = false;
 
 		res.wps.waypoints.push_back(wp_msg);
+
+		res.wps.header.frame_id = frame_id_map_;
+		res.wps.header.stamp = this->now();
 	}
 
 	return res;
