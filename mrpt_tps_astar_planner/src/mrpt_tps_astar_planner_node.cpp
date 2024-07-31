@@ -151,8 +151,15 @@ class TPS_Astar_Planner_Node : public rclcpp::Node
 	/// Parameters file for planner
 	std::string planner_params_file_ = "planner-params.yaml";
 
+	/// Waypoint parameters
 	double mid_waypoints_allowed_distance_ = 0.5;
 	double final_waypoint_allowed_distance_ = 0.4;
+
+	bool mid_waypoints_allow_skip_ = true;
+	bool final_waypoint_allow_skip_ = false;
+
+	bool mid_waypoints_ignore_heading_ = false;
+	bool final_waypoint_ignore_heading_ = false;
 
 	/// Pointer to MRPT 3D display window
 	mrpt::gui::CDisplayWindow3D::Ptr win_3d_;
@@ -491,11 +498,48 @@ void TPS_Astar_Planner_Node::read_parameters()
 		"mid_waypoints_allowed_distance", mid_waypoints_allowed_distance_);
 	this->get_parameter(
 		"mid_waypoints_allowed_distance", mid_waypoints_allowed_distance_);
+	RCLCPP_INFO(
+		this->get_logger(), "mid_waypoints_allowed_distance: %.03f",
+		mid_waypoints_allowed_distance_);
 
 	this->declare_parameter<double>(
 		"final_waypoint_allowed_distance", final_waypoint_allowed_distance_);
 	this->get_parameter(
 		"final_waypoint_allowed_distance", final_waypoint_allowed_distance_);
+	RCLCPP_INFO(
+		this->get_logger(), "final_waypoint_allowed_distance: mid: %.03f",
+		final_waypoint_allowed_distance_);
+
+	this->declare_parameter<bool>(
+		"mid_waypoints_allow_skip", mid_waypoints_allow_skip_);
+	this->get_parameter("mid_waypoints_allow_skip", mid_waypoints_allow_skip_);
+	RCLCPP_INFO(
+		this->get_logger(), "mid_waypoints_allow_skip: %s",
+		mid_waypoints_allow_skip_ ? "true" : "false");
+
+	this->declare_parameter<bool>(
+		"final_waypoint_allow_skip", final_waypoint_allow_skip_);
+	this->get_parameter(
+		"final_waypoint_allow_skip", final_waypoint_allow_skip_);
+	RCLCPP_INFO(
+		this->get_logger(), "final_waypoint_allow_skip: %s",
+		final_waypoint_allow_skip_ ? "true" : "false");
+
+	this->declare_parameter<bool>(
+		"mid_waypoints_ignore_heading", mid_waypoints_ignore_heading_);
+	this->get_parameter(
+		"mid_waypoints_ignore_heading", mid_waypoints_ignore_heading_);
+	RCLCPP_INFO(
+		this->get_logger(), "mid_waypoints_ignore_heading: %s",
+		mid_waypoints_ignore_heading_ ? "true" : "false");
+
+	this->declare_parameter<bool>(
+		"final_waypoint_ignore_heading", final_waypoint_ignore_heading_);
+	this->get_parameter(
+		"final_waypoint_ignore_heading", final_waypoint_ignore_heading_);
+	RCLCPP_INFO(
+		this->get_logger(), "final_waypoint_ignore_heading: %s",
+		final_waypoint_ignore_heading_ ? "true" : "false");
 }
 
 void TPS_Astar_Planner_Node::initialize_planner()
@@ -820,7 +864,8 @@ mpp::refine_trajectory(plannedPath, pathEdges, planner_input.ptgs);
 			wp_msg.target = mrpt::ros2bridge::toROS_Pose(goal_state.pose);
 
 			wp_msg.allowed_distance = mid_waypoints_allowed_distance_;
-			wp_msg.allow_skip = true;
+			wp_msg.allow_skip = mid_waypoints_allow_skip_;
+			wp_msg.ignore_heading = mid_waypoints_ignore_heading_;
 
 			res.wps.waypoints.push_back(wp_msg);
 		}
@@ -829,7 +874,8 @@ mpp::refine_trajectory(plannedPath, pathEdges, planner_input.ptgs);
 		wp_msg.target = mrpt::ros2bridge::toROS_Pose(goal);
 
 		wp_msg.allowed_distance = final_waypoint_allowed_distance_;
-		wp_msg.allow_skip = false;
+		wp_msg.allow_skip = final_waypoint_allow_skip_;
+		wp_msg.ignore_heading = final_waypoint_ignore_heading_;
 
 		res.wps.waypoints.push_back(wp_msg);
 
