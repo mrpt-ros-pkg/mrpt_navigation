@@ -632,9 +632,12 @@ void TPS_Astar_Planner_Node::update_obstacles(
 
 	// Transform the cloud to its global pose in the map:
 	mrpt::poses::CPose3D sensorPoseInMap;
-	const bool tfOk = wait_for_transform(
-		sensorPoseInMap, pcMsg->header.frame_id, frame_id_map_);
-	ASSERT_(tfOk);
+
+	// Brief pause to allow time for the transform data to become available
+	const auto timeout = std::chrono::milliseconds(50);
+	while (!wait_for_transform(
+		sensorPoseInMap, pcMsg->header.frame_id, frame_id_map_))
+		std::this_thread::sleep_for(timeout);
 
 	pc->changeCoordinatesReference(sensorPoseInMap);
 
