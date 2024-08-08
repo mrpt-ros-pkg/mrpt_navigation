@@ -2,6 +2,11 @@
 Changelog for package mrpt_msgs_bridge
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Merge branch 'ros2' into wip/port-tps-astar
+* Contributors: Jose Luis Blanco-Claraco
+
 2.0.1 (2024-05-28)
 ------------------
 

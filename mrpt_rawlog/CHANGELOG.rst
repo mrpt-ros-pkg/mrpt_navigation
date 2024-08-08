@@ -2,6 +2,14 @@
 Changelog for package mrpt_rawlog
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* BUGFIX: Data stream ignored for sensors where fixed_sensor_pose was defined.
+* Fix GNSS name typo
+* Merge branch 'ros2' into wip/port-tps-astar
+* Merge branch 'ros2' into wip/port-tps-astar
+* Contributors: Jose Luis Blanco-Claraco
+
 2.0.1 (2024-05-28)
 ------------------
 
