@@ -2,8 +2,8 @@
 Changelog for package mrpt_map_server
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+2.1.0 (2024-08-08)
+------------------
 * docs: typos and clarifications
 * map server: simplify publication policy. Using transient local only and never republishing them
 * Merge branch 'ros2' into wip/port-tps-astar

@@ -2,8 +2,8 @@
 Changelog for package mrpt_reactivenav2d
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+2.1.0 (2024-08-08)
+------------------
 * Hide example output into <details>
 * Merge branch 'ros2' into wip/port-tps-astar
 * rnav node now detects live changes in the parameter 'pure_pursuit_mode'

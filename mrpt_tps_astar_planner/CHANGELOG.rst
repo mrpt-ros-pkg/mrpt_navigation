@@ -2,8 +2,8 @@
 Changelog for package mrpt_tps_astar_planner_node
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+2.1.0 (2024-08-08)
+------------------
 * Merge pull request `#147 <https://github.com/mrpt-ros-pkg/mrpt_navigation/issues/147>`_ from r-aguilera/ros2
   mrpt_tps_astar_planner_node tf data availability
 * added max duration to wait for tf data

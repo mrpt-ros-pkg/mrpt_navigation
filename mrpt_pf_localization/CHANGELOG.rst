@@ -2,8 +2,8 @@
 Changelog for package mrpt_pf_localization
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+2.1.0 (2024-08-08)
+------------------
 * Fix GNSS name typo
 * Merge branch 'ros2' into wip/port-tps-astar
 * Merge branch 'ros2' into wip/port-tps-astar
