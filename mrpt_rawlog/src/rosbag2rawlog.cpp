@@ -12,7 +12,7 @@
 //             as a RawLog file, easily readable by MRPT C++ programs.
 //
 //  Started: Hunter Laux @ SEPT-2018.
-//  Maintained: JLBC @ 2018-2023
+//  Maintained: JLBC @ 2018-2024
 // ===========================================================================
 
 // MRPT:

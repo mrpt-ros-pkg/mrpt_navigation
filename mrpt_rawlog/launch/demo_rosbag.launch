@@ -1,6 +1,0 @@
-<launch>
-
-   <node pkg="rosbag" type="play" name="player" output="screen" args="$(find mrpt_rawlog)/tutorial/driving_in_office.bag"/>
-  
-</launch>
-
