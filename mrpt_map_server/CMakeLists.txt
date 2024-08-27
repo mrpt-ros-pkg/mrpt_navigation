@@ -60,12 +60,12 @@ target_link_libraries(map_server_node
 )
 
 ament_target_dependencies(
-	map_server_node
-	"rclcpp"
-  	"rclcpp_components"
-  	"nav_msgs"
-  	"mrpt_msgs"
-  	"mrpt_nav_interfaces"
+  map_server_node
+  rclcpp
+  rclcpp_components
+  nav_msgs
+  mrpt_msgs
+  mrpt_nav_interfaces
 )
 
 #############

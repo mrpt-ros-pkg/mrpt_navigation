@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<package format="2">
+<package format="3">
   <name>mrpt_msgs_bridge</name>
   <version>2.1.0</version>
   <description>C++ library to convert between custom mrpt_msgs messages and native MRPT classes</description>
@@ -17,11 +17,25 @@
   <build_depend>ros_environment</build_depend>
   <buildtool_depend>ament_cmake</buildtool_depend>
 
-  <depend>mrpt2</depend>
-  
+  <depend>mrpt_libobs</depend>
+  <depend>mrpt_libros_bridge</depend>
+
+  <!-- DEPS for mrpt_libros_bridge (can be removed after release of mrpt_libros_bridge>=2.13.8) -->
+  <depend>cv_bridge</depend>
+  <depend>nav_msgs</depend>
+  <depend>sensor_msgs</depend>
   <depend>geometry_msgs</depend>
-  <depend>mrpt_msgs</depend>
+  <depend>std_msgs</depend>
+  <depend>stereo_msgs</depend>
   <depend>tf2</depend>
+  <depend condition="$ROS_VERSION == 1">roscpp</depend>
+  <depend condition="$ROS_VERSION == 2">rclcpp</depend>
+  <!-- -->
+
+  <!-- <depend>geometry_msgs</depend>
+  <depend>tf2</depend> -->
+
+  <depend>mrpt_msgs</depend>
 
   <!-- <depend>marker_msgs</depend> -->  <!-- Re-enable when available in all ROS 2 distros -->
 

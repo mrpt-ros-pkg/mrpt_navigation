@@ -10,31 +10,30 @@ find_package(mrpt_msgs REQUIRED)
 
 # Optional:
 find_package(marker_msgs QUIET)
-if (marker_msgs_FOUND)
+if(marker_msgs_FOUND)
     set(MARKER_SRC src/marker_msgs.cpp)
     set(MARKER_DEP marker_msgs)
 endif()
-
 
 find_package(mrpt-ros2bridge REQUIRED)
 find_package(mrpt-obs REQUIRED)
 
 message(STATUS "MRPT_VERSION: ${mrpt-obs_VERSION}")
 
-if (CMAKE_COMPILER_IS_GNUCXX)
-	# High level of warnings.
-	# The -Wno-long-long is required in 64bit systems when including sytem headers.
-	# The -Wno-variadic-macros was needed for Eigen3, StdVector.h
-	add_compile_options(-Wall -Wno-long-long -Wno-variadic-macros)
-	# Workaround: Eigen <3.4 produces *tons* of warnings in GCC >=6. See http://eigen.tuxfamily.org/bz/show_bug.cgi?id=1221
-	if (NOT ${CMAKE_CXX_COMPILER_VERSION} LESS "6.0")
-		add_compile_options(-Wno-ignored-attributes -Wno-int-in-bool-context)
-	endif()
+if(CMAKE_COMPILER_IS_GNUCXX)
+  # High level of warnings.
+  # The -Wno-long-long is required in 64bit systems when including sytem headers.
+  # The -Wno-variadic-macros was needed for Eigen3, StdVector.h
+  add_compile_options(-Wall -Wno-long-long -Wno-variadic-macros)
+  # Workaround: Eigen <3.4 produces *tons* of warnings in GCC >=6. See http://eigen.tuxfamily.org/bz/show_bug.cgi?id=1221
+  if(NOT ${CMAKE_CXX_COMPILER_VERSION} LESS "6.0")
+    add_compile_options(-Wno-ignored-attributes -Wno-int-in-bool-context)
+  endif()
 endif()
 
-IF(CMAKE_COMPILER_IS_GNUCXX AND NOT CMAKE_BUILD_TYPE MATCHES "Debug")
+if(CMAKE_COMPILER_IS_GNUCXX AND NOT CMAKE_BUILD_TYPE MATCHES "Debug")
   add_compile_options(-O3)
-ENDIF()
+endif()
 
 ###########
 ## Build ##
@@ -46,10 +45,10 @@ include_directories(include ${catkin_INCLUDE_DIRS})
 
 # Declare a cpp library
 add_library(${PROJECT_NAME}
-   src/beacon.cpp
-   ${MARKER_SRC}
-   src/landmark.cpp
-   src/network_of_poses.cpp
+  src/beacon.cpp
+  ${MARKER_SRC}
+  src/landmark.cpp
+  src/network_of_poses.cpp
 )
 
 ## Specify libraries to link a library or executable target against
@@ -81,15 +80,6 @@ ament_target_dependencies(${PROJECT_NAME}
   mrpt_msgs
   ${MARKER_DEP}
 )
-
-
-#find_package(ament_cmake_gtest REQUIRED)
-#ament_add_gtest(${PROJECT_NAME}-test test/test_pose_cov_ops.cpp)
-
-
-# Export old-style CMake variables
-#ament_export_include_directories("include/${PROJECT_NAME}")
-#ament_export_libraries(${PROJECT_NAME}_export HAS_LIBRARY_TARGET)
 
 # Export modern CMake targets
 ament_export_targets(${PROJECT_NAME})

@@ -62,12 +62,12 @@ target_link_libraries(
 
 ament_target_dependencies(
   ${PROJECT_NAME}_node
-  "rclcpp"
-  "rclcpp_components"
-  "nav_msgs"
-  "sensor_msgs"
-  "tf2"
-  "tf2_geometry_msgs"
+  rclcpp
+  rclcpp_components
+  nav_msgs
+  sensor_msgs
+  tf2
+  tf2_geometry_msgs
 )
 
 

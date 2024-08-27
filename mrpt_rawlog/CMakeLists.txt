@@ -39,7 +39,6 @@ target_link_libraries(
 
 ament_target_dependencies(
   rosbag2rawlog
-  #mrpt2
   rclcpp
   tf2
   nav_msgs
