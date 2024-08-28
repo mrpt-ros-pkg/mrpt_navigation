@@ -19,11 +19,17 @@
 
   <depend>mrpt_libobs</depend>
   <depend>mrpt_libros_bridge</depend>
-
   <!-- DEPS for mrpt_libros_bridge (can be removed after release of mrpt_libros_bridge>=2.13.8) -->
   <depend>cv_bridge</depend>
   <depend>nav_msgs</depend>
   <depend>sensor_msgs</depend>
+  <!--<depend>geometry_msgs</depend>-->
+  <depend>std_msgs</depend>
+  <depend>stereo_msgs</depend>
+  <!--<depend>tf2</depend>-->
+  <depend>rclcpp</depend>
+  <!-- -->
+
   <depend>geometry_msgs</depend>
   <depend>std_msgs</depend>
   <depend>stereo_msgs</depend>
