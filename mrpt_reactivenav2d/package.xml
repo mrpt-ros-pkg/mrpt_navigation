@@ -23,8 +23,8 @@
   <!--<depend>nav_msgs</depend>-->
   <!--<depend>sensor_msgs</depend>-->
   <!--<depend>geometry_msgs</depend>-->
-  <depend>std_msgs</depend>
-  <depend>stereo_msgs</depend>
+  <!--<depend>std_msgs</depend>-->
+  <!--<depend>stereo_msgs</depend>-->
   <!--<depend>tf2</depend>-->
   <!--<depend>rclcpp</depend>-->
   <!-- -->
@@ -37,17 +37,6 @@
   <depend>std_msgs</depend>
   <depend>stereo_msgs</depend>
   <depend>tf2</depend>
-  <depend condition="$ROS_VERSION == 1">roscpp</depend>
-  <depend condition="$ROS_VERSION == 2">rclcpp</depend>
-  <!-- -->
-
-  <!-- <depend>rclcpp</depend> -->
-  <depend>rclcpp_components</depend>
-  <!-- <depend>nav_msgs</depend>
-  <depend>sensor_msgs</depend>
-  <depend>geometry_msgs</depend> -->
-  <depend>mrpt_msgs</depend>
-  <!-- <depend>tf2</depend> -->
   <depend>tf2_ros</depend>
   <depend>tf2_geometry_msgs</depend>
   <depend>visualization_msgs</depend>
