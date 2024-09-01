@@ -16,31 +16,20 @@
   <buildtool_depend>ament_cmake</buildtool_depend>
 
   <!-- DEPS -->
+  <depend>geometry_msgs</depend>
   <depend>mrpt_libnav</depend>
   <depend>mrpt_libros_bridge</depend>
-  <!-- DEPS for mrpt_libros_bridge (can be removed after release of mrpt_libros_bridge>=2.13.8) -->
-  <depend>cv_bridge</depend>
-  <!--<depend>nav_msgs</depend>-->
-  <!--<depend>sensor_msgs</depend>-->
-  <!--<depend>geometry_msgs</depend>-->
-  <!--<depend>std_msgs</depend>-->
-  <!--<depend>stereo_msgs</depend>-->
-  <!--<depend>tf2</depend>-->
-  <!--<depend>rclcpp</depend>-->
-  <!-- -->
-
+  <depend>mrpt_nav_interfaces</depend>
+  <depend>nav_msgs</depend>
   <depend>rclcpp</depend>
   <depend>rclcpp_components</depend>
-  <depend>nav_msgs</depend>
   <depend>sensor_msgs</depend>
-  <depend>geometry_msgs</depend>
   <depend>std_msgs</depend>
   <depend>stereo_msgs</depend>
   <depend>tf2</depend>
-  <depend>tf2_ros</depend>
   <depend>tf2_geometry_msgs</depend>
+  <depend>tf2_ros</depend>
   <depend>visualization_msgs</depend>
-  <depend>mrpt_nav_interfaces</depend>
 
   <depend>ament_lint_common</depend>
   <depend>ament_lint_auto</depend>
