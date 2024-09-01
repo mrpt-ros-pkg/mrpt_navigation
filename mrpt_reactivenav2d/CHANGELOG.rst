@@ -2,6 +2,14 @@
 Changelog for package mrpt_reactivenav2d
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Remove temporary workaround in <depends> for buggy mrpt_libros_bridge package.xml
+* Fix duplicated deps
+* update dependencies
+* Depend on new mrpt_lib packages (deprecate mrpt2)
+* Contributors: Jose Luis Blanco-Claraco
+
 2.1.0 (2024-08-08)
 ------------------
 * Hide example output into <details>
