@@ -2,8 +2,8 @@
 Changelog for package mrpt_tps_astar_planner_node
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+2.1.1 (2024-09-02)
+------------------
 * Remove temporary workaround in <depends> for buggy mrpt_libros_bridge package.xml
 * Fix duplicated deps
 * update dependencies

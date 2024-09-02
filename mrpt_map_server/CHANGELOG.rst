@@ -2,8 +2,8 @@
 Changelog for package mrpt_map_server
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+2.1.1 (2024-09-02)
+------------------
 * Remove temporary workaround in <depends> for buggy mrpt_libros_bridge package.xml
 * update dependencies
 * Depend on new mrpt_lib packages (deprecate mrpt2)
