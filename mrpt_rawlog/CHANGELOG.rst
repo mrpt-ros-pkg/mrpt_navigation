@@ -11,6 +11,13 @@ Forthcoming
 * mrpt_rawlog: delete old ROS1 leftover files
 * Contributors: Jose Luis Blanco-Claraco
 
+* Remove temporary workaround in <depends> for buggy mrpt_libros_bridge package.xml
+* update dependencies
+* Depend on new mrpt_lib packages (deprecate mrpt2)
+* rosbag2rawlog app: support generating CObservationOdometry from /tf odom->base_link msgs
+* mrpt_rawlog: delete old ROS1 leftover files
+* Contributors: Jose Luis Blanco-Claraco
+
 2.1.0 (2024-08-08)
 ------------------
 * BUGFIX: Data stream ignored for sensors where fixed_sensor_pose was defined.
