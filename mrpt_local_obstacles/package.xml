@@ -16,7 +16,11 @@
 
   <buildtool_depend>catkin</buildtool_depend>
 
-  <depend>mrpt2</depend>
+  <depend>mrpt_libmaps</depend>
+  <depend>mrpt_libgui</depend>
+  <depend>mrpt_libtclap</depend>
+  <depend>mrpt_libros_bridge</depend>
+
   <depend>dynamic_reconfigure</depend>
   <depend>roscpp</depend>
   <depend>sensor_msgs</depend>
