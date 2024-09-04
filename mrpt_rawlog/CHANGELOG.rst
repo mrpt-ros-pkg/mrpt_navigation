@@ -2,6 +2,11 @@
 Changelog for package mrpt_rawlog
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* port to new mrpt_lib ROS packages as dependencies
+* Contributors: Jose Luis Blanco-Claraco
+
 1.0.5 (2024-03-19)
 ------------------
 * fix mrpt2 API

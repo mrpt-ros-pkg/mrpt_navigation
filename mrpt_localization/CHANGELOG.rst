@@ -2,6 +2,11 @@
 Changelog for package mrpt_localization
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* port to new mrpt_lib ROS packages as dependencies
+* Contributors: Jose Luis Blanco-Claraco
+
 1.0.5 (2024-03-19)
 ------------------
 * Merge branch 'mrpt-ros-pkg:ros1' into ros1
