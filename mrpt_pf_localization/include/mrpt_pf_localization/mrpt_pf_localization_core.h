@@ -61,8 +61,12 @@ class PFLocalizationCore : public mrpt::system::COutputLogger
 		 */
 		std::optional<mrpt::poses::CPose3DPDFGaussian> initial_pose;
 
+		std::set<std::string> metric_map_use_only_these_layers;
+
 		mrpt::maps::CMultiMetricMap::Ptr metric_map;  //!< Empty=uninitialized
 		std::optional<mp2p_icp::metric_map_t::Georeferencing> georeferencing;
+
+		// used internally for relocalization only:
 		std::vector<std::string> metric_map_layer_names;
 
 		/** Shows a custom MRPT GUI with the PF and map state

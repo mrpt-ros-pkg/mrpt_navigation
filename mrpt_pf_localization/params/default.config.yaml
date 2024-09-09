@@ -73,6 +73,10 @@
         alfa4_trans_rot: 0.1
         additional_std_XY: 0.01 # [m]
         additional_std_phi: 0.2 # [deg]
+        
+    # Optional: Can be used to use only a subset of the input metric-map (.mm)
+    # map layers for localization. Layer names must be separated by commas.
+    #metric_map_use_only_these_layers: 'map'
 
     # For SE(2) mode: Uncertainty motion model to use when NO odometry has
     # been received.

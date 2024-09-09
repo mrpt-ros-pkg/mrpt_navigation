@@ -125,6 +125,16 @@ void PFLocalizationCore::Parameters::load_from(
 	MCP_LOAD_REQ(params, use_se3_pf);
 	MCP_LOAD_OPT(params, gui_camera_follow_robot);
 
+	if (params.has("metric_map_use_only_these_layers"))
+	{
+		const auto s =
+			params["metric_map_use_only_these_layers"].as<std::string>();
+		std::vector<std::string> lstLayers;
+		mrpt::system::tokenize(s, ", ", lstLayers);
+		for (const auto& l : lstLayers)
+			metric_map_use_only_these_layers.insert(l);
+	}
+
 	// motion_model_2d
 	ASSERT_(params.has("motion_model_2d"));
 	load_motion_model2d_from(params["motion_model_2d"], motion_model_2d);
@@ -1027,6 +1037,12 @@ void PFLocalizationCore::set_map_from_metric_map(
 	std::vector<std::string> layerNames;
 	for (const auto& [layerName, layerMap] : mm.layers)
 	{
+		// filter by layer?
+		if (!params_.metric_map_use_only_these_layers.empty() &&
+			params_.metric_map_use_only_these_layers.count(layerName) == 0)
+			continue;  // filter out this one
+
+		// use this map layer:
 		mMap->maps.push_back(layerMap);
 		layerNames.push_back(layerName);
 	}
