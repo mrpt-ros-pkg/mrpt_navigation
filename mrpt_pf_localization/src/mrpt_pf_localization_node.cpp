@@ -351,7 +351,8 @@ void PFLocalizationNode::callbackLaser(
 	mrpt::poses::CPose3D sensorPose;
 	bool sensorPoseOK = waitForTransform(
 		sensorPose, msg.header.frame_id, nodeParams_.base_link_frame_id);
-	ASSERT_(sensorPoseOK);
+	if (!sensorPoseOK)
+		return;	 // error msg already printed in waitForTransform()
 
 	auto obs = mrpt::obs::CObservation2DRangeScan::Create();
 	mrpt::ros2bridge::fromROS(msg, sensorPose, *obs);
@@ -372,7 +373,8 @@ void PFLocalizationNode::callbackPointCloud(
 	mrpt::poses::CPose3D sensorPose;
 	bool sensorPoseOK = waitForTransform(
 		sensorPose, msg.header.frame_id, nodeParams_.base_link_frame_id);
-	ASSERT_(sensorPoseOK);
+	if (!sensorPoseOK)
+		return;	 // error msg already printed in waitForTransform()
 
 	auto obs = mrpt::obs::CObservationPointCloud::Create();
 	obs->sensorLabel = topicName;
@@ -558,7 +560,8 @@ void PFLocalizationNode::callbackGNSS(const sensor_msgs::msg::NavSatFix& msg)
 	mrpt::poses::CPose3D sensorPose;
 	bool sensorPoseOK = waitForTransform(
 		sensorPose, msg.header.frame_id, nodeParams_.base_link_frame_id);
-	ASSERT_(sensorPoseOK);
+	if (!sensorPoseOK)
+		return;	 // error msg already printed in waitForTransform()
 
 	auto obs = mrpt::obs::CObservationGPS::Create();
 
