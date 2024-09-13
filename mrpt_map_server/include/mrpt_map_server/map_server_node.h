@@ -11,16 +11,18 @@
 #include <mp2p_icp/metricmap.h>
 #include <mrpt/config/CConfigFile.h>
 #include <mrpt/maps/CMultiMetricMap.h>
+#include <tf2_ros/static_transform_broadcaster.h>
 
-#include "mrpt_msgs/msg/generic_object.hpp"
-#include "mrpt_nav_interfaces/srv/get_gridmap_layer.hpp"
-#include "mrpt_nav_interfaces/srv/get_layers.hpp"
-#include "mrpt_nav_interfaces/srv/get_pointmap_layer.hpp"
-#include "nav_msgs/msg/map_meta_data.hpp"
-#include "nav_msgs/msg/occupancy_grid.hpp"
-#include "nav_msgs/srv/get_map.hpp"
-#include "rclcpp/rclcpp.hpp"
-#include "sensor_msgs/msg/point_cloud2.hpp"
+#include <mrpt_msgs/msg/generic_object.hpp>
+#include <mrpt_nav_interfaces/msg/georeferencing_metadata.hpp>
+#include <mrpt_nav_interfaces/srv/get_gridmap_layer.hpp>
+#include <mrpt_nav_interfaces/srv/get_layers.hpp>
+#include <mrpt_nav_interfaces/srv/get_pointmap_layer.hpp>
+#include <nav_msgs/msg/map_meta_data.hpp>
+#include <nav_msgs/msg/occupancy_grid.hpp>
+#include <nav_msgs/srv/get_map.hpp>
+#include <rclcpp/rclcpp.hpp>
+#include <sensor_msgs/msg/point_cloud2.hpp>
 
 class MapServer : public rclcpp::Node
 {
@@ -38,8 +40,7 @@ class MapServer : public rclcpp::Node
 
 	std::string frame_id_ = "map";
 
-	rclcpp::Service<nav_msgs::srv::GetMap>::SharedPtr m_service_map;  //!< service for map server
-	nav_msgs::srv::GetMap::Response m_response_ros;	 //!< response from the map server
+	std::shared_ptr<tf2_ros::StaticTransformBroadcaster> tf_broadcaster_;
 
 	/// metric map: will be used whatever is the incoming map format.
 	mp2p_icp::metric_map_t theMap_;
@@ -83,6 +84,9 @@ class MapServer : public rclcpp::Node
 
 	// for the top-level mm metric map:
 	PerTopicData<mrpt_msgs::msg::GenericObject> pubMM_;
+
+	PerTopicData<mrpt_msgs::msg::GenericObject> pubGeoRef_;
+	PerTopicData<mrpt_nav_interfaces::msg::GeoreferencingMetadata> pubGeoRefMsg_;
 
 	// clang-format off
 	// Binary form of each layer:
