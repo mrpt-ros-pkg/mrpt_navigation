@@ -63,6 +63,7 @@ None.
 
 ### Published topics
 * ``${pub_mm_topic}/metric_map`` (Default: ``mrpt_map/metric_map``) (``mrpt_msgs::msg::GenericObject``) (topic name can be changed with parameter `pub_mm_topic`).
+* ``${pub_mm_topic}/geo_ref`` (Default: ``mrpt_map/geo_ref``) (``mrpt_msgs::msg::GenericObject``). An MRPT-serialization of ``mp2p_icp::metric_map_t::Georeferencing`` metadata (topic name can be changed with parameter `pub_mm_topic`).
 * ``${pub_mm_topic}/<LAYER_NAME>`` (Default: ``mrpt_map/<LAYER_NAME>``) (``mrpt_msgs::msg::GenericObject``) 
 * ``${pub_mm_topic}/<LAYER_NAME>_points`` (``sensor_msgs::msg::PointCloud2``), one per map layer.
 * ``${pub_mm_topic}/<LAYER_NAME>_gridmap`` (``nav_msgs::msg::OccupancyGrid``)
@@ -70,6 +71,13 @@ None.
 * (... one per map layer ...)
 
 If using options 2 or 3 above, there will be just one layer named `map`.
+
+### Published tf and geo-referenced maps
+Refer to [the documentation](https://docs.mola-slam.org/latest/geo-referencing.html) within the MOLA project on geo-referencing for a description of the ``utm`` and ``enu`` frames,
+defined by this package if fed with a ``*.mm`` file with geo-referenced metadata.
+
+![mola_mrpt_ros_geo_referenced_utm_frames](https://github.com/user-attachments/assets/28f32aac-2c24-4857-9653-9890350fd90e)
+
 
 ### Services
 * ``GetLayers``: Returns the list of map layer names:
