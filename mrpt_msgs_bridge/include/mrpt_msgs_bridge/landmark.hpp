@@ -31,8 +31,7 @@ namespace mrpt_msgs_bridge
  * true on sucessful conversion, false on any error. \sa mrpt2ros
  */
 bool fromROS(
-	const mrpt_msgs::msg::ObservationRangeBearing& _msg,
-	const mrpt::poses::CPose3D& _pose,
+	const mrpt_msgs::msg::ObservationRangeBearing& _msg, const mrpt::poses::CPose3D& _pose,
 	mrpt::obs::CObservationBearingRange& _obj);
 
 /** MRPT->ROS2: Takes a CObservationBearingRange and outputs range data in
@@ -41,8 +40,7 @@ bool fromROS(
  * \sa ros2mrpt
  */
 bool toROS(
-	const mrpt::obs::CObservationBearingRange& _obj,
-	mrpt_msgs::msg::ObservationRangeBearing& _msg);
+	const mrpt::obs::CObservationBearingRange& _obj, mrpt_msgs::msg::ObservationRangeBearing& _msg);
 
 /** MRPT->ROS2: Takes a CObservationBearingRange and outputs range data in
  * mrpt_msgs::ObservationRangeBearing + the relative pose of the range sensor
@@ -51,8 +49,7 @@ bool toROS(
  * \sa ros2mrpt
  */
 bool toROS(
-	const mrpt::obs::CObservationBearingRange& _obj,
-	mrpt_msgs::msg::ObservationRangeBearing& _msg,
+	const mrpt::obs::CObservationBearingRange& _obj, mrpt_msgs::msg::ObservationRangeBearing& _msg,
 	geometry_msgs::msg::Pose& sensorPose);
 
 /** @} */

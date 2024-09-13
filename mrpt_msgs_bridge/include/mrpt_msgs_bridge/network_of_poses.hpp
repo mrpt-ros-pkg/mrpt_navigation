@@ -27,12 +27,10 @@ namespace mrpt_msgs_bridge
 
 // TODO - convert these methods into a common polymorphic method
 void toROS(
-	const mrpt::graphs::CNetworkOfPoses2D& mrpt_graph,
-	mrpt_msgs::msg::NetworkOfPoses& ros_graph);
+	const mrpt::graphs::CNetworkOfPoses2D& mrpt_graph, mrpt_msgs::msg::NetworkOfPoses& ros_graph);
 
 void toROS(
-	const mrpt::graphs::CNetworkOfPoses3D& mrpt_graph,
-	mrpt_msgs::msg::NetworkOfPoses& ros_graph);
+	const mrpt::graphs::CNetworkOfPoses3D& mrpt_graph, mrpt_msgs::msg::NetworkOfPoses& ros_graph);
 
 void toROS(
 	const mrpt::graphs::CNetworkOfPoses2DInf& mrpt_graph,
@@ -61,12 +59,10 @@ void toROS(
  */
 /**\{ */
 void fromROS(
-	const mrpt::graphs::CNetworkOfPoses2D& mrpt_graph,
-	mrpt_msgs::msg::NetworkOfPoses& ros_graph);
+	const mrpt::graphs::CNetworkOfPoses2D& mrpt_graph, mrpt_msgs::msg::NetworkOfPoses& ros_graph);
 
 void fromROS(
-	const mrpt::graphs::CNetworkOfPoses3D& mrpt_graph,
-	mrpt_msgs::msg::NetworkOfPoses& ros_graph);
+	const mrpt::graphs::CNetworkOfPoses3D& mrpt_graph, mrpt_msgs::msg::NetworkOfPoses& ros_graph);
 
 void fromROS(
 	const mrpt_msgs::msg::NetworkOfPoses& ros_graph,

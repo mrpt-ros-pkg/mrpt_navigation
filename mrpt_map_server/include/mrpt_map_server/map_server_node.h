@@ -38,10 +38,8 @@ class MapServer : public rclcpp::Node
 
 	std::string frame_id_ = "map";
 
-	rclcpp::Service<nav_msgs::srv::GetMap>::SharedPtr
-		m_service_map;	//!< service for map server
-	nav_msgs::srv::GetMap::Response
-		m_response_ros;	 //!< response from the map server
+	rclcpp::Service<nav_msgs::srv::GetMap>::SharedPtr m_service_map;  //!< service for map server
+	nav_msgs::srv::GetMap::Response m_response_ros;	 //!< response from the map server
 
 	/// metric map: will be used whatever is the incoming map format.
 	mp2p_icp::metric_map_t theMap_;
@@ -98,34 +96,24 @@ class MapServer : public rclcpp::Node
 
 	// clang-format on
 
-	sensor_msgs::msg::PointCloud2 pointmap_layer_to_msg(
-		const mrpt::maps::CPointsMap::Ptr& pts);
+	sensor_msgs::msg::PointCloud2 pointmap_layer_to_msg(const mrpt::maps::CPointsMap::Ptr& pts);
 
 	// Services:
-	rclcpp::Service<mrpt_nav_interfaces::srv::GetLayers>::SharedPtr
-		srvMapLayers_;
+	rclcpp::Service<mrpt_nav_interfaces::srv::GetLayers>::SharedPtr srvMapLayers_;
 
 	void srv_map_layers(
 		const std::shared_ptr<mrpt_nav_interfaces::srv::GetLayers::Request> req,
 		std::shared_ptr<mrpt_nav_interfaces::srv::GetLayers::Response> resp);
 
-	rclcpp::Service<mrpt_nav_interfaces::srv::GetGridmapLayer>::SharedPtr
-		srvGetGrid_;
+	rclcpp::Service<mrpt_nav_interfaces::srv::GetGridmapLayer>::SharedPtr srvGetGrid_;
 
 	void srv_get_gridmap(
-		const std::shared_ptr<
-			mrpt_nav_interfaces::srv::GetGridmapLayer::Request>
-			req,
-		std::shared_ptr<mrpt_nav_interfaces::srv::GetGridmapLayer::Response>
-			resp);
+		const std::shared_ptr<mrpt_nav_interfaces::srv::GetGridmapLayer::Request> req,
+		std::shared_ptr<mrpt_nav_interfaces::srv::GetGridmapLayer::Response> resp);
 
-	rclcpp::Service<mrpt_nav_interfaces::srv::GetPointmapLayer>::SharedPtr
-		srvGetPoints_;
+	rclcpp::Service<mrpt_nav_interfaces::srv::GetPointmapLayer>::SharedPtr srvGetPoints_;
 
 	void srv_get_pointmap(
-		const std::shared_ptr<
-			mrpt_nav_interfaces::srv::GetPointmapLayer::Request>
-			req,
-		std::shared_ptr<mrpt_nav_interfaces::srv::GetPointmapLayer::Response>
-			resp);
+		const std::shared_ptr<mrpt_nav_interfaces::srv::GetPointmapLayer::Request> req,
+		std::shared_ptr<mrpt_nav_interfaces::srv::GetPointmapLayer::Response> resp);
 };

@@ -31,13 +31,11 @@ namespace mrpt_msgs_bridge
 //  official repos, so we need to build it here within ROS.
 
 bool fromROS(
-	const marker_msgs::msg::MarkerDetection& _msg,
-	const mrpt::poses::CPose3D& sensorPoseOnRobot,
+	const marker_msgs::msg::MarkerDetection& _msg, const mrpt::poses::CPose3D& sensorPoseOnRobot,
 	mrpt::obs::CObservationBearingRange& _obj);
 
 bool fromROS(
-	const marker_msgs::msg::MarkerDetection& _msg,
-	const mrpt::poses::CPose3D& sensorPoseOnRobot,
+	const marker_msgs::msg::MarkerDetection& _msg, const mrpt::poses::CPose3D& sensorPoseOnRobot,
 	mrpt::obs::CObservationBeaconRanges& _obj);
 
 }  // namespace mrpt_msgs_bridge

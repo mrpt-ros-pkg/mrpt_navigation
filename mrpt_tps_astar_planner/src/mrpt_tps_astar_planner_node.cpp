@@ -184,8 +184,8 @@ class TPS_Astar_Planner_Node : public rclcpp::Node
 	 * @return true if there is transform from map to the robot
 	 */
 	[[nodiscard]] bool wait_for_transform(
-		mrpt::poses::CPose3D& des, const std::string& target_frame,
-		const std::string& source_frame, const int timeout_milliseconds = 50);
+		mrpt::poses::CPose3D& des, const std::string& target_frame, const std::string& source_frame,
+		const int timeout_milliseconds = 50);
 
 	/**
 	 * @brief Reads a parameter from the node's parameter server.
@@ -210,9 +210,7 @@ class TPS_Astar_Planner_Node : public rclcpp::Node
 	 * @brief Callback function when a new map is received
 	 * @param _map is an occupancy grid object pointer
 	 */
-	void callback_map(
-		const nav_msgs::msg::OccupancyGrid::SharedPtr& m,
-		InfoPerGridMapSource& e);
+	void callback_map(const nav_msgs::msg::OccupancyGrid::SharedPtr& m, InfoPerGridMapSource& e);
 
 	/**
 	 * @brief Callback function to update the obstacles around the Robot in case
@@ -220,31 +218,26 @@ class TPS_Astar_Planner_Node : public rclcpp::Node
 	 * @param _pc pointcloud object pointer from sensors
 	 */
 	void callback_obstacles(
-		const sensor_msgs::msg::PointCloud2::SharedPtr& pc,
-		InfoPerPointMapSource& e);
+		const sensor_msgs::msg::PointCloud2::SharedPtr& pc, InfoPerPointMapSource& e);
 
 	/**
 	 * @brief Callback function to prompt for a replan
 	 * @param _pose current localization location of the robot on the map
 	 */
-	void callback_replan(
-		const geometry_msgs::msg::PoseWithCovarianceStamped::SharedPtr& _pose);
+	void callback_replan(const geometry_msgs::msg::PoseWithCovarianceStamped::SharedPtr& _pose);
 
 	/**
 	 * @brief Mutex locked method to update the map when new one is received
 	 * @param _map is an occupancy grid object pointer
 	 */
-	void update_map(
-		const nav_msgs::msg::OccupancyGrid::SharedPtr& _msg,
-		InfoPerGridMapSource& e);
+	void update_map(const nav_msgs::msg::OccupancyGrid::SharedPtr& _msg, InfoPerGridMapSource& e);
 
 	/**
 	 * @brief Mutex locked method to update local obstacle map
 	 * @param _pc PointCloud2 object
 	 */
 	void update_obstacles(
-		const sensor_msgs::msg::PointCloud2::SharedPtr& _pc,
-		InfoPerPointMapSource& e);
+		const sensor_msgs::msg::PointCloud2::SharedPtr& _pc, InfoPerPointMapSource& e);
 
 	struct PlanResult
 	{
@@ -261,25 +254,19 @@ class TPS_Astar_Planner_Node : public rclcpp::Node
 	 * @param goal  robot goal pose
 	 * @return the plan results
 	 */
-	PlanResult do_path_plan(
-		const mrpt::math::TPose2D& start, const mrpt::math::TPose2D& goal);
+	PlanResult do_path_plan(const mrpt::math::TPose2D& start, const mrpt::math::TPose2D& goal);
 
 	void srv_make_plan_to(
-		const std::shared_ptr<mrpt_nav_interfaces::srv::MakePlanTo::Request>
-			req,
+		const std::shared_ptr<mrpt_nav_interfaces::srv::MakePlanTo::Request> req,
 		std::shared_ptr<mrpt_nav_interfaces::srv::MakePlanTo::Response> resp);
 
-	rclcpp::Service<mrpt_nav_interfaces::srv::MakePlanTo>::SharedPtr
-		srvMakePlanTo_;
+	rclcpp::Service<mrpt_nav_interfaces::srv::MakePlanTo>::SharedPtr srvMakePlanTo_;
 
 	void srv_make_plan_from_to(
-		const std::shared_ptr<mrpt_nav_interfaces::srv::MakePlanFromTo::Request>
-			req,
-		std::shared_ptr<mrpt_nav_interfaces::srv::MakePlanFromTo::Response>
-			resp);
+		const std::shared_ptr<mrpt_nav_interfaces::srv::MakePlanFromTo::Request> req,
+		std::shared_ptr<mrpt_nav_interfaces::srv::MakePlanFromTo::Response> resp);
 
-	rclcpp::Service<mrpt_nav_interfaces::srv::MakePlanFromTo>::SharedPtr
-		srvMakePlanFromTo_;
+	rclcpp::Service<mrpt_nav_interfaces::srv::MakePlanFromTo>::SharedPtr srvMakePlanFromTo_;
 
 	/**
 	 * @brief Debug method to visualize the planning
@@ -299,8 +286,7 @@ TPS_Astar_Planner_Node::TPS_Astar_Planner_Node() : rclcpp::Node(NODE_NAME)
 
 	const auto qos = rclcpp::SystemDefaultsQoS();
 	// See: REP-2003: https://ros.org/reps/rep-2003.html
-	const auto mapQoS =
-		rclcpp::QoS(rclcpp::KeepLast(1)).transient_local().reliable();
+	const auto mapQoS = rclcpp::QoS(rclcpp::KeepLast(1)).transient_local().reliable();
 
 	read_parameters();
 
@@ -314,8 +300,7 @@ TPS_Astar_Planner_Node::TPS_Astar_Planner_Node() : rclcpp::Node(NODE_NAME)
 	// -----------------------
 	sub_goal_ = this->create_subscription<geometry_msgs::msg::PoseStamped>(
 		topic_goal_sub_, qos,
-		[this](const geometry_msgs::msg::PoseStamped& msg)
-		{ this->callback_goal(msg); });
+		[this](const geometry_msgs::msg::PoseStamped& msg) { this->callback_goal(msg); });
 
 	// parse lists:
 	std::vector<std::string> vecStaticTopics;
@@ -342,8 +327,7 @@ TPS_Astar_Planner_Node::TPS_Astar_Planner_Node() : rclcpp::Node(NODE_NAME)
 	}
 
 	std::vector<std::string> lstPointTopics;
-	mrpt::system::tokenize(
-		topic_obstacle_points_sub_, ", \t\r\n", lstPointTopics);
+	mrpt::system::tokenize(topic_obstacle_points_sub_, ", \t\r\n", lstPointTopics);
 	for (const auto& topic : lstPointTopics)
 	{
 		auto& e = obstacle_points_.emplace_back();
@@ -357,8 +341,7 @@ TPS_Astar_Planner_Node::TPS_Astar_Planner_Node() : rclcpp::Node(NODE_NAME)
 
 	// Init ROS publishers:
 	// -----------------------
-	pub_wp_seq_ = this->create_publisher<mrpt_msgs::msg::WaypointSequence>(
-		topic_wp_seq_pub_, qos);
+	pub_wp_seq_ = this->create_publisher<mrpt_msgs::msg::WaypointSequence>(topic_wp_seq_pub_, qos);
 
 	// Init services:
 	// --------------------------
@@ -369,12 +352,10 @@ TPS_Astar_Planner_Node::TPS_Astar_Planner_Node() : rclcpp::Node(NODE_NAME)
 			mrpt_nav_interfaces::srv::MakePlanTo::Response::SharedPtr res)
 		{ srv_make_plan_to(req, res); });
 
-	srvMakePlanFromTo_ = this->create_service<
-		mrpt_nav_interfaces::srv::MakePlanFromTo>(
+	srvMakePlanFromTo_ = this->create_service<mrpt_nav_interfaces::srv::MakePlanFromTo>(
 		this->get_fully_qualified_name() + "/make_plan_from_to"s,
 		[this](
-			const mrpt_nav_interfaces::srv::MakePlanFromTo::Request::SharedPtr
-				req,
+			const mrpt_nav_interfaces::srv::MakePlanFromTo::Request::SharedPtr req,
 			mrpt_nav_interfaces::srv::MakePlanFromTo::Response::SharedPtr res)
 		{ srv_make_plan_from_to(req, res); });
 
@@ -384,25 +365,24 @@ TPS_Astar_Planner_Node::TPS_Astar_Planner_Node() : rclcpp::Node(NODE_NAME)
 }
 
 bool TPS_Astar_Planner_Node::wait_for_transform(
-	mrpt::poses::CPose3D& des, const std::string& target_frame,
-	const std::string& source_frame, const int timeout_milliseconds)
+	mrpt::poses::CPose3D& des, const std::string& target_frame, const std::string& source_frame,
+	const int timeout_milliseconds)
 
 {
 	const rclcpp::Duration timeout(0, 1000 * timeout_milliseconds);
 	try
 	{
-		geometry_msgs::msg::TransformStamped src_to_trg_frame =
-			tf_buffer_->lookupTransform(
-				source_frame, target_frame, tf2::TimePointZero,
-				tf2::durationFromSec(timeout.seconds()));
+		geometry_msgs::msg::TransformStamped src_to_trg_frame = tf_buffer_->lookupTransform(
+			source_frame, target_frame, tf2::TimePointZero,
+			tf2::durationFromSec(timeout.seconds()));
 
 		tf2::Transform tf;
 		tf2::fromMsg(src_to_trg_frame.transform, tf);
 		des = mrpt::ros2bridge::fromROS(tf);
 
 		RCLCPP_DEBUG(
-			get_logger(), "[wait_for_transform] Found pose %s -> %s: %s",
-			source_frame.c_str(), target_frame.c_str(), des.asString().c_str());
+			get_logger(), "[wait_for_transform] Found pose %s -> %s: %s", source_frame.c_str(),
+			target_frame.c_str(), des.asString().c_str());
 
 		return true;
 	}
@@ -417,9 +397,7 @@ void TPS_Astar_Planner_Node::read_parameters()
 {
 	this->declare_parameter<bool>("show_gui", false);
 	this->get_parameter("show_gui", gui_mrpt_);
-	RCLCPP_INFO(
-		this->get_logger(), "MRPT GUI Enabled: %s",
-		gui_mrpt_ ? "true" : "false");
+	RCLCPP_INFO(this->get_logger(), "MRPT GUI Enabled: %s", gui_mrpt_ ? "true" : "false");
 
 	this->declare_parameter<std::string>("frame_id_map", frame_id_map_);
 	this->get_parameter("frame_id_map", frame_id_map_);
@@ -427,39 +405,27 @@ void TPS_Astar_Planner_Node::read_parameters()
 
 	this->declare_parameter<std::string>("frame_id_robot", frame_id_robot_);
 	this->get_parameter("frame_id_robot", frame_id_robot_);
-	RCLCPP_INFO(
-		this->get_logger(), "frame_id_robot %s", frame_id_robot_.c_str());
+	RCLCPP_INFO(this->get_logger(), "frame_id_robot %s", frame_id_robot_.c_str());
 
 	this->declare_parameter<std::string>("topic_goal_sub", topic_goal_sub_);
 	this->get_parameter("topic_goal_sub", topic_goal_sub_);
-	RCLCPP_INFO(
-		this->get_logger(), "topic_goal_sub %s", topic_goal_sub_.c_str());
+	RCLCPP_INFO(this->get_logger(), "topic_goal_sub %s", topic_goal_sub_.c_str());
 
-	this->declare_parameter<std::string>(
-		"topic_obstacles_gridmap_sub", topic_gridmap_sub_);
+	this->declare_parameter<std::string>("topic_obstacles_gridmap_sub", topic_gridmap_sub_);
 	this->get_parameter("topic_obstacles_gridmap_sub", topic_gridmap_sub_);
-	RCLCPP_INFO(
-		this->get_logger(), "topic_obstacles_gridmap_sub: %s",
-		topic_gridmap_sub_.c_str());
+	RCLCPP_INFO(this->get_logger(), "topic_obstacles_gridmap_sub: %s", topic_gridmap_sub_.c_str());
 
-	this->declare_parameter<std::string>(
-		"topic_obstacles_sub", topic_obstacle_points_sub_);
+	this->declare_parameter<std::string>("topic_obstacles_sub", topic_obstacle_points_sub_);
 	this->get_parameter("topic_obstacles_sub", topic_obstacle_points_sub_);
-	RCLCPP_INFO(
-		this->get_logger(), "topic_obstacles_sub: %s",
-		topic_obstacle_points_sub_.c_str());
+	RCLCPP_INFO(this->get_logger(), "topic_obstacles_sub: %s", topic_obstacle_points_sub_.c_str());
 
-	this->declare_parameter<std::string>(
-		"topic_static_maps", topic_static_maps_);
+	this->declare_parameter<std::string>("topic_static_maps", topic_static_maps_);
 	this->get_parameter("topic_static_maps", topic_static_maps_);
-	RCLCPP_INFO(
-		this->get_logger(), "topic_static_maps: %s",
-		topic_static_maps_.c_str());
+	RCLCPP_INFO(this->get_logger(), "topic_static_maps: %s", topic_static_maps_.c_str());
 
 	this->declare_parameter<std::string>("topic_wp_seq_pub", "/waypoints");
 	this->get_parameter("topic_wp_seq_pub", topic_wp_seq_pub_);
-	RCLCPP_INFO(
-		this->get_logger(), "topic_wp_seq_pub%s", topic_wp_seq_pub_.c_str());
+	RCLCPP_INFO(this->get_logger(), "topic_wp_seq_pub%s", topic_wp_seq_pub_.c_str());
 
 	this->declare_parameter<std::string>("ptg_ini", ptg_ini_file_);
 	this->get_parameter("ptg_ini", ptg_ini_file_);
@@ -467,76 +433,58 @@ void TPS_Astar_Planner_Node::read_parameters()
 
 	ASSERT_FILE_EXISTS_(ptg_ini_file_);
 
-	this->declare_parameter<std::string>(
-		"global_costmap_parameters", costmap_params_file_);
+	this->declare_parameter<std::string>("global_costmap_parameters", costmap_params_file_);
 	this->get_parameter("global_costmap_parameters", costmap_params_file_);
-	RCLCPP_INFO(
-		this->get_logger(), "global_costmap_params_file %s",
-		costmap_params_file_.c_str());
+	RCLCPP_INFO(this->get_logger(), "global_costmap_params_file %s", costmap_params_file_.c_str());
 
 	ASSERT_FILE_EXISTS_(costmap_params_file_);
 
-	this->declare_parameter<std::string>(
-		"prefer_waypoints_parameters", wp_params_file_);
+	this->declare_parameter<std::string>("prefer_waypoints_parameters", wp_params_file_);
 	this->get_parameter("prefer_waypoints_parameters", wp_params_file_);
-	RCLCPP_INFO(
-		this->get_logger(), "prefer_waypoints_parameters_file %s",
-		wp_params_file_.c_str());
+	RCLCPP_INFO(this->get_logger(), "prefer_waypoints_parameters_file %s", wp_params_file_.c_str());
 
 	ASSERT_FILE_EXISTS_(wp_params_file_);
 
-	this->declare_parameter<std::string>(
-		"planner_parameters", planner_params_file_);
+	this->declare_parameter<std::string>("planner_parameters", planner_params_file_);
 	this->get_parameter("planner_parameters", planner_params_file_);
-	RCLCPP_INFO(
-		this->get_logger(), "planner_parameters_file %s",
-		planner_params_file_.c_str());
+	RCLCPP_INFO(this->get_logger(), "planner_parameters_file %s", planner_params_file_.c_str());
 
 	ASSERT_FILE_EXISTS_(planner_params_file_);
 
 	this->declare_parameter<double>(
 		"mid_waypoints_allowed_distance", mid_waypoints_allowed_distance_);
-	this->get_parameter(
-		"mid_waypoints_allowed_distance", mid_waypoints_allowed_distance_);
+	this->get_parameter("mid_waypoints_allowed_distance", mid_waypoints_allowed_distance_);
 	RCLCPP_INFO(
 		this->get_logger(), "mid_waypoints_allowed_distance: %.03f",
 		mid_waypoints_allowed_distance_);
 
 	this->declare_parameter<double>(
 		"final_waypoint_allowed_distance", final_waypoint_allowed_distance_);
-	this->get_parameter(
-		"final_waypoint_allowed_distance", final_waypoint_allowed_distance_);
+	this->get_parameter("final_waypoint_allowed_distance", final_waypoint_allowed_distance_);
 	RCLCPP_INFO(
 		this->get_logger(), "final_waypoint_allowed_distance: mid: %.03f",
 		final_waypoint_allowed_distance_);
 
-	this->declare_parameter<bool>(
-		"mid_waypoints_allow_skip", mid_waypoints_allow_skip_);
+	this->declare_parameter<bool>("mid_waypoints_allow_skip", mid_waypoints_allow_skip_);
 	this->get_parameter("mid_waypoints_allow_skip", mid_waypoints_allow_skip_);
 	RCLCPP_INFO(
 		this->get_logger(), "mid_waypoints_allow_skip: %s",
 		mid_waypoints_allow_skip_ ? "true" : "false");
 
-	this->declare_parameter<bool>(
-		"final_waypoint_allow_skip", final_waypoint_allow_skip_);
-	this->get_parameter(
-		"final_waypoint_allow_skip", final_waypoint_allow_skip_);
+	this->declare_parameter<bool>("final_waypoint_allow_skip", final_waypoint_allow_skip_);
+	this->get_parameter("final_waypoint_allow_skip", final_waypoint_allow_skip_);
 	RCLCPP_INFO(
 		this->get_logger(), "final_waypoint_allow_skip: %s",
 		final_waypoint_allow_skip_ ? "true" : "false");
 
-	this->declare_parameter<bool>(
-		"mid_waypoints_ignore_heading", mid_waypoints_ignore_heading_);
-	this->get_parameter(
-		"mid_waypoints_ignore_heading", mid_waypoints_ignore_heading_);
+	this->declare_parameter<bool>("mid_waypoints_ignore_heading", mid_waypoints_ignore_heading_);
+	this->get_parameter("mid_waypoints_ignore_heading", mid_waypoints_ignore_heading_);
 	RCLCPP_INFO(
 		this->get_logger(), "mid_waypoints_ignore_heading: %s",
 		mid_waypoints_ignore_heading_ ? "true" : "false");
 
-	this->declare_parameter<bool>(
-		"final_waypoint_ignore_heading", final_waypoint_ignore_heading_);
-	this->get_parameter(
-		"final_waypoint_ignore_heading", final_waypoint_ignore_heading_);
+	this->declare_parameter<bool>("final_waypoint_ignore_heading", final_waypoint_ignore_heading_);
+	this->get_parameter("final_waypoint_ignore_heading", final_waypoint_ignore_heading_);
 	RCLCPP_INFO(
 		this->get_logger(), "final_waypoint_ignore_heading: %s",
 		final_waypoint_ignore_heading_ ? "true" : "false");
@@ -552,8 +500,7 @@ void TPS_Astar_Planner_Node::initialize_planner()
 	const auto c = mrpt::containers::yaml::FromFile(planner_params_file_);
 	planner_->params_from_yaml(c);
 	RCLCPP_INFO_STREAM(
-		this->get_logger(),
-		"Loaded these planner params:" << planner_->params_as_yaml());
+		this->get_logger(), "Loaded these planner params:" << planner_->params_as_yaml());
 
 	mrpt::config::CConfigFile cfg(ptg_ini_file_);
 	ptgs_.initFromConfigFile(cfg, "SelfDriving");
@@ -562,8 +509,7 @@ void TPS_Astar_Planner_Node::initialize_planner()
 		mrpt::containers::yaml::FromFile(costmap_params_file_));
 }
 
-void TPS_Astar_Planner_Node::callback_goal(
-	const geometry_msgs::msg::PoseStamped& _goal)
+void TPS_Astar_Planner_Node::callback_goal(const geometry_msgs::msg::PoseStamped& _goal)
 {
 	try
 	{
@@ -571,8 +517,7 @@ void TPS_Astar_Planner_Node::callback_goal(
 		mrpt::math::TPose2D nav_goal = mrpt::math::TPose2D(p.asTPose());
 
 		mrpt::poses::CPose3D robot_pose;
-		const bool robot_pose_ok =
-			wait_for_transform(robot_pose, frame_id_robot_, frame_id_map_);
+		const bool robot_pose_ok = wait_for_transform(robot_pose, frame_id_robot_, frame_id_map_);
 
 		ASSERT_(robot_pose_ok);
 
@@ -589,8 +534,7 @@ void TPS_Astar_Planner_Node::callback_goal(
 	}
 	catch (const std::exception& e)
 	{
-		RCLCPP_ERROR(
-			this->get_logger(), "Exception in goal callback : %s", e.what());
+		RCLCPP_ERROR(this->get_logger(), "Exception in goal callback : %s", e.what());
 	}
 }
 
@@ -599,35 +543,29 @@ void TPS_Astar_Planner_Node::callback_map(
 	TPS_Astar_Planner_Node::InfoPerGridMapSource& e)
 {
 	RCLCPP_INFO_STREAM(
-		this->get_logger(),
-		"Received gridmap from topic: " << e.sub->get_topic_name());
+		this->get_logger(), "Received gridmap from topic: " << e.sub->get_topic_name());
 
 	update_map(grid, e);
 }
 
 void TPS_Astar_Planner_Node::callback_obstacles(
-	const sensor_msgs::msg::PointCloud2::SharedPtr& pc,
-	InfoPerPointMapSource& e)
+	const sensor_msgs::msg::PointCloud2::SharedPtr& pc, InfoPerPointMapSource& e)
 {
 	RCLCPP_INFO_STREAM(
-		this->get_logger(),
-		"Received obstacle points from topic: " << e.sub->get_topic_name());
+		this->get_logger(), "Received obstacle points from topic: " << e.sub->get_topic_name());
 
 	update_obstacles(pc, e);
 }
 
 void TPS_Astar_Planner_Node::update_obstacles(
-	const sensor_msgs::msg::PointCloud2::SharedPtr& pcMsg,
-	InfoPerPointMapSource& e)
+	const sensor_msgs::msg::PointCloud2::SharedPtr& pcMsg, InfoPerPointMapSource& e)
 {
 	auto lck = mrpt::lockHelper(obstacles_cs_);
 
 	auto pc = mrpt::maps::CSimplePointsMap::Create();
 	if (!mrpt::ros2bridge::fromROS(*pcMsg, *pc))
 	{
-		RCLCPP_ERROR(
-			this->get_logger(),
-			"Failed to convert Point Cloud to MRPT Points Map");
+		RCLCPP_ERROR(this->get_logger(), "Failed to convert Point Cloud to MRPT Points Map");
 	}
 
 	// Transform the cloud to its global pose in the map:
@@ -638,8 +576,7 @@ void TPS_Astar_Planner_Node::update_obstacles(
 	const auto tStart = this->now();
 	const double max_duration = 5.0;  // seconds
 
-	while (!wait_for_transform(
-		sensorPoseInMap, pcMsg->header.frame_id, frame_id_map_))
+	while (!wait_for_transform(sensorPoseInMap, pcMsg->header.frame_id, frame_id_map_))
 	{
 		std::this_thread::sleep_for(timeout);
 		auto duration = this->get_clock()->now() - tStart;
@@ -651,8 +588,7 @@ void TPS_Astar_Planner_Node::update_obstacles(
 	e.obstacle_points = pc;
 }
 
-void TPS_Astar_Planner_Node::publish_waypoint_sequence(
-	const mrpt_msgs::msg::WaypointSequence& wps)
+void TPS_Astar_Planner_Node::publish_waypoint_sequence(const mrpt_msgs::msg::WaypointSequence& wps)
 {
 	pub_wp_seq_->publish(wps);
 }
@@ -661,8 +597,7 @@ void TPS_Astar_Planner_Node::init_3d_debug()
 {
 	if (win_3d_) return;
 
-	win_3d_ = mrpt::gui::CDisplayWindow3D::Create(
-		"Pathplanning-TPS-AStar", 1000, 600);
+	win_3d_ = mrpt::gui::CDisplayWindow3D::Create("Pathplanning-TPS-AStar", 1000, 600);
 	win_3d_->setCameraZoom(20);
 	win_3d_->setCameraAzimuthDeg(-45);
 
@@ -672,8 +607,7 @@ void TPS_Astar_Planner_Node::init_3d_debug()
 
 	for (const auto& e : gridmaps_) scene->insert(e.grid->getVisualization());
 
-	for (const auto& e : obstacle_points_)
-		scene->insert(e.obstacle_points->getVisualization());
+	for (const auto& e : obstacle_points_) scene->insert(e.obstacle_points->getVisualization());
 
 	lck.unlock();
 
@@ -762,11 +696,9 @@ TPS_Astar_Planner_Node::PlanResult TPS_Astar_Planner_Node::do_path_plan(
 
 	{
 		const auto bboxMargin = mrpt::math::TPoint3Df(2.0, 2.0, .0);
-		const auto ptStart = mrpt::math::TPoint3Df(
-			pi.stateStart.pose.x, pi.stateStart.pose.y, 0);
+		const auto ptStart = mrpt::math::TPoint3Df(pi.stateStart.pose.x, pi.stateStart.pose.y, 0);
 		const auto ptGoal = mrpt::math::TPoint3Df(
-			pi.stateGoal.asSE2KinState().pose.x,
-			pi.stateGoal.asSE2KinState().pose.y, 0);
+			pi.stateGoal.asSE2KinState().pose.x, pi.stateGoal.asSE2KinState().pose.y, 0);
 		bbox.updateWithPoint(ptStart - bboxMargin);
 		bbox.updateWithPoint(ptStart + bboxMargin);
 		bbox.updateWithPoint(ptGoal - bboxMargin);
@@ -777,19 +709,17 @@ TPS_Astar_Planner_Node::PlanResult TPS_Astar_Planner_Node::do_path_plan(
 	pi.worldBboxMin = {bbox.min.x, bbox.min.y, -M_PI};
 
 	RCLCPP_INFO_STREAM(
-		this->get_logger(),
-		"Start state: " << pi.stateStart.asString()
-						<< "\n Goal state: " << pi.stateGoal.asString()
-						<< "\n Obstacle sources: " << obstacleSources
-						<< "\n Total obstacle points: " << totalObstaclePoints
-						<< "\n  World bbox : " << pi.worldBboxMin.asString()
-						<< "-" << pi.worldBboxMax.asString());
+		this->get_logger(), "Start state: " << pi.stateStart.asString()
+											<< "\n Goal state: " << pi.stateGoal.asString()
+											<< "\n Obstacle sources: " << obstacleSources
+											<< "\n Total obstacle points: " << totalObstaclePoints
+											<< "\n  World bbox : " << pi.worldBboxMin.asString()
+											<< "-" << pi.worldBboxMax.asString());
 
 	// Insert custom progress callback:
 	planner_->progressCallback_ = [](const mpp::ProgressCallbackData& pcd)
 	{
-		std::cout << "[progressCallback] bestCostFromStart: "
-				  << pcd.bestCostFromStart
+		std::cout << "[progressCallback] bestCostFromStart: " << pcd.bestCostFromStart
 				  << " bestCostToGoal: " << pcd.bestCostToGoal
 				  << " bestPathLength: " << pcd.bestPath.size() << std::endl;
 	};
@@ -798,14 +728,12 @@ TPS_Astar_Planner_Node::PlanResult TPS_Astar_Planner_Node::do_path_plan(
 
 	std::cout << "\nDone.\n";
 	std::cout << "Success: " << (plan.success ? "YES" : "NO") << "\n";
-	std::cout << "Plan has " << plan.motionTree.edges_to_children.size()
-			  << " overall edges, " << plan.motionTree.nodes().size()
-			  << " nodes\n";
+	std::cout << "Plan has " << plan.motionTree.edges_to_children.size() << " overall edges, "
+			  << plan.motionTree.nodes().size() << " nodes\n";
 
 	if (!plan.bestNodeId.has_value())
 	{
-		RCLCPP_ERROR_STREAM(
-			this->get_logger(), "No bestNodeId in plan output.");
+		RCLCPP_ERROR_STREAM(this->get_logger(), "No bestNodeId in plan output.");
 
 		return {};
 	}
@@ -818,8 +746,7 @@ TPS_Astar_Planner_Node::PlanResult TPS_Astar_Planner_Node::do_path_plan(
 	}
 
 	// backtrack:
-	auto [plannedPath, pathEdges] =
-		plan.motionTree.backtrack_path(*plan.bestNodeId);
+	auto [plannedPath, pathEdges] = plan.motionTree.backtrack_path(*plan.bestNodeId);
 
 #if 0  // JLBC: disabled to check if this is causing troubles
 mpp::refine_trajectory(plannedPath, pathEdges, planner_input.ptgs);
@@ -832,8 +759,7 @@ mpp::refine_trajectory(plannedPath, pathEdges, planner_input.ptgs);
 
 		vizOpts.renderOptions.highlight_path_to_node_id = plan.bestNodeId;
 		vizOpts.renderOptions.color_normal_edge = {0xb0b0b0, 0x20};	 // RGBA
-		vizOpts.renderOptions.width_normal_edge =
-			0;	// hide all edges except best path
+		vizOpts.renderOptions.width_normal_edge = 0;  // hide all edges except best path
 		vizOpts.gui_modal = false;	// leave GUI open in a background thread
 
 		mpp::viz_nav_plan(plan, vizOpts, planner_->costEvaluators_);
@@ -852,8 +778,7 @@ mpp::refine_trajectory(plannedPath, pathEdges, planner_input.ptgs);
 		// so, correct that relative pose so we keep everything in global
 		// frame:
 		const auto& startPose = plan.originalInput.stateStart.pose;
-		for (auto& kv : interpPath)
-			kv.second.state.pose = startPose + kv.second.state.pose;
+		for (auto& kv : interpPath) kv.second.state.pose = startPose + kv.second.state.pose;
 	}
 
 	// Prepare return data:
@@ -906,8 +831,7 @@ void TPS_Astar_Planner_Node::srv_make_plan_to(
 		const auto nav_goal = mrpt::math::TPose2D(p.asTPose());
 
 		mrpt::poses::CPose3D robot_pose;
-		const bool robot_pose_ok =
-			wait_for_transform(robot_pose, frame_id_robot_, frame_id_map_);
+		const bool robot_pose_ok = wait_for_transform(robot_pose, frame_id_robot_, frame_id_map_);
 
 		ASSERT_(robot_pose_ok);
 
@@ -920,14 +844,12 @@ void TPS_Astar_Planner_Node::srv_make_plan_to(
 	}
 	catch (const std::exception& e)
 	{
-		RCLCPP_ERROR(
-			this->get_logger(), "Exception in srv_make_plan_to: %s", e.what());
+		RCLCPP_ERROR(this->get_logger(), "Exception in srv_make_plan_to: %s", e.what());
 	}
 }
 
 void TPS_Astar_Planner_Node::srv_make_plan_from_to(
-	const std::shared_ptr<mrpt_nav_interfaces::srv::MakePlanFromTo::Request>
-		req,
+	const std::shared_ptr<mrpt_nav_interfaces::srv::MakePlanFromTo::Request> req,
 	std::shared_ptr<mrpt_nav_interfaces::srv::MakePlanFromTo::Response> resp)
 {
 	try
@@ -936,8 +858,7 @@ void TPS_Astar_Planner_Node::srv_make_plan_from_to(
 		const auto nav_goal = mrpt::math::TPose2D(p.asTPose());
 
 		mrpt::poses::CPose3D robot_pose;
-		const bool robot_pose_ok =
-			wait_for_transform(robot_pose, frame_id_robot_, frame_id_map_);
+		const bool robot_pose_ok = wait_for_transform(robot_pose, frame_id_robot_, frame_id_map_);
 
 		ASSERT_(robot_pose_ok);
 
@@ -950,8 +871,7 @@ void TPS_Astar_Planner_Node::srv_make_plan_from_to(
 	}
 	catch (const std::exception& e)
 	{
-		RCLCPP_ERROR(
-			this->get_logger(), "Exception in srv_make_plan_to: %s", e.what());
+		RCLCPP_ERROR(this->get_logger(), "Exception in srv_make_plan_to: %s", e.what());
 	}
 }
 

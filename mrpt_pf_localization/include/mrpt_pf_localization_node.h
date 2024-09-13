@@ -44,8 +44,7 @@ using mrpt::obs::CObservationOdometry;
 class PFLocalizationNode : public rclcpp::Node
 {
    public:
-	PFLocalizationNode(
-		const rclcpp::NodeOptions& options = rclcpp::NodeOptions());
+	PFLocalizationNode(const rclcpp::NodeOptions& options = rclcpp::NodeOptions());
 	~PFLocalizationNode();
 
 	struct NodeParameters
@@ -108,18 +107,14 @@ class PFLocalizationNode : public rclcpp::Node
 	void reload_params_from_ros();
 
 	void loop();
-	void callbackLaser(
-		const sensor_msgs::msg::LaserScan& msg, const std::string& topicName);
-	void callbackPointCloud(
-		const sensor_msgs::msg::PointCloud2& msg, const std::string& topicName);
+	void callbackLaser(const sensor_msgs::msg::LaserScan& msg, const std::string& topicName);
+	void callbackPointCloud(const sensor_msgs::msg::PointCloud2& msg, const std::string& topicName);
 
 	void callbackGNSS(const sensor_msgs::msg::NavSatFix& msg);
 
 	void callbackBeacon(const mrpt_msgs::msg::ObservationRangeBeacon&);
-	void callbackRobotPose(
-		const geometry_msgs::msg::PoseWithCovarianceStamped&);
-	void callbackInitialpose(
-		const geometry_msgs::msg::PoseWithCovarianceStamped& msg);
+	void callbackRobotPose(const geometry_msgs::msg::PoseWithCovarianceStamped&);
+	void callbackInitialpose(const geometry_msgs::msg::PoseWithCovarianceStamped& msg);
 	void callbackOdometry(const nav_msgs::msg::Odometry&);
 
 	void callbackMap(const mrpt_msgs::msg::GenericObject& obj);
@@ -138,23 +133,19 @@ class PFLocalizationNode : public rclcpp::Node
 	std::optional<mrpt::math::TTwist3D> estimated_twist_;
 
 	/** Sub for /initialpose */
-	rclcpp::Subscription<geometry_msgs::msg::PoseWithCovarianceStamped>::
-		SharedPtr sub_init_pose_;
+	rclcpp::Subscription<geometry_msgs::msg::PoseWithCovarianceStamped>::SharedPtr sub_init_pose_;
 
 	rclcpp::Subscription<mrpt_msgs::msg::GenericObject>::SharedPtr subMap_;
 	rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr subOdometry_;
 
 	// Sensors:
-	std::vector<rclcpp::Subscription<sensor_msgs::msg::LaserScan>::SharedPtr>
-		subs_2dlaser_;
-	std::vector<rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr>
-		subs_point_clouds_;
+	std::vector<rclcpp::Subscription<sensor_msgs::msg::LaserScan>::SharedPtr> subs_2dlaser_;
+	std::vector<rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr> subs_point_clouds_;
 	rclcpp::Subscription<sensor_msgs::msg::NavSatFix>::SharedPtr subGNSS_;
 
 	rclcpp::Publisher<geometry_msgs::msg::PoseArray>::SharedPtr pubParticles_;
 
-	rclcpp::Publisher<geometry_msgs::msg::PoseWithCovarianceStamped>::SharedPtr
-		pubPose_;
+	rclcpp::Publisher<geometry_msgs::msg::PoseWithCovarianceStamped>::SharedPtr pubPose_;
 
 	std::shared_ptr<tf2_ros::Buffer> tf_buffer_;
 	std::shared_ptr<tf2_ros::TransformListener> tf_listener_;
@@ -166,8 +157,8 @@ class PFLocalizationNode : public rclcpp::Node
 	void useROSLogLevel();
 
 	[[nodiscard]] bool waitForTransform(
-		mrpt::poses::CPose3D& des, const std::string& target_frame,
-		const std::string& source_frame, const int timeoutMilliseconds = 50);
+		mrpt::poses::CPose3D& des, const std::string& target_frame, const std::string& source_frame,
+		const int timeoutMilliseconds = 50);
 
 	void update_tf_pub_data();
 	std::optional<geometry_msgs::msg::TransformStamped> tfMapOdomToPublish_;

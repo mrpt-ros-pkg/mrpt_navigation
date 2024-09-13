@@ -21,8 +21,7 @@ using mrpt::graphs::TNodeID;
 ///////////////////////////////////////////////////////////////////////////////////////////
 
 void mrpt_msgs_bridge::toROS(
-	const mrpt::graphs::CNetworkOfPoses2DInf& mrpt_graph,
-	mrpt_msgs::msg::NetworkOfPoses& ros_graph)
+	const mrpt::graphs::CNetworkOfPoses2DInf& mrpt_graph, mrpt_msgs::msg::NetworkOfPoses& ros_graph)
 {
 	MRPT_START
 	using namespace geometry_msgs::msg;
@@ -31,18 +30,16 @@ void mrpt_msgs_bridge::toROS(
 	using namespace mrpt::poses;
 	using namespace std;
 
-	typedef typename mrpt::graphs::CNetworkOfPoses2DInf::global_poses_t::
-		const_iterator poses_cit_t;
+	typedef typename mrpt::graphs::CNetworkOfPoses2DInf::global_poses_t::const_iterator poses_cit_t;
 
-	const CNetworkOfPoses2DInf::BASE::edges_map_t& constraints =
-		mrpt_graph.BASE::edges;
+	const CNetworkOfPoses2DInf::BASE::edges_map_t& constraints = mrpt_graph.BASE::edges;
 
 	// fill root node
 	ros_graph.root = mrpt_graph.root;
 
 	// fill nodeIDs, positions
-	for (poses_cit_t poses_cit = mrpt_graph.nodes.begin();
-		 poses_cit != mrpt_graph.nodes.end(); ++poses_cit)
+	for (poses_cit_t poses_cit = mrpt_graph.nodes.begin(); poses_cit != mrpt_graph.nodes.end();
+		 ++poses_cit)
 	{
 		mrpt_msgs::msg::NodeIDWithPose ros_node;
 
@@ -106,8 +103,8 @@ void mrpt_msgs_bridge::toROS(
 	using namespace mrpt::poses;
 	using namespace std;
 
-	typedef typename mrpt::graphs::CNetworkOfPoses2DInf_NA::global_poses_t::
-		const_iterator poses_cit_t;
+	typedef
+		typename mrpt::graphs::CNetworkOfPoses2DInf_NA::global_poses_t::const_iterator poses_cit_t;
 
 	//// debugging print.
 	// for (poses_cit_t it = mrpt_graph.nodes.begin();
@@ -116,15 +113,14 @@ void mrpt_msgs_bridge::toROS(
 	// cout << it->first << " | " << it->second << endl;
 	//}
 
-	const CNetworkOfPoses2DInf_NA::BASE::edges_map_t& constraints =
-		mrpt_graph.BASE::edges;
+	const CNetworkOfPoses2DInf_NA::BASE::edges_map_t& constraints = mrpt_graph.BASE::edges;
 
 	// fill root node
 	ros_graph.root = mrpt_graph.root;
 
 	// fill nodeIDs, positions
-	for (poses_cit_t poses_cit = mrpt_graph.nodes.begin();
-		 poses_cit != mrpt_graph.nodes.end(); ++poses_cit)
+	for (poses_cit_t poses_cit = mrpt_graph.nodes.begin(); poses_cit != mrpt_graph.nodes.end();
+		 ++poses_cit)
 	{
 		mrpt_msgs::msg::NodeIDWithPose ros_node;
 
@@ -180,8 +176,7 @@ void mrpt_msgs_bridge::toROS(
 ///////////////////////////////////////////////////////////////////////////////////////////
 
 void mrpt_msgs_bridge::fromROS(
-	const mrpt_msgs::msg::NetworkOfPoses& ros_graph,
-	mrpt::graphs::CNetworkOfPoses2DInf& mrpt_graph)
+	const mrpt_msgs::msg::NetworkOfPoses& ros_graph, mrpt::graphs::CNetworkOfPoses2DInf& mrpt_graph)
 {
 	MRPT_START
 	using namespace mrpt::poses;
@@ -201,8 +196,7 @@ void mrpt_msgs_bridge::fromROS(
 		// get the pose
 		CPose2D mrpt_pose = CPose2D(mrpt::ros2bridge::fromROS(nodes_cit->pose));
 
-		mrpt_graph.nodes.insert(
-			make_pair(static_cast<TNodeID>(nodes_cit->node_id), mrpt_pose));
+		mrpt_graph.nodes.insert(make_pair(static_cast<TNodeID>(nodes_cit->node_id), mrpt_pose));
 	}
 
 	// fill the constraints
@@ -215,8 +209,8 @@ void mrpt_msgs_bridge::fromROS(
 			static_cast<TNodeID>(constr_cit->node_id_to)));
 
 		// constraint value
-		const auto mrpt_constr = mrpt::poses::CPosePDFGaussianInf(
-			mrpt::ros2bridge::fromROS(constr_cit->constraint));
+		const auto mrpt_constr =
+			mrpt::poses::CPosePDFGaussianInf(mrpt::ros2bridge::fromROS(constr_cit->constraint));
 
 		mrpt_graph.edges.insert(make_pair(constr_ends, mrpt_constr));
 	}
@@ -247,8 +241,7 @@ void mrpt_msgs_bridge::fromROS(
 	using nodes_cit_t = NetworkOfPoses::_nodes_type::_vec_type::const_iterator;
 	using constraints_cit_t = NetworkOfPoses::_constraints_type::const_iterator;
 
-	using mrpt_graph_pose_t =
-		mrpt::graphs::CNetworkOfPoses2DInf_NA::global_pose_t;
+	using mrpt_graph_pose_t = mrpt::graphs::CNetworkOfPoses2DInf_NA::global_pose_t;
 
 	// fill root node
 	mrpt_graph.root = ros_graph.root;
@@ -258,15 +251,13 @@ void mrpt_msgs_bridge::fromROS(
 		 nodes_cit != ros_graph.nodes.vec.end(); ++nodes_cit)
 	{
 		// set the nodeID/pose
-		mrpt_graph_pose_t mrpt_node =
-			mrpt::ros2bridge::fromROS(nodes_cit->pose);
+		mrpt_graph_pose_t mrpt_node = mrpt::ros2bridge::fromROS(nodes_cit->pose);
 
 		// set the MR-SLAM fields
 		mrpt_node.agent_ID_str = nodes_cit->str_id.data;
 		mrpt_node.nodeID_loc = nodes_cit->node_id_loc;
 
-		mrpt_graph.nodes.insert(
-			make_pair(static_cast<TNodeID>(nodes_cit->node_id), mrpt_node));
+		mrpt_graph.nodes.insert(make_pair(static_cast<TNodeID>(nodes_cit->node_id), mrpt_node));
 	}
 
 	// fill the constraints
@@ -279,8 +270,8 @@ void mrpt_msgs_bridge::fromROS(
 			static_cast<TNodeID>(constr_cit->node_id_to)));
 
 		// constraint value
-		const auto mrpt_constr = mrpt::poses::CPosePDFGaussianInf(
-			mrpt::ros2bridge::fromROS(constr_cit->constraint));
+		const auto mrpt_constr =
+			mrpt::poses::CPosePDFGaussianInf(mrpt::ros2bridge::fromROS(constr_cit->constraint));
 
 		mrpt_graph.edges.insert(make_pair(constr_ends, mrpt_constr));
 	}

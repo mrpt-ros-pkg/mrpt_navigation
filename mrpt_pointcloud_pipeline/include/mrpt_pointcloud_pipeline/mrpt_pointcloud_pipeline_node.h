@@ -52,8 +52,7 @@ class LocalObstaclesNode : public rclcpp::Node
 {
    public:
 	/* Ctor*/
-	explicit LocalObstaclesNode(
-		const rclcpp::NodeOptions& options = rclcpp::NodeOptions());
+	explicit LocalObstaclesNode(const rclcpp::NodeOptions& options = rclcpp::NodeOptions());
 	/* Dtor*/
 	~LocalObstaclesNode() {}
 
@@ -66,13 +65,11 @@ class LocalObstaclesNode : public rclcpp::Node
 
 	/* Callback: On new sensor data*/
 	void on_new_sensor_laser_2d(
-		const sensor_msgs::msg::LaserScan::SharedPtr& scan,
-		const std::string& topicName);
+		const sensor_msgs::msg::LaserScan::SharedPtr& scan, const std::string& topicName);
 
 	/* Callback: On new pointcloud data*/
 	void on_new_sensor_pointcloud(
-		const sensor_msgs::msg::PointCloud2::SharedPtr& pts,
-		const std::string& topicName);
+		const sensor_msgs::msg::PointCloud2::SharedPtr& pts, const std::string& topicName);
 
 	/**
 	 * @brief Subscribe to a variable number of topics.
@@ -83,8 +80,7 @@ class LocalObstaclesNode : public rclcpp::Node
 	template <typename MessageT, typename CallbackMethodType>
 	size_t subscribe_to_multiple_topics(
 		const std::string& lstTopics,
-		std::vector<typename rclcpp::Subscription<MessageT>::SharedPtr>&
-			subscriptions,
+		std::vector<typename rclcpp::Subscription<MessageT>::SharedPtr>& subscriptions,
 		CallbackMethodType callback)
 	{
 		size_t num_subscriptions = 0;
@@ -100,10 +96,8 @@ class LocalObstaclesNode : public rclcpp::Node
 		{
 			const auto sub = this->create_subscription<MessageT>(
 				source, 1,
-				[source, callback,
-				 this](const typename MessageT::SharedPtr msg) {
-					callback(msg, source);
-				});
+				[source, callback, this](const typename MessageT::SharedPtr msg)
+				{ callback(msg, source); });
 			subscriptions.push_back(sub);  // 1 is the queue size
 			num_subscriptions++;
 		}
@@ -118,8 +112,7 @@ class LocalObstaclesNode : public rclcpp::Node
 	bool m_one_observation_per_topic = false;
 	std::string m_frameid_reference = "odom";  //!< type:"odom"
 	std::string m_frameid_robot = "base_link";	//!< type: "base_link"
-	std::string m_topics_source_2dscan =
-		"scan, laser1";	 //!< Default: "scan, laser1"
+	std::string m_topics_source_2dscan = "scan, laser1";  //!< Default: "scan, laser1"
 	std::string m_topics_source_pointclouds = "";
 
 	//!< In secs (default: 0.2). Can't be smaller than m_publish_period
@@ -164,10 +157,8 @@ class LocalObstaclesNode : public rclcpp::Node
 	 * @name ROS2 pubs/subs
 	 * @{
 	 */
-	std::vector<rclcpp::Subscription<sensor_msgs::msg::LaserScan>::SharedPtr>
-		m_subs_2dlaser;
-	std::vector<rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr>
-		m_subs_pointclouds;
+	std::vector<rclcpp::Subscription<sensor_msgs::msg::LaserScan>::SharedPtr> m_subs_2dlaser;
+	std::vector<rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr> m_subs_pointclouds;
 
 	std::shared_ptr<tf2_ros::Buffer> m_tf_buffer;
 	std::shared_ptr<tf2_ros::TransformListener> m_tf_listener;

@@ -18,8 +18,7 @@
 #include <mrpt_msgs_bridge/marker_msgs.hpp>
 
 bool mrpt_msgs_bridge::fromROS(
-	const marker_msgs::msg::MarkerDetection& src,
-	const mrpt::poses::CPose3D& sensorPoseOnRobot,
+	const marker_msgs::msg::MarkerDetection& src, const mrpt::poses::CPose3D& sensorPoseOnRobot,
 	mrpt::obs::CObservationBearingRange& des)
 {
 	des.timestamp = mrpt::ros2bridge::fromROS(src.header.stamp);
@@ -51,8 +50,7 @@ bool mrpt_msgs_bridge::fromROS(
 }
 
 bool mrpt_msgs_bridge::fromROS(
-	const marker_msgs::msg::MarkerDetection& src,
-	const mrpt::poses::CPose3D& sensorPoseOnRobot,
+	const marker_msgs::msg::MarkerDetection& src, const mrpt::poses::CPose3D& sensorPoseOnRobot,
 	mrpt::obs::CObservationBeaconRanges& des)
 {
 	des.timestamp = mrpt::ros2bridge::fromROS(src.header.stamp);

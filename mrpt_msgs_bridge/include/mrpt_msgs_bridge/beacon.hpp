@@ -26,8 +26,7 @@ namespace mrpt_msgs_bridge
  * \sa mrpt2ros
  */
 bool fromROS(
-	const mrpt_msgs::msg::ObservationRangeBeacon _msg,
-	const mrpt::poses::CPose3D& _pose,
+	const mrpt_msgs::msg::ObservationRangeBeacon _msg, const mrpt::poses::CPose3D& _pose,
 	mrpt::obs::CObservationBeaconRanges& _obj);
 
 /** MRPT->ROS2: Takes a CObservationBeaconRanges and outputs range data in
@@ -35,8 +34,7 @@ bool fromROS(
  * on any error. \sa ros2mrpt
  */
 bool toROS(
-	const mrpt::obs::CObservationBeaconRanges& _obj,
-	mrpt_msgs::msg::ObservationRangeBeacon& _msg);
+	const mrpt::obs::CObservationBeaconRanges& _obj, mrpt_msgs::msg::ObservationRangeBeacon& _msg);
 
 /** MRPT->ROS2: Takes a CObservationBeaconRanges and outputs range data in
  * mrpt_msgs::ObservationRangeBeacon + the relative pose of the range sensor wrt
@@ -44,8 +42,7 @@ bool toROS(
  * ros2mrpt
  */
 bool toROS(
-	const mrpt::obs::CObservationBeaconRanges& _obj,
-	mrpt_msgs::msg::ObservationRangeBeacon& _msg,
+	const mrpt::obs::CObservationBeaconRanges& _obj, mrpt_msgs::msg::ObservationRangeBeacon& _msg,
 	geometry_msgs::msg::Pose& _pose);
 
 /** @} */

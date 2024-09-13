@@ -23,25 +23,23 @@ struct TestParams
 	const bool RUN_TESTS_WITH_GUI = mrpt::get_env("RUN_TESTS_WITH_GUI", false);
 
 	// x y z yaw_deg pitch_deg roll_deg
-	const std::string TEST_FINAL_GT_POSE = mrpt::get_env<std::string>(
-		"TEST_FINAL_GT_POSE", "[-9.03 4.5 0 4.3 0 0]");
+	const std::string TEST_FINAL_GT_POSE =
+		mrpt::get_env<std::string>("TEST_FINAL_GT_POSE", "[-9.03 4.5 0 4.3 0 0]");
 
 	const double TEST_CONVERGENCE_TOLERANCE =
 		mrpt::get_env<double>("TEST_CONVERGENCE_TOLERANCE", 0.25);
 
-	const std::string TEST_MM_FILE =
-		mrpt::get_env<std::string>("TEST_MM_FILE", "");
+	const std::string TEST_MM_FILE = mrpt::get_env<std::string>("TEST_MM_FILE", "");
 
 	const char* DEFAULT_TEST_PF_YAML_FILE =
 		MRPT_LOCALIZATION_SOURCE_DIR "/params/default.config.yaml";
 
-	const std::string TEST_PF_YAML_FILE = mrpt::get_env<std::string>(
-		"TEST_PF_YAML_FILE", DEFAULT_TEST_PF_YAML_FILE);
+	const std::string TEST_PF_YAML_FILE =
+		mrpt::get_env<std::string>("TEST_PF_YAML_FILE", DEFAULT_TEST_PF_YAML_FILE);
 
-	const std::string TEST_RELOCALIZATION_YAML_FILE =
-		mrpt::get_env<std::string>(
-			"TEST_RELOCALIZATION_YAML_FILE", MRPT_LOCALIZATION_SOURCE_DIR
-			"/params/default-relocalization-pipeline.yaml");
+	const std::string TEST_RELOCALIZATION_YAML_FILE = mrpt::get_env<std::string>(
+		"TEST_RELOCALIZATION_YAML_FILE",
+		MRPT_LOCALIZATION_SOURCE_DIR "/params/default-relocalization-pipeline.yaml");
 
 	const std::string TEST_INPUT_OBSERVATION_PIPELINE_YAML_FILE =
 		mrpt::get_env<std::string>("TEST_INPUT_OBSERVATION_PIPELINE_YAML_FILE");
@@ -49,18 +47,16 @@ struct TestParams
 	const std::string TEST_INPUT_OBSERVATION_LAYER =
 		mrpt::get_env<std::string>("TEST_INPUT_OBSERVATION_LAYER");
 
-	const char* TEST_MAP_CONFIG_FILE =
-		MRPT_LOCALIZATION_SOURCE_DIR "/params/map-occgrid2d.ini";
+	const char* TEST_MAP_CONFIG_FILE = MRPT_LOCALIZATION_SOURCE_DIR "/params/map-occgrid2d.ini";
 
-	const char* TEST_SIMPLEMAP_FILE = MRPT_LOCALIZATION_SOURCE_DIR
-		"/../mrpt_tutorials/maps/gh25_simulated.simplemap";
+	const char* TEST_SIMPLEMAP_FILE =
+		MRPT_LOCALIZATION_SOURCE_DIR "/../mrpt_tutorials/maps/gh25_simulated.simplemap";
 
 	const std::string TEST_RAWLOG_FILE = mrpt::get_env<std::string>(
-		"TEST_RAWLOG_FILE", MRPT_LOCALIZATION_SOURCE_DIR
-		"/../mrpt_tutorials/datasets/driving_in_office_obs.rawlog");
+		"TEST_RAWLOG_FILE",
+		MRPT_LOCALIZATION_SOURCE_DIR "/../mrpt_tutorials/datasets/driving_in_office_obs.rawlog");
 
-	const size_t TEST_SKIP_FIRST_N =
-		mrpt::get_env<size_t>("TEST_SKIP_FIRST_N", 0);
+	const size_t TEST_SKIP_FIRST_N = mrpt::get_env<size_t>("TEST_SKIP_FIRST_N", 0);
 };
 
 TEST(PF_Localization, InitState)
@@ -80,14 +76,12 @@ TEST(PF_Localization, RunRealDataset)
 
 	PFLocalizationCore loc;
 
-	if (mrpt::get_env<bool>("VERBOSE"))
-		loc.setMinLoggingLevel(mrpt::system::LVL_DEBUG);
+	if (mrpt::get_env<bool>("VERBOSE")) loc.setMinLoggingLevel(mrpt::system::LVL_DEBUG);
 
 	auto p = mrpt::containers::yaml::FromFile(_.TEST_PF_YAML_FILE);
 	mrpt::containers::yaml params = p["/**"]["ros__parameters"];
 
-	auto relocParams =
-		mrpt::containers::yaml::FromFile(_.TEST_RELOCALIZATION_YAML_FILE);
+	auto relocParams = mrpt::containers::yaml::FromFile(_.TEST_RELOCALIZATION_YAML_FILE);
 
 	// For running tests, disable GUI (comment out to see the GUI live):
 	params["gui_enable"] = _.RUN_TESTS_WITH_GUI;
@@ -102,21 +96,18 @@ TEST(PF_Localization, RunRealDataset)
 
 	if (!_.TEST_INPUT_OBSERVATION_PIPELINE_YAML_FILE.empty())
 	{
-		const auto y = mrpt::containers::yaml::FromFile(
-			_.TEST_INPUT_OBSERVATION_PIPELINE_YAML_FILE);
+		const auto y =
+			mrpt::containers::yaml::FromFile(_.TEST_INPUT_OBSERVATION_PIPELINE_YAML_FILE);
 
 		obsGenerators = mp2p_icp_filters::generators_from_yaml(y["generators"]);
 
-		perObsPipeline =
-			mp2p_icp_filters::filter_pipeline_from_yaml(y["per_observation"]);
+		perObsPipeline = mp2p_icp_filters::filter_pipeline_from_yaml(y["per_observation"]);
 
-		obsFinalPipeline =
-			mp2p_icp_filters::filter_pipeline_from_yaml(y["final"]);
+		obsFinalPipeline = mp2p_icp_filters::filter_pipeline_from_yaml(y["final"]);
 	}
 
 	// Check params:
-	const bool custom_yaml_file =
-		_.DEFAULT_TEST_PF_YAML_FILE != _.TEST_PF_YAML_FILE;
+	const bool custom_yaml_file = _.DEFAULT_TEST_PF_YAML_FILE != _.TEST_PF_YAML_FILE;
 
 	if (!custom_yaml_file)
 	{
@@ -140,8 +131,7 @@ TEST(PF_Localization, RunRealDataset)
 	// Now, load a map:
 	if (_.TEST_MM_FILE.empty())
 	{
-		bool loadOk = loc.set_map_from_simple_map(
-			_.TEST_MAP_CONFIG_FILE, _.TEST_SIMPLEMAP_FILE);
+		bool loadOk = loc.set_map_from_simple_map(_.TEST_MAP_CONFIG_FILE, _.TEST_SIMPLEMAP_FILE);
 		EXPECT_TRUE(loadOk);
 	}
 	else
@@ -185,16 +175,14 @@ TEST(PF_Localization, RunRealDataset)
 
 		if (datasetIndex <= _.TEST_SKIP_FIRST_N) continue;
 
-		const auto obs =
-			std::dynamic_pointer_cast<mrpt::obs::CObservation>(observation);
+		const auto obs = std::dynamic_pointer_cast<mrpt::obs::CObservation>(observation);
 		if (!obs) continue;
 
 		// processing for raw input data?
 		mrpt::obs::CObservation::Ptr obsToProcess;
 
-		const bool obsIsPointCloud =
-			IS_CLASS(*obs, mrpt::obs::CObservationPointCloud) ||
-			IS_CLASS(*obs, mrpt::obs::CObservation3DRangeScan);
+		const bool obsIsPointCloud = IS_CLASS(*obs, mrpt::obs::CObservationPointCloud) ||
+									 IS_CLASS(*obs, mrpt::obs::CObservation3DRangeScan);
 
 		if (!perObsPipeline.empty() && obsIsPointCloud)
 		{
@@ -202,14 +190,12 @@ TEST(PF_Localization, RunRealDataset)
 			newPc->timestamp = obs->timestamp;
 			newPc->sensorLabel = obs->sensorLabel;
 
-			mp2p_icp::metric_map_t obsMap =
-				mp2p_icp_filters::apply_generators(obsGenerators, *obs);
+			mp2p_icp::metric_map_t obsMap = mp2p_icp_filters::apply_generators(obsGenerators, *obs);
 
 			mp2p_icp_filters::apply_filter_pipeline(perObsPipeline, obsMap);
 			mp2p_icp_filters::apply_filter_pipeline(obsFinalPipeline, obsMap);
 
-			newPc->pointcloud =
-				obsMap.point_layer(_.TEST_INPUT_OBSERVATION_LAYER);
+			newPc->pointcloud = obsMap.point_layer(_.TEST_INPUT_OBSERVATION_LAYER);
 
 			obsToProcess = newPc;
 		}
@@ -248,11 +234,9 @@ TEST(PF_Localization, RunRealDataset)
 
 		using namespace mrpt::literals;	 // _deg
 
-		const auto gtPose =
-			mrpt::poses::CPose3D::FromString(_.TEST_FINAL_GT_POSE);
+		const auto gtPose = mrpt::poses::CPose3D::FromString(_.TEST_FINAL_GT_POSE);
 
-		EXPECT_LT(
-			(mean - gtPose).asVectorVal().norm(), _.TEST_CONVERGENCE_TOLERANCE)
+		EXPECT_LT((mean - gtPose).asVectorVal().norm(), _.TEST_CONVERGENCE_TOLERANCE)
 			<< "mean: " << mean << "\n"
 			<< "gtPose: " << gtPose << "\n";
 	}

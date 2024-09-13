@@ -18,8 +18,7 @@
 #include <mrpt_msgs_bridge/landmark.hpp>
 
 bool mrpt_msgs_bridge::fromROS(
-	const mrpt_msgs::msg::ObservationRangeBearing& _msg,
-	const mrpt::poses::CPose3D& _pose,
+	const mrpt_msgs::msg::ObservationRangeBearing& _msg, const mrpt::poses::CPose3D& _pose,
 	mrpt::obs::CObservationBearingRange& _obj)
 
 {
@@ -37,8 +36,7 @@ bool mrpt_msgs_bridge::fromROS(
 
 	if (_pose.empty())
 	{
-		_obj.setSensorPose(
-			mrpt::ros2bridge::fromROS(_msg.sensor_pose_on_robot));
+		_obj.setSensorPose(mrpt::ros2bridge::fromROS(_msg.sensor_pose_on_robot));
 	}
 	else
 	{
@@ -61,8 +59,7 @@ bool mrpt_msgs_bridge::fromROS(
 }
 
 bool mrpt_msgs_bridge::toROS(
-	const mrpt::obs::CObservationBearingRange& _obj,
-	mrpt_msgs::msg::ObservationRangeBearing& _msg)
+	const mrpt::obs::CObservationBearingRange& _obj, mrpt_msgs::msg::ObservationRangeBearing& _msg)
 {
 	_msg.header.stamp = mrpt::ros2bridge::toROS(_obj.timestamp);
 
@@ -90,8 +87,7 @@ bool mrpt_msgs_bridge::toROS(
 }
 
 bool mrpt_msgs_bridge::toROS(
-	const mrpt::obs::CObservationBearingRange& _obj,
-	mrpt_msgs::msg::ObservationRangeBearing& _msg,
+	const mrpt::obs::CObservationBearingRange& _obj, mrpt_msgs::msg::ObservationRangeBearing& _msg,
 	geometry_msgs::msg::Pose& sensorPose)
 {
 	toROS(_obj, _msg);

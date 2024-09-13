@@ -32,19 +32,13 @@ LocalObstaclesNode::LocalObstaclesNode(const rclcpp::NodeOptions& options)
 	size_t nSubsTotal = 0;
 	nSubsTotal += subscribe_to_multiple_topics<sensor_msgs::msg::LaserScan>(
 		m_topics_source_2dscan, m_subs_2dlaser,
-		[this](
-			const sensor_msgs::msg::LaserScan::SharedPtr scan,
-			const std::string& topicName) {
-			this->on_new_sensor_laser_2d(scan, topicName);
-		});
+		[this](const sensor_msgs::msg::LaserScan::SharedPtr scan, const std::string& topicName)
+		{ this->on_new_sensor_laser_2d(scan, topicName); });
 
 	nSubsTotal += subscribe_to_multiple_topics<sensor_msgs::msg::PointCloud2>(
 		m_topics_source_pointclouds, m_subs_pointclouds,
-		[this](
-			const sensor_msgs::msg::PointCloud2::SharedPtr pts,
-			const std::string& topicName) {
-			this->on_new_sensor_pointcloud(pts, topicName);
-		});
+		[this](const sensor_msgs::msg::PointCloud2::SharedPtr pts, const std::string& topicName)
+		{ this->on_new_sensor_pointcloud(pts, topicName); });
 
 	RCLCPP_INFO(
 		get_logger(), "Total number of sensor subscriptions: %u",
@@ -65,8 +59,7 @@ LocalObstaclesNode::LocalObstaclesNode(const rclcpp::NodeOptions& options)
 	m_tf_listener = std::make_shared<tf2_ros::TransformListener>(*m_tf_buffer);
 
 	m_timer_publish = create_wall_timer(
-		std::chrono::duration<double>(m_publish_period),
-		[this]() { this->on_do_publish(); });
+		std::chrono::duration<double>(m_publish_period), [this]() { this->on_do_publish(); });
 }  // end ctor
 
 /** Callback: On recalc local map & publish it */
@@ -84,13 +77,10 @@ void LocalObstaclesNode::on_do_publish()
 		if (!m_hist_obs.empty())
 		{
 			const double last_time = m_hist_obs.rbegin()->first;
-			obs_list_t::iterator it_first_valid =
-				m_hist_obs.lower_bound(last_time - m_time_window);
-			const size_t nToRemove =
-				std::distance(m_hist_obs.begin(), it_first_valid);
+			obs_list_t::iterator it_first_valid = m_hist_obs.lower_bound(last_time - m_time_window);
+			const size_t nToRemove = std::distance(m_hist_obs.begin(), it_first_valid);
 			RCLCPP_DEBUG(
-				get_logger(),
-				"[onDoPublish] Removing %u old entries, last_time=%lf",
+				get_logger(), "[onDoPublish] Removing %u old entries, last_time=%lf",
 				static_cast<unsigned int>(nToRemove), last_time);
 			m_hist_obs.erase(m_hist_obs.begin(), it_first_valid);
 		}
@@ -168,12 +158,10 @@ void LocalObstaclesNode::on_do_publish()
 			const mrpt::poses::CPose3D relPose = ipt.robot_pose - curRobotPose;
 
 			// Insert obs:
-			CTimeLoggerEntry tleObsFilter(
-				m_profiler, "on_do_publish.apply_per_obs_pipeline");
+			CTimeLoggerEntry tleObsFilter(m_profiler, "on_do_publish.apply_per_obs_pipeline");
 
 			// Apply optional generators for auxiliary map layers, etc:
-			mp2p_icp_filters::apply_generators(
-				m_generator, *ipt.observation, mm);
+			mp2p_icp_filters::apply_generators(m_generator, *ipt.observation, mm);
 
 			// per-observation filtering:
 			mp2p_icp_filters::apply_filter_pipeline(m_per_obs_pipeline, mm);
@@ -183,8 +171,7 @@ void LocalObstaclesNode::on_do_publish()
 	}
 
 	// Apply final filtering:
-	CTimeLoggerEntry tleFilter(
-		m_profiler, "on_do_publish.apply_final_pipeline");
+	CTimeLoggerEntry tleFilter(m_profiler, "on_do_publish.apply_final_pipeline");
 
 	mp2p_icp_filters::apply_filter_pipeline(m_final_pipeline, mm);
 
@@ -199,8 +186,8 @@ void LocalObstaclesNode::on_do_publish()
 		msg_pts.header.frame_id = m_frameid_robot;
 
 		// Publish using the timestamp of the *latest* observation:
-		msg_pts.header.stamp = mrpt::ros2bridge::toROS(
-			mrpt::Clock::fromDouble(obs.rbegin()->first));
+		msg_pts.header.stamp =
+			mrpt::ros2bridge::toROS(mrpt::Clock::fromDouble(obs.rbegin()->first));
 
 		const auto& outPtsMap = mm.point_layer(e.layer);
 		ASSERT_(outPtsMap);
@@ -208,8 +195,7 @@ void LocalObstaclesNode::on_do_publish()
 		// TODO(jlbc): We could add an if-else chain if XYZI / XYZIRT point
 		// clouds are desired as output too, but it seems not likely for this
 		// kind of filtering node.
-		auto simplPts =
-			std::dynamic_pointer_cast<mrpt::maps::CSimplePointsMap>(outPtsMap);
+		auto simplPts = std::dynamic_pointer_cast<mrpt::maps::CSimplePointsMap>(outPtsMap);
 		ASSERT_(simplPts);
 
 		mrpt::ros2bridge::toROS(*simplPts, msg_pts.header, msg_pts);
@@ -221,13 +207,10 @@ void LocalObstaclesNode::on_do_publish()
 	{
 		if (!m_gui_win)
 		{
-			m_gui_win = mrpt::gui::CDisplayWindow3D::Create(
-				"LocalObstaclesNode", 800, 600);
-			mrpt::opengl::COpenGLScene::Ptr& scene =
-				m_gui_win->get3DSceneAndLock();
+			m_gui_win = mrpt::gui::CDisplayWindow3D::Create("LocalObstaclesNode", 800, 600);
+			mrpt::opengl::COpenGLScene::Ptr& scene = m_gui_win->get3DSceneAndLock();
 			scene->insert(mrpt::opengl::CGridPlaneXY::Create());
-			scene->insert(
-				mrpt::opengl::stock_objects::CornerXYZSimple(1.0, 4.0));
+			scene->insert(mrpt::opengl::stock_objects::CornerXYZSimple(1.0, 4.0));
 
 			auto gl_obs = mrpt::opengl::CSetOfObjects::Create();
 			gl_obs->setName("obstacles");
@@ -273,22 +256,21 @@ void LocalObstaclesNode::on_do_publish()
 
 		auto& scene = m_gui_win->get3DSceneAndLock();
 
-		auto gl_obs = mrpt::ptr_cast<mrpt::opengl::CSetOfObjects>::from(
-			scene->getByName("obstacles"));
+		auto gl_obs =
+			mrpt::ptr_cast<mrpt::opengl::CSetOfObjects>::from(scene->getByName("obstacles"));
 		ASSERT_(!!gl_obs);
 		gl_obs->clear();
 
-		auto glRawPts = mrpt::ptr_cast<mrpt::opengl::CPointCloud>::from(
-			scene->getByName("raw_points"));
+		auto glRawPts =
+			mrpt::ptr_cast<mrpt::opengl::CPointCloud>::from(scene->getByName("raw_points"));
 
-		auto glFinalPts = mrpt::ptr_cast<mrpt::opengl::CPointCloud>::from(
-			scene->getByName("final_points"));
+		auto glFinalPts =
+			mrpt::ptr_cast<mrpt::opengl::CPointCloud>::from(scene->getByName("final_points"));
 
 		scene->getViewport()->addTextMessage(
 			5, 25,
 			mrpt::format(
-				"Raw points: %10s | Output points: %10s",
-				m_visible_raw ? "VISIBLE" : "hidden",
+				"Raw points: %10s | Output points: %10s", m_visible_raw ? "VISIBLE" : "hidden",
 				m_visible_output ? "VISIBLE" : "hidden"),
 			1);
 
@@ -305,8 +287,7 @@ void LocalObstaclesNode::on_do_publish()
 			gl_obs->insert(gl_axis);
 		}  // end for
 
-		if (auto pts = mm.point_layer(mp2p_icp::metric_map_t::PT_LAYER_RAW);
-			pts)
+		if (auto pts = mm.point_layer(mp2p_icp::metric_map_t::PT_LAYER_RAW); pts)
 		{
 			glRawPts->loadFromPointsMap(pts.get());
 			glRawPts->setVisibility(m_visible_raw);
@@ -329,16 +310,14 @@ void LocalObstaclesNode::on_do_publish()
 }  // onDoPublish
 
 void LocalObstaclesNode::on_new_sensor_laser_2d(
-	const sensor_msgs::msg::LaserScan::SharedPtr& scan,
-	const std::string& topicName)
+	const sensor_msgs::msg::LaserScan::SharedPtr& scan, const std::string& topicName)
 {
 	CTimeLoggerEntry tle(m_profiler, "on_new_sensor_laser_2d");
 
 	geometry_msgs::msg::TransformStamped sensorOnRobot;
 	try
 	{
-		CTimeLoggerEntry tle2(
-			m_profiler, "onNewSensor_Laser2D.lookupTransform_sensor");
+		CTimeLoggerEntry tle2(m_profiler, "onNewSensor_Laser2D.lookupTransform_sensor");
 		sensorOnRobot = m_tf_buffer->lookupTransform(
 			m_frameid_robot, scan->header.frame_id, tf2::TimePointZero);
 	}
@@ -348,7 +327,8 @@ void LocalObstaclesNode::on_new_sensor_laser_2d(
 		return;
 	}
 
-	const mrpt::poses::CPose3D sensorOnRobot_mrpt = [&]() {
+	const mrpt::poses::CPose3D sensorOnRobot_mrpt = [&]()
+	{
 		tf2::Transform tx;
 		tf2::fromMsg(sensorOnRobot.transform, tx);
 		return mrpt::ros2bridge::fromROS(tx);
@@ -361,21 +341,18 @@ void LocalObstaclesNode::on_new_sensor_laser_2d(
 
 	RCLCPP_DEBUG(
 		get_logger(), "[onNewSensor_Laser2D] %u rays, sensor pose on robot %s",
-		static_cast<unsigned int>(obsScan->getScanSize()),
-		sensorOnRobot_mrpt.asString().c_str());
+		static_cast<unsigned int>(obsScan->getScanSize()), sensorOnRobot_mrpt.asString().c_str());
 
 	// Get sensor timestamp:
 	auto stamp = scan->header.stamp;
-	const double timestamp =
-		stamp.sec + static_cast<double>(stamp.nanosec) / 1e9;
+	const double timestamp = stamp.sec + static_cast<double>(stamp.nanosec) / 1e9;
 
 	// Get robot pose at that time in the reference frame, typ: /odom ->
 	// /base_link
 	mrpt::poses::CPose3D robotPose;
 	try
 	{
-		CTimeLoggerEntry tle3(
-			m_profiler, "onNewSensor_Laser2D.lookupTransform_robot");
+		CTimeLoggerEntry tle3(m_profiler, "onNewSensor_Laser2D.lookupTransform_robot");
 
 		geometry_msgs::msg::TransformStamped robotTfStamp;
 		try
@@ -389,15 +366,15 @@ void LocalObstaclesNode::on_new_sensor_laser_2d(
 			return;
 		}
 
-		robotPose = [&]() {
+		robotPose = [&]()
+		{
 			tf2::Transform tx;
 			tf2::fromMsg(robotTfStamp.transform, tx);
 			return mrpt::ros2bridge::fromROS(tx);
 		}();
 
 		RCLCPP_DEBUG(
-			get_logger(), "[onNewSensor_Laser2D] robot pose %s",
-			robotPose.asString().c_str());
+			get_logger(), "[onNewSensor_Laser2D] robot pose %s", robotPose.asString().c_str());
 	}
 	catch (const tf2::TransformException& ex)
 	{
@@ -418,8 +395,7 @@ void LocalObstaclesNode::on_new_sensor_laser_2d(
 }  // end on_new_sensor_laser_2d
 
 void LocalObstaclesNode::on_new_sensor_pointcloud(
-	const sensor_msgs::msg::PointCloud2::SharedPtr& pts,
-	const std::string& topicName)
+	const sensor_msgs::msg::PointCloud2::SharedPtr& pts, const std::string& topicName)
 {
 	CTimeLoggerEntry tle(m_profiler, "on_new_sensor_pointcloud");
 
@@ -427,11 +403,10 @@ void LocalObstaclesNode::on_new_sensor_pointcloud(
 	geometry_msgs::msg::TransformStamped sensorOnRobot;
 	try
 	{
-		CTimeLoggerEntry tle2(
-			m_profiler, "on_new_sensor_pointcloud.lookupTransform_sensor");
+		CTimeLoggerEntry tle2(m_profiler, "on_new_sensor_pointcloud.lookupTransform_sensor");
 
-		sensorOnRobot = m_tf_buffer->lookupTransform(
-			m_frameid_robot, pts->header.frame_id, tf2::TimePointZero);
+		sensorOnRobot =
+			m_tf_buffer->lookupTransform(m_frameid_robot, pts->header.frame_id, tf2::TimePointZero);
 	}
 	catch (const tf2::TransformException& ex)
 	{
@@ -440,7 +415,8 @@ void LocalObstaclesNode::on_new_sensor_pointcloud(
 	}
 
 	// Convert data to MRPT format:
-	const mrpt::poses::CPose3D sensorOnRobot_mrpt = [&]() {
+	const mrpt::poses::CPose3D sensorOnRobot_mrpt = [&]()
+	{
 		tf2::Transform tx;
 		tf2::fromMsg(sensorOnRobot.transform, tx);
 		return mrpt::ros2bridge::fromROS(tx);
@@ -455,23 +431,19 @@ void LocalObstaclesNode::on_new_sensor_pointcloud(
 	mrpt::ros2bridge::fromROS(*pts, *ptsMap);
 
 	RCLCPP_DEBUG(
-		get_logger(),
-		"[on_new_sensor_pointcloud] %u points, sensor pose on robot %s",
-		static_cast<unsigned int>(ptsMap->size()),
-		sensorOnRobot_mrpt.asString().c_str());
+		get_logger(), "[on_new_sensor_pointcloud] %u points, sensor pose on robot %s",
+		static_cast<unsigned int>(ptsMap->size()), sensorOnRobot_mrpt.asString().c_str());
 
 	// Get sensor timestamp:
 	auto stamp = pts->header.stamp;
-	const double timestamp =
-		stamp.sec + static_cast<double>(stamp.nanosec) / 1e9;
+	const double timestamp = stamp.sec + static_cast<double>(stamp.nanosec) / 1e9;
 
 	// Get robot pose at that time in the reference frame, typ: /odom ->
 	// /base_link
 	mrpt::poses::CPose3D robotPose;
 	try
 	{
-		CTimeLoggerEntry tle3(
-			m_profiler, "onNewSensor_pointcloud.lookupTransform_robot");
+		CTimeLoggerEntry tle3(m_profiler, "onNewSensor_pointcloud.lookupTransform_robot");
 
 		geometry_msgs::msg::TransformStamped robotTfStamp;
 		try
@@ -485,15 +457,15 @@ void LocalObstaclesNode::on_new_sensor_pointcloud(
 			return;
 		}
 
-		robotPose = [&]() {
+		robotPose = [&]()
+		{
 			tf2::Transform tx;
 			tf2::fromMsg(robotTfStamp.transform, tx);
 			return mrpt::ros2bridge::fromROS(tx);
 		}();
 
 		RCLCPP_DEBUG(
-			get_logger(), "[onNewSensor_pointcloud] robot pose %s",
-			robotPose.asString().c_str());
+			get_logger(), "[onNewSensor_pointcloud] robot pose %s", robotPose.asString().c_str());
 	}
 	catch (const tf2::TransformException& ex)
 	{
@@ -521,8 +493,7 @@ void LocalObstaclesNode::read_parameters()
 
 	this->declare_parameter<std::string>("frameid_reference", "odom");
 	this->get_parameter("frameid_reference", m_frameid_reference);
-	RCLCPP_INFO(
-		get_logger(), "frameid_reference: %s", m_frameid_reference.c_str());
+	RCLCPP_INFO(get_logger(), "frameid_reference: %s", m_frameid_reference.c_str());
 
 	this->declare_parameter<std::string>("frameid_robot", "base_link");
 	this->get_parameter("frameid_robot", m_frameid_robot);
@@ -532,10 +503,8 @@ void LocalObstaclesNode::read_parameters()
 	this->get_parameter("time_window", m_time_window);
 	RCLCPP_INFO(get_logger(), "time_window: %f", m_time_window);
 
-	this->declare_parameter<bool>(
-		"one_observation_per_topic", m_one_observation_per_topic);
-	this->get_parameter(
-		"one_observation_per_topic", m_one_observation_per_topic);
+	this->declare_parameter<bool>("one_observation_per_topic", m_one_observation_per_topic);
+	this->get_parameter("one_observation_per_topic", m_one_observation_per_topic);
 	RCLCPP_INFO(
 		get_logger(), "one_observation_per_topic: %s",
 		m_one_observation_per_topic ? "true" : "false");
@@ -547,29 +516,20 @@ void LocalObstaclesNode::read_parameters()
 	// publish_period can't be larger than m_time_window:
 	ASSERT_LE_(m_publish_period, m_time_window);
 
-	this->declare_parameter<std::string>(
-		"source_topics_2d_scans", "scan, laser1");
+	this->declare_parameter<std::string>("source_topics_2d_scans", "scan, laser1");
 	this->get_parameter("source_topics_2d_scans", m_topics_source_2dscan);
-	RCLCPP_INFO(
-		get_logger(), "source_topics_2d_scans: %s",
-		m_topics_source_2dscan.c_str());
+	RCLCPP_INFO(get_logger(), "source_topics_2d_scans: %s", m_topics_source_2dscan.c_str());
 
 	this->declare_parameter<std::string>("source_topics_pointclouds", "");
-	this->get_parameter(
-		"source_topics_pointclouds", m_topics_source_pointclouds);
-	RCLCPP_INFO(
-		get_logger(), "source_topics_pointclouds: %s",
-		m_topics_source_pointclouds.c_str());
+	this->get_parameter("source_topics_pointclouds", m_topics_source_pointclouds);
+	RCLCPP_INFO(get_logger(), "source_topics_pointclouds: %s", m_topics_source_pointclouds.c_str());
 
-	this->declare_parameter<std::string>(
-		"pipeline_yaml_file", m_pipeline_yaml_file);
+	this->declare_parameter<std::string>("pipeline_yaml_file", m_pipeline_yaml_file);
 	this->get_parameter("pipeline_yaml_file", m_pipeline_yaml_file);
-	RCLCPP_INFO(
-		get_logger(), "pipeline_yaml_file: %s", m_pipeline_yaml_file.c_str());
+	RCLCPP_INFO(get_logger(), "pipeline_yaml_file: %s", m_pipeline_yaml_file.c_str());
 	{
 		ASSERT_FILE_EXISTS_(m_pipeline_yaml_file);
-		const mrpt::containers::yaml cfg =
-			mrpt::containers::yaml::FromFile(m_pipeline_yaml_file);
+		const mrpt::containers::yaml cfg = mrpt::containers::yaml::FromFile(m_pipeline_yaml_file);
 
 		RCLCPP_DEBUG_STREAM(get_logger(), cfg);
 
@@ -578,10 +538,8 @@ void LocalObstaclesNode::read_parameters()
 		ASSERT_(cfg.has("final"));
 
 		m_generator = mp2p_icp_filters::generators_from_yaml(cfg["generators"]);
-		m_per_obs_pipeline =
-			mp2p_icp_filters::filter_pipeline_from_yaml(cfg["per_observation"]);
-		m_final_pipeline =
-			mp2p_icp_filters::filter_pipeline_from_yaml(cfg["final"]);
+		m_per_obs_pipeline = mp2p_icp_filters::filter_pipeline_from_yaml(cfg["per_observation"]);
+		m_final_pipeline = mp2p_icp_filters::filter_pipeline_from_yaml(cfg["final"]);
 	}
 
 	// Output layer(s) ==> ROS topic(s) mapping:
@@ -589,20 +547,13 @@ void LocalObstaclesNode::read_parameters()
 	std::string filter_output_layer_name = "output";
 	std::string topic_local_map_pointcloud = "local_map_pointcloud";
 
-	this->declare_parameter<std::string>(
-		"topic_local_map_pointcloud", topic_local_map_pointcloud);
-	this->get_parameter(
-		"topic_local_map_pointcloud", topic_local_map_pointcloud);
-	RCLCPP_INFO(
-		get_logger(), "topic_local_map_pointcloud: %s",
-		topic_local_map_pointcloud.c_str());
+	this->declare_parameter<std::string>("topic_local_map_pointcloud", topic_local_map_pointcloud);
+	this->get_parameter("topic_local_map_pointcloud", topic_local_map_pointcloud);
+	RCLCPP_INFO(get_logger(), "topic_local_map_pointcloud: %s", topic_local_map_pointcloud.c_str());
 
-	this->declare_parameter<std::string>(
-		"filter_output_layer_name", filter_output_layer_name);
+	this->declare_parameter<std::string>("filter_output_layer_name", filter_output_layer_name);
 	this->get_parameter("filter_output_layer_name", filter_output_layer_name);
-	RCLCPP_INFO(
-		get_logger(), "filter_output_layer_name: %s",
-		filter_output_layer_name.c_str());
+	RCLCPP_INFO(get_logger(), "filter_output_layer_name: %s", filter_output_layer_name.c_str());
 
 	// parse lists:
 	std::vector<std::string> lstLayers, lstTopics;
@@ -616,8 +567,7 @@ void LocalObstaclesNode::read_parameters()
 		e.topic = lstTopics.at(i);
 
 		// Create publisher for local map point cloud:
-		e.pub =
-			this->create_publisher<sensor_msgs::msg::PointCloud2>(e.topic, 10);
+		e.pub = this->create_publisher<sensor_msgs::msg::PointCloud2>(e.topic, 10);
 	}
 }
 

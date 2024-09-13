@@ -94,8 +94,7 @@ class PFLocalizationCore : public mrpt::system::COutputLogger
 		/** For SE(2) mode: Uncertainty motion model to use when NO odometry has
 		 * been received. Can be changed at any moment.
 		 */
-		mrpt::obs::CActionRobotMovement2D::TMotionModelOptions
-			motion_model_no_odom_2d;
+		mrpt::obs::CActionRobotMovement2D::TMotionModelOptions motion_model_no_odom_2d;
 
 		/** For SE(3) mode: Uncertainty motion model for regular odometry-based
 		 * motion. Can be changed at any moment.
@@ -105,8 +104,7 @@ class PFLocalizationCore : public mrpt::system::COutputLogger
 		/** For SE(3) mode: Uncertainty motion model to use when NO odometry has
 		 * been received. Can be changed at any moment.
 		 */
-		mrpt::obs::CActionRobotMovement3D::TMotionModelOptions
-			motion_model_no_odom_3d;
+		mrpt::obs::CActionRobotMovement3D::TMotionModelOptions motion_model_no_odom_3d;
 
 		/** All the PF parameters: algorithm, number of samples, dynamic
 		 * samples, etc.
@@ -120,8 +118,7 @@ class PFLocalizationCore : public mrpt::system::COutputLogger
 		mrpt::slam::TKLDParams kld_options;
 
 		// likelihood option overrides:
-		std::optional<mrpt::maps::CPointsMap::TLikelihoodOptions>
-			override_likelihood_point_maps;
+		std::optional<mrpt::maps::CPointsMap::TLikelihoodOptions> override_likelihood_point_maps;
 		std::optional<mrpt::maps::COccupancyGridMap2D::TLikelihoodOptions>
 			override_likelihood_gridmaps;
 
@@ -217,16 +214,14 @@ class PFLocalizationCore : public mrpt::system::COutputLogger
 	 *  \return true on success, false on any error.
 	 */
 	bool set_map_from_simple_map(
-		const std::string& map_config_ini_file,
-		const std::string& simplemap_file);
+		const std::string& map_config_ini_file, const std::string& simplemap_file);
 
 	/** Defines the map to use from a multimetric map, which may contain
 	 * gridmaps, pointclouds, etc.
 	 */
 	void set_map_from_metric_map(
 		const mrpt::maps::CMultiMetricMap::Ptr& metricMap,
-		const std::optional<mp2p_icp::metric_map_t::Georeferencing>&
-			georeferencing = std::nullopt,
+		const std::optional<mp2p_icp::metric_map_t::Georeferencing>& georeferencing = std::nullopt,
 		const std::vector<std::string>& layerNames = {});
 
 	/** Defines the map to use from a metric_map_t map, with optional
@@ -307,8 +302,7 @@ class PFLocalizationCore : public mrpt::system::COutputLogger
 	std::mutex pendingObsMtx_;
 	mrpt::obs::CObservationGPS::Ptr last_gnss_;	 // use mtx: pendingObsMtx_
 
-	mrpt::system::CTimeLogger profiler_{
-		true /*enabled*/, "mrpt_pf_localization" /*name*/};
+	mrpt::system::CTimeLogger profiler_{true /*enabled*/, "mrpt_pf_localization" /*name*/};
 
 	mrpt::gui::CDisplayWindow3D::Ptr win3D_;
 
