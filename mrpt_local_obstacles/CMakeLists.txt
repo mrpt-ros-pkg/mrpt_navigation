@@ -18,6 +18,8 @@ find_package(mrpt-maps REQUIRED)
 find_package(mrpt-obs REQUIRED)
 find_package(mrpt-gui REQUIRED)
 find_package(mrpt-ros1bridge REQUIRED)
+find_package(mp2p_icp REQUIRED)
+find_package(mp2p_icp_filters REQUIRED)
 
 if (CMAKE_COMPILER_IS_GNUCXX)
 	# High level of warnings.
@@ -29,9 +31,9 @@ if (CMAKE_COMPILER_IS_GNUCXX)
 		add_compile_options(-Wno-ignored-attributes -Wno-int-in-bool-context)
 	endif()
 endif()
-IF(CMAKE_COMPILER_IS_GNUCXX AND NOT CMAKE_BUILD_TYPE MATCHES "Debug")
+if(CMAKE_COMPILER_IS_GNUCXX AND NOT CMAKE_BUILD_TYPE MATCHES "Debug")
   add_compile_options(-O3)
-ENDIF()
+endif()
 
 ###################################
 ## catkin specific configuration ##
@@ -52,12 +54,6 @@ catkin_package(
 ## Build ##
 ###########
 
-# TODO: Remove and move as an independent ROS package:
-add_subdirectory(submodules/mola-common)
-set(mola-common_DIR ${CMAKE_BINARY_DIR} CACHE PATH "path to mola-common-config.cmake" FORCE)
-
-add_subdirectory(submodules/mp2p_icp)
-
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
 include_directories(
@@ -76,8 +72,7 @@ target_link_libraries(${PROJECT_NAME}_node
   mrpt::obs
   mrpt::gui
   mrpt::ros1bridge
-  # mp2p_icp
-  mp2p_icp_filters
+  mola::mp2p_icp_filters
 )
 
 #############
