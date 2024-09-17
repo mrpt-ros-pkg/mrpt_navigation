@@ -2,6 +2,11 @@
 Changelog for package mrpt_local_obstacles
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Remove git submodules; depend on mp2p_icp Noetic package instead
+* Contributors: Jose Luis Blanco-Claraco
+
 1.0.6 (2024-09-04)
 ------------------
 * port to new mrpt_lib ROS packages as dependencies

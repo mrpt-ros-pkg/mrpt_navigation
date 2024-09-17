@@ -2,6 +2,9 @@
 Changelog for package mrpt_map
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+
 1.0.6 (2024-09-04)
 ------------------
 * port to new mrpt_lib ROS packages as dependencies
