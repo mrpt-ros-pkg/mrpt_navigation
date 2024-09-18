@@ -13,7 +13,7 @@
 
   <buildtool_depend>ament_cmake</buildtool_depend>
 
-  <depend>mp2p_icp</depend>
+  <depend version_gte="1.6.2">mp2p_icp</depend>
   <depend>mrpt_libobs</depend>
   <depend>mrpt_libmaps</depend>
   <depend>mrpt_libros_bridge</depend>
