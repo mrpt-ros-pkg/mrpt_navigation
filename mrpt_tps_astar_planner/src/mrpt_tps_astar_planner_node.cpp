@@ -503,7 +503,11 @@ void TPS_Astar_Planner_Node::initialize_planner()
 		this->get_logger(), "Loaded these planner params:" << planner_->params_as_yaml());
 
 	mrpt::config::CConfigFile cfg(ptg_ini_file_);
+	RCLCPP_INFO_STREAM(this->get_logger(), "Initializing PTGs...");
+
 	ptgs_.initFromConfigFile(cfg, "SelfDriving");
+
+	RCLCPP_INFO_STREAM(this->get_logger(), "PTGs initialized.");
 
 	costMapParams_ = mpp::CostEvaluatorCostMap::Parameters::FromYAML(
 		mrpt::containers::yaml::FromFile(costmap_params_file_));
