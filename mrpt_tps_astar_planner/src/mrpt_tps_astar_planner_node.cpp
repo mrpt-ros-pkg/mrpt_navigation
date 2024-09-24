@@ -54,6 +54,7 @@
 #include <mutex>
 #include <nav_msgs/msg/occupancy_grid.hpp>
 #include <nav_msgs/msg/odometry.hpp>
+#include <nav_msgs/msg/path.hpp>
 #include <optional>
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
@@ -108,6 +109,7 @@ class TPS_Astar_Planner_Node : public rclcpp::Node
 
 	/// Publisher for waypoint sequence
 	rclcpp::Publisher<mrpt_msgs::msg::WaypointSequence>::SharedPtr pub_wp_seq_;
+	rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr pub_wp_path_seq_;
 
 	// tf2 buffer and listener
 	std::shared_ptr<tf2_ros::Buffer> tf_buffer_;
@@ -342,6 +344,8 @@ TPS_Astar_Planner_Node::TPS_Astar_Planner_Node() : rclcpp::Node(NODE_NAME)
 	// Init ROS publishers:
 	// -----------------------
 	pub_wp_seq_ = this->create_publisher<mrpt_msgs::msg::WaypointSequence>(topic_wp_seq_pub_, qos);
+	pub_wp_path_seq_ =
+		this->create_publisher<nav_msgs::msg::Path>(topic_wp_seq_pub_ + "_path"s, qos);
 
 	// Init services:
 	// --------------------------
@@ -595,6 +599,17 @@ void TPS_Astar_Planner_Node::update_obstacles(
 void TPS_Astar_Planner_Node::publish_waypoint_sequence(const mrpt_msgs::msg::WaypointSequence& wps)
 {
 	pub_wp_seq_->publish(wps);
+
+	// As Path too:
+	nav_msgs::msg::Path p;
+	p.header = wps.header;
+	for (const auto& w : wps.waypoints)
+	{
+		auto& q = p.poses.emplace_back();
+		q.header = p.header;  // Add actual timestamp per path pose??
+		q.pose = w.target;
+	}
+	pub_wp_path_seq_->publish(p);
 }
 
 void TPS_Astar_Planner_Node::init_3d_debug()

@@ -29,6 +29,8 @@ Uses A* over a SE(2) lattice and PTGs to sample collision-free paths. The implem
 
 ### ROS 2 parameters
 
+* `topic_wp_seq_pub` (Default: `/waypoints`) Desired name of the topic in which to publish the calculated paths.
+
 * `topic_goal_sub`: The name of the topic to subscribe for goal poses (`geometry_msgs/PoseStamped`).
 
 * `show_gui`: Shows its own MRPT GUI with the planned paths.
@@ -37,11 +39,13 @@ Uses A* over a SE(2) lattice and PTGs to sample collision-free paths. The implem
 
 * `topic_obstacle_points_sub`: One or more (comma separated) topic names to subscribe for obstacle points.
 
+
 ### Subscribed topics
 * xxx
 
 ### Published topics
-* `` (`mrpt_msgs::msg::WaypointSequence`)
+* `<topic_wp_seq_pub>`  (Default: `/waypoints`) (`mrpt_msgs::msg::WaypointSequence`): Calculated trajectory, in mrpt_msgs format with complete details for each waypoints.
+* `<topic_wp_seq_pub>_path`  (Default: `/waypoints_path`) (`nav_msgs::msg::Path`): Calculated trajectory, as `nav_msgs::Path`. Mostly useful for visualization only.
 
 ### Services
 

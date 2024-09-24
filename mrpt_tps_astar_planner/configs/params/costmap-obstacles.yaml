@@ -5,5 +5,5 @@ maxCost: 15.0
 
 useAverageOfPath: false
 
-maxRadiusFromRobot: 25.0  # [meters]
+maxRadiusFromRobot: 50.0  # [meters]
 

@@ -23,7 +23,7 @@ def generate_launch_description():
             'tps_astar_planner.launch.py')]),
         launch_arguments={
             'topic_goal_sub': '/goal_pose',
-            'show_gui': 'True',
+            'show_gui': 'False',
             'topic_obstacles_gridmap_sub': '/mrpt_map/map_gridmap',
             'topic_static_maps': '/mrpt_map/map_gridmap',
             'topic_wp_seq_pub': '/waypoints',
@@ -49,7 +49,7 @@ def generate_launch_description():
             {
                 "world_file": os.path.join(tutsDir, 'mvsim', 'demo_world2.world.xml'),
                 "do_fake_localization": True,
-                "show_gui": True,
+                "headless": True,
             }]
     )
 
