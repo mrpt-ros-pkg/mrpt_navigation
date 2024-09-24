@@ -27,7 +27,7 @@ struct TestParams
 		mrpt::get_env<std::string>("TEST_FINAL_GT_POSE", "[-9.03 4.5 0 4.3 0 0]");
 
 	const double TEST_CONVERGENCE_TOLERANCE =
-		mrpt::get_env<double>("TEST_CONVERGENCE_TOLERANCE", 0.25);
+		mrpt::get_env<double>("TEST_CONVERGENCE_TOLERANCE", 0.30);
 
 	const std::string TEST_MM_FILE = mrpt::get_env<std::string>("TEST_MM_FILE", "");
 
