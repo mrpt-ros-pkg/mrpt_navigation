@@ -15,7 +15,8 @@
   <exec_depend>teleop_twist_keyboard</exec_depend>
   <exec_depend>mvsim</exec_depend>
 
-  <depend>ament_lint_common</depend>
+  <depend>ament_cmake_lint_cmake</depend>
+  <depend>ament_cmake_xmllint</depend>
   <depend>ament_lint_auto</depend>
 
   <export>

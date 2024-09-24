@@ -33,7 +33,8 @@
   <depend>tf2_ros</depend>
   <depend>visualization_msgs</depend>
 
-  <depend>ament_lint_common</depend>
+  <depend>ament_cmake_lint_cmake</depend>
+  <depend>ament_cmake_xmllint</depend>
   <depend>ament_lint_auto</depend>
 
   <export>

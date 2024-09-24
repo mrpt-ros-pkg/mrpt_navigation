@@ -24,7 +24,8 @@
   <depend>mrpt_tutorials</depend>
   <depend>mrpt_nav_interfaces</depend>
 
-  <depend>ament_lint_common</depend>
+  <depend>ament_cmake_lint_cmake</depend>
+  <depend>ament_cmake_xmllint</depend>
   <depend>ament_lint_auto</depend>
 
   <export>

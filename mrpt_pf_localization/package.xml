@@ -38,7 +38,8 @@
   <depend>tf2</depend>
   <depend>tf2_geometry_msgs</depend>
 
-  <depend>ament_lint_common</depend>
+  <depend>ament_cmake_lint_cmake</depend>
+  <depend>ament_cmake_xmllint</depend>
   <depend>ament_lint_auto</depend>
 
   <test_depend>mrpt_tutorials</test_depend>
