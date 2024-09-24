@@ -12,7 +12,7 @@
   <author>Shravan S Rai</author>
 
   <license>BSD</license>
-  <url>https://wiki.ros.org/mrpt_msgs_bridge</url>
+  <url type="website">https://github.com/mrpt-ros-pkg/mrpt_navigation</url>
 
   <build_depend>ros_environment</build_depend>
   <buildtool_depend>ament_cmake</buildtool_depend>

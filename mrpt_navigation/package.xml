@@ -12,7 +12,7 @@
   <author>Jose-Luis Blanco-Claraco</author>
   <author>Markus Bader</author>
   <license>BSD</license>
-  <url>https://wiki.ros.org/mrpt_navigation</url>
+  <url type="website">https://github.com/mrpt-ros-pkg/mrpt_navigation</url>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
 

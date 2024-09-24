@@ -7,7 +7,9 @@
   <maintainer email="joseluisblancoc@gmail.com">Jose Luis Blanco-Claraco</maintainer>
   <author>Markus Bader</author>
   <author>Jose Luis Blanco-Claraco</author>
+
   <license>BSD</license>
+  <url type="website">https://github.com/mrpt-ros-pkg/mrpt_navigation</url>
 
   <buildtool_depend>cmake</buildtool_depend>
   <buildtool_depend>ament_cmake</buildtool_depend>
