@@ -8,9 +8,13 @@ find_package(rclcpp_components REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(mrpt_msgs REQUIRED)
 find_package(mrpt_nav_interfaces REQUIRED)
+find_package(tf2 REQUIRED)
+find_package(tf2_ros REQUIRED)
+find_package(tf2_geometry_msgs REQUIRED)
 
 find_package(mrpt-maps REQUIRED)
 find_package(mrpt-ros2bridge REQUIRED)
+find_package(mrpt-topography REQUIRED)  # shipped by ROS pkg mrpt_libobs
 find_package(mp2p_icp_map REQUIRED)
 
 message(STATUS "MRPT_VERSION: ${MRPT_VERSION}")
@@ -56,6 +60,7 @@ target_include_directories(map_server_node
 target_link_libraries(map_server_node
   mrpt::maps
   mrpt::ros2bridge
+  mrpt::topography
   mola::mp2p_icp_map
 )
 
@@ -66,6 +71,9 @@ ament_target_dependencies(
   nav_msgs
   mrpt_msgs
   mrpt_nav_interfaces
+  tf2
+  tf2_ros
+  tf2_geometry_msgs
 )
 
 #############

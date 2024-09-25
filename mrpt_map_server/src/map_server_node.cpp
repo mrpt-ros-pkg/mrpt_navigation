@@ -6,8 +6,7 @@
    | All rights reserved. Released under BSD 3-Clause license. See LICENSE  |
    +------------------------------------------------------------------------+ */
 
-#include "mrpt_map_server/map_server_node.h"
-
+#include <geometry_msgs/msg/transform_stamped.h>
 #include <mrpt/config/CConfigFile.h>
 #include <mrpt/core/lock_helper.h>
 #include <mrpt/io/CFileGZInputStream.h>
@@ -20,11 +19,15 @@
 #include <mrpt/maps/CVoxelMap.h>
 #include <mrpt/ros2bridge/map.h>
 #include <mrpt/ros2bridge/point_cloud2.h>
+#include <mrpt/ros2bridge/pose.h>
 #include <mrpt/ros2bridge/time.h>
 #include <mrpt/serialization/CArchive.h>
 #include <mrpt/system/filesystem.h>	 // ASSERT_FILE_EXISTS_()
+#include <mrpt/topography/conversions.h>
+#include <mrpt_map_server/map_server_node.h>
 
 #include <nav_msgs/msg/occupancy_grid.hpp>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 
 using namespace mrpt::config;
 using mrpt::maps::CMultiMetricMap;
@@ -132,6 +135,9 @@ void MapServer::init()
 			const mrpt_nav_interfaces::srv::GetPointmapLayer::Request::SharedPtr req,
 			mrpt_nav_interfaces::srv::GetPointmapLayer::Response::SharedPtr res)
 		{ srv_get_pointmap(req, res); });
+
+	// Create TF broadcaster:
+	tf_broadcaster_ = std::make_shared<tf2_ros::StaticTransformBroadcaster>(*this);
 }
 
 void MapServer::publish_map()
@@ -237,6 +243,92 @@ void MapServer::publish_map()
 		}
 
 	}  // end for each layer
+
+	// Publish the geo-referenced metadata:
+	// 1/2: as mrpt serialized object
+	{
+		// If it's nullopt, it will be serialized correctly as such.
+		mrpt::io::CMemoryStream memBuf;
+		auto arch = mrpt::serialization::archiveFrom(memBuf);
+
+		arch << theMap_.georeferencing;
+
+		if (!pubGeoRef_.pub)
+		{
+			pubGeoRef_.pub = this->create_publisher<mrpt_msgs::msg::GenericObject>(
+				pub_mm_topic_ + "/geo_ref"s, QoS);
+		}
+
+		mrpt_msgs::msg::GenericObject msg;
+		msg.data.resize(memBuf.getTotalBytesCount());
+		::memcpy(msg.data.data(), memBuf.getRawBufferData(), msg.data.size());
+		pubGeoRef_.pub->publish(msg);
+	}
+
+	// Now, only if there is valid geo-ref data, publish /tf's for
+	// ENU and UTM:
+	// See: https://docs.mola-slam.org/latest/geo-referencing.html
+
+	mrpt_nav_interfaces::msg::GeoreferencingMetadata geoMsg;
+
+	if (theMap_.georeferencing)
+	{
+		// ENU -> MAP
+		const auto T_enu_to_map = theMap_.georeferencing->T_enu_to_map.mean;
+		geometry_msgs::msg::TransformStamped tfMsg;
+
+		tfMsg.header.stamp = this->get_clock()->now();
+		tfMsg.header.frame_id = "enu";	// parent
+		tfMsg.child_frame_id = "map";  // child
+		tfMsg.transform = tf2::toMsg(mrpt::ros2bridge::toROS_tfTransform(T_enu_to_map));
+		tf_broadcaster_->sendTransform(tfMsg);
+
+		// ENU -> UTM
+		mrpt::topography::TUTMCoords utmCoordsOfENU;
+		int utmZone = 0;
+		char utmBand = 0;
+		mrpt::topography::GeodeticToUTM(
+			theMap_.georeferencing->geo_coord, utmCoordsOfENU, utmZone, utmBand);
+
+		// T_enu_to_utm = - utmCoordsOfENU  (without rotation, both are "ENU")
+		const auto T_enu_to_utm = mrpt::poses::CPose3D::FromTranslation(-utmCoordsOfENU);
+
+		tfMsg.header.frame_id = "enu";	// parent
+		tfMsg.child_frame_id = "utm";  // child
+		tfMsg.transform = tf2::toMsg(mrpt::ros2bridge::toROS_tfTransform(T_enu_to_utm));
+		tf_broadcaster_->sendTransform(tfMsg);
+
+		geoMsg.t_enu_to_map =
+			tf2::toMsg(mrpt::ros2bridge::toROS_Pose(theMap_.georeferencing->T_enu_to_map));
+		geoMsg.t_enu_to_utm = tf2::toMsg(mrpt::ros2bridge::toROS_Pose(T_enu_to_utm));
+		geoMsg.utm_zone = utmZone;
+		geoMsg.utm_band = std::string{utmBand};
+	}
+
+	// 2/2: as ROS msg
+	if (!pubGeoRefMsg_.pub)
+	{
+		pubGeoRefMsg_.pub =
+			this->create_publisher<mrpt_nav_interfaces::msg::GeoreferencingMetadata>(
+				pub_mm_topic_ + "/geo_ref_metadata"s, QoS);
+	}
+
+	if (theMap_.georeferencing)
+	{
+		auto g = *theMap_.georeferencing;
+
+		geoMsg.valid = true;
+
+		geoMsg.latitude = g.geo_coord.lat.decimal_value;
+		geoMsg.longitude = g.geo_coord.lon.decimal_value;
+		geoMsg.height = g.geo_coord.height;
+		// the rest of fields are already filled in above.
+	}
+	else
+	{
+		geoMsg.valid = false;
+	}
+	pubGeoRefMsg_.pub->publish(geoMsg);
 }
 
 void MapServer::loop()

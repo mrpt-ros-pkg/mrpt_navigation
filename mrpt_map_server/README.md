@@ -64,6 +64,7 @@ None.
 ### Published topics
 * ``${pub_mm_topic}/metric_map`` (Default: ``mrpt_map/metric_map``) (``mrpt_msgs::msg::GenericObject``) (topic name can be changed with parameter `pub_mm_topic`).
 * ``${pub_mm_topic}/geo_ref`` (Default: ``mrpt_map/geo_ref``) (``mrpt_msgs::msg::GenericObject``). An MRPT-serialization of ``mp2p_icp::metric_map_t::Georeferencing`` metadata (topic name can be changed with parameter `pub_mm_topic`).
+* ``${pub_mm_topic}/geo_ref_metadata`` (Default: ``mrpt_map/geo_ref_metadata``)(``mrpt_nav_interfaces::msgs::msg::GeoreferencingMetadata``). A ROS plain message with the contents of ``mp2p_icp::metric_map_t::Georeferencing`` metadata.
 * ``${pub_mm_topic}/<LAYER_NAME>`` (Default: ``mrpt_map/<LAYER_NAME>``) (``mrpt_msgs::msg::GenericObject``) 
 * ``${pub_mm_topic}/<LAYER_NAME>_points`` (``sensor_msgs::msg::PointCloud2``), one per map layer.
 * ``${pub_mm_topic}/<LAYER_NAME>_gridmap`` (``nav_msgs::msg::OccupancyGrid``)
@@ -126,5 +127,5 @@ Launch a map server from a custom `.mm` map ([launch file](../mrpt_tutorials/lau
 which in the launch file is read from the environment variable `MM_FILE`, so it can be used like:
  
 ```bash
-MM_FILE=/path/to/my/map.mm ros2 launch mrpt_tutorials demo_map_server_from_mm.launch.py
+ros2 launch mrpt_tutorials demo_map_server_from_mm.launch.py mm_file:=/path/to/my/map.mm
 ```

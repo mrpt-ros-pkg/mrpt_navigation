@@ -16,12 +16,16 @@ import os
 def generate_launch_description():
     tutsDir = get_package_share_directory("mrpt_tutorials")
 
+    arg_mm_file = DeclareLaunchArgument(
+        name='mm_file'
+    )
+
     mrpt_map_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource([os.path.join(
             get_package_share_directory('mrpt_map_server'), 'launch',
             'mrpt_map_server.launch.py')]),
         launch_arguments={
-            'mm_file': os.environ.get('MM_FILE', 'default.mm'),
+            'mm_file': LaunchConfiguration('mm_file'),
         }.items()
     )
 
@@ -34,5 +38,6 @@ def generate_launch_description():
     )
     return LaunchDescription([
         mrpt_map_launch,
+        arg_mm_file,
         rviz2_node
     ])
