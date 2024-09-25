@@ -2,6 +2,14 @@
 Changelog for package mrpt_nav_interfaces
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Merge pull request `#149 <https://github.com/mrpt-ros-pkg/mrpt_navigation/issues/149>`_ from mrpt-ros-pkg/feature/utm-coordinates
+  Support UTM global coordinates for geo-referenciated maps
+* Add new msg GeoreferencingMetadata.msg
+* Update URL entries in package.xml to each package proper documentation
+* Contributors: Jose Luis Blanco-Claraco
+
 2.1.1 (2024-09-02)
 ------------------
 

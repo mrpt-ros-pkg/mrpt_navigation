@@ -2,6 +2,16 @@
 Changelog for package mrpt_pf_localization
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* less strict unit test failure limit (fixes potential spurious failure)
+* Update URL entries in package.xml to each package proper documentation
+* ament linters: manually enable just cmake and xml linters
+* reformat clang-format with 100 column width
+* mrpt_pf_localization is now robust against temporary failures of /tf resolutions for sensor poses
+* New optional param 'metric_map_use_only_these_layers' to use only a subset of the .mm map layers
+* Contributors: Jose Luis Blanco-Claraco
+
 2.1.1 (2024-09-02)
 ------------------
 * Remove temporary workaround in <depends> for buggy mrpt_libros_bridge package.xml

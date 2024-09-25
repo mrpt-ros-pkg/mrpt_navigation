@@ -2,6 +2,16 @@
 Changelog for package mrpt_tutorials
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Merge pull request `#149 <https://github.com/mrpt-ros-pkg/mrpt_navigation/issues/149>`_ from mrpt-ros-pkg/feature/utm-coordinates
+  Support UTM global coordinates for geo-referenciated maps
+* demo launch file: add "mm_file" as a proper launch required argument instead of an optional env variable
+* fix missing linters; tune tutorial params
+* Update URL entries in package.xml to each package proper documentation
+* ament linters: manually enable just cmake and xml linters
+* Contributors: Jose Luis Blanco-Claraco
+
 2.1.1 (2024-09-02)
 ------------------
 

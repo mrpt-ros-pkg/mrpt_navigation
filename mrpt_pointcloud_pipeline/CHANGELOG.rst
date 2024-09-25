@@ -2,6 +2,13 @@
 Changelog for package mrpt_pointcloud_pipeline
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Update URL entries in package.xml to each package proper documentation
+* ament linters: manually enable just cmake and xml linters
+* reformat clang-format with 100 column width
+* Contributors: Jose Luis Blanco-Claraco
+
 2.1.1 (2024-09-02)
 ------------------
 * Remove temporary workaround in <depends> for buggy mrpt_libros_bridge package.xml

@@ -2,6 +2,15 @@
 Changelog for package mrpt_tps_astar_planner_node
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* fix missing linters; tune tutorial params
+* Update URL entries in package.xml to each package proper documentation
+* ament linters: manually enable just cmake and xml linters
+* Add roslog INFO traces to measure time spent initializing PTGs
+* reformat clang-format with 100 column width
+* Contributors: Jose Luis Blanco-Claraco
+
 2.1.1 (2024-09-02)
 ------------------
 * Remove temporary workaround in <depends> for buggy mrpt_libros_bridge package.xml

@@ -2,6 +2,12 @@
 Changelog for package mrpt_navigation
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Update URL entries in package.xml to each package proper documentation
+* ament linters: manually enable just cmake and xml linters
+* Contributors: Jose Luis Blanco-Claraco
+
 2.1.1 (2024-09-02)
 ------------------
 

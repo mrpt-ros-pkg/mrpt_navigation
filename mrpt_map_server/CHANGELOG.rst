@@ -2,6 +2,18 @@
 Changelog for package mrpt_map_server
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Merge pull request `#149 <https://github.com/mrpt-ros-pkg/mrpt_navigation/issues/149>`_ from mrpt-ros-pkg/feature/utm-coordinates
+  Support UTM global coordinates for geo-referenciated maps
+* Update package.xml: minimum required version of mp2p_icp
+* mrpt_map_server now publishes the map georeferenciation metadata, as topics and /tf (frames: utm, enu)
+* Update URL entries in package.xml to each package proper documentation
+* ament linters: manually enable just cmake and xml linters
+* reformat clang-format with 100 column width
+* Update README.md with geo-referenciation concepts
+* Contributors: Jose Luis Blanco-Claraco
+
 2.1.1 (2024-09-02)
 ------------------
 * Remove temporary workaround in <depends> for buggy mrpt_libros_bridge package.xml
