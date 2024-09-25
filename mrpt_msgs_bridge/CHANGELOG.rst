@@ -2,8 +2,8 @@
 Changelog for package mrpt_msgs_bridge
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+2.2.0 (2024-09-25)
+------------------
 * fix missing linters; tune tutorial params
 * Update URL entries in package.xml to each package proper documentation
 * ament linters: manually enable just cmake and xml linters

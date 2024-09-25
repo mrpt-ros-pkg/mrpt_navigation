@@ -2,8 +2,8 @@
 Changelog for package mrpt_tutorials
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+2.2.0 (2024-09-25)
+------------------
 * Merge pull request `#149 <https://github.com/mrpt-ros-pkg/mrpt_navigation/issues/149>`_ from mrpt-ros-pkg/feature/utm-coordinates
   Support UTM global coordinates for geo-referenciated maps
 * demo launch file: add "mm_file" as a proper launch required argument instead of an optional env variable
