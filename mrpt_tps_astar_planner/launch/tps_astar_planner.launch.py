@@ -46,23 +46,23 @@ def generate_launch_description():
     mid_waypoints_allowed_distance = DeclareLaunchArgument(
         'mid_waypoints_allowed_distance', default_value='0.5',
         description='allowed_distance field of middle waypoints of the interpolated path')
-    
+
     final_waypoint_allowed_distance = DeclareLaunchArgument(
         'final_waypoint_allowed_distance', default_value='0.4',
         description='allowed_distance field of final waypoint of the interpolated path')
-    
+
     mid_waypoints_allow_skip = DeclareLaunchArgument(
         'mid_waypoints_allow_skip', default_value='true',
         description='allow_skip field of middle waypoints of the interpolated path')
-    
+
     final_waypoint_allow_skip = DeclareLaunchArgument(
         'final_waypoint_allow_skip', default_value='false',
         description='allow_skip field of final waypoint of the interpolated path')
-    
+
     mid_waypoints_ignore_heading = DeclareLaunchArgument(
         'mid_waypoints_ignore_heading', default_value='false',
         description='ignore_heading field of middle waypoints of the interpolated path')
-    
+
     final_waypoint_ignore_heading = DeclareLaunchArgument(
         'final_waypoint_ignore_heading', default_value='false',
         description='ignore_heading field of final waypoint of the interpolated path')
@@ -83,6 +83,14 @@ def generate_launch_description():
         'prefer_waypoints_parameters', default_value=os.path.join(myDir, 'configs', 'params', 'costmap-prefer-waypoints.yaml'),
         description='Path to prefer_waypoints_parameters.yaml configuration file')
 
+    problem_world_bbox_margin_arg = DeclareLaunchArgument(
+        'problem_world_bbox_margin', default_value='2.0',
+        description='The distance [m] to add as a margin all around the computed problem world bounding box')
+
+    problem_world_bbox_ignore_obstacles_arg = DeclareLaunchArgument(
+        'problem_world_bbox_ignore_obstacles', default_value='False',
+        description='If True, the bounding box of obstacles is ignored while computing the problem world bounding box')
+
     # Node configuration
     tps_astar_nav_node = Node(
         package='mrpt_tps_astar_planner',
@@ -100,12 +108,22 @@ def generate_launch_description():
             {'topic_wp_seq_pub': LaunchConfiguration('topic_wp_seq_pub')},
             {'frame_id_robot': LaunchConfiguration('frame_id_robot')},
             {'frame_id_map': LaunchConfiguration('frame_id_map')},
-            {'mid_waypoints_allowed_distance' : LaunchConfiguration('mid_waypoints_allowed_distance')},
-            {'final_waypoint_allowed_distance' : LaunchConfiguration('final_waypoint_allowed_distance')},
-            {'mid_waypoints_allow_skip' : LaunchConfiguration('mid_waypoints_allow_skip')},
-            {'final_waypoint_allow_skip' : LaunchConfiguration('final_waypoint_allow_skip')},
-            {'mid_waypoints_ignore_heading' : LaunchConfiguration('mid_waypoints_ignore_heading')},
-            {'final_waypoint_ignore_heading' : LaunchConfiguration('final_waypoint_ignore_heading')},
+            {'mid_waypoints_allowed_distance': LaunchConfiguration(
+                'mid_waypoints_allowed_distance')},
+            {'final_waypoint_allowed_distance': LaunchConfiguration(
+                'final_waypoint_allowed_distance')},
+            {'mid_waypoints_allow_skip': LaunchConfiguration(
+                'mid_waypoints_allow_skip')},
+            {'final_waypoint_allow_skip': LaunchConfiguration(
+                'final_waypoint_allow_skip')},
+            {'mid_waypoints_ignore_heading': LaunchConfiguration(
+                'mid_waypoints_ignore_heading')},
+            {'final_waypoint_ignore_heading': LaunchConfiguration(
+                'final_waypoint_ignore_heading')},
+            {'problem_world_bbox_margin': LaunchConfiguration(
+                'problem_world_bbox_margin')},
+            {'problem_world_bbox_ignore_obstacles': LaunchConfiguration(
+                'problem_world_bbox_ignore_obstacles')},
             # Param files:
             {'planner_parameters': LaunchConfiguration('planner_parameters')},
             {'global_costmap_parameters': LaunchConfiguration(
@@ -126,15 +144,17 @@ def generate_launch_description():
         topic_wp_seq_pub,
         frame_id_robot,
         frame_id_map,
-        mid_waypoints_allowed_distance,     
-        final_waypoint_allowed_distance,     
-        mid_waypoints_allow_skip,    
-        final_waypoint_allow_skip,     
-        mid_waypoints_ignore_heading,     
+        mid_waypoints_allowed_distance,
+        final_waypoint_allowed_distance,
+        mid_waypoints_allow_skip,
+        final_waypoint_allow_skip,
+        mid_waypoints_ignore_heading,
         final_waypoint_ignore_heading,
         planner_parameters_arg,
         ptg_ini_arg,
         global_costmap_parameters_arg,
         prefer_waypoints_parameters_arg,
+        problem_world_bbox_margin_arg,
+        problem_world_bbox_ignore_obstacles_arg,
         tps_astar_nav_node
     ])

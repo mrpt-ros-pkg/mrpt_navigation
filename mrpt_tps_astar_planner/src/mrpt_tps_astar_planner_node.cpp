@@ -153,6 +153,9 @@ class TPS_Astar_Planner_Node : public rclcpp::Node
 	/// Parameters file for planner
 	std::string planner_params_file_ = "planner-params.yaml";
 
+	float problem_world_bbox_margin_ = 2.0f;
+	bool problem_world_bbox_ignore_obstacles_ = false;
+
 	/// Waypoint parameters
 	double mid_waypoints_allowed_distance_ = 0.5;
 	double final_waypoint_allowed_distance_ = 0.4;
@@ -462,6 +465,18 @@ void TPS_Astar_Planner_Node::read_parameters()
 		this->get_logger(), "mid_waypoints_allowed_distance: %.03f",
 		mid_waypoints_allowed_distance_);
 
+	this->declare_parameter<float>("problem_world_bbox_margin", problem_world_bbox_margin_);
+	this->get_parameter("problem_world_bbox_margin", problem_world_bbox_margin_);
+	RCLCPP_INFO(this->get_logger(), "problem_world_bbox_margin: %.03f", problem_world_bbox_margin_);
+
+	this->declare_parameter<bool>(
+		"problem_world_bbox_ignore_obstacles", problem_world_bbox_ignore_obstacles_);
+	this->get_parameter(
+		"problem_world_bbox_ignore_obstacles", problem_world_bbox_ignore_obstacles_);
+	RCLCPP_INFO_STREAM(
+		this->get_logger(),
+		"problem_world_bbox_ignore_obstacles: " << problem_world_bbox_ignore_obstacles_);
+
 	this->declare_parameter<double>(
 		"final_waypoint_allowed_distance", final_waypoint_allowed_distance_);
 	this->get_parameter("final_waypoint_allowed_distance", final_waypoint_allowed_distance_);
@@ -700,8 +715,11 @@ TPS_Astar_Planner_Node::PlanResult TPS_Astar_Planner_Node::do_path_plan(
 		auto obs = mpp::ObstacleSource::FromStaticPointcloud(e.obstacle_points);
 		pi.obstacles.emplace_back(obs);
 
-		auto bb = obs->obstacles()->boundingBox();
-		bbox = bbox.unionWith(bb);
+		if (!problem_world_bbox_ignore_obstacles_)
+		{
+			auto bb = obs->obstacles()->boundingBox();
+			bbox = bbox.unionWith(bb);
+		}
 
 		obstacleSources++;
 		totalObstaclePoints += e.obstacle_points->size();
@@ -714,7 +732,8 @@ TPS_Astar_Planner_Node::PlanResult TPS_Astar_Planner_Node::do_path_plan(
 	lckObs.unlock();
 
 	{
-		const auto bboxMargin = mrpt::math::TPoint3Df(2.0, 2.0, .0);
+		const auto bboxMargin =
+			mrpt::math::TPoint3Df(problem_world_bbox_margin_, problem_world_bbox_margin_, .0f);
 		const auto ptStart = mrpt::math::TPoint3Df(pi.stateStart.pose.x, pi.stateStart.pose.y, 0);
 		const auto ptGoal = mrpt::math::TPoint3Df(
 			pi.stateGoal.asSE2KinState().pose.x, pi.stateGoal.asSE2KinState().pose.y, 0);

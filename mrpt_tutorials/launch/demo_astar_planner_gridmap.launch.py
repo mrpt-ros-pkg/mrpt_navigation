@@ -27,6 +27,7 @@ def generate_launch_description():
             'topic_obstacles_gridmap_sub': '/mrpt_map/map_gridmap',
             'topic_static_maps': '/mrpt_map/map_gridmap',
             'topic_wp_seq_pub': '/waypoints',
+            # 'problem_world_bbox_ignore_obstacles': 'True',
         }.items()
     )
 
