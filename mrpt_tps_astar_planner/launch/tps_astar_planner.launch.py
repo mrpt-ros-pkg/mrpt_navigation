@@ -91,6 +91,10 @@ def generate_launch_description():
         'problem_world_bbox_ignore_obstacles', default_value='False',
         description='If True, the bounding box of obstacles is ignored while computing the problem world bounding box')
 
+    astar_skip_refine_arg = DeclareLaunchArgument(
+        'astar_skip_refine', default_value='False',
+        description='If True, the refine stage after A* will be skipped')
+
     # Node configuration
     tps_astar_nav_node = Node(
         package='mrpt_tps_astar_planner',
@@ -124,6 +128,7 @@ def generate_launch_description():
                 'problem_world_bbox_margin')},
             {'problem_world_bbox_ignore_obstacles': LaunchConfiguration(
                 'problem_world_bbox_ignore_obstacles')},
+            {'astar_skip_refine': LaunchConfiguration('astar_skip_refine')},
             # Param files:
             {'planner_parameters': LaunchConfiguration('planner_parameters')},
             {'global_costmap_parameters': LaunchConfiguration(
@@ -156,5 +161,6 @@ def generate_launch_description():
         prefer_waypoints_parameters_arg,
         problem_world_bbox_margin_arg,
         problem_world_bbox_ignore_obstacles_arg,
+        astar_skip_refine_arg,
         tps_astar_nav_node
     ])

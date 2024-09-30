@@ -156,6 +156,8 @@ class TPS_Astar_Planner_Node : public rclcpp::Node
 	float problem_world_bbox_margin_ = 2.0f;
 	bool problem_world_bbox_ignore_obstacles_ = false;
 
+	bool astar_skip_refine_ = false;
+
 	/// Waypoint parameters
 	double mid_waypoints_allowed_distance_ = 0.5;
 	double final_waypoint_allowed_distance_ = 0.4;
@@ -477,6 +479,10 @@ void TPS_Astar_Planner_Node::read_parameters()
 		this->get_logger(),
 		"problem_world_bbox_ignore_obstacles: " << problem_world_bbox_ignore_obstacles_);
 
+	this->declare_parameter<bool>("astar_skip_refine", astar_skip_refine_);
+	this->get_parameter("astar_skip_refine", astar_skip_refine_);
+	RCLCPP_INFO_STREAM(this->get_logger(), "astar_skip_refine: " << astar_skip_refine_);
+
 	this->declare_parameter<double>(
 		"final_waypoint_allowed_distance", final_waypoint_allowed_distance_);
 	this->get_parameter("final_waypoint_allowed_distance", final_waypoint_allowed_distance_);
@@ -755,19 +761,23 @@ TPS_Astar_Planner_Node::PlanResult TPS_Astar_Planner_Node::do_path_plan(
 											<< "-" << pi.worldBboxMax.asString());
 
 	// Insert custom progress callback:
-	planner_->progressCallback_ = [](const mpp::ProgressCallbackData& pcd)
+	planner_->progressCallback_ = [this](const mpp::ProgressCallbackData& pcd)
 	{
-		std::cout << "[progressCallback] bestCostFromStart: " << pcd.bestCostFromStart
-				  << " bestCostToGoal: " << pcd.bestCostToGoal
-				  << " bestPathLength: " << pcd.bestPath.size() << std::endl;
+		RCLCPP_INFO_STREAM(
+			this->get_logger(),
+			"[progressCallback] bestCostFromStart: " << pcd.bestCostFromStart
+													 << " bestCostToGoal: " << pcd.bestCostToGoal
+													 << " bestPathLength: " << pcd.bestPath.size());
 	};
 
 	const mpp::PlannerOutput plan = planner_->plan(pi);
 
-	std::cout << "\nDone.\n";
-	std::cout << "Success: " << (plan.success ? "YES" : "NO") << "\n";
-	std::cout << "Plan has " << plan.motionTree.edges_to_children.size() << " overall edges, "
-			  << plan.motionTree.nodes().size() << " nodes\n";
+	RCLCPP_INFO_STREAM(
+		this->get_logger(), "Done.\n"
+								<< "Success: " << (plan.success ? "YES" : "NO") << "\n"
+								<< "Plan has " << plan.motionTree.edges_to_children.size()
+								<< " overall edges, " << plan.motionTree.nodes().size()
+								<< " nodes");
 
 	if (!plan.bestNodeId.has_value())
 	{
@@ -786,9 +796,9 @@ TPS_Astar_Planner_Node::PlanResult TPS_Astar_Planner_Node::do_path_plan(
 	// backtrack:
 	auto [plannedPath, pathEdges] = plan.motionTree.backtrack_path(*plan.bestNodeId);
 
-#if 0  // JLBC: disabled to check if this is causing troubles
-mpp::refine_trajectory(plannedPath, pathEdges, planner_input.ptgs);
-#endif
+	// refine trajectory:
+	if (!astar_skip_refine_)
+		mpp::refine_trajectory(plannedPath, pathEdges, plan.originalInput.ptgs);
 
 	// Show plan in a GUI for debugging
 	if (plan.success && gui_mrpt_)
