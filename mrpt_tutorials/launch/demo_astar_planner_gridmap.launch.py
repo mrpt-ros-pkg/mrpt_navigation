@@ -54,6 +54,38 @@ def generate_launch_description():
             }]
     )
 
+    # Launch for mrpt_pointcloud_pipeline:
+    pointcloud_pipeline_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource([os.path.join(
+            get_package_share_directory('mrpt_pointcloud_pipeline'), 'launch',
+            'pointcloud_pipeline.launch.py')]),
+        launch_arguments={
+            'log_level': 'INFO',
+            'scan_topic_name': '/laser1, /laser2',
+            'points_topic_name': '/lidar1_points',
+            'filter_output_topic_name': '/local_map_pointcloud',
+            'time_window': '0.20',
+            'show_gui': 'False',
+            'frameid_robot': 'base_link',
+            'frameid_reference': 'odom',
+        }.items()
+    )
+
+    # Launch for mrpt_reactivenav2d:
+    node_rnav2d_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource([os.path.join(
+            get_package_share_directory('mrpt_reactivenav2d'), 'launch',
+            'rnav.launch.py')]),
+        launch_arguments={
+            'log_level': 'INFO',
+            # 'save_nav_log': 'True',
+            'frameid_robot': 'base_link',
+            'frameid_reference': 'map',
+            'topic_reactive_nav_goal': '/rnav_goal',  # we don't publish this topic
+            'topic_wp_seq': '/waypoints',            # only this one instead.
+        }.items()
+    )
+
     rviz2_node = Node(
         package='rviz2',
         executable='rviz2',
@@ -65,5 +97,7 @@ def generate_launch_description():
         mrpt_map_launch,
         mrpt_astar_planner_launch,
         mvsim_node,
+        pointcloud_pipeline_launch,
+        node_rnav2d_launch,
         rviz2_node
     ])
