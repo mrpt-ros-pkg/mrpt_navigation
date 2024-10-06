@@ -55,7 +55,7 @@ Visualization Manager:
       Color Scheme: map
       Draw Behind: false
       Enabled: true
-      Name: Map
+      Name: GlobalMap
       Topic:
         Depth: 5
         Durability Policy: Transient Local
@@ -304,6 +304,29 @@ Visualization Manager:
         Reliability Policy: Reliable
         Value: /rnav/reactivenav_selected_ptg
       Value: true
+    - Alpha: 0.699999988079071
+      Binary representation: false
+      Binary threshold: 100
+      Class: rviz_default_plugins/Map
+      Color Scheme: costmap
+      Draw Behind: false
+      Enabled: true
+      Name: astar.costmap[0]
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        Filter size: 10
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /costmap_0
+      Update Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /costmap_0_updates
+      Use Timestamp: false
+      Value: true
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
@@ -359,11 +382,11 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Scale: 12.37724494934082
+      Scale: 11.893778800964355
       Target Frame: <Fixed Frame>
       Value: TopDownOrtho (rviz_default_plugins)
-      X: 40.585792541503906
-      Y: 23.696117401123047
+      X: 37.59988784790039
+      Y: 23.346302032470703
     Saved: ~
 Window Geometry:
   Displays:
