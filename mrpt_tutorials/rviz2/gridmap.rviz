@@ -7,6 +7,7 @@ Panels:
         - /Global Options1
         - /Status1
         - /Grid1/Offset1
+        - /astar.costmap[0]1
       Splitter Ratio: 0.5
     Tree Height: 668
   - Class: rviz_common/Selection
@@ -304,7 +305,7 @@ Visualization Manager:
         Reliability Policy: Reliable
         Value: /rnav/reactivenav_selected_ptg
       Value: true
-    - Alpha: 0.699999988079071
+    - Alpha: 0.20000000298023224
       Binary representation: false
       Binary threshold: 100
       Class: rviz_default_plugins/Map
@@ -382,11 +383,11 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Scale: 11.893778800964355
+      Scale: 12.177709579467773
       Target Frame: <Fixed Frame>
       Value: TopDownOrtho (rviz_default_plugins)
-      X: 37.59988784790039
-      Y: 23.346302032470703
+      X: 38.2662353515625
+      Y: 22.15563201904297
     Saved: ~
 Window Geometry:
   Displays:
