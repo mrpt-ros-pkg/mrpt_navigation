@@ -68,6 +68,9 @@
 #include <mrpt/opengl/COpenGLScene.h>
 #include <mrpt/opengl/stock_objects.h>
 
+// version:
+#include <mrpt/version.h>
+
 const char* NODE_NAME = "mrpt_tps_astar_planner_node";
 
 /**
@@ -110,6 +113,7 @@ class TPS_Astar_Planner_Node : public rclcpp::Node
 	/// Publisher for waypoint sequence
 	rclcpp::Publisher<mrpt_msgs::msg::WaypointSequence>::SharedPtr pub_wp_seq_;
 	rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr pub_wp_path_seq_;
+	std::vector<rclcpp::Publisher<nav_msgs::msg::OccupancyGrid>::SharedPtr> pub_costmaps_;
 
 	// tf2 buffer and listener
 	std::shared_ptr<tf2_ros::Buffer> tf_buffer_;
@@ -140,6 +144,9 @@ class TPS_Astar_Planner_Node : public rclcpp::Node
 
 	/// waypoint sequence topic publisher name
 	std::string topic_wp_seq_pub_;
+
+	/// costmaps topic publisher name prefix
+	std::string topic_costmaps_pub_ = "/costmap";
 
 	/// Parameter file for PTGs
 	std::string ptg_ini_file_ = "ptgs.ini";
@@ -782,11 +789,31 @@ TPS_Astar_Planner_Node::PlanResult TPS_Astar_Planner_Node::do_path_plan(
 	if (!plan.bestNodeId.has_value())
 	{
 		RCLCPP_ERROR_STREAM(this->get_logger(), "No bestNodeId in plan output.");
-
 		return {};
 	}
 
-	// if (plan.success) { activePlanOutput_ = plan; }
+	// Publish costmaps:
+#if MRPT_VERSION >= 0x020e03  // >=v2.14.3
+	pub_costmaps_.resize(planner_->costEvaluators_.size());
+	for (size_t i = 0; i < planner_->costEvaluators_.size(); i++)
+	{
+		if (!pub_costmaps_[i])
+		{
+			// See: REP-2003: https://ros.org/reps/rep-2003.html
+			const auto mapQoS = rclcpp::QoS(rclcpp::KeepLast(1)).transient_local().reliable();
+			pub_costmaps_[i] = this->create_publisher<nav_msgs::msg::OccupancyGrid>(
+				topic_costmaps_pub_ + mrpt::format("_%zu", i), mapQoS);
+		}
+		const auto& cm = planner_->costEvaluators_.at(i);
+		auto grid = cm->get_visualization_as_grid();
+		nav_msgs::msg::OccupancyGrid costMapMsg;
+		mrpt::ros2bridge::toROS(*grid, costMapMsg, true /*as costmap*/);
+		costMapMsg.header.frame_id = frame_id_map_;
+		costMapMsg.header.stamp = this->now();
+
+		pub_costmaps_[i]->publish(costMapMsg);
+	}
+#endif
 
 	if (!plan.success)
 	{
