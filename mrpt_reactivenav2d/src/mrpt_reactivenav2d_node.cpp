@@ -9,6 +9,7 @@
 #include <chrono>
 #include <mrpt_reactivenav2d/mrpt_reactivenav2d_node.hpp>
 #include <rclcpp_components/register_node_macro.hpp>
+#include <type_traits>
 
 using namespace mrpt::nav;
 using mrpt::maps::CSimplePointsMap;
@@ -17,6 +18,21 @@ using namespace mrpt::config;
 using namespace mrpt_reactivenav2d;
 
 RCLCPP_COMPONENTS_REGISTER_NODE(mrpt_reactivenav2d::ReactiveNav2DNode)
+
+// JLBC: Aux code to support older mrpt_msgs versions:
+// Helper to detect if a type has a specific field named 'speed_ratio'
+template <typename, typename T>
+struct has_speed_ratio
+{
+	static constexpr bool value = false;
+};
+
+// Specialization if the 'speed_ratio' field exists
+template <typename T>
+struct has_speed_ratio<T, decltype((void)T::speed_ratio, void())>
+{
+	static constexpr bool value = true;
+};
 
 /**  Constructor: Inits ROS system */
 ReactiveNav2DNode::ReactiveNav2DNode(const rclcpp::NodeOptions& options)
@@ -383,6 +399,11 @@ void ReactiveNav2DNode::update_waypoint_sequence(const mrpt_msgs::msg::WaypointS
 
 		// regular number, not NAN
 		if (trg.yaw() == trg.yaw() && !wp.ignore_heading) waypoint.target_heading = trg.yaw();
+
+		if constexpr (has_speed_ratio<decltype(wp), void>::value)
+		{
+			waypoint.speed_ratio = wp.speed_ratio;
+		}
 
 		wps.waypoints.push_back(waypoint);
 	}
