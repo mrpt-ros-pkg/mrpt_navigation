@@ -2,6 +2,9 @@
 Changelog for package mrpt_pf_localization
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+
 2.2.0 (2024-09-25)
 ------------------
 * less strict unit test failure limit (fixes potential spurious failure)

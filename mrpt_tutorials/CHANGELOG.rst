@@ -2,6 +2,16 @@
 Changelog for package mrpt_tutorials
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Update demo for astar
+* Publish costmaps to ROS for visualization too apart of the custom MRPT GUI
+* rviz layout: show rnav selected path
+* Improve astar navigation demo
+* astar planner: add refine() step and parameter to optionally disable it
+* astar node: add two more launch args: problem_world_bbox_margin and problem_world_bbox_ignore_obstacles
+* Contributors: Jose Luis Blanco-Claraco
+
 2.2.0 (2024-09-25)
 ------------------
 * Merge pull request `#149 <https://github.com/mrpt-ros-pkg/mrpt_navigation/issues/149>`_ from mrpt-ros-pkg/feature/utm-coordinates

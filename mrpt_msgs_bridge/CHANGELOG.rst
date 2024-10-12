@@ -2,6 +2,9 @@
 Changelog for package mrpt_msgs_bridge
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+
 2.2.0 (2024-09-25)
 ------------------
 * fix missing linters; tune tutorial params

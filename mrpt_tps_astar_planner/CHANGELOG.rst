@@ -2,6 +2,17 @@
 Changelog for package mrpt_tps_astar_planner_node
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Update demo for astar
+* Publish costmaps to ROS for visualization too apart of the custom MRPT GUI
+* Improve astar navigation demo
+* astar planner: add refine() step and parameter to optionally disable it
+* astar node: add two more launch args: problem_world_bbox_margin and problem_world_bbox_ignore_obstacles
+* astar params: add more comments and tune for speed
+* PTGs .ini: Add docs on how to enable backward motions
+* Contributors: Jose Luis Blanco-Claraco
+
 2.2.0 (2024-09-25)
 ------------------
 * fix missing linters; tune tutorial params
