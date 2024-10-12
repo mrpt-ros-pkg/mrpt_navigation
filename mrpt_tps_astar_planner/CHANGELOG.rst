@@ -2,8 +2,8 @@
 Changelog for package mrpt_tps_astar_planner_node
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+2.2.1 (2024-10-12)
+------------------
 * Update demo for astar
 * Publish costmaps to ROS for visualization too apart of the custom MRPT GUI
 * Improve astar navigation demo

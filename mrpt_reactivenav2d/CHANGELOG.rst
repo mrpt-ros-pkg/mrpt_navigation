@@ -2,8 +2,8 @@
 Changelog for package mrpt_reactivenav2d
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+2.2.1 (2024-10-12)
+------------------
 * Update for MRPT 2.14.3 (new RNAV weight for target heading)
 * Support speed_ratio property for Waypoints
 * Improve astar navigation demo

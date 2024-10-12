@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <package format="3">
   <name>mrpt_msgs_bridge</name>
-  <version>2.2.0</version>
+  <version>2.2.1</version>
   <description>C++ library to convert between custom mrpt_msgs messages and native MRPT classes</description>
 
   <url type="website">https://github.com/mrpt-ros-pkg/mrpt_navigation</url>

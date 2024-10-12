@@ -2,8 +2,8 @@
 Changelog for package mrpt_tutorials
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+2.2.1 (2024-10-12)
+------------------
 * Update demo for astar
 * Publish costmaps to ROS for visualization too apart of the custom MRPT GUI
 * rviz layout: show rnav selected path

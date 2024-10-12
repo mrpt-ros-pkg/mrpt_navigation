@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <package format="3">
   <name>mrpt_map_server</name>
-  <version>2.2.0</version>
+  <version>2.2.1</version>
   <description>This package provides a ROS 2 node that publishes a static map for other nodes to use it. Unlike classic ROS 1 ``map_server``, this node can publish a range of different metric maps, not only occupancy grids.</description>
 
   <maintainer email="markus.bader@tuwien.ac.at">Markus Bader</maintainer>
