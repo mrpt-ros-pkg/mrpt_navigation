@@ -12,7 +12,7 @@
 #include <sstream>
 
 // for now, not needed (node=executable)
-// #include "rclcpp_components/register_node_macro.hpp"
+#include "rclcpp_components/register_node_macro.hpp"
 
 using namespace mrpt::system;
 using namespace mrpt::config;
@@ -21,7 +21,7 @@ using namespace mrpt::maps;
 using namespace mrpt::obs;
 
 LocalObstaclesNode::LocalObstaclesNode(const rclcpp::NodeOptions& options)
-	: Node("mrpt_pointcloud_pipeline", options)
+	:Node("mrpt_pointcloud_pipeline_node", options)
 {
 	m_profiler.setName(Node::get_name());
 
@@ -571,15 +571,4 @@ void LocalObstaclesNode::read_parameters()
 	}
 }
 
-int main(int argc, char** argv)
-{
-	rclcpp::init(argc, argv);
-
-	auto node = std::make_shared<LocalObstaclesNode>();
-
-	rclcpp::spin(node);
-
-	rclcpp::shutdown();
-
-	return 0;
-}
+RCLCPP_COMPONENTS_REGISTER_NODE(LocalObstaclesNode);

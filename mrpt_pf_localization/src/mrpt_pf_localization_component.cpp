@@ -27,6 +27,8 @@
 #include <mrpt/version.h>
 #include <pose_cov_ops/pose_cov_ops.h>
 
+#include "rclcpp_components/register_node_macro.hpp"
+
 #include <geometry_msgs/msg/pose_array.hpp>
 #include <mrpt_msgs_bridge/beacon.hpp>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
@@ -45,14 +47,7 @@ std::string hyperlink(
 }  // namespace mrpt::system
 #endif
 
-int main(int argc, char** argv)
-{
-	rclcpp::init(argc, argv);
-	auto node = std::make_shared<PFLocalizationNode>();
-	rclcpp::spin(std::dynamic_pointer_cast<rclcpp::Node>(node));
-	rclcpp::shutdown();
-	return 0;
-}
+RCLCPP_COMPONENTS_REGISTER_NODE(PFLocalizationNode); //Register node to make it composable
 
 PFLocalizationNode::PFLocalizationNode(const rclcpp::NodeOptions& options)
 	: rclcpp::Node("mrpt_pf_localization_node", options)

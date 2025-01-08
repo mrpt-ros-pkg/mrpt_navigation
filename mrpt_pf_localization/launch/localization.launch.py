@@ -10,9 +10,11 @@
 from launch import LaunchDescription
 from launch.substitutions import TextSubstitution
 from launch.substitutions import LaunchConfiguration
-from launch_ros.actions import Node
+from launch_ros.actions import Node, LoadComposableNodes
+from launch_ros.descriptions import ComposableNode
 from launch.actions import (DeclareLaunchArgument,
                             EmitEvent, LogInfo, RegisterEventHandler)
+from launch.conditions import IfCondition, UnlessCondition
 from launch.event_handlers import OnProcessExit
 from launch.events import Shutdown
 from ament_index_python import get_package_share_directory
@@ -24,6 +26,8 @@ import os
 def generate_launch_description():
     pfLocDir = get_package_share_directory("mrpt_pf_localization")
     # print('pfLocDir       : ' + pfLocDir)
+
+    use_composable = LaunchConfiguration('use_composable')
 
     pf_params_file_launch_arg = DeclareLaunchArgument(
         "pf_params_file", default_value=TextSubstitution(
@@ -84,7 +88,13 @@ def generate_launch_description():
         description="Whether to show a custom UI with details on the PF status"
     )
 
+    container_name_arg = DeclareLaunchArgument(
+        'container_name',
+        default_value='',
+    )
+
     pf_localization_node = Node(
+        condition=UnlessCondition(use_composable),
         package='mrpt_pf_localization',
         executable='mrpt_pf_localization_node',
         name='mrpt_pf_localization_node',
@@ -106,7 +116,33 @@ def generate_launch_description():
                    LaunchConfiguration('log_level')]
     )
 
+    composable_pf_localization_node = LoadComposableNodes(
+        condition=IfCondition(use_composable),
+        target_container=LaunchConfiguration('container_name'),
+        composable_node_descriptions=[
+            ComposableNode(
+                package='mrpt_pf_localization',
+                name='mrpt_pf_localization_component',
+                plugin='PFLocalizationNode',
+                parameters=[
+                    LaunchConfiguration('pf_params_file'),
+                    {
+                        "topic_sensors_2d_scan": LaunchConfiguration('topic_sensors_2d_scan'),
+                        "topic_sensors_point_clouds": LaunchConfiguration('topic_sensors_point_clouds'),
+                        "topic_gnss": LaunchConfiguration('topic_gnss'),
+                        "relocalization_params_file": LaunchConfiguration('relocalization_params_file'),
+                        "gui_enable": LaunchConfiguration('gui_enable'),
+                        "log_level_core": LaunchConfiguration('log_level_core'),
+                        "base_link_frame_id": LaunchConfiguration('base_link_frame_id'),
+                        "odom_frame_id": LaunchConfiguration('odom_frame_id'),
+                        "global_frame_id": LaunchConfiguration('global_frame_id'),
+                    }]
+            )
+        ]
+    )
+
     ld = LaunchDescription([
+        container_name_arg,
         pf_log_level_launch_arg,
         pf_log_level_core_launch_arg,
         relocalization_params_file_launch_arg,
@@ -119,6 +155,7 @@ def generate_launch_description():
         odom_frame_id_arg,
         global_frame_id_arg,
         pf_localization_node,
+        composable_pf_localization_node,
         RegisterEventHandler(
             OnProcessExit(
                 target_action=pf_localization_node,

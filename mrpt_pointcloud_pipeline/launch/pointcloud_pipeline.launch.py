@@ -10,8 +10,10 @@
 from launch import LaunchDescription
 from launch.substitutions import TextSubstitution
 from launch.substitutions import LaunchConfiguration
-from launch_ros.actions import Node
+from launch_ros.actions import Node, LoadComposableNodes
+from launch_ros.descriptions import ComposableNode
 from launch.actions import DeclareLaunchArgument, Shutdown
+from launch.conditions import IfCondition, UnlessCondition
 from ament_index_python import get_package_share_directory
 from launch.actions import GroupAction
 from launch_ros.actions import PushRosNamespace
@@ -21,6 +23,8 @@ import os
 def generate_launch_description():
     myPkgDir = get_package_share_directory("mrpt_pointcloud_pipeline")
     # print('myPkgDir       : ' + myPkgDir)
+
+    use_composable = LaunchConfiguration('use_composable')
 
     lidar_topic_name_arg = DeclareLaunchArgument(
         'scan_topic_name',
@@ -72,9 +76,15 @@ def generate_launch_description():
         description="Logging level"
     )
 
+    container_name_arg = DeclareLaunchArgument(
+        'container_name',
+        default_value='',
+    )
+
     emit_shutdown_action = Shutdown(reason='launch is shutting down')
 
     mrpt_pointcloud_pipeline_node = Node(
+        condition=UnlessCondition(use_composable),
         package='mrpt_pointcloud_pipeline',
         executable='mrpt_pointcloud_pipeline_node',
         name='mrpt_pointcloud_pipeline_node',
@@ -101,7 +111,32 @@ def generate_launch_description():
         on_exit=[emit_shutdown_action]
     )
 
+    composable_mrpt_pointcloud_pipeline = LoadComposableNodes(
+        condition=IfCondition(use_composable),
+        target_container=LaunchConfiguration('container_name'),
+        composable_node_descriptions=[
+            ComposableNode(
+                package='mrpt_pointcloud_pipeline',
+                name='mrpt_pointcloud_pipeline_component',
+                plugin='LocalObstaclesNode',
+                parameters=[
+                    {'source_topics_2d_scans': LaunchConfiguration('scan_topic_name')},
+                    {'source_topics_pointclouds': LaunchConfiguration('points_topic_name')},
+                    {'show_gui': LaunchConfiguration('show_gui')},
+                    {'pipeline_yaml_file': LaunchConfiguration('pipeline_yaml_file')},
+                    {'filter_output_layer_name': LaunchConfiguration('filter_output_layer_name')},
+                    {'time_window': LaunchConfiguration('time_window')},
+                    {'topic_local_map_pointcloud': LaunchConfiguration('filter_output_topic_name')},
+                    {'frameid_reference': LaunchConfiguration('frameid_reference')},
+                    {'frameid_robot': LaunchConfiguration('frameid_robot')},
+                    {'one_observation_per_topic': LaunchConfiguration('one_observation_per_topic')},
+                ],
+            )
+        ]
+    )
+
     ld = LaunchDescription([
+        container_name_arg,
         lidar_topic_name_arg,
         points_topic_name_arg,
         show_gui_arg,
@@ -114,6 +149,7 @@ def generate_launch_description():
         log_level_launch_arg,
         one_observation_per_topic_arg,
         mrpt_pointcloud_pipeline_node,
+        composable_mrpt_pointcloud_pipeline,
     ])
 
     # Namespace to avoid clash launch argument names with the parent scope:
