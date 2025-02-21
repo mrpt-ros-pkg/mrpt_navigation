@@ -932,12 +932,8 @@ void TPS_Astar_Planner_Node::srv_make_plan_from_to(
 		const auto p = mrpt::ros2bridge::fromROS(req->target);
 		const auto nav_goal = mrpt::math::TPose2D(p.asTPose());
 
-		mrpt::poses::CPose3D robot_pose;
-		const bool robot_pose_ok = wait_for_transform(robot_pose, frame_id_robot_, frame_id_map_);
-
-		ASSERT_(robot_pose_ok);
-
-		const auto start_pose = mrpt::poses::CPose2D(robot_pose).asTPose();
+		const auto p0 = mrpt::ros2bridge::fromROS(req->start);
+		const auto start_pose = mrpt::math::TPose2D(p0.asTPose());
 
 		const auto res = do_path_plan(start_pose, nav_goal);
 
