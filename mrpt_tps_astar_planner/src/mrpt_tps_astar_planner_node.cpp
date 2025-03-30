@@ -815,20 +815,19 @@ TPS_Astar_Planner_Node::PlanResult TPS_Astar_Planner_Node::do_path_plan(
 	}
 #endif
 
-	if (!plan.success)
-	{
-		planner_->costEvaluators_.clear();
-	}
+	// TODO(jlbc) Why? Remove? if (!plan.success) planner_->costEvaluators_.clear();
 
 	// backtrack:
 	auto [plannedPath, pathEdges] = plan.motionTree.backtrack_path(*plan.bestNodeId);
 
 	// refine trajectory:
 	if (!astar_skip_refine_)
+	{
 		mpp::refine_trajectory(plannedPath, pathEdges, plan.originalInput.ptgs);
+	}
 
 	// Show plan in a GUI for debugging
-	if (plan.success && gui_mrpt_)
+	if (gui_mrpt_)
 	{
 		mpp::VisualizationOptions vizOpts;
 
@@ -842,7 +841,7 @@ TPS_Astar_Planner_Node::PlanResult TPS_Astar_Planner_Node::do_path_plan(
 
 	// Interpolate so we have many waypoints:
 	mpp::trajectory_t interpPath;
-	if (plan.success)
+	if (!pathEdges.empty())
 	{
 		const double interpPeriod = 0.25;  // [s]
 
@@ -861,37 +860,34 @@ TPS_Astar_Planner_Node::PlanResult TPS_Astar_Planner_Node::do_path_plan(
 	res.valid = plan.success;
 	res.plan_output = plan;
 
-	if (plan.success)
+	for (const auto& [time, kin_state] : interpPath)
 	{
-		for (auto& kv : interpPath)
-		{
-			const auto& goal_state = kv.second.state;
+		const auto& goal_state = kin_state.state;
 #if 0
 			std::cout << "Waypoint: x = " << goal_state.pose.x
 					  << ", y= " << goal_state.pose.y << std::endl;
 #endif
-			auto wp_msg = mrpt_msgs::msg::Waypoint();
-			wp_msg.target = mrpt::ros2bridge::toROS_Pose(goal_state.pose);
-
-			wp_msg.allowed_distance = mid_waypoints_allowed_distance_;
-			wp_msg.allow_skip = mid_waypoints_allow_skip_;
-			wp_msg.ignore_heading = mid_waypoints_ignore_heading_;
-
-			res.wps.waypoints.push_back(wp_msg);
-		}
-
 		auto wp_msg = mrpt_msgs::msg::Waypoint();
-		wp_msg.target = mrpt::ros2bridge::toROS_Pose(goal);
+		wp_msg.target = mrpt::ros2bridge::toROS_Pose(goal_state.pose);
 
-		wp_msg.allowed_distance = final_waypoint_allowed_distance_;
-		wp_msg.allow_skip = final_waypoint_allow_skip_;
-		wp_msg.ignore_heading = final_waypoint_ignore_heading_;
+		wp_msg.allowed_distance = mid_waypoints_allowed_distance_;
+		wp_msg.allow_skip = mid_waypoints_allow_skip_;
+		wp_msg.ignore_heading = mid_waypoints_ignore_heading_;
 
 		res.wps.waypoints.push_back(wp_msg);
-
-		res.wps.header.frame_id = frame_id_map_;
-		res.wps.header.stamp = this->now();
 	}
+
+	auto wp_msg = mrpt_msgs::msg::Waypoint();
+	wp_msg.target = mrpt::ros2bridge::toROS_Pose(goal);
+
+	wp_msg.allowed_distance = final_waypoint_allowed_distance_;
+	wp_msg.allow_skip = final_waypoint_allow_skip_;
+	wp_msg.ignore_heading = final_waypoint_ignore_heading_;
+
+	res.wps.waypoints.push_back(wp_msg);
+
+	res.wps.header.frame_id = frame_id_map_;
+	res.wps.header.stamp = this->now();
 
 	return res;
 }
