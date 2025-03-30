@@ -30,6 +30,7 @@ def generate_launch_description():
             get_package_share_directory('mrpt_pointcloud_pipeline'), 'launch',
             'pointcloud_pipeline.launch.py')]),
         launch_arguments={
+            'use_composable': 'False',
             'log_level': 'INFO',
             'scan_topic_name': '/scanner1',
             'points_topic_name': '/lidar1_points',
