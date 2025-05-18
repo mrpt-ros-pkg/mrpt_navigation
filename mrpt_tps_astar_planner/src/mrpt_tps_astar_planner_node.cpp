@@ -607,21 +607,13 @@ void TPS_Astar_Planner_Node::update_obstacles(
 	// Transform the cloud to its global pose in the map:
 	mrpt::poses::CPose3D sensorPoseInMap;
 
-	// Brief pause to allow time for the transform data to become available
-	const auto timeout = std::chrono::milliseconds(50);
-	const auto tStart = this->now();
-	const double max_duration = 5.0;  // seconds
-
-	while (!wait_for_transform(sensorPoseInMap, pcMsg->header.frame_id, frame_id_map_))
+	// Update fields only when transform data to become available
+	if (wait_for_transform(sensorPoseInMap, pcMsg->header.frame_id, frame_id_map_))
 	{
-		std::this_thread::sleep_for(timeout);
-		auto duration = this->get_clock()->now() - tStart;
-		ASSERT_(duration.seconds() < max_duration);
+		pc->changeCoordinatesReference(sensorPoseInMap);
+
+		e.obstacle_points = pc;
 	}
-
-	pc->changeCoordinatesReference(sensorPoseInMap);
-
-	e.obstacle_points = pc;
 }
 
 void TPS_Astar_Planner_Node::publish_waypoint_sequence(const mrpt_msgs::msg::WaypointSequence& wps)
