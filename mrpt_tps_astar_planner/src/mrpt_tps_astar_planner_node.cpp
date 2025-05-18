@@ -396,15 +396,16 @@ bool TPS_Astar_Planner_Node::wait_for_transform(
 		tf2::fromMsg(src_to_trg_frame.transform, tf);
 		des = mrpt::ros2bridge::fromROS(tf);
 
-		RCLCPP_DEBUG(
-			get_logger(), "[wait_for_transform] Found pose %s -> %s: %s", source_frame.c_str(),
-			target_frame.c_str(), des.asString().c_str());
+		RCLCPP_DEBUG_THROTTLE(
+			get_logger(), *get_clock(), 5000, "[wait_for_transform] Found pose %s -> %s: %s",
+			source_frame.c_str(), target_frame.c_str(), des.asString().c_str());
 
 		return true;
 	}
 	catch (const tf2::TransformException& ex)
 	{
-		RCLCPP_ERROR(get_logger(), "[wait_for_transform] %s", ex.what());
+		RCLCPP_ERROR_THROTTLE(
+			get_logger(), *get_clock(), 5000, "[wait_for_transform] %s", ex.what());
 		return false;
 	}
 }
@@ -587,8 +588,9 @@ void TPS_Astar_Planner_Node::callback_map(
 void TPS_Astar_Planner_Node::callback_obstacles(
 	const sensor_msgs::msg::PointCloud2::SharedPtr& pc, InfoPerPointMapSource& e)
 {
-	RCLCPP_INFO_STREAM(
-		this->get_logger(), "Received obstacle points from topic: " << e.sub->get_topic_name());
+	RCLCPP_INFO_STREAM_THROTTLE(
+		this->get_logger(), *this->get_clock(), 5000,
+		"Received obstacle points from topic: " << e.sub->get_topic_name());
 
 	update_obstacles(pc, e);
 }
