@@ -396,15 +396,16 @@ bool TPS_Astar_Planner_Node::wait_for_transform(
 		tf2::fromMsg(src_to_trg_frame.transform, tf);
 		des = mrpt::ros2bridge::fromROS(tf);
 
-		RCLCPP_DEBUG(
-			get_logger(), "[wait_for_transform] Found pose %s -> %s: %s", source_frame.c_str(),
-			target_frame.c_str(), des.asString().c_str());
+		RCLCPP_DEBUG_THROTTLE(
+			get_logger(), *get_clock(), 5000, "[wait_for_transform] Found pose %s -> %s: %s",
+			source_frame.c_str(), target_frame.c_str(), des.asString().c_str());
 
 		return true;
 	}
 	catch (const tf2::TransformException& ex)
 	{
-		RCLCPP_ERROR(get_logger(), "[wait_for_transform] %s", ex.what());
+		RCLCPP_ERROR_THROTTLE(
+			get_logger(), *get_clock(), 5000, "[wait_for_transform] %s", ex.what());
 		return false;
 	}
 }
@@ -587,8 +588,9 @@ void TPS_Astar_Planner_Node::callback_map(
 void TPS_Astar_Planner_Node::callback_obstacles(
 	const sensor_msgs::msg::PointCloud2::SharedPtr& pc, InfoPerPointMapSource& e)
 {
-	RCLCPP_INFO_STREAM(
-		this->get_logger(), "Received obstacle points from topic: " << e.sub->get_topic_name());
+	RCLCPP_INFO_STREAM_THROTTLE(
+		this->get_logger(), *this->get_clock(), 5000,
+		"Received obstacle points from topic: " << e.sub->get_topic_name());
 
 	update_obstacles(pc, e);
 }
@@ -607,21 +609,13 @@ void TPS_Astar_Planner_Node::update_obstacles(
 	// Transform the cloud to its global pose in the map:
 	mrpt::poses::CPose3D sensorPoseInMap;
 
-	// Brief pause to allow time for the transform data to become available
-	const auto timeout = std::chrono::milliseconds(50);
-	const auto tStart = this->now();
-	const double max_duration = 5.0;  // seconds
-
-	while (!wait_for_transform(sensorPoseInMap, pcMsg->header.frame_id, frame_id_map_))
+	// Update fields only when transform data to become available
+	if (wait_for_transform(sensorPoseInMap, pcMsg->header.frame_id, frame_id_map_))
 	{
-		std::this_thread::sleep_for(timeout);
-		auto duration = this->get_clock()->now() - tStart;
-		ASSERT_(duration.seconds() < max_duration);
+		pc->changeCoordinatesReference(sensorPoseInMap);
+
+		e.obstacle_points = pc;
 	}
-
-	pc->changeCoordinatesReference(sensorPoseInMap);
-
-	e.obstacle_points = pc;
 }
 
 void TPS_Astar_Planner_Node::publish_waypoint_sequence(const mrpt_msgs::msg::WaypointSequence& wps)
