@@ -2,6 +2,18 @@
 Changelog for package mrpt_pf_localization
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* FIX: remove usage of obsolete ament_target_dependencies()
+* Merge pull request `#153 <https://github.com/mrpt-ros-pkg/mrpt_navigation/issues/153>`_ from dppp415/ros2
+  Composable Nodes
+* Shared libraries
+* Some fixes and demo
+* Copyright
+* Deleted duplicated code
+* Nodes mrpt_pointcloud_pipeline y mrpt_pf_localization are now composables
+* Contributors: Jose Luis Blanco-Claraco, dppp415
+
 2.2.1 (2024-10-12)
 ------------------
 

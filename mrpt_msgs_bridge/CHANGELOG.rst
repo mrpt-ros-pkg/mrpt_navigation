@@ -2,6 +2,11 @@
 Changelog for package mrpt_msgs_bridge
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* FIX: remove usage of obsolete ament_target_dependencies()
+* Contributors: Jose Luis Blanco-Claraco
+
 2.2.1 (2024-10-12)
 ------------------
 

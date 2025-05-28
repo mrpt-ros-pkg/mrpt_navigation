@@ -2,6 +2,21 @@
 Changelog for package mrpt_tps_astar_planner_node
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* FIX: remove usage of obsolete ament_target_dependencies()
+* Merge pull request `#156 <https://github.com/mrpt-ros-pkg/mrpt_navigation/issues/156>`_ from r-aguilera/ros2
+  mrpt_tps_astar_planner_node: improves on obstacle points update
+* astar_planner: limit excessive obstacle points ...
+  logging
+* astar_planner: prevent node from shutting down ...
+  on missing tf info
+* astar planner node: it will always return the best found path, even if success==false
+* Merge pull request `#155 <https://github.com/mrpt-ros-pkg/mrpt_navigation/issues/155>`_ from r-aguilera/ros2
+  Fix MakePlanFromTo srv using robot pose as start
+* Fix MakePlanFromTo srv using robot pose as start
+* Contributors: Jose Luis Blanco-Claraco, Raúl Aguilera
+
 2.2.1 (2024-10-12)
 ------------------
 * Update demo for astar

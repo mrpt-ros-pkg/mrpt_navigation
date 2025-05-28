@@ -2,6 +2,15 @@
 Changelog for package mrpt_tutorials
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Fix tutorial demo launchs missing 'use_composable' argument
+* Merge pull request `#153 <https://github.com/mrpt-ros-pkg/mrpt_navigation/issues/153>`_ from dppp415/ros2
+  Composable Nodes
+* Fix
+* Some fixes and demo
+* Contributors: Jose Luis Blanco-Claraco, dppp415
+
 2.2.1 (2024-10-12)
 ------------------
 * Update demo for astar
