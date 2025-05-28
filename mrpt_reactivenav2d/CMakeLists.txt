@@ -60,25 +60,21 @@ target_include_directories(${PROJECT_NAME}_node
 )               
 
 ## Specify libraries to link a library or executable target against
-target_link_libraries(${PROJECT_NAME}_node
+target_link_libraries(${PROJECT_NAME}_node PRIVATE
   mrpt::nav
   mrpt::kinematics
   mrpt::ros2bridge
-)
-
-ament_target_dependencies(
-  ${PROJECT_NAME}_node
-  rclcpp
-  rclcpp_components
-  nav_msgs
-  sensor_msgs
-  geometry_msgs
-  mrpt_msgs
-  tf2
-  tf2_ros
-  tf2_geometry_msgs
-  visualization_msgs
-  mrpt_nav_interfaces
+  rclcpp::rclcpp
+  ${rclcpp_components_TARGETS}
+  ${nav_msgs_TARGETS}
+  ${sensor_msgs_TARGETS}
+  ${geometry_msgs_TARGETS}
+  ${mrpt_msgs_TARGETS}
+  tf2::tf2
+  ${tf2_ros_TARGETS}
+  ${tf2_geometry_msgs_TARGETS}
+  ${visualization_msgs_TARGETS}
+  ${mrpt_nav_interfaces_TARGETS}
 )
 
 #############

@@ -37,43 +37,39 @@ if (CMAKE_COMPILER_IS_GNUCXX)
 		add_compile_options(-Wno-ignored-attributes -Wno-int-in-bool-context)
 	endif()
 endif()
-IF(CMAKE_COMPILER_IS_GNUCXX AND NOT CMAKE_BUILD_TYPE MATCHES "Debug")
+if(CMAKE_COMPILER_IS_GNUCXX AND NOT CMAKE_BUILD_TYPE MATCHES "Debug")
   add_compile_options(-O3)
-ENDIF()
+endif()
 
 ###########
 ## Build ##
 ###########
 
-## Declare a cpp executable
+# Declare a cpp executable
 add_executable(map_server_node
-				src/map_server_node.cpp
-				include/${PROJECT_NAME}/map_server_node.h)
+  src/map_server_node.cpp
+  include/${PROJECT_NAME}/map_server_node.h)
 
 target_include_directories(map_server_node
-				PUBLIC
-				$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-				$<INSTALL_INTERFACE:include>
+  PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>
 )
 
-## Specify libraries to link a library or executable target against
-target_link_libraries(map_server_node
+# Specify libraries to link a library or executable target against
+target_link_libraries(map_server_node PRIVATE
   mrpt::maps
   mrpt::ros2bridge
   mrpt::topography
   mola::mp2p_icp_map
-)
-
-ament_target_dependencies(
-  map_server_node
-  rclcpp
-  rclcpp_components
-  nav_msgs
-  mrpt_msgs
-  mrpt_nav_interfaces
-  tf2
-  tf2_ros
-  tf2_geometry_msgs
+  rclcpp::rclcpp
+  ${rclcpp_components_TARGETS}
+  tf2::tf2
+  ${nav_msgs_TARGETS}
+  ${mrpt_msgs_TARGETS}
+  ${mrpt_nav_interfaces_TARGETS}
+  ${tf2_geometry_msgs_TARGETS}
+  ${tf2_ros_TARGETS}
 )
 
 #############

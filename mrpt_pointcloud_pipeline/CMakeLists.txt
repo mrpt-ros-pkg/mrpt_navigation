@@ -52,22 +52,18 @@ target_include_directories(${PROJECT_NAME}_node
 )
 
 target_link_libraries(
-  ${PROJECT_NAME}_node
+  ${PROJECT_NAME}_node PRIVATE
   mrpt::maps
   mrpt::obs
   mrpt::gui
   mrpt::ros2bridge
   mola::mp2p_icp_filters
-)
-
-ament_target_dependencies(
-  ${PROJECT_NAME}_node
-  rclcpp
-  rclcpp_components
-  nav_msgs
-  sensor_msgs
-  tf2
-  tf2_geometry_msgs
+  rclcpp::rclcpp
+  ${rclcpp_components_TARGETS}
+  ${nav_msgs_TARGETS}
+  ${sensor_msgs_TARGETS}
+  tf2::tf2
+  ${tf2_geometry_msgs_TARGETS}
 )
 
 ###################
@@ -85,35 +81,31 @@ target_include_directories(${PROJECT_NAME}_component
 )
 
 target_link_libraries(
-  ${PROJECT_NAME}_component
+  ${PROJECT_NAME}_component PRIVATE
   mrpt::maps
   mrpt::obs
   mrpt::gui
   mrpt::ros2bridge
   mola::mp2p_icp_filters
-)
-
-ament_target_dependencies(
-  ${PROJECT_NAME}_component
-  rclcpp
-  rclcpp_components
-  nav_msgs
-  sensor_msgs
-  tf2
-  tf2_geometry_msgs
+  rclcpp::rclcpp
+  ${rclcpp_components_TARGETS}
+  ${nav_msgs_TARGETS}
+  ${sensor_msgs_TARGETS}
+  tf2::tf2
+  ${tf2_geometry_msgs_TARGETS}
 )
 
 rclcpp_components_register_node(
-    ${PROJECT_NAME}_component
-    PLUGIN "LocalObstaclesNode"
-    EXECUTABLE ${PROJECT_NAME}_composable
+  ${PROJECT_NAME}_component
+  PLUGIN "LocalObstaclesNode"
+  EXECUTABLE ${PROJECT_NAME}_composable
 )
 
 ###########
 # INSTALL #
 ###########
 
-install(TARGETS ${PROJECT_NAME}_component 
+install(TARGETS ${PROJECT_NAME}_component
                 ${PROJECT_NAME}_node
   EXPORT export_${PROJECT_NAME}
   ARCHIVE DESTINATION lib

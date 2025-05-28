@@ -32,22 +32,18 @@ add_executable(rosbag2rawlog
               src/rosbag2rawlog.cpp)
 
 target_link_libraries(
-  rosbag2rawlog
+  rosbag2rawlog PRIVATE
   mrpt::ros2bridge
   mrpt::tclap
-)
-
-ament_target_dependencies(
-  rosbag2rawlog
-  rclcpp
-  tf2
-  nav_msgs
-  sensor_msgs
-  rosbag2_cpp
-  tf2_msgs
-  cv_bridge
-  tf2_geometry_msgs
-  mrpt_msgs
+  rclcpp::rclcpp
+  tf2::tf2
+  ${nav_msgs_TARGETS}
+  ${sensor_msgs_TARGETS}
+  ${rosbag2_cpp_TARGETS}
+  ${tf2_msgs_TARGETS}
+  ${cv_bridge_TARGETS}
+  ${tf2_geometry_msgs_TARGETS}
+  ${mrpt_msgs_TARGETS}
 )
 
 

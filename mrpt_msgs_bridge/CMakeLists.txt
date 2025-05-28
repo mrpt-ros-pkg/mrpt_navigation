@@ -12,7 +12,6 @@ find_package(mrpt_msgs REQUIRED)
 find_package(marker_msgs QUIET)
 if(marker_msgs_FOUND)
     set(MARKER_SRC src/marker_msgs.cpp)
-    set(MARKER_DEP marker_msgs)
 endif()
 
 find_package(mrpt-ros2bridge REQUIRED)
@@ -51,12 +50,6 @@ add_library(${PROJECT_NAME}
   src/network_of_poses.cpp
 )
 
-## Specify libraries to link a library or executable target against
-target_link_libraries(${PROJECT_NAME}
-  mrpt::obs
-  mrpt::ros2bridge
-)
-
 
 #############
 ## Install ##
@@ -73,12 +66,14 @@ install(DIRECTORY include/${PROJECT_NAME}
   FILES_MATCHING PATTERN "*.hpp"
 )
 
-#############
-ament_target_dependencies(${PROJECT_NAME}
-  rclcpp
-  tf2
-  mrpt_msgs
-  ${MARKER_DEP}
+# Specify libraries to link a library or executable target against
+target_link_libraries(${PROJECT_NAME} PRIVATE
+  mrpt::obs
+  mrpt::ros2bridge
+  rclcpp::rclcpp
+  tf2::tf2
+  ${mrpt_msgs_TARGETS}
+  ${marker_msgs_TARGETS}
 )
 
 # Export modern CMake targets
