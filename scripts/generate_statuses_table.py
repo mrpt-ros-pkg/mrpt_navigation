@@ -35,7 +35,6 @@ items_to_remove = ['scripts', 'docs',
 pattern_text = \
     "| {name} | "\
     "[![Build Status](https://build.ros2.org/job/Hbin_uJ64__{name}__ubuntu_jammy_amd64__binary/badge/icon)](https://build.ros2.org/job/Hbin_uJ64__{name}__ubuntu_jammy_amd64__binary/) | " \
-    "[![Build Status](https://build.ros2.org/job/Ibin_uJ64__{name}__ubuntu_jammy_amd64__binary/badge/icon)](https://build.ros2.org/job/Ibin_uJ64__{name}__ubuntu_jammy_amd64__binary/) | " \
     "[![Build Status](https://build.ros2.org/job/Jbin_uN64__{name}__ubuntu_noble_amd64__binary/badge/icon)](https://build.ros2.org/job/Jbin_uN64__{name}__ubuntu_noble_amd64__binary/) | " \
     "[![Build Status](https://build.ros2.org/job/Kbin_uN64__{name}__ubuntu_noble_amd64__binary/badge/icon)](https://build.ros2.org/job/Kbin_uN64__{name}__ubuntu_noble_amd64__binary/) | " \
     "[![Build Status](https://build.ros2.org/job/Rbin_uN64__{name}__ubuntu_noble_amd64__binary/badge/icon)](https://build.ros2.org/job/Rbin_uN64__{name}__ubuntu_noble_amd64__binary/) |"
