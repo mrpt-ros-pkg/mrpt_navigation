@@ -2,8 +2,8 @@
 Changelog for package mrpt_tutorials
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+2.2.2 (2025-05-28)
+------------------
 * Fix tutorial demo launchs missing 'use_composable' argument
 * Merge pull request `#153 <https://github.com/mrpt-ros-pkg/mrpt_navigation/issues/153>`_ from dppp415/ros2
   Composable Nodes

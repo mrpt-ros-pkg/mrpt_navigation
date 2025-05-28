@@ -2,8 +2,8 @@
 Changelog for package mrpt_tps_astar_planner_node
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+2.2.2 (2025-05-28)
+------------------
 * FIX: remove usage of obsolete ament_target_dependencies()
 * Merge pull request `#156 <https://github.com/mrpt-ros-pkg/mrpt_navigation/issues/156>`_ from r-aguilera/ros2
   mrpt_tps_astar_planner_node: improves on obstacle points update

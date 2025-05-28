@@ -2,8 +2,8 @@
 Changelog for package mrpt_pointcloud_pipeline
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+2.2.2 (2025-05-28)
+------------------
 * FIX: remove usage of obsolete ament_target_dependencies()
 * Merge pull request `#153 <https://github.com/mrpt-ros-pkg/mrpt_navigation/issues/153>`_ from dppp415/ros2
   Composable Nodes

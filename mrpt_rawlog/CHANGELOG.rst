@@ -2,8 +2,8 @@
 Changelog for package mrpt_rawlog
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+2.2.2 (2025-05-28)
+------------------
 * FIX: remove usage of obsolete ament_target_dependencies()
 * Contributors: Jose Luis Blanco-Claraco
 

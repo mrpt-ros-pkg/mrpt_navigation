@@ -2,8 +2,8 @@
 Changelog for package mrpt_reactivenav2d
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+2.2.2 (2025-05-28)
+------------------
 * FIX: remove usage of obsolete ament_target_dependencies()
 * remove special code to build against older mrpt_msgs
 * Contributors: Jose Luis Blanco-Claraco
