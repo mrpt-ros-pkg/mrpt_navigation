@@ -2,8 +2,8 @@
 Changelog for package mrpt_rawlog
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+2.2.3 (2025-07-22)
+------------------
 * FIX: Build against recent tf2 versions
 * Contributors: Jose Luis Blanco-Claraco
 
