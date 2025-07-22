@@ -2,6 +2,11 @@
 Changelog for package mrpt_msgs_bridge
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* FIX: Build against recent tf2 versions
+* Contributors: Jose Luis Blanco-Claraco
+
 2.2.2 (2025-05-28)
 ------------------
 * FIX: remove usage of obsolete ament_target_dependencies()

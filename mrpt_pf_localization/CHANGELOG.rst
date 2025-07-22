@@ -2,6 +2,9 @@
 Changelog for package mrpt_pf_localization
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+
 2.2.2 (2025-05-28)
 ------------------
 * FIX: remove usage of obsolete ament_target_dependencies()
