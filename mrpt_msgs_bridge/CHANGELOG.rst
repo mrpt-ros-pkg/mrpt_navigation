@@ -2,6 +2,11 @@
 Changelog for package mrpt_msgs_bridge
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* fix build against latest tf2
+* Contributors: Jose Luis Blanco-Claraco
+
 2.2.3 (2025-07-22)
 ------------------
 * FIX: Build against recent tf2 versions

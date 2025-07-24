@@ -2,6 +2,9 @@
 Changelog for package mrpt_tps_astar_planner_node
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+
 2.2.3 (2025-07-22)
 ------------------
 * FIX: Build against recent tf2 versions

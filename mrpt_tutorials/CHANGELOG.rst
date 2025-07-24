@@ -2,6 +2,9 @@
 Changelog for package mrpt_tutorials
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+
 2.2.3 (2025-07-22)
 ------------------
 

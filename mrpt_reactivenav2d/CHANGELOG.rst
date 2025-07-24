@@ -2,6 +2,9 @@
 Changelog for package mrpt_reactivenav2d
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+
 2.2.3 (2025-07-22)
 ------------------
 * FIX: Build against recent tf2 versions
