@@ -22,6 +22,7 @@ find_package(catkin REQUIRED COMPONENTS
 find_package(mrpt-gui REQUIRED)
 find_package(mrpt-slam REQUIRED)
 find_package(mrpt-ros1bridge REQUIRED)
+find_package(mrpt-apps REQUIRED)
 message(STATUS "MRPT_VERSION: ${MRPT_VERSION}")
 
 find_package(pose_cov_ops REQUIRED)

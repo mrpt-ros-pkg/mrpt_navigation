@@ -20,6 +20,7 @@ find_package(catkin REQUIRED COMPONENTS
 
 ## System dependencies are found with CMake's conventions
 find_package(mrpt-ros1bridge REQUIRED)
+find_package(mrpt-apps REQUIRED)
 find_package(mrpt-nav REQUIRED)
 find_package(mrpt-obs REQUIRED)
 find_package(mrpt-kinematics REQUIRED)

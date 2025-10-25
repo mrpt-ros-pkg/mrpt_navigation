@@ -12,6 +12,7 @@ find_package(catkin REQUIRED
 
 find_package(mrpt-maps REQUIRED)
 find_package(mrpt-ros1bridge REQUIRED)
+find_package(mrpt-apps REQUIRED)
 
 message(STATUS "MRPT_VERSION: ${MRPT_VERSION}")
 

@@ -18,6 +18,7 @@ find_package(mrpt-maps REQUIRED)
 find_package(mrpt-obs REQUIRED)
 find_package(mrpt-gui REQUIRED)
 find_package(mrpt-ros1bridge REQUIRED)
+find_package(mrpt-apps REQUIRED)
 find_package(mp2p_icp REQUIRED)
 find_package(mp2p_icp_filters REQUIRED)
 
