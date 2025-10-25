@@ -75,10 +75,10 @@ Individual package build status
 Contributing
 ----------------------------------
 * Code formatting: We use clang-format to ensure formatting consistency in the
-  code base. Set up your IDE to automatically use clang-format-11,
-  use `git clang-format-11`, or invoke it manually from the root directory as:
+  code base. Set up your IDE to automatically use clang-format-14,
+  use `git clang-format-14`, or invoke it manually from the root directory as:
   
-      find . -iname *.hpp -o -iname *.cpp -o -iname *.h | xargs clang-format-11 -i
+      bash clang-formatter.sh
 
 **Contributors**
 
