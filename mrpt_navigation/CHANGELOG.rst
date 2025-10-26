@@ -2,8 +2,8 @@
 Changelog for package mrpt_navigation
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+2.3.0 (2025-10-26)
+------------------
 * Remove mrpt_rawlog package.
   Replaced by the new repository https://github.com/MRPT/mrpt_ros_bridge
 * Contributors: Jose Luis Blanco-Claraco
