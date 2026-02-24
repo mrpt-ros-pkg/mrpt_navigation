@@ -16,12 +16,14 @@
 
   <buildtool_depend>ament_cmake</buildtool_depend>
 
-  <depend>mrpt_pointcloud_pipeline</depend>
-  <depend>mrpt_pf_localization</depend>
   <depend>mrpt_map_server</depend>
-  <depend>mrpt_reactivenav2d</depend>
-  <depend>mrpt_tutorials</depend>
+  <depend>mrpt_msgs_bridge</depend>
   <depend>mrpt_nav_interfaces</depend>
+  <depend>mrpt_pf_localization</depend>
+  <depend>mrpt_pointcloud_pipeline</depend>
+  <depend>mrpt_reactivenav2d</depend>
+  <depend>mrpt_tps_astar_planner</depend>
+  <depend>mrpt_tutorials</depend>
 
   <depend>ament_cmake_lint_cmake</depend>
   <depend>ament_cmake_xmllint</depend>
