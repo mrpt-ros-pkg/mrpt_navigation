@@ -49,9 +49,25 @@ def generate_launch_description():
             # os.path.join(tutsDir, 'params', 'mvsim_ros2_params.yaml'),
             {
                 "world_file": os.path.join(tutsDir, 'mvsim', 'demo_world2.world.xml'),
-                "do_fake_localization": True,
+                "do_fake_localization": False,
                 "headless": True,
             }]
+    )
+
+    # Launch for pf_localization:
+    pf_localization_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource([os.path.join(
+            get_package_share_directory('mrpt_pf_localization'), 'launch',
+            'localization.launch.py')]),
+        launch_arguments={
+            'log_level': 'INFO',
+            'log_level_core': 'INFO',
+            'topic_sensors_2d_scan': '/laser1',
+            'topic_sensors_point_clouds': '',
+            'base_link_frame_id': 'base_link',
+            'odom_frame_id': 'odom',
+            'global_frame_id': 'map',
+        }.items()
     )
 
     # Launch for mrpt_pointcloud_pipeline:
@@ -98,6 +114,7 @@ def generate_launch_description():
         mrpt_map_launch,
         mrpt_astar_planner_launch,
         mvsim_node,
+        pf_localization_launch,
         pointcloud_pipeline_launch,
         node_rnav2d_launch,
         rviz2_node
