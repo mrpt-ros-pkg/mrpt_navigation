@@ -2,8 +2,8 @@
 Changelog for package mrpt_navigation
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+2.3.1 (2026-04-02)
+------------------
 * Merge pull request `#157 <https://github.com/mrpt-ros-pkg/mrpt_navigation/issues/157>`_ from r-aguilera/ros2
   Add missing deps to metapackage and sort entries
 * Add missing deps to metapackage and sort entries
