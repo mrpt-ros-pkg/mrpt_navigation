@@ -2,6 +2,9 @@
 Changelog for package mrpt_nav_interfaces
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+
 2.3.0 (2025-10-26)
 ------------------
 

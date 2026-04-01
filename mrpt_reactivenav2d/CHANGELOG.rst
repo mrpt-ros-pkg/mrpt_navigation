@@ -2,6 +2,9 @@
 Changelog for package mrpt_reactivenav2d
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+
 2.3.0 (2025-10-26)
 ------------------
 

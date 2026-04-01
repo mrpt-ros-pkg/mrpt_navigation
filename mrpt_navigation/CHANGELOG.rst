@@ -2,6 +2,16 @@
 Changelog for package mrpt_navigation
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Merge pull request `#157 <https://github.com/mrpt-ros-pkg/mrpt_navigation/issues/157>`_ from r-aguilera/ros2
+  Add missing deps to metapackage and sort entries
+* Add missing deps to metapackage and sort entries
+  Missing:
+  - mrpt_msgs_bridge
+  - mrpt_tps_astar_planner
+* Contributors: Jose Luis Blanco-Claraco, Raúl Aguilera López
+
 2.3.0 (2025-10-26)
 ------------------
 * Remove mrpt_rawlog package.

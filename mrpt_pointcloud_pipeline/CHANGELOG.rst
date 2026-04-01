@@ -2,6 +2,9 @@
 Changelog for package mrpt_pointcloud_pipeline
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+
 2.3.0 (2025-10-26)
 ------------------
 

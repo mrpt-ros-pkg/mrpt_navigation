@@ -2,6 +2,11 @@
 Changelog for package mrpt_tutorials
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* FIX: astar demo should use PF for localization
+* Contributors: Jose Luis Blanco-Claraco
+
 2.3.0 (2025-10-26)
 ------------------
 

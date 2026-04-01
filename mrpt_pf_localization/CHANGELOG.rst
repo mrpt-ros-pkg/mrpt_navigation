@@ -2,6 +2,11 @@
 Changelog for package mrpt_pf_localization
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Add missing <test_depend> on ament_cmake_gtest
+* Contributors: Jose Luis Blanco-Claraco
+
 2.3.0 (2025-10-26)
 ------------------
 
