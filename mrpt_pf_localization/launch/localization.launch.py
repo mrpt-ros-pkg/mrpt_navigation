@@ -29,6 +29,12 @@ def generate_launch_description():
 
     use_composable = LaunchConfiguration('use_composable')
 
+    use_composable_arg = DeclareLaunchArgument(
+        'use_composable',
+        default_value='false',
+        description='If true, load as a composable node into container_name instead of a standalone node'
+    )
+
     pf_params_file_launch_arg = DeclareLaunchArgument(
         "pf_params_file", default_value=TextSubstitution(
             text=os.path.join(pfLocDir, 'params', 'default.config.yaml')))
@@ -91,6 +97,7 @@ def generate_launch_description():
     container_name_arg = DeclareLaunchArgument(
         'container_name',
         default_value='',
+        description='Name of the composable node container (required when use_composable:=true)',
     )
 
     pf_localization_node = Node(
@@ -142,6 +149,7 @@ def generate_launch_description():
     )
 
     ld = LaunchDescription([
+        use_composable_arg,
         container_name_arg,
         pf_log_level_launch_arg,
         pf_log_level_core_launch_arg,
