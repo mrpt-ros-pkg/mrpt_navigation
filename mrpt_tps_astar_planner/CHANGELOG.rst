@@ -2,6 +2,31 @@
 Changelog for package mrpt_tps_astar_planner_node
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Merge pull request `#158 <https://github.com/mrpt-ros-pkg/mrpt_navigation/issues/158>`_ from mrpt-ros-pkg/feat/parallel-planner
+  Implement parallel A* planner; misc bug and style fixes
+* Fix QoS type usage
+* astar planner: made reentrant for serving multiple service calls in multithread
+* Improve readme
+* fix(tps_astar_planner): fix crashes, null deref, and minor log bugs
+  - Replace ASSERT\_(robot_pose_ok) with graceful error+return in both
+  callback_goal and srv_make_plan_to, so a temporary TF outage does not
+  abort the node or throw inside a service callback.
+  - Add null guards before using e.grid_obstacles / e.obstacle_points in
+  do_path_plan() and init_3d_debug() — both can be nullptr if the
+  respective topic callback has not fired yet.
+  - Call init_3d_debug() from do_path_plan() when gui_mrpt\_ is true, so
+  the 3D window is actually opened (was dead code).
+  - Protect pub_costmaps\_ resize and lazy publisher creation with
+  pub_costmaps_cs\_ mutex.
+  - Fix copy-paste error: srv_make_plan_from_to catch block logged wrong
+  function name.
+  - Fix log format string: "topic_wp_seq_pub%s" -> "topic_wp_seq_pub: %s".
+  - Launch file: lowercase 'false' for problem_world_bbox_ignore_obstacles
+  and astar_skip_refine boolean args (was Python-cased 'False').
+* Contributors: Jose Luis Blanco-Claraco
+
 2.3.1 (2026-04-02)
 ------------------
 

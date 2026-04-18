@@ -2,6 +2,19 @@
 Changelog for package mrpt_pointcloud_pipeline
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Merge pull request `#158 <https://github.com/mrpt-ros-pkg/mrpt_navigation/issues/158>`_ from mrpt-ros-pkg/feat/parallel-planner
+  Implement parallel A* planner; misc bug and style fixes
+* fix(pointcloud_pipeline): declare use_composable launch arg with default 'false'
+  pointcloud_pipeline.launch.py consumed LaunchConfiguration('use_composable')
+  without declaring it, causing InvalidConditionExpressionError when launched
+  directly. Same bug as the one fixed in mrpt_pf_localization.
+  Also added a description to container_name arg.
+  Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+* clang-format
+* Contributors: Jose Luis Blanco-Claraco
+
 2.3.1 (2026-04-02)
 ------------------
 

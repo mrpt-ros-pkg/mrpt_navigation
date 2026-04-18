@@ -2,6 +2,29 @@
 Changelog for package mrpt_pf_localization
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Merge pull request `#158 <https://github.com/mrpt-ros-pkg/mrpt_navigation/issues/158>`_ from mrpt-ros-pkg/feat/parallel-planner
+  Implement parallel A* planner; misc bug and style fixes
+* fix(pf_localization): guard OnProcessExit handler with UnlessCondition(use_composable)
+  When use_composable:=true, pf_localization_node is never launched (it has
+  UnlessCondition), so the OnProcessExit handler was targeting a process that
+  never exists. While this did not crash at launch time, it left a dangling
+  handler and silently skipped the managed shutdown in composable mode.
+  Guard the RegisterEventHandler with the same condition so it is only
+  registered when the standalone node is actually running.
+  Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+* fix(pf_localization): declare use_composable launch arg with default 'false'
+  localization.launch.py consumed LaunchConfiguration('use_composable') without
+  ever declaring it. Launching the file directly (not via a parent that supplies
+  the argument) caused InvalidConditionExpressionError at runtime because
+  IfCondition/UnlessCondition received an unresolved empty string.
+  Also added a description to container_name arg clarifying it is required when
+  use_composable:=true.
+  Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+* clang-format
+* Contributors: Jose Luis Blanco-Claraco
+
 2.3.1 (2026-04-02)
 ------------------
 * Add missing <test_depend> on ament_cmake_gtest

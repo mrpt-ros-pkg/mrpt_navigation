@@ -2,6 +2,18 @@
 Changelog for package mrpt_tutorials
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Merge pull request `#158 <https://github.com/mrpt-ros-pkg/mrpt_navigation/issues/158>`_ from mrpt-ros-pkg/feat/parallel-planner
+  Implement parallel A* planner; misc bug and style fixes
+* style(tutorials): normalize use_composable value to lowercase 'false'
+  Three tutorial launch files passed 'False' (Python-cased) for use_composable.
+  While this works at the launch level (ROS2 evaluates it case-insensitively),
+  it is inconsistent with every other boolean launch argument in the repo and
+  with demo_composable_nodes.launch.py which already uses 'false'.
+  Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+* Contributors: Jose Luis Blanco-Claraco
+
 2.3.1 (2026-04-02)
 ------------------
 * FIX: astar demo should use PF for localization
