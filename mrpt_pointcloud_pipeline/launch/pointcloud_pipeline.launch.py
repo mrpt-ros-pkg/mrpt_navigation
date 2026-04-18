@@ -26,6 +26,12 @@ def generate_launch_description():
 
     use_composable = LaunchConfiguration('use_composable')
 
+    use_composable_arg = DeclareLaunchArgument(
+        'use_composable',
+        default_value='false',
+        description='If true, load as a composable node into container_name instead of a standalone node'
+    )
+
     lidar_topic_name_arg = DeclareLaunchArgument(
         'scan_topic_name',
         default_value=''  # /scan, /laser1, etc.
@@ -79,6 +85,7 @@ def generate_launch_description():
     container_name_arg = DeclareLaunchArgument(
         'container_name',
         default_value='',
+        description='Name of the composable node container (required when use_composable:=true)',
     )
 
     emit_shutdown_action = Shutdown(reason='launch is shutting down')
@@ -136,6 +143,7 @@ def generate_launch_description():
     )
 
     ld = LaunchDescription([
+        use_composable_arg,
         container_name_arg,
         lidar_topic_name_arg,
         points_topic_name_arg,

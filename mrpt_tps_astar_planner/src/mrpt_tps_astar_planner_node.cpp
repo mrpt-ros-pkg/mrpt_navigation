@@ -61,6 +61,7 @@
 #include <tf2/LinearMath/Matrix3x3.hpp>
 #include <tf2/LinearMath/Quaternion.hpp>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
+#include <thread>
 
 // for debugging
 #include <mrpt/gui/CDisplayWindow3D.h>
@@ -70,6 +71,16 @@
 
 // version:
 #include <mrpt/version.h>
+#include <rclcpp/version.h>
+
+// create_service() QoS parameter type changed between ROS 2 distros:
+//   Humble (rclcpp 16.x) : const rmw_qos_profile_t&
+//   Iron+  (rclcpp 21+)  : const rclcpp::QoS&
+#if RCLCPP_VERSION_MAJOR >= 21
+#define MRPT_ROS2_SRV_QOS rclcpp::QoS(rclcpp::ServicesQoS())
+#else
+#define MRPT_ROS2_SRV_QOS rmw_qos_profile_services_default
+#endif
 
 const char* NODE_NAME = "mrpt_tps_astar_planner_node";
 
@@ -114,6 +125,7 @@ class TPS_Astar_Planner_Node : public rclcpp::Node
 	rclcpp::Publisher<mrpt_msgs::msg::WaypointSequence>::SharedPtr pub_wp_seq_;
 	rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr pub_wp_path_seq_;
 	std::vector<rclcpp::Publisher<nav_msgs::msg::OccupancyGrid>::SharedPtr> pub_costmaps_;
+	std::mutex pub_costmaps_cs_;
 
 	// tf2 buffer and listener
 	std::shared_ptr<tf2_ros::Buffer> tf_buffer_;
@@ -178,13 +190,16 @@ class TPS_Astar_Planner_Node : public rclcpp::Node
 	/// Pointer to MRPT 3D display window
 	mrpt::gui::CDisplayWindow3D::Ptr win_3d_;
 
-	/// Path planner algorithm
-	mpp::Planner::Ptr planner_;
+	/// Planner params loaded once at startup, reused to init per-call local planner instances
+	mrpt::containers::yaml planner_params_yaml_;
 
 	mpp::TrajectoriesAndRobotShape ptgs_;
 
 	/// Parameters for the cost evaluator
 	mpp::CostEvaluatorCostMap::Parameters costMapParams_;
+
+	/// Reentrant callback group so service calls can run concurrently
+	rclcpp::CallbackGroup::SharedPtr srv_cbg_;
 
    private:
 	/**
@@ -283,6 +298,13 @@ class TPS_Astar_Planner_Node : public rclcpp::Node
 	rclcpp::Service<mrpt_nav_interfaces::srv::MakePlanFromTo>::SharedPtr srvMakePlanFromTo_;
 
 	/**
+	 * @brief Returns the planner instance for the calling thread, initializing
+	 * it on first use. Each executor thread keeps its own instance so
+	 * concurrent service calls never share mutable planner state.
+	 */
+	mpp::Planner& get_thread_planner();
+
+	/**
 	 * @brief Debug method to visualize the planning
 	 */
 	void init_3d_debug();
@@ -361,19 +383,25 @@ TPS_Astar_Planner_Node::TPS_Astar_Planner_Node() : rclcpp::Node(NODE_NAME)
 
 	// Init services:
 	// --------------------------
+	// Reentrant group: allows multiple service calls to execute in parallel
+	// when combined with MultiThreadedExecutor.
+	srv_cbg_ = this->create_callback_group(rclcpp::CallbackGroupType::Reentrant);
+
 	srvMakePlanTo_ = this->create_service<mrpt_nav_interfaces::srv::MakePlanTo>(
 		this->get_fully_qualified_name() + "/make_plan_to"s,
 		[this](
 			const mrpt_nav_interfaces::srv::MakePlanTo::Request::SharedPtr req,
 			mrpt_nav_interfaces::srv::MakePlanTo::Response::SharedPtr res)
-		{ srv_make_plan_to(req, res); });
+		{ srv_make_plan_to(req, res); },
+		MRPT_ROS2_SRV_QOS, srv_cbg_);
 
 	srvMakePlanFromTo_ = this->create_service<mrpt_nav_interfaces::srv::MakePlanFromTo>(
 		this->get_fully_qualified_name() + "/make_plan_from_to"s,
 		[this](
 			const mrpt_nav_interfaces::srv::MakePlanFromTo::Request::SharedPtr req,
 			mrpt_nav_interfaces::srv::MakePlanFromTo::Response::SharedPtr res)
-		{ srv_make_plan_from_to(req, res); });
+		{ srv_make_plan_from_to(req, res); },
+		MRPT_ROS2_SRV_QOS, srv_cbg_);
 
 	// Init planner:
 	// --------------------------
@@ -442,7 +470,7 @@ void TPS_Astar_Planner_Node::read_parameters()
 
 	this->declare_parameter<std::string>("topic_wp_seq_pub", "/waypoints");
 	this->get_parameter("topic_wp_seq_pub", topic_wp_seq_pub_);
-	RCLCPP_INFO(this->get_logger(), "topic_wp_seq_pub%s", topic_wp_seq_pub_.c_str());
+	RCLCPP_INFO(this->get_logger(), "topic_wp_seq_pub: %s", topic_wp_seq_pub_.c_str());
 
 	this->declare_parameter<std::string>("ptg_ini", ptg_ini_file_);
 	this->get_parameter("ptg_ini", ptg_ini_file_);
@@ -525,15 +553,15 @@ void TPS_Astar_Planner_Node::read_parameters()
 
 void TPS_Astar_Planner_Node::initialize_planner()
 {
-	planner_ = mpp::TPS_Astar::Create();
+	planner_params_yaml_ = mrpt::containers::yaml::FromFile(planner_params_file_);
 
-	// Enable time profiler:
-	planner_->profiler_().enable(true);
-
-	const auto c = mrpt::containers::yaml::FromFile(planner_params_file_);
-	planner_->params_from_yaml(c);
-	RCLCPP_INFO_STREAM(
-		this->get_logger(), "Loaded these planner params:" << planner_->params_as_yaml());
+	// Log loaded params using a temporary instance (not kept as shared state):
+	{
+		auto tmp = mpp::TPS_Astar::Create();
+		tmp->params_from_yaml(planner_params_yaml_);
+		RCLCPP_INFO_STREAM(
+			this->get_logger(), "Loaded these planner params:" << tmp->params_as_yaml());
+	}
 
 	mrpt::config::CConfigFile cfg(ptg_ini_file_);
 	RCLCPP_INFO_STREAM(this->get_logger(), "Initializing PTGs...");
@@ -546,6 +574,23 @@ void TPS_Astar_Planner_Node::initialize_planner()
 		mrpt::containers::yaml::FromFile(costmap_params_file_));
 }
 
+mpp::Planner& TPS_Astar_Planner_Node::get_thread_planner()
+{
+	// One planner instance per OS thread, initialized lazily on first call.
+	// With MultiThreadedExecutor the thread pool is fixed after spin() starts,
+	// so each thread pays the init cost exactly once.
+	thread_local mpp::Planner::Ptr tl_planner;
+	if (!tl_planner)
+	{
+		tl_planner = mpp::TPS_Astar::Create();
+		tl_planner->profiler_().enable(true);
+		tl_planner->params_from_yaml(planner_params_yaml_);
+		RCLCPP_INFO_STREAM(
+			get_logger(), "Initialized planner for thread " << std::this_thread::get_id());
+	}
+	return *tl_planner;
+}
+
 void TPS_Astar_Planner_Node::callback_goal(const geometry_msgs::msg::PoseStamped& _goal)
 {
 	try
@@ -556,7 +601,13 @@ void TPS_Astar_Planner_Node::callback_goal(const geometry_msgs::msg::PoseStamped
 		mrpt::poses::CPose3D robot_pose;
 		const bool robot_pose_ok = wait_for_transform(robot_pose, frame_id_robot_, frame_id_map_);
 
-		ASSERT_(robot_pose_ok);
+		if (!robot_pose_ok)
+		{
+			RCLCPP_ERROR(
+				this->get_logger(),
+				"callback_goal: could not get robot pose from TF, ignoring goal.");
+			return;
+		}
 
 		/// Navigation start position
 		mrpt::math::TPose2D start_pose;
@@ -648,7 +699,8 @@ void TPS_Astar_Planner_Node::init_3d_debug()
 
 	for (const auto& e : gridmaps_) scene->insert(e.grid->getVisualization());
 
-	for (const auto& e : obstacle_points_) scene->insert(e.obstacle_points->getVisualization());
+	for (const auto& e : obstacle_points_)
+		if (e.obstacle_points) scene->insert(e.obstacle_points->getVisualization());
 
 	lck.unlock();
 
@@ -692,17 +744,27 @@ TPS_Astar_Planner_Node::PlanResult TPS_Astar_Planner_Node::do_path_plan(
 	bbox.updateWithPoint(mrpt::math::TPoint3D(start.translation()));
 	bbox.updateWithPoint(mrpt::math::TPoint3D(goal.translation()));
 
+	// Reuse the thread-local planner (initialized once per thread):
+	auto& local_planner = get_thread_planner();
+	local_planner.costEvaluators_.clear();
+
 	// Create obstacle sources, and find out bounding box:
 	// --------------------------------------------------------------
 	auto lckObs = mrpt::lockHelper(obstacles_cs_);
 
-	planner_->costEvaluators_.clear();
 	pi.obstacles.clear();
 
 	size_t obstacleSources = 0, totalObstaclePoints = 0;
 	// gridmaps:
 	for (const auto& e : gridmaps_)
 	{
+		if (!e.grid_obstacles)
+		{
+			RCLCPP_WARN_THROTTLE(
+				get_logger(), *get_clock(), 5000,
+				"do_path_plan: gridmap not yet received, skipping.");
+			continue;
+		}
 		auto obs = mpp::ObstacleSource::FromStaticPointcloud(e.grid_obstacles);
 		pi.obstacles.emplace_back(obs);
 
@@ -714,11 +776,18 @@ TPS_Astar_Planner_Node::PlanResult TPS_Astar_Planner_Node::do_path_plan(
 
 		auto costmap = mpp::CostEvaluatorCostMap::FromStaticPointObstacles(
 			*e.grid_obstacles, costMapParams_, pi.stateStart.pose);
-		planner_->costEvaluators_.push_back(costmap);
+		local_planner.costEvaluators_.push_back(costmap);
 	}
 	// points:
 	for (const auto& e : obstacle_points_)
 	{
+		if (!e.obstacle_points)
+		{
+			RCLCPP_WARN_THROTTLE(
+				get_logger(), *get_clock(), 5000,
+				"do_path_plan: obstacle point cloud not yet received, skipping.");
+			continue;
+		}
 		auto obs = mpp::ObstacleSource::FromStaticPointcloud(e.obstacle_points);
 		pi.obstacles.emplace_back(obs);
 
@@ -733,7 +802,7 @@ TPS_Astar_Planner_Node::PlanResult TPS_Astar_Planner_Node::do_path_plan(
 
 		auto costmap = mpp::CostEvaluatorCostMap::FromStaticPointObstacles(
 			*e.obstacle_points, costMapParams_, pi.stateStart.pose);
-		planner_->costEvaluators_.push_back(costmap);
+		local_planner.costEvaluators_.push_back(costmap);
 	}
 
 	lckObs.unlock();
@@ -762,7 +831,7 @@ TPS_Astar_Planner_Node::PlanResult TPS_Astar_Planner_Node::do_path_plan(
 											<< "-" << pi.worldBboxMax.asString());
 
 	// Insert custom progress callback:
-	planner_->progressCallback_ = [this](const mpp::ProgressCallbackData& pcd)
+	local_planner.progressCallback_ = [this](const mpp::ProgressCallbackData& pcd)
 	{
 		RCLCPP_INFO_STREAM(
 			this->get_logger(),
@@ -771,7 +840,7 @@ TPS_Astar_Planner_Node::PlanResult TPS_Astar_Planner_Node::do_path_plan(
 													 << " bestPathLength: " << pcd.bestPath.size());
 	};
 
-	const mpp::PlannerOutput plan = planner_->plan(pi);
+	const mpp::PlannerOutput plan = local_planner.plan(pi);
 
 	RCLCPP_INFO_STREAM(
 		this->get_logger(), "Done.\n"
@@ -788,28 +857,29 @@ TPS_Astar_Planner_Node::PlanResult TPS_Astar_Planner_Node::do_path_plan(
 
 	// Publish costmaps:
 #if MRPT_VERSION >= 0x020e03  // >=v2.14.3
-	pub_costmaps_.resize(planner_->costEvaluators_.size());
-	for (size_t i = 0; i < planner_->costEvaluators_.size(); i++)
 	{
-		if (!pub_costmaps_[i])
+		auto lckPub = mrpt::lockHelper(pub_costmaps_cs_);
+		pub_costmaps_.resize(local_planner.costEvaluators_.size());
+		for (size_t i = 0; i < local_planner.costEvaluators_.size(); i++)
 		{
-			// See: REP-2003: https://ros.org/reps/rep-2003.html
-			const auto mapQoS = rclcpp::QoS(rclcpp::KeepLast(1)).transient_local().reliable();
-			pub_costmaps_[i] = this->create_publisher<nav_msgs::msg::OccupancyGrid>(
-				topic_costmaps_pub_ + mrpt::format("_%zu", i), mapQoS);
-		}
-		const auto& cm = planner_->costEvaluators_.at(i);
-		auto grid = cm->get_visualization_as_grid();
-		nav_msgs::msg::OccupancyGrid costMapMsg;
-		mrpt::ros2bridge::toROS(*grid, costMapMsg, true /*as costmap*/);
-		costMapMsg.header.frame_id = frame_id_map_;
-		costMapMsg.header.stamp = this->now();
+			if (!pub_costmaps_[i])
+			{
+				// See: REP-2003: https://ros.org/reps/rep-2003.html
+				const auto mapQoS = rclcpp::QoS(rclcpp::KeepLast(1)).transient_local().reliable();
+				pub_costmaps_[i] = this->create_publisher<nav_msgs::msg::OccupancyGrid>(
+					topic_costmaps_pub_ + mrpt::format("_%zu", i), mapQoS);
+			}
+			const auto& cm = local_planner.costEvaluators_.at(i);
+			auto grid = cm->get_visualization_as_grid();
+			nav_msgs::msg::OccupancyGrid costMapMsg;
+			mrpt::ros2bridge::toROS(*grid, costMapMsg, true /*as costmap*/);
+			costMapMsg.header.frame_id = frame_id_map_;
+			costMapMsg.header.stamp = this->now();
 
-		pub_costmaps_[i]->publish(costMapMsg);
+			pub_costmaps_[i]->publish(costMapMsg);
+		}
 	}
 #endif
-
-	// TODO(jlbc) Why? Remove? if (!plan.success) planner_->costEvaluators_.clear();
 
 	// backtrack:
 	auto [plannedPath, pathEdges] = plan.motionTree.backtrack_path(*plan.bestNodeId);
@@ -823,6 +893,7 @@ TPS_Astar_Planner_Node::PlanResult TPS_Astar_Planner_Node::do_path_plan(
 	// Show plan in a GUI for debugging
 	if (gui_mrpt_)
 	{
+		init_3d_debug();
 		mpp::VisualizationOptions vizOpts;
 
 		vizOpts.renderOptions.highlight_path_to_node_id = plan.bestNodeId;
@@ -830,7 +901,7 @@ TPS_Astar_Planner_Node::PlanResult TPS_Astar_Planner_Node::do_path_plan(
 		vizOpts.renderOptions.width_normal_edge = 0;  // hide all edges except best path
 		vizOpts.gui_modal = false;	// leave GUI open in a background thread
 
-		mpp::viz_nav_plan(plan, vizOpts, planner_->costEvaluators_);
+		mpp::viz_nav_plan(plan, vizOpts, local_planner.costEvaluators_);
 	}
 
 	// Interpolate so we have many waypoints:
@@ -898,7 +969,14 @@ void TPS_Astar_Planner_Node::srv_make_plan_to(
 		mrpt::poses::CPose3D robot_pose;
 		const bool robot_pose_ok = wait_for_transform(robot_pose, frame_id_robot_, frame_id_map_);
 
-		ASSERT_(robot_pose_ok);
+		if (!robot_pose_ok)
+		{
+			RCLCPP_ERROR(
+				this->get_logger(),
+				"srv_make_plan_to: could not get robot pose from TF, returning invalid plan.");
+			resp->valid_path_found = false;
+			return;
+		}
 
 		const auto start_pose = mrpt::poses::CPose2D(robot_pose).asTPose();
 
@@ -932,7 +1010,7 @@ void TPS_Astar_Planner_Node::srv_make_plan_from_to(
 	}
 	catch (const std::exception& e)
 	{
-		RCLCPP_ERROR(this->get_logger(), "Exception in srv_make_plan_to: %s", e.what());
+		RCLCPP_ERROR(this->get_logger(), "Exception in srv_make_plan_from_to: %s", e.what());
 	}
 }
 
@@ -941,7 +1019,9 @@ int main(int argc, char** argv)
 {
 	rclcpp::init(argc, argv);
 	auto node = std::make_shared<TPS_Astar_Planner_Node>();
-	rclcpp::spin(node);
+	rclcpp::executors::MultiThreadedExecutor exec;
+	exec.add_node(node);
+	exec.spin();
 	rclcpp::shutdown();
 	return 0;
 }

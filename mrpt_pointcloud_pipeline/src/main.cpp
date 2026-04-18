@@ -6,8 +6,8 @@
    | All rights reserved. Released under BSD 3-Clause license. See LICENSE  |
    +------------------------------------------------------------------------+ */
 
-#include "rclcpp/rclcpp.hpp"
 #include "mrpt_pointcloud_pipeline_component.cpp"
+#include "rclcpp/rclcpp.hpp"
 
 int main(int argc, char** argv)
 {

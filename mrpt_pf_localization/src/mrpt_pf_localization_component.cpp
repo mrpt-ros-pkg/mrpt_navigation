@@ -6,8 +6,6 @@
    | All rights reserved. Released under BSD 3-Clause license. See LICENSE  |
    +------------------------------------------------------------------------+ */
 
-#include "mrpt_pf_localization_node.h"
-
 #include <mp2p_icp/metricmap.h>
 #include <mrpt/maps/COccupancyGridMap2D.h>
 #include <mrpt/obs/CObservation2DRangeScan.h>
@@ -27,11 +25,12 @@
 #include <mrpt/version.h>
 #include <pose_cov_ops/pose_cov_ops.h>
 
-#include "rclcpp_components/register_node_macro.hpp"
-
 #include <geometry_msgs/msg/pose_array.hpp>
 #include <mrpt_msgs_bridge/beacon.hpp>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
+
+#include "mrpt_pf_localization_node.h"
+#include "rclcpp_components/register_node_macro.hpp"
 
 #if MRPT_VERSION >= 0x020b08
 #include <mrpt/system/hyperlink.h>
@@ -47,7 +46,7 @@ std::string hyperlink(
 }  // namespace mrpt::system
 #endif
 
-RCLCPP_COMPONENTS_REGISTER_NODE(PFLocalizationNode); //Register node to make it composable
+RCLCPP_COMPONENTS_REGISTER_NODE(PFLocalizationNode);  // Register node to make it composable
 
 PFLocalizationNode::PFLocalizationNode(const rclcpp::NodeOptions& options)
 	: rclcpp::Node("mrpt_pf_localization_node", options)

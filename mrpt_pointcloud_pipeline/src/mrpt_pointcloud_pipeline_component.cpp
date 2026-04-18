@@ -21,7 +21,7 @@ using namespace mrpt::maps;
 using namespace mrpt::obs;
 
 LocalObstaclesNode::LocalObstaclesNode(const rclcpp::NodeOptions& options)
-	:Node("mrpt_pointcloud_pipeline_node", options)
+	: Node("mrpt_pointcloud_pipeline_node", options)
 {
 	m_profiler.setName(Node::get_name());
 
