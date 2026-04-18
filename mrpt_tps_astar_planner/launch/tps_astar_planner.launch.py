@@ -88,12 +88,12 @@ def generate_launch_description():
         description='The distance [m] to add as a margin all around the computed problem world bounding box')
 
     problem_world_bbox_ignore_obstacles_arg = DeclareLaunchArgument(
-        'problem_world_bbox_ignore_obstacles', default_value='False',
-        description='If True, the bounding box of obstacles is ignored while computing the problem world bounding box')
+        'problem_world_bbox_ignore_obstacles', default_value='false',
+        description='If true, the bounding box of obstacles is ignored while computing the problem world bounding box')
 
     astar_skip_refine_arg = DeclareLaunchArgument(
-        'astar_skip_refine', default_value='False',
-        description='If True, the refine stage after A* will be skipped')
+        'astar_skip_refine', default_value='false',
+        description='If true, the refine stage after A* will be skipped')
 
     # Node configuration
     tps_astar_nav_node = Node(

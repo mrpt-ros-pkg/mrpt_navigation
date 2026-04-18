@@ -114,6 +114,7 @@ class TPS_Astar_Planner_Node : public rclcpp::Node
 	rclcpp::Publisher<mrpt_msgs::msg::WaypointSequence>::SharedPtr pub_wp_seq_;
 	rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr pub_wp_path_seq_;
 	std::vector<rclcpp::Publisher<nav_msgs::msg::OccupancyGrid>::SharedPtr> pub_costmaps_;
+	std::mutex pub_costmaps_cs_;
 
 	// tf2 buffer and listener
 	std::shared_ptr<tf2_ros::Buffer> tf_buffer_;
@@ -442,7 +443,7 @@ void TPS_Astar_Planner_Node::read_parameters()
 
 	this->declare_parameter<std::string>("topic_wp_seq_pub", "/waypoints");
 	this->get_parameter("topic_wp_seq_pub", topic_wp_seq_pub_);
-	RCLCPP_INFO(this->get_logger(), "topic_wp_seq_pub%s", topic_wp_seq_pub_.c_str());
+	RCLCPP_INFO(this->get_logger(), "topic_wp_seq_pub: %s", topic_wp_seq_pub_.c_str());
 
 	this->declare_parameter<std::string>("ptg_ini", ptg_ini_file_);
 	this->get_parameter("ptg_ini", ptg_ini_file_);
@@ -556,7 +557,13 @@ void TPS_Astar_Planner_Node::callback_goal(const geometry_msgs::msg::PoseStamped
 		mrpt::poses::CPose3D robot_pose;
 		const bool robot_pose_ok = wait_for_transform(robot_pose, frame_id_robot_, frame_id_map_);
 
-		ASSERT_(robot_pose_ok);
+		if (!robot_pose_ok)
+		{
+			RCLCPP_ERROR(
+				this->get_logger(),
+				"callback_goal: could not get robot pose from TF, ignoring goal.");
+			return;
+		}
 
 		/// Navigation start position
 		mrpt::math::TPose2D start_pose;
@@ -648,7 +655,8 @@ void TPS_Astar_Planner_Node::init_3d_debug()
 
 	for (const auto& e : gridmaps_) scene->insert(e.grid->getVisualization());
 
-	for (const auto& e : obstacle_points_) scene->insert(e.obstacle_points->getVisualization());
+	for (const auto& e : obstacle_points_)
+		if (e.obstacle_points) scene->insert(e.obstacle_points->getVisualization());
 
 	lck.unlock();
 
@@ -703,6 +711,13 @@ TPS_Astar_Planner_Node::PlanResult TPS_Astar_Planner_Node::do_path_plan(
 	// gridmaps:
 	for (const auto& e : gridmaps_)
 	{
+		if (!e.grid_obstacles)
+		{
+			RCLCPP_WARN_THROTTLE(
+				get_logger(), *get_clock(), 5000,
+				"do_path_plan: gridmap not yet received, skipping.");
+			continue;
+		}
 		auto obs = mpp::ObstacleSource::FromStaticPointcloud(e.grid_obstacles);
 		pi.obstacles.emplace_back(obs);
 
@@ -719,6 +734,13 @@ TPS_Astar_Planner_Node::PlanResult TPS_Astar_Planner_Node::do_path_plan(
 	// points:
 	for (const auto& e : obstacle_points_)
 	{
+		if (!e.obstacle_points)
+		{
+			RCLCPP_WARN_THROTTLE(
+				get_logger(), *get_clock(), 5000,
+				"do_path_plan: obstacle point cloud not yet received, skipping.");
+			continue;
+		}
 		auto obs = mpp::ObstacleSource::FromStaticPointcloud(e.obstacle_points);
 		pi.obstacles.emplace_back(obs);
 
@@ -788,24 +810,27 @@ TPS_Astar_Planner_Node::PlanResult TPS_Astar_Planner_Node::do_path_plan(
 
 	// Publish costmaps:
 #if MRPT_VERSION >= 0x020e03  // >=v2.14.3
-	pub_costmaps_.resize(planner_->costEvaluators_.size());
-	for (size_t i = 0; i < planner_->costEvaluators_.size(); i++)
 	{
-		if (!pub_costmaps_[i])
+		auto lckPub = mrpt::lockHelper(pub_costmaps_cs_);
+		pub_costmaps_.resize(planner_->costEvaluators_.size());
+		for (size_t i = 0; i < planner_->costEvaluators_.size(); i++)
 		{
-			// See: REP-2003: https://ros.org/reps/rep-2003.html
-			const auto mapQoS = rclcpp::QoS(rclcpp::KeepLast(1)).transient_local().reliable();
-			pub_costmaps_[i] = this->create_publisher<nav_msgs::msg::OccupancyGrid>(
-				topic_costmaps_pub_ + mrpt::format("_%zu", i), mapQoS);
-		}
-		const auto& cm = planner_->costEvaluators_.at(i);
-		auto grid = cm->get_visualization_as_grid();
-		nav_msgs::msg::OccupancyGrid costMapMsg;
-		mrpt::ros2bridge::toROS(*grid, costMapMsg, true /*as costmap*/);
-		costMapMsg.header.frame_id = frame_id_map_;
-		costMapMsg.header.stamp = this->now();
+			if (!pub_costmaps_[i])
+			{
+				// See: REP-2003: https://ros.org/reps/rep-2003.html
+				const auto mapQoS = rclcpp::QoS(rclcpp::KeepLast(1)).transient_local().reliable();
+				pub_costmaps_[i] = this->create_publisher<nav_msgs::msg::OccupancyGrid>(
+					topic_costmaps_pub_ + mrpt::format("_%zu", i), mapQoS);
+			}
+			const auto& cm = planner_->costEvaluators_.at(i);
+			auto grid = cm->get_visualization_as_grid();
+			nav_msgs::msg::OccupancyGrid costMapMsg;
+			mrpt::ros2bridge::toROS(*grid, costMapMsg, true /*as costmap*/);
+			costMapMsg.header.frame_id = frame_id_map_;
+			costMapMsg.header.stamp = this->now();
 
-		pub_costmaps_[i]->publish(costMapMsg);
+			pub_costmaps_[i]->publish(costMapMsg);
+		}
 	}
 #endif
 
@@ -823,6 +848,7 @@ TPS_Astar_Planner_Node::PlanResult TPS_Astar_Planner_Node::do_path_plan(
 	// Show plan in a GUI for debugging
 	if (gui_mrpt_)
 	{
+		init_3d_debug();
 		mpp::VisualizationOptions vizOpts;
 
 		vizOpts.renderOptions.highlight_path_to_node_id = plan.bestNodeId;
@@ -898,7 +924,14 @@ void TPS_Astar_Planner_Node::srv_make_plan_to(
 		mrpt::poses::CPose3D robot_pose;
 		const bool robot_pose_ok = wait_for_transform(robot_pose, frame_id_robot_, frame_id_map_);
 
-		ASSERT_(robot_pose_ok);
+		if (!robot_pose_ok)
+		{
+			RCLCPP_ERROR(
+				this->get_logger(),
+				"srv_make_plan_to: could not get robot pose from TF, returning invalid plan.");
+			resp->valid_path_found = false;
+			return;
+		}
 
 		const auto start_pose = mrpt::poses::CPose2D(robot_pose).asTPose();
 
@@ -932,7 +965,7 @@ void TPS_Astar_Planner_Node::srv_make_plan_from_to(
 	}
 	catch (const std::exception& e)
 	{
-		RCLCPP_ERROR(this->get_logger(), "Exception in srv_make_plan_to: %s", e.what());
+		RCLCPP_ERROR(this->get_logger(), "Exception in srv_make_plan_from_to: %s", e.what());
 	}
 }
 
