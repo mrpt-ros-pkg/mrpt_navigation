@@ -71,6 +71,16 @@
 
 // version:
 #include <mrpt/version.h>
+#include <rclcpp/version.h>
+
+// create_service() QoS parameter type changed between ROS 2 distros:
+//   Humble (rclcpp 16.x) : const rmw_qos_profile_t&
+//   Iron+  (rclcpp 21+)  : const rclcpp::QoS&
+#if RCLCPP_VERSION_MAJOR >= 21
+#define MRPT_ROS2_SRV_QOS rclcpp::QoS(rclcpp::ServicesQoS())
+#else
+#define MRPT_ROS2_SRV_QOS rmw_qos_profile_services_default
+#endif
 
 const char* NODE_NAME = "mrpt_tps_astar_planner_node";
 
@@ -383,7 +393,7 @@ TPS_Astar_Planner_Node::TPS_Astar_Planner_Node() : rclcpp::Node(NODE_NAME)
 			const mrpt_nav_interfaces::srv::MakePlanTo::Request::SharedPtr req,
 			mrpt_nav_interfaces::srv::MakePlanTo::Response::SharedPtr res)
 		{ srv_make_plan_to(req, res); },
-		rmw_qos_profile_services_default, srv_cbg_);
+		MRPT_ROS2_SRV_QOS, srv_cbg_);
 
 	srvMakePlanFromTo_ = this->create_service<mrpt_nav_interfaces::srv::MakePlanFromTo>(
 		this->get_fully_qualified_name() + "/make_plan_from_to"s,
@@ -391,7 +401,7 @@ TPS_Astar_Planner_Node::TPS_Astar_Planner_Node() : rclcpp::Node(NODE_NAME)
 			const mrpt_nav_interfaces::srv::MakePlanFromTo::Request::SharedPtr req,
 			mrpt_nav_interfaces::srv::MakePlanFromTo::Response::SharedPtr res)
 		{ srv_make_plan_from_to(req, res); },
-		rmw_qos_profile_services_default, srv_cbg_);
+		MRPT_ROS2_SRV_QOS, srv_cbg_);
 
 	// Init planner:
 	// --------------------------
