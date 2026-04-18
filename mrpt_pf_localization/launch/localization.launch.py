@@ -164,6 +164,9 @@ def generate_launch_description():
         global_frame_id_arg,
         pf_localization_node,
         composable_pf_localization_node,
+        # Only register the shutdown handler when running as a standalone node.
+        # In composable mode pf_localization_node is never launched so
+        # OnProcessExit would target a non-existent process.
         RegisterEventHandler(
             OnProcessExit(
                 target_action=pf_localization_node,
@@ -171,7 +174,8 @@ def generate_launch_description():
                     LogInfo(msg=('mrpt_pf_localization ended')),
                     EmitEvent(event=Shutdown(
                         reason='mrpt_pf_localization ended'))
-                ])
+                ]),
+            condition=UnlessCondition(use_composable)
         )
     ])
 
