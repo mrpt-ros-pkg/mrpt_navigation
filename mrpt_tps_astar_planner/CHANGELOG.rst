@@ -2,8 +2,8 @@
 Changelog for package mrpt_tps_astar_planner_node
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+2.4.0 (2026-04-19)
+------------------
 * Merge pull request `#158 <https://github.com/mrpt-ros-pkg/mrpt_navigation/issues/158>`_ from mrpt-ros-pkg/feat/parallel-planner
   Implement parallel A* planner; misc bug and style fixes
 * Fix QoS type usage
