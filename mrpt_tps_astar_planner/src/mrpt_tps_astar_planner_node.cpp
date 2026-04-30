@@ -64,7 +64,6 @@
 #include <thread>
 
 // for debugging
-#include <mrpt/gui/CDisplayWindow3D.h>
 #include <mrpt/opengl/CGridPlaneXY.h>
 #include <mrpt/opengl/COpenGLScene.h>
 #include <mrpt/opengl/stock_objects.h>
@@ -187,9 +186,6 @@ class TPS_Astar_Planner_Node : public rclcpp::Node
 	bool mid_waypoints_ignore_heading_ = false;
 	bool final_waypoint_ignore_heading_ = false;
 
-	/// Pointer to MRPT 3D display window
-	mrpt::gui::CDisplayWindow3D::Ptr win_3d_;
-
 	/// Planner params loaded once at startup, reused to init per-call local planner instances
 	mrpt::containers::yaml planner_params_yaml_;
 
@@ -307,8 +303,6 @@ class TPS_Astar_Planner_Node : public rclcpp::Node
 	/**
 	 * @brief Debug method to visualize the planning
 	 */
-	void init_3d_debug();
-
 	/**
 	 * @brief Publisher method to publish waypoint sequence
 	 * @param wps Waypoint sequence object
@@ -685,30 +679,6 @@ void TPS_Astar_Planner_Node::publish_waypoint_sequence(const mrpt_msgs::msg::Way
 	pub_wp_path_seq_->publish(p);
 }
 
-void TPS_Astar_Planner_Node::init_3d_debug()
-{
-	if (win_3d_) return;
-
-	win_3d_ = mrpt::gui::CDisplayWindow3D::Create("Pathplanning-TPS-AStar", 1000, 600);
-	win_3d_->setCameraZoom(20);
-	win_3d_->setCameraAzimuthDeg(-45);
-
-	auto scene = win_3d_->get3DSceneAndLock();
-
-	auto lck = mrpt::lockHelper(obstacles_cs_);
-
-	for (const auto& e : gridmaps_) scene->insert(e.grid->getVisualization());
-
-	for (const auto& e : obstacle_points_)
-		if (e.obstacle_points) scene->insert(e.obstacle_points->getVisualization());
-
-	lck.unlock();
-
-	scene->enableFollowCamera(true);
-
-	win_3d_->unlockAccess3DScene();
-}
-
 void TPS_Astar_Planner_Node::update_map(
 	const nav_msgs::msg::OccupancyGrid::SharedPtr& msg, InfoPerGridMapSource& e)
 {
@@ -893,7 +863,6 @@ TPS_Astar_Planner_Node::PlanResult TPS_Astar_Planner_Node::do_path_plan(
 	// Show plan in a GUI for debugging
 	if (gui_mrpt_)
 	{
-		init_3d_debug();
 		mpp::VisualizationOptions vizOpts;
 
 		vizOpts.renderOptions.highlight_path_to_node_id = plan.bestNodeId;
