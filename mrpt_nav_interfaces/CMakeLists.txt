@@ -1,4 +1,6 @@
-cmake_minimum_required(VERSION 3.22...3.31)  # Ubuntu 22.04+
+# Backwards compatibility for ROS2 Humble
+#cmake_minimum_required(VERSION 3.22...3.31)  # Ubuntu 22.04+
+cmake_minimum_required(VERSION 3.10)
 
 project(mrpt_nav_interfaces)
 
