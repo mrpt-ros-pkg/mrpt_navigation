@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.8)
+cmake_minimum_required(VERSION 3.22...3.31)  # Ubuntu 22.04+
 project(mrpt_tutorials)
 
 # find dependencies
