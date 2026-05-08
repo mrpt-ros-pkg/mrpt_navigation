@@ -6,7 +6,6 @@
    | All rights reserved. Released under BSD 3-Clause license. See LICENSE  |
    +------------------------------------------------------------------------+ */
 
-#include <algorithm>
 #include <chrono>
 #include <mrpt_reactivenav2d/mrpt_reactivenav2d_node.hpp>
 #include <rclcpp_components/register_node_macro.hpp>
@@ -191,8 +190,15 @@ ReactiveNav2DNode::ReactiveNav2DNode(const rclcpp::NodeOptions& options)
 
 ReactiveNav2DNode::~ReactiveNav2DNode()
 {
-	// Stop the nav timer so no new callbacks fire while we join threads
+	// Stop the nav timer so no new navigationStep() calls fire during teardown
 	if (timerRunNav_) timerRunNav_->cancel();
+
+	// Abort any active navigation so action threads see a terminal state and
+	// can exit their rclcpp::ok() loop without waiting a full sleep period
+	{
+		std::lock_guard<std::mutex> csl(rnavEngineMtx_);
+		rnavEngine_.cancel();
+	}
 
 	// Join all action threads before the node members are destroyed
 	std::lock_guard<std::mutex> lck(actionThreadsMtx_);
@@ -606,12 +612,6 @@ void ReactiveNav2DNode::handle_accepted(const std::shared_ptr<HandleNavigateGoal
 	MRPT_TODO("Keep past actions and cancel them if we accept this one");
 
 	std::lock_guard<std::mutex> lck(actionThreadsMtx_);
-	// Reap any already-finished threads before adding a new one
-	actionThreads_.erase(
-		std::remove_if(
-			actionThreads_.begin(), actionThreads_.end(),
-			[](std::thread& t) { return !t.joinable(); }),
-		actionThreads_.end());
 	actionThreads_.emplace_back(
 		std::bind(&ReactiveNav2DNode::execute_action_goal, this, _1), goal_handle);
 }
@@ -718,11 +718,6 @@ void ReactiveNav2DNode::handle_accepted_wp(
 	MRPT_TODO("Keep past actions and cancel them if we accept this one");
 
 	std::lock_guard<std::mutex> lck(actionThreadsMtx_);
-	actionThreads_.erase(
-		std::remove_if(
-			actionThreads_.begin(), actionThreads_.end(),
-			[](std::thread& t) { return !t.joinable(); }),
-		actionThreads_.end());
 	actionThreads_.emplace_back(
 		std::bind(&ReactiveNav2DNode::execute_action_wp, this, _1), goal_handle);
 }
