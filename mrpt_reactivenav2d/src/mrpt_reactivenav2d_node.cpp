@@ -6,6 +6,7 @@
    | All rights reserved. Released under BSD 3-Clause license. See LICENSE  |
    +------------------------------------------------------------------------+ */
 
+#include <algorithm>
 #include <chrono>
 #include <mrpt_reactivenav2d/mrpt_reactivenav2d_node.hpp>
 #include <rclcpp_components/register_node_macro.hpp>
@@ -188,6 +189,17 @@ ReactiveNav2DNode::ReactiveNav2DNode(const rclcpp::NodeOptions& options)
 
 }  // end ctor
 
+ReactiveNav2DNode::~ReactiveNav2DNode()
+{
+	// Stop the nav timer so no new callbacks fire while we join threads
+	if (timerRunNav_) timerRunNav_->cancel();
+
+	// Join all action threads before the node members are destroyed
+	std::lock_guard<std::mutex> lck(actionThreadsMtx_);
+	for (auto& t : actionThreads_)
+		if (t.joinable()) t.join();
+}
+
 void ReactiveNav2DNode::read_parameters()
 {
 	declare_parameter<std::string>("cfg_file_reactive", cfgFileReactive_);
@@ -323,17 +335,26 @@ void ReactiveNav2DNode::on_do_navigation()
 			this->get_logger(), "[ReactiveNav2DNode] Reactive navigation engine init done!");
 	}
 
-	rnavEngine_.enableKeepLogRecords();
+	{
+		std::lock_guard<std::mutex> csl(rnavEngineMtx_);
+		rnavEngine_.enableKeepLogRecords();
+	}
 
 	CTimeLoggerEntry tle(profiler_, "on_do_navigation");
 	// Main nav loop (in whatever state nav is: IDLE, NAVIGATING, etc.)
-	rnavEngine_.navigationStep();
+	{
+		std::lock_guard<std::mutex> csl(rnavEngineMtx_);
+		rnavEngine_.navigationStep();
+	}
 
 	tle.stop();
 
 	// get last decision and publish it to the ROS system for debugging:
 	mrpt::nav::CLogFileRecord lr;
-	rnavEngine_.getLastLogRecord(lr);
+	{
+		std::lock_guard<std::mutex> csl(rnavEngineMtx_);
+		rnavEngine_.getLastLogRecord(lr);
+	}
 
 	publish_last_log_record_to_ros(lr);
 }
@@ -496,6 +517,8 @@ visualization_msgs::msg::MarkerArray ReactiveNav2DNode::log_to_margers(
 
 	visualization_msgs::msg::MarkerArray msg;
 
+	// Lock while accessing rnavEngine_ internals (PTG objects are owned by the engine)
+	std::lock_guard<std::mutex> csl(rnavEngineMtx_);
 	const auto* ptg = rnavEngine_.getPTG(lr.nSelectedPTG);
 	const auto& ipp = lr.infoPerPTG.at(lr.nSelectedPTG);
 	const auto k = ptg->alpha2index(ipp.desiredDirection);
@@ -578,7 +601,15 @@ void ReactiveNav2DNode::handle_accepted(const std::shared_ptr<HandleNavigateGoal
 
 	MRPT_TODO("Keep past actions and cancel them if we accept this one");
 
-	std::thread{std::bind(&ReactiveNav2DNode::execute_action_goal, this, _1), goal_handle}.detach();
+	std::lock_guard<std::mutex> lck(actionThreadsMtx_);
+	// Reap any already-finished threads before adding a new one
+	actionThreads_.erase(
+		std::remove_if(
+			actionThreads_.begin(), actionThreads_.end(),
+			[](std::thread& t) { return !t.joinable(); }),
+		actionThreads_.end());
+	actionThreads_.emplace_back(
+		std::bind(&ReactiveNav2DNode::execute_action_goal, this, _1), goal_handle);
 }
 
 // this method will run in a detached thread when an action is invoked:
@@ -682,7 +713,14 @@ void ReactiveNav2DNode::handle_accepted_wp(
 
 	MRPT_TODO("Keep past actions and cancel them if we accept this one");
 
-	std::thread{std::bind(&ReactiveNav2DNode::execute_action_wp, this, _1), goal_handle}.detach();
+	std::lock_guard<std::mutex> lck(actionThreadsMtx_);
+	actionThreads_.erase(
+		std::remove_if(
+			actionThreads_.begin(), actionThreads_.end(),
+			[](std::thread& t) { return !t.joinable(); }),
+		actionThreads_.end());
+	actionThreads_.emplace_back(
+		std::bind(&ReactiveNav2DNode::execute_action_wp, this, _1), goal_handle);
 }
 
 // this method will run in a detached thread when an action is invoked:
