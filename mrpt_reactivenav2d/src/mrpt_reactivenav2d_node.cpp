@@ -254,8 +254,12 @@ void ReactiveNav2DNode::read_parameters()
 	get_parameter("save_nav_log", saveNavLog_);
 	RCLCPP_INFO(this->get_logger(), "save_nav_log: %s", saveNavLog_ ? "yes" : "no");
 
-	declare_parameter<bool>("pure_pursuit_mode", pure_pursuit_mode_);
-	get_parameter("pure_pursuit_mode", pure_pursuit_mode_);
+	{
+		bool tmp = pure_pursuit_mode_.load();
+		declare_parameter<bool>("pure_pursuit_mode", tmp);
+		get_parameter("pure_pursuit_mode", tmp);
+		pure_pursuit_mode_.store(tmp);
+	}
 	RCLCPP_INFO(this->get_logger(), "pure_pursuit_mode: %s", pure_pursuit_mode_ ? "yes" : "no");
 
 	auto cb = [this](const rclcpp::Parameter& p)
