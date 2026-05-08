@@ -71,7 +71,7 @@ void LocalObstaclesNode::on_do_publish()
 	obs_list_t obs;
 	{
 		CTimeLoggerEntry tle(m_profiler, "onDoPublish.removingOld");
-		m_hist_obs_mtx.lock();
+		std::lock_guard<std::mutex> lck(m_hist_obs_mtx);
 
 		// Purge old obs:
 		if (!m_hist_obs.empty())
@@ -86,7 +86,6 @@ void LocalObstaclesNode::on_do_publish()
 		}
 		// Local copy in this thread:
 		obs = m_hist_obs;
-		m_hist_obs_mtx.unlock();
 	}
 
 	// Keep only one obs per topic?
@@ -388,9 +387,10 @@ void LocalObstaclesNode::on_new_sensor_laser_2d(
 	ipt.observation = obsScan;
 	ipt.robot_pose = robotPose;
 
-	m_hist_obs_mtx.lock();
-	m_hist_obs.insert(m_hist_obs.end(), obs_list_t::value_type(timestamp, ipt));
-	m_hist_obs_mtx.unlock();
+	{
+		std::lock_guard<std::mutex> lck(m_hist_obs_mtx);
+		m_hist_obs.insert(m_hist_obs.end(), obs_list_t::value_type(timestamp, ipt));
+	}
 
 }  // end on_new_sensor_laser_2d
 
@@ -479,9 +479,10 @@ void LocalObstaclesNode::on_new_sensor_pointcloud(
 	ipt.observation = obsPts;
 	ipt.robot_pose = robotPose;
 
-	m_hist_obs_mtx.lock();
-	m_hist_obs.insert(m_hist_obs.end(), obs_list_t::value_type(timestamp, ipt));
-	m_hist_obs_mtx.unlock();
+	{
+		std::lock_guard<std::mutex> lck(m_hist_obs_mtx);
+		m_hist_obs.insert(m_hist_obs.end(), obs_list_t::value_type(timestamp, ipt));
+	}
 }  // end on_new_sensor_pointcloud
 
 // read params from parameter server
