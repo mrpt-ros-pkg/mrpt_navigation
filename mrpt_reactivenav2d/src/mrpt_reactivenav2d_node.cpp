@@ -188,6 +188,24 @@ ReactiveNav2DNode::ReactiveNav2DNode(const rclcpp::NodeOptions& options)
 
 }  // end ctor
 
+ReactiveNav2DNode::~ReactiveNav2DNode()
+{
+	// Stop the nav timer so no new navigationStep() calls fire during teardown
+	if (timerRunNav_) timerRunNav_->cancel();
+
+	// Abort any active navigation so action threads see a terminal state and
+	// can exit their rclcpp::ok() loop without waiting a full sleep period
+	{
+		std::lock_guard<std::mutex> csl(rnavEngineMtx_);
+		rnavEngine_.cancel();
+	}
+
+	// Join all action threads before the node members are destroyed
+	std::lock_guard<std::mutex> lck(actionThreadsMtx_);
+	for (auto& t : actionThreads_)
+		if (t.joinable()) t.join();
+}
+
 void ReactiveNav2DNode::read_parameters()
 {
 	declare_parameter<std::string>("cfg_file_reactive", cfgFileReactive_);
@@ -242,8 +260,12 @@ void ReactiveNav2DNode::read_parameters()
 	get_parameter("save_nav_log", saveNavLog_);
 	RCLCPP_INFO(this->get_logger(), "save_nav_log: %s", saveNavLog_ ? "yes" : "no");
 
-	declare_parameter<bool>("pure_pursuit_mode", pure_pursuit_mode_);
-	get_parameter("pure_pursuit_mode", pure_pursuit_mode_);
+	{
+		bool tmp = pure_pursuit_mode_.load();
+		declare_parameter<bool>("pure_pursuit_mode", tmp);
+		get_parameter("pure_pursuit_mode", tmp);
+		pure_pursuit_mode_.store(tmp);
+	}
 	RCLCPP_INFO(this->get_logger(), "pure_pursuit_mode: %s", pure_pursuit_mode_ ? "yes" : "no");
 
 	auto cb = [this](const rclcpp::Parameter& p)
@@ -323,17 +345,26 @@ void ReactiveNav2DNode::on_do_navigation()
 			this->get_logger(), "[ReactiveNav2DNode] Reactive navigation engine init done!");
 	}
 
-	rnavEngine_.enableKeepLogRecords();
+	{
+		std::lock_guard<std::mutex> csl(rnavEngineMtx_);
+		rnavEngine_.enableKeepLogRecords();
+	}
 
 	CTimeLoggerEntry tle(profiler_, "on_do_navigation");
 	// Main nav loop (in whatever state nav is: IDLE, NAVIGATING, etc.)
-	rnavEngine_.navigationStep();
+	{
+		std::lock_guard<std::mutex> csl(rnavEngineMtx_);
+		rnavEngine_.navigationStep();
+	}
 
 	tle.stop();
 
 	// get last decision and publish it to the ROS system for debugging:
 	mrpt::nav::CLogFileRecord lr;
-	rnavEngine_.getLastLogRecord(lr);
+	{
+		std::lock_guard<std::mutex> csl(rnavEngineMtx_);
+		rnavEngine_.getLastLogRecord(lr);
+	}
 
 	publish_last_log_record_to_ros(lr);
 }
@@ -496,6 +527,8 @@ visualization_msgs::msg::MarkerArray ReactiveNav2DNode::log_to_margers(
 
 	visualization_msgs::msg::MarkerArray msg;
 
+	// Lock while accessing rnavEngine_ internals (PTG objects are owned by the engine)
+	std::lock_guard<std::mutex> csl(rnavEngineMtx_);
 	const auto* ptg = rnavEngine_.getPTG(lr.nSelectedPTG);
 	const auto& ipp = lr.infoPerPTG.at(lr.nSelectedPTG);
 	const auto k = ptg->alpha2index(ipp.desiredDirection);
@@ -578,7 +611,9 @@ void ReactiveNav2DNode::handle_accepted(const std::shared_ptr<HandleNavigateGoal
 
 	MRPT_TODO("Keep past actions and cancel them if we accept this one");
 
-	std::thread{std::bind(&ReactiveNav2DNode::execute_action_goal, this, _1), goal_handle}.detach();
+	std::lock_guard<std::mutex> lck(actionThreadsMtx_);
+	actionThreads_.emplace_back(
+		std::bind(&ReactiveNav2DNode::execute_action_goal, this, _1), goal_handle);
 }
 
 // this method will run in a detached thread when an action is invoked:
@@ -682,7 +717,9 @@ void ReactiveNav2DNode::handle_accepted_wp(
 
 	MRPT_TODO("Keep past actions and cancel them if we accept this one");
 
-	std::thread{std::bind(&ReactiveNav2DNode::execute_action_wp, this, _1), goal_handle}.detach();
+	std::lock_guard<std::mutex> lck(actionThreadsMtx_);
+	actionThreads_.emplace_back(
+		std::bind(&ReactiveNav2DNode::execute_action_wp, this, _1), goal_handle);
 }
 
 // this method will run in a detached thread when an action is invoked:

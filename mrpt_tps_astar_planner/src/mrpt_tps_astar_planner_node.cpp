@@ -643,24 +643,23 @@ void TPS_Astar_Planner_Node::callback_obstacles(
 void TPS_Astar_Planner_Node::update_obstacles(
 	const sensor_msgs::msg::PointCloud2::SharedPtr& pcMsg, InfoPerPointMapSource& e)
 {
-	auto lck = mrpt::lockHelper(obstacles_cs_);
-
 	auto pc = mrpt::maps::CSimplePointsMap::Create();
 	if (!mrpt::ros2bridge::fromROS(*pcMsg, *pc))
 	{
 		RCLCPP_ERROR(this->get_logger(), "Failed to convert Point Cloud to MRPT Points Map");
 	}
 
-	// Transform the cloud to its global pose in the map:
+	// Transform the cloud to its global pose in the map.
+	// Do this before taking the lock: wait_for_transform may block for up to
+	// its timeout, and holding obstacles_cs_ during that time would stall
+	// do_path_plan for the same duration.
 	mrpt::poses::CPose3D sensorPoseInMap;
+	if (!wait_for_transform(sensorPoseInMap, pcMsg->header.frame_id, frame_id_map_)) return;
 
-	// Update fields only when transform data to become available
-	if (wait_for_transform(sensorPoseInMap, pcMsg->header.frame_id, frame_id_map_))
-	{
-		pc->changeCoordinatesReference(sensorPoseInMap);
+	pc->changeCoordinatesReference(sensorPoseInMap);
 
-		e.obstacle_points = pc;
-	}
+	auto lck = mrpt::lockHelper(obstacles_cs_);
+	e.obstacle_points = pc;
 }
 
 void TPS_Astar_Planner_Node::publish_waypoint_sequence(const mrpt_msgs::msg::WaypointSequence& wps)
