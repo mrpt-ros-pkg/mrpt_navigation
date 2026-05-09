@@ -11,10 +11,9 @@
 #include <mrpt/core/lock_helper.h>
 #include <mrpt/io/CFileGZInputStream.h>
 #include <mrpt/io/CMemoryStream.h>
+#include <mrpt/maps/CGenericPointsMap.h>
 #include <mrpt/maps/CMultiMetricMap.h>
 #include <mrpt/maps/COccupancyGridMap2D.h>
-#include <mrpt/maps/CPointsMapXYZI.h>
-#include <mrpt/maps/CPointsMapXYZIRT.h>
 #include <mrpt/maps/CSimplePointsMap.h>
 #include <mrpt/maps/CVoxelMap.h>
 #include <mrpt/ros2bridge/map.h>
@@ -405,13 +404,9 @@ sensor_msgs::msg::PointCloud2 MapServer::pointmap_layer_to_msg(
 
 	sensor_msgs::msg::PointCloud2 msg_pts;
 
-	if (auto* xyzirt = dynamic_cast<const mrpt::maps::CPointsMapXYZIRT*>(pts.get()); xyzirt)
+	if (auto* xyzgen = dynamic_cast<const mrpt::maps::CGenericPointsMap*>(pts.get()); xyzgen)
 	{
-		mrpt::ros2bridge::toROS(*xyzirt, msg_header, msg_pts);
-	}
-	else if (auto* xyzi = dynamic_cast<const mrpt::maps::CPointsMapXYZI*>(pts.get()); xyzi)
-	{
-		mrpt::ros2bridge::toROS(*xyzi, msg_header, msg_pts);
+		mrpt::ros2bridge::toROS(*xyzgen, msg_header, msg_pts);
 	}
 	else if (auto* sPts = dynamic_cast<const mrpt::maps::CSimplePointsMap*>(pts.get()); sPts)
 	{
