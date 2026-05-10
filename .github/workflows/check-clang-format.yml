@@ -1,0 +1,23 @@
+name: CI clang-format
+
+on: [push, pull_request]
+
+jobs:
+  clang-format-check:
+    name: clang-format-check
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Git submodules
+        run: |
+          git submodule sync
+          git submodule update --init --recursive
+
+      - name: Install clang-format-14
+        run: sudo apt-get update && sudo apt-get install -y clang-format-14
+
+      - name: Check code style
+        run: bash scripts/formatter.sh --check
+
