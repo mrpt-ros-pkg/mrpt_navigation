@@ -18,9 +18,8 @@ find \
     mrpt_nav_interfaces \
     mrpt_pf_localization \
     mrpt_pointcloud_pipeline \
-    mrpt_rawlog \
     mrpt_reactivenav2d \
     mrpt_tps_astar_planner \
     mrpt_tutorials \
-    -iname "*.h" -o -iname "*.hpp" -o -iname "*.cpp" -o -iname "*.c" \
+    \( -iname "*.h" -o -iname "*.hpp" -o -iname "*.cpp" -o -iname "*.c" \) \
   -print0 | xargs -0 clang-format-14 "${MODE[@]}"
