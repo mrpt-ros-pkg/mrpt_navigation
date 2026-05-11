@@ -2,8 +2,8 @@
 Changelog for package mrpt_reactivenav2d
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+2.5.0 (2026-05-11)
+------------------
 * Merge pull request `#161 <https://github.com/mrpt-ros-pkg/mrpt_navigation/issues/161>`_ from mrpt-ros-pkg/fix-threads
   Fix threads
 * fix: destructor shutdown hang and broken thread-reap predicate in mrpt_reactivenav2d

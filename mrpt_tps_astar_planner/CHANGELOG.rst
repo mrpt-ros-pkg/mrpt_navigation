@@ -2,8 +2,8 @@
 Changelog for package mrpt_tps_astar_planner_node
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+2.5.0 (2026-05-11)
+------------------
 * Merge pull request `#161 <https://github.com/mrpt-ros-pkg/mrpt_navigation/issues/161>`_ from mrpt-ros-pkg/fix-threads
   Fix threads
 * fix: safer multithreading access

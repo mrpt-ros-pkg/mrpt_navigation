@@ -2,8 +2,8 @@
 Changelog for package mrpt_nav_interfaces
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+2.5.0 (2026-05-11)
+------------------
 * fix: rollback min cmake version for local builds in Humble with modern cmake
 * Merge pull request `#159 <https://github.com/mrpt-ros-pkg/mrpt_navigation/issues/159>`_ from mrpt-ros-pkg/bump-cmake
   bump min req cmake version to 3.22
