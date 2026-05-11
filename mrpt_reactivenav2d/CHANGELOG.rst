@@ -2,6 +2,27 @@
 Changelog for package mrpt_reactivenav2d
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Merge pull request `#161 <https://github.com/mrpt-ros-pkg/mrpt_navigation/issues/161>`_ from mrpt-ros-pkg/fix-threads
+  Fix threads
+* fix: destructor shutdown hang and broken thread-reap predicate in mrpt_reactivenav2d
+  Call rnavEngine\_.cancel() in the destructor (after cancelling the timer,
+  before joining action threads) so any active navigation is aborted and
+  action threads can observe a terminal nav state instead of always sleeping
+  a full period before rclcpp::ok() lets them exit.
+  Remove the erase/remove_if reap in handle_accepted and handle_accepted_wp:
+  the predicate `!t.joinable()` never matched real threads because a finished
+  but unjoined std::thread is still joinable; the cleanup loop was always a
+  no-op. The destructor join loop already handles all cleanup correctly.
+  Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+* fix: parameter declaration
+* fix: various multithreading issues
+* Merge pull request `#159 <https://github.com/mrpt-ros-pkg/mrpt_navigation/issues/159>`_ from mrpt-ros-pkg/bump-cmake
+  bump min req cmake version to 3.22
+* bump min req cmake version to 3.22
+* Contributors: Jose Luis Blanco-Claraco
+
 2.4.0 (2026-04-19)
 ------------------
 

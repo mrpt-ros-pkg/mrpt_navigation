@@ -2,6 +2,13 @@
 Changelog for package mrpt_navigation
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Merge pull request `#159 <https://github.com/mrpt-ros-pkg/mrpt_navigation/issues/159>`_ from mrpt-ros-pkg/bump-cmake
+  bump min req cmake version to 3.22
+* bump min req cmake version to 3.22
+* Contributors: Jose Luis Blanco-Claraco
+
 2.4.0 (2026-04-19)
 ------------------
 

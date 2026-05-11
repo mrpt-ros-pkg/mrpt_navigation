@@ -2,6 +2,16 @@
 Changelog for package mrpt_pointcloud_pipeline
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Merge pull request `#161 <https://github.com/mrpt-ros-pkg/mrpt_navigation/issues/161>`_ from mrpt-ros-pkg/fix-threads
+  Fix threads
+* fix: safer multithreading access
+* Merge pull request `#159 <https://github.com/mrpt-ros-pkg/mrpt_navigation/issues/159>`_ from mrpt-ros-pkg/bump-cmake
+  bump min req cmake version to 3.22
+* bump min req cmake version to 3.22
+* Contributors: Jose Luis Blanco-Claraco
+
 2.4.0 (2026-04-19)
 ------------------
 * Merge pull request `#158 <https://github.com/mrpt-ros-pkg/mrpt_navigation/issues/158>`_ from mrpt-ros-pkg/feat/parallel-planner
