@@ -14,10 +14,12 @@ if(marker_msgs_FOUND)
     set(MARKER_SRC src/marker_msgs.cpp)
 endif()
 
-find_package(mrpt-ros2bridge REQUIRED)
-find_package(mrpt-obs REQUIRED)
+find_package(mrpt_libros_bridge REQUIRED)
+# Ensure workspace mrpt_libros_bridge headers take priority over system ones:
+include_directories(BEFORE ${mrpt_libros_bridge_INCLUDE_DIRS})
+find_package(mrpt_obs REQUIRED)
 
-message(STATUS "MRPT_VERSION: ${mrpt-obs_VERSION}")
+message(STATUS "MRPT_VERSION: ${mrpt_obs_VERSION}")
 
 if(CMAKE_COMPILER_IS_GNUCXX)
   # High level of warnings.
@@ -68,8 +70,8 @@ install(DIRECTORY include/${PROJECT_NAME}
 
 # Specify libraries to link a library or executable target against
 target_link_libraries(${PROJECT_NAME} PRIVATE
-  mrpt::obs
-  mrpt::ros2bridge
+  mrpt::mrpt_obs
+  mrpt_libros_bridge::mrpt_libros_bridge
   rclcpp::rclcpp
   tf2::tf2
   ${mrpt_msgs_TARGETS}

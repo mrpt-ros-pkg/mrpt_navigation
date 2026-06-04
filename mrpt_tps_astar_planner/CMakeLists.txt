@@ -17,14 +17,16 @@ find_package(visualization_msgs REQUIRED)
 
 
 ## System dependencies are found with CMake's conventions
-find_package(mrpt-ros2bridge REQUIRED)
-find_package(mrpt-nav REQUIRED)
-find_package(mrpt-kinematics REQUIRED)
-find_package(mrpt-math REQUIRED)
-find_package(mrpt-system REQUIRED)
-find_package(mrpt-containers REQUIRED)
-find_package(mrpt-maps REQUIRED)
-find_package(mrpt-gui REQUIRED)
+find_package(mrpt_libros_bridge REQUIRED)
+# Ensure workspace mrpt_libros_bridge headers take priority over system ones:
+include_directories(BEFORE ${mrpt_libros_bridge_INCLUDE_DIRS})
+find_package(mrpt_nav REQUIRED)
+find_package(mrpt_kinematics REQUIRED)
+find_package(mrpt_math REQUIRED)
+find_package(mrpt_system REQUIRED)
+find_package(mrpt_containers REQUIRED)
+find_package(mrpt_maps REQUIRED)
+find_package(mrpt_gui REQUIRED)
 find_package(mrpt-opengl REQUIRED)
 
 find_package(mrpt_path_planning REQUIRED)
@@ -70,9 +72,9 @@ add_executable(${PROJECT_NAME}_node
 
 # Specify libraries to link a library or executable target against
 target_link_libraries(${PROJECT_NAME}_node PRIVATE
-  mrpt::nav
-  mrpt::kinematics
-  mrpt::ros2bridge
+  mrpt::mrpt_nav
+  mrpt::mrpt_kinematics
+  mrpt_libros_bridge::mrpt_libros_bridge
   mrpt_path_planning::mrpt_path_planning
   rclcpp::rclcpp
   ${rclcpp_components_TARGETS}

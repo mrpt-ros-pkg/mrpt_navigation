@@ -207,21 +207,21 @@ void LocalObstaclesNode::on_do_publish()
 		if (!m_gui_win)
 		{
 			m_gui_win = mrpt::gui::CDisplayWindow3D::Create("LocalObstaclesNode", 800, 600);
-			mrpt::opengl::COpenGLScene::Ptr& scene = m_gui_win->get3DSceneAndLock();
-			scene->insert(mrpt::opengl::CGridPlaneXY::Create());
-			scene->insert(mrpt::opengl::stock_objects::CornerXYZSimple(1.0, 4.0));
+			mrpt::viz::Scene::Ptr& scene = m_gui_win->get3DSceneAndLock();
+			scene->insert(mrpt::viz::CGridPlaneXY::Create());
+			scene->insert(mrpt::viz::stock_objects::CornerXYZSimple(1.0, 4.0));
 
-			auto gl_obs = mrpt::opengl::CSetOfObjects::Create();
+			auto gl_obs = mrpt::viz::CSetOfObjects::Create();
 			gl_obs->setName("obstacles");
 			scene->insert(gl_obs);
 
-			auto gl_rawpts = mrpt::opengl::CPointCloud::Create();
+			auto gl_rawpts = mrpt::viz::CPointCloud::Create();
 			gl_rawpts->setName("raw_points");
 			gl_rawpts->setPointSize(1.0);
 			gl_rawpts->setColor_u8(TColor(0x00ff00));
 			scene->insert(gl_rawpts);
 
-			auto gl_pts = mrpt::opengl::CPointCloud::Create();
+			auto gl_pts = mrpt::viz::CPointCloud::Create();
 			gl_pts->setName("final_points");
 			gl_pts->setPointSize(4.0);
 			gl_pts->setColor_u8(TColor(0x0000ff));
@@ -256,15 +256,15 @@ void LocalObstaclesNode::on_do_publish()
 		auto& scene = m_gui_win->get3DSceneAndLock();
 
 		auto gl_obs =
-			mrpt::ptr_cast<mrpt::opengl::CSetOfObjects>::from(scene->getByName("obstacles"));
+			mrpt::ptr_cast<mrpt::viz::CSetOfObjects>::from(scene->getByName("obstacles"));
 		ASSERT_(!!gl_obs);
 		gl_obs->clear();
 
 		auto glRawPts =
-			mrpt::ptr_cast<mrpt::opengl::CPointCloud>::from(scene->getByName("raw_points"));
+			mrpt::ptr_cast<mrpt::viz::CPointCloud>::from(scene->getByName("raw_points"));
 
 		auto glFinalPts =
-			mrpt::ptr_cast<mrpt::opengl::CPointCloud>::from(scene->getByName("final_points"));
+			mrpt::ptr_cast<mrpt::viz::CPointCloud>::from(scene->getByName("final_points"));
 
 		scene->getViewport()->addTextMessage(
 			5, 25,
@@ -280,8 +280,8 @@ void LocalObstaclesNode::on_do_publish()
 			mrpt::poses::CPose3D relPose(mrpt::poses::UNINITIALIZED_POSE);
 			relPose.inverseComposeFrom(ipt.robot_pose, curRobotPose);
 
-			mrpt::opengl::CSetOfObjects::Ptr gl_axis =
-				mrpt::opengl::stock_objects::CornerXYZSimple(0.9, 2.0);
+			mrpt::viz::CSetOfObjects::Ptr gl_axis =
+				mrpt::viz::stock_objects::CornerXYZSimple(0.9, 2.0);
 			gl_axis->setPose(relPose);
 			gl_obs->insert(gl_axis);
 		}  // end for

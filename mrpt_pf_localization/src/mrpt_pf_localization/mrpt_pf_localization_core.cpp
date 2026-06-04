@@ -16,9 +16,10 @@
 #include <mrpt/maps/CSimplePointsMap.h>
 #include <mrpt/obs/CActionCollection.h>
 #include <mrpt/obs/CObservationPointCloud.h>
-#include <mrpt/opengl/CEllipsoid2D.h>
-#include <mrpt/opengl/CEllipsoid3D.h>
-#include <mrpt/opengl/CPointCloud.h>
+#include <mrpt/viz/CEllipsoid2D.h>
+#include <mrpt/viz/CEllipsoid3D.h>
+#include <mrpt/viz/CPointCloud.h>
+#include <mrpt/viz/opengl_fonts.h>
 #include <mrpt/random/RandomGenerators.h>
 #include <mrpt/ros2bridge/map.h>
 #include <mrpt/system/filesystem.h>
@@ -1124,7 +1125,7 @@ void PFLocalizationCore::init_gui()
 
 void PFLocalizationCore::update_gui(const mrpt::obs::CSensoryFrame& sf)
 {
-	using namespace mrpt::opengl;
+	using namespace mrpt::viz;
 
 	auto tle = mrpt::system::CTimeLoggerEntry(profiler_, "show3DDebug");
 
@@ -1160,13 +1161,13 @@ void PFLocalizationCore::update_gui(const mrpt::obs::CSensoryFrame& sf)
 	}
 	const auto& meanPose = estimatedPose.mean;
 
-	mrpt::opengl::Scene::Ptr scene;
+	mrpt::viz::Scene::Ptr scene;
 	{
 		mrpt::gui::CDisplayWindow3DLocker winLock(*win3D_, scene);
 
 		win3D_->setCameraPointingToPoint(estimatedPose.mean.x(), estimatedPose.mean.y(), 0);
 
-		mrpt::opengl::TFontParams fp;
+		mrpt::viz::TFontParams fp;
 		fp.color = mrpt::img::TColorf(.8f, .8f, .8f);
 		fp.vfont_name = "mono";
 		fp.vfont_scale = 15;

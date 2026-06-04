@@ -16,9 +16,11 @@ find_package(visualization_msgs REQUIRED)
 find_package(mrpt_nav_interfaces REQUIRED)
 
 ## System dependencies are found with CMake's conventions
-find_package(mrpt-ros2bridge REQUIRED)
-find_package(mrpt-nav REQUIRED)
-find_package(mrpt-kinematics REQUIRED)
+find_package(mrpt_libros_bridge REQUIRED)
+# Ensure workspace mrpt_libros_bridge headers take priority over system ones:
+include_directories(BEFORE ${mrpt_libros_bridge_INCLUDE_DIRS})
+find_package(mrpt_nav REQUIRED)
+find_package(mrpt_kinematics REQUIRED)
 
 message(STATUS "MRPT_VERSION: ${MRPT_VERSION}")
 if(NOT CMAKE_C_STANDARD)
@@ -61,9 +63,9 @@ target_include_directories(${PROJECT_NAME}_node
 
 ## Specify libraries to link a library or executable target against
 target_link_libraries(${PROJECT_NAME}_node PRIVATE
-  mrpt::nav
-  mrpt::kinematics
-  mrpt::ros2bridge
+  mrpt::mrpt_nav
+  mrpt::mrpt_kinematics
+  mrpt_libros_bridge::mrpt_libros_bridge
   rclcpp::rclcpp
   ${rclcpp_components_TARGETS}
   ${nav_msgs_TARGETS}

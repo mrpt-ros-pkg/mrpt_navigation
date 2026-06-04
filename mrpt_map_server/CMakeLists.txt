@@ -12,9 +12,9 @@ find_package(tf2 REQUIRED)
 find_package(tf2_ros REQUIRED)
 find_package(tf2_geometry_msgs REQUIRED)
 
-find_package(mrpt-maps REQUIRED)
-find_package(mrpt-ros2bridge REQUIRED)
-find_package(mrpt-topography REQUIRED)  # shipped by ROS pkg mrpt_libobs
+find_package(mrpt_maps REQUIRED)
+find_package(mrpt_libros_bridge REQUIRED)
+find_package(mrpt_topography REQUIRED)  # shipped by ROS pkg mrpt_libobs
 find_package(mp2p_icp_map REQUIRED)
 
 message(STATUS "MRPT_VERSION: ${MRPT_VERSION}")
@@ -54,13 +54,15 @@ target_include_directories(map_server_node
   PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>
+  # Ensure workspace mrpt_libros_bridge headers take priority over system ones:
+  ${mrpt_libros_bridge_INCLUDE_DIRS}
 )
 
 # Specify libraries to link a library or executable target against
 target_link_libraries(map_server_node PRIVATE
-  mrpt::maps
-  mrpt::ros2bridge
-  mrpt::topography
+  mrpt::mrpt_maps
+  mrpt_libros_bridge::mrpt_libros_bridge
+  mrpt::mrpt_topography
   mola::mp2p_icp_map
   rclcpp::rclcpp
   ${rclcpp_components_TARGETS}

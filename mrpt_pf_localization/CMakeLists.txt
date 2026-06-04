@@ -19,11 +19,13 @@ find_package(rclcpp REQUIRED)
 find_package(rclcpp_components REQUIRED)
 find_package(mola_relocalization) # OPTIONAL
 
-find_package(mrpt-ros2bridge REQUIRED)
-find_package(mrpt-gui REQUIRED)
-find_package(mrpt-slam REQUIRED)
+find_package(mrpt_libros_bridge REQUIRED)
+# Ensure workspace mrpt_libros_bridge headers take priority over system ones:
+include_directories(BEFORE ${mrpt_libros_bridge_INCLUDE_DIRS})
+find_package(mrpt_gui REQUIRED)
+find_package(mrpt_slam REQUIRED)
 
-message(STATUS "MRPT_VERSION: ${mrpt-slam_VERSION}")
+message(STATUS "MRPT_VERSION: ${mrpt_slam_VERSION}")
 
 if (CMAKE_COMPILER_IS_GNUCXX)
 	# High level of warnings.
@@ -56,9 +58,9 @@ target_include_directories(${PROJECT_NAME}_core
 )
 
 target_link_libraries(${PROJECT_NAME}_core
-  mrpt::gui
-  mrpt::slam
-  mrpt::ros2bridge
+  mrpt::mrpt_gui
+  mrpt::mrpt_slam
+  mrpt_libros_bridge::mrpt_libros_bridge
   mola::mp2p_icp_map
   mola::mp2p_icp_filters
 )
@@ -78,9 +80,9 @@ add_executable(${PROJECT_NAME}_node
 
 target_link_libraries(${PROJECT_NAME}_node PRIVATE
   ${PROJECT_NAME}_core
-  mrpt::gui
-  mrpt::slam
-  mrpt::ros2bridge
+  mrpt::mrpt_gui
+  mrpt::mrpt_slam
+  mrpt_libros_bridge::mrpt_libros_bridge
   rclcpp::rclcpp
   ${rclcpp_components_TARGETS}
   tf2::tf2
@@ -109,9 +111,9 @@ add_library(${PROJECT_NAME}_component SHARED
 
 target_link_libraries(${PROJECT_NAME}_component PRIVATE
   ${PROJECT_NAME}_core
-  mrpt::gui
-  mrpt::slam
-  mrpt::ros2bridge
+  mrpt::mrpt_gui
+  mrpt::mrpt_slam
+  mrpt_libros_bridge::mrpt_libros_bridge
   rclcpp::rclcpp
   ${rclcpp_components_TARGETS}
   tf2::tf2
