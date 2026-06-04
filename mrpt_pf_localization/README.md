@@ -54,7 +54,7 @@ automatically **fused together**.
 The provided algorithms have **parameters** that can be grouped into three conceptual topics:
 
 - **Algorithm**: Parameters affecting the particle filter itself or the adaptive sampling method. These parameters can be set in the main [config YAML file](params/default.config.yaml).
-- **Actions**: The [motion model uncertainty](https://docs.mrpt.org/reference/latest/tutorial-motion-models.html). These parameters are also set in the main [config YAML file](params/default.config.yaml).
+- **Actions**: The [motion model uncertainty](https://docs.mrpt.org/reference/stable/tutorial-motion-models.html). These parameters are also set in the main [config YAML file](params/default.config.yaml).
 - **Observations**: These parameters are spread in part in the observations themselves (e.g. each lidar/sonar should carry information about how noisy it is), and the metric maps. The latter are key parameters and in MRPT are called **likelihood options** in each available metric map.
 
 ## Metric map conceptual model

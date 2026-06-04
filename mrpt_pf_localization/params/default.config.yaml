@@ -56,7 +56,7 @@
 
 
     # For SE(2) mode: Uncertainty motion model for regular odometry-based motion
-    # See docs for mrpt::obs::CActionRobotMovement2D::TMotionModelOptions or https://docs.mrpt.org/reference/latest/tutorial-motion-models.html
+    # See docs for mrpt::obs::CActionRobotMovement2D::TMotionModelOptions or https://docs.mrpt.org/reference/stable/tutorial-motion-models.html
     motion_model_2d:
       modelSelection: mmGaussian    # (mmGaussian|mmThrun)
       gaussianModel:
@@ -80,7 +80,7 @@
 
     # For SE(2) mode: Uncertainty motion model to use when NO odometry has
     # been received.
-    # See docs for mrpt::obs::CActionRobotMovement2D::TMotionModelOptions or https://docs.mrpt.org/reference/latest/tutorial-motion-models.html
+    # See docs for mrpt::obs::CActionRobotMovement2D::TMotionModelOptions or https://docs.mrpt.org/reference/stable/tutorial-motion-models.html
     motion_model_no_odom_2d:
       modelSelection: mmGaussian    # (mmGaussian|mmThrun)
       gaussianModel:
@@ -97,7 +97,7 @@
       modelSelection: mmGaussian
 
     # Particle filter options:
-    # Refer to docs for: [TParticleFilterOptions](https://docs.mrpt.org/reference/latest/struct_mrpt_bayes_CParticleFilter_TParticleFilterOptions.html)
+    # Refer to docs for: [TParticleFilterOptions](https://docs.mrpt.org/reference/stable/struct_mrpt_bayes_CParticleFilter_TParticleFilterOptions.html)
     # -----------------------------------------------
     pf_options:
       # Perform adaptive sample size? (KLD algorithm)
@@ -121,7 +121,7 @@
       pfAuxFilterOptimal_MLE: false
     
     # Dynamic sample size options.
-    # Refer to docs for [mrpt::slam::TKLDParams](https://docs.mrpt.org/reference/latest/class_mrpt_slam_TKLDParams.html)
+    # Refer to docs for [mrpt::slam::TKLDParams](https://docs.mrpt.org/reference/stable/class_mrpt_slam_TKLDParams.html)
     # and to Dieter Fox's paper: 
     #    Fox, D. (2003). Adapting the sample size in particle filters through
     #    KLD-sampling. The international Journal of robotics research, 22(12), 985-1003.
@@ -138,7 +138,7 @@
     # If defined, this block will override the likelihoodOptions field of the 
     # de-serialized metric map (.mm) used as global map:
     #
-    # Docs for mrpt::maps::CPointsMap::TLikelihoodOptions: https://docs.mrpt.org/reference/latest/struct_mrpt_maps_CPointsMap_TLikelihoodOptions.html
+    # Docs for mrpt::maps::CPointsMap::TLikelihoodOptions: https://docs.mrpt.org/reference/stable/struct_mrpt_maps_CPointsMap_TLikelihoodOptions.html
     override_likelihood_point_maps:
       sigma_dist: 0.10  # [m]
       max_corr_distance: 1.5 # [m]
@@ -147,7 +147,7 @@
     # If defined, this block will override the likelihoodOptions field of the 
     # de-serialized metric map (.mm) used as global map:
     #
-    # Docs for mrpt::maps::COccupancyGridMap2D::TLikelihoodOptions: https://docs.mrpt.org/reference/latest/class_mrpt_maps_COccupancyGridMap2D_TLikelihoodOptions.html
+    # Docs for mrpt::maps::COccupancyGridMap2D::TLikelihoodOptions: https://docs.mrpt.org/reference/stable/class_mrpt_maps_COccupancyGridMap2D_TLikelihoodOptions.html
     override_likelihood_gridmaps:
        likelihoodMethod: 'lmLikelihoodField_Thrun'
        LF_stdHit: 2.0

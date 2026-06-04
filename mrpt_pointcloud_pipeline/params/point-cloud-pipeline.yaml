@@ -17,7 +17,7 @@ generators:
       # metric_map_definition_ini_file: '${CURRENT_YAML_FILE_PATH}/map_definition.ini'  # Use either an external INI file, or the 'metric_map_definition' YAML entry below
 
       metric_map_definition:
-        # Any class derived from mrpt::maps::CMetricMap https://docs.mrpt.org/reference/latest/group_mrpt_maps_grp.html
+        # Any class derived from mrpt::maps::CMetricMap https://docs.mrpt.org/reference/stable/group_mrpt_maps_grp.html
         class: mrpt::maps::CSimplePointsMap
         #creationOpts:  # none needed
         #insertionOpts: # none needed
