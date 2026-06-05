@@ -16,17 +16,17 @@
 #include <mrpt/maps/CSimplePointsMap.h>
 #include <mrpt/obs/CActionCollection.h>
 #include <mrpt/obs/CObservationPointCloud.h>
-#include <mrpt/viz/CVisualObject.h>
-#include <mrpt/viz/CEllipsoid2D.h>
-#include <mrpt/viz/CEllipsoid3D.h>
-#include <mrpt/viz/CPointCloud.h>
-#include <mrpt/viz/opengl_fonts.h>
 #include <mrpt/random/RandomGenerators.h>
 #include <mrpt/ros2bridge/map.h>
 #include <mrpt/system/filesystem.h>
 #include <mrpt/system/hyperlink.h>
 #include <mrpt/topography/conversions.h>  // geodeticToENU_WGS84
 #include <mrpt/topography/data_types.h>	 // TGeodeticCoords
+#include <mrpt/viz/CEllipsoid2D.h>
+#include <mrpt/viz/CEllipsoid3D.h>
+#include <mrpt/viz/CPointCloud.h>
+#include <mrpt/viz/CVisualObject.h>
+#include <mrpt/viz/opengl_fonts.h>
 #include <mrpt_pf_localization/mrpt_pf_localization_core.h>
 
 #ifdef HAVE_MOLA_RELOCALIZATION

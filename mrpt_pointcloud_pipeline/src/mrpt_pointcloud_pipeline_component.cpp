@@ -255,8 +255,7 @@ void LocalObstaclesNode::on_do_publish()
 
 		auto& scene = m_gui_win->get3DSceneAndLock();
 
-		auto gl_obs =
-			mrpt::ptr_cast<mrpt::viz::CSetOfObjects>::from(scene->getByName("obstacles"));
+		auto gl_obs = mrpt::ptr_cast<mrpt::viz::CSetOfObjects>::from(scene->getByName("obstacles"));
 		ASSERT_(!!gl_obs);
 		gl_obs->clear();
 

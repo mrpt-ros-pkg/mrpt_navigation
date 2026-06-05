@@ -209,12 +209,11 @@ void PFLocalizationNode::reload_params_from_ros()
 
 	// Helper lambda: find or create a key in a map_t, returning ref to value node_t
 	auto findOrCreate = [](mrpt::containers::yaml::map_t& m,
-						   const std::string&               key) -> mrpt::containers::yaml::node_t&
+						   const std::string& key) -> mrpt::containers::yaml::node_t&
 	{
 		for (auto& kv2 : m)
 		{
-			if (kv2.first.isScalar() && kv2.first.as<std::string>() == key)
-				return kv2.second;
+			if (kv2.first.isScalar() && kv2.first.as<std::string>() == key) return kv2.second;
 		}
 		m.push_back({mrpt::containers::yaml::node_t(key), mrpt::containers::yaml::node_t{}});
 		return m.back().second;

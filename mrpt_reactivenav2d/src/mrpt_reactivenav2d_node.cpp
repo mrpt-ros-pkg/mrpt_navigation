@@ -796,7 +796,7 @@ void ReactiveNav2DNode::execute_action_wp(
 }
 
 std::optional<ReactiveNav2DNode::MyReactiveInterface::CurrentPoseAndSpeeds>
-ReactiveNav2DNode::MyReactiveInterface::getCurrentPoseAndSpeeds()
+	ReactiveNav2DNode::MyReactiveInterface::getCurrentPoseAndSpeeds()
 {
 	using mrpt::system::CTimeLoggerEntry;
 
