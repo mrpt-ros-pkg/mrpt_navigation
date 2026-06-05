@@ -207,6 +207,19 @@ void PFLocalizationNode::reload_params_from_ros()
 	const auto& paramsIf = this->get_node_parameters_interface();
 	const auto& allParams = paramsIf->get_parameter_overrides();
 
+	// Helper lambda: find or create a key in a map_t, returning ref to value node_t
+	auto findOrCreate = [](mrpt::containers::yaml::map_t& m,
+						   const std::string&               key) -> mrpt::containers::yaml::node_t&
+	{
+		for (auto& kv2 : m)
+		{
+			if (kv2.first.isScalar() && kv2.first.as<std::string>() == key)
+				return kv2.second;
+		}
+		m.push_back({mrpt::containers::yaml::node_t(key), mrpt::containers::yaml::node_t{}});
+		return m.back().second;
+	};
+
 	for (const auto& kv : allParams)
 	{
 		// Get param name:
@@ -214,7 +227,7 @@ void PFLocalizationNode::reload_params_from_ros()
 
 		// ROS2 param names may be nested. Convert that back into YAML nodes:
 		// e.g. "foo.bar" -> ["foo"]["bar"].
-		mrpt::containers::yaml::map_t* targetYamlNode = &paramsBlock.node().asMap();
+		mrpt::containers::yaml::map_t* targetMap = &paramsBlock.node().asMap();
 
 		for (auto pos = name.find("."); pos != std::string::npos; pos = name.find("."))
 		{
@@ -223,32 +236,28 @@ void PFLocalizationNode::reload_params_from_ros()
 			const std::string childKey = name.substr(pos + 1);
 			name = childKey;
 
-			// Use subnode:
-			if (auto it = targetYamlNode->find(parentKey); it == targetYamlNode->end())
-			{  // create new:
-				(*targetYamlNode)[parentKey] = mrpt::containers::yaml::Map();
-				targetYamlNode = &(*targetYamlNode)[parentKey].asMap();
-			}
-			else
-			{  // reuse
-				targetYamlNode = &it->second.asMap();
-			}
+			// Use subnode (create if not exists):
+			auto& subNode = findOrCreate(*targetMap, parentKey);
+			if (!std::holds_alternative<mrpt::containers::yaml::map_t>(subNode.d))
+				subNode.d.emplace<mrpt::containers::yaml::map_t>();
+			targetMap = &std::get<mrpt::containers::yaml::map_t>(subNode.d);
 		}
 
-		// Get param value:
+		// Get param value and set it:
+		auto& valueNode = findOrCreate(*targetMap, name);
 		switch (kv.second.get_type())
 		{
 			case rclcpp::ParameterType::PARAMETER_BOOL:
-				(*targetYamlNode)[name] = kv.second.get<bool>();
+				valueNode = mrpt::containers::yaml::node_t(kv.second.get<bool>());
 				break;
 			case rclcpp::ParameterType::PARAMETER_DOUBLE:
-				(*targetYamlNode)[name] = kv.second.get<double>();
+				valueNode = mrpt::containers::yaml::node_t(kv.second.get<double>());
 				break;
 			case rclcpp::ParameterType::PARAMETER_INTEGER:
-				(*targetYamlNode)[name] = kv.second.get<int>();
+				valueNode = mrpt::containers::yaml::node_t(kv.second.get<int64_t>());
 				break;
 			case rclcpp::ParameterType::PARAMETER_STRING:
-				(*targetYamlNode)[name] = kv.second.get<std::string>();
+				valueNode = mrpt::containers::yaml::node_t(kv.second.get<std::string>());
 				break;
 			default:
 				RCLCPP_WARN(

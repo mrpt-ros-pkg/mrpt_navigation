@@ -24,6 +24,7 @@ find_package(mrpt_libros_bridge REQUIRED)
 include_directories(BEFORE ${mrpt_libros_bridge_INCLUDE_DIRS})
 find_package(mrpt_gui REQUIRED)
 find_package(mrpt_slam REQUIRED)
+find_package(mrpt_viz REQUIRED)
 
 message(STATUS "MRPT_VERSION: ${mrpt_slam_VERSION}")
 
@@ -59,6 +60,7 @@ target_include_directories(${PROJECT_NAME}_core
 
 target_link_libraries(${PROJECT_NAME}_core
   mrpt::mrpt_gui
+  mrpt::mrpt_viz
   mrpt::mrpt_slam
   mrpt_libros_bridge::mrpt_libros_bridge
   mola::mp2p_icp_map
@@ -81,6 +83,7 @@ add_executable(${PROJECT_NAME}_node
 target_link_libraries(${PROJECT_NAME}_node PRIVATE
   ${PROJECT_NAME}_core
   mrpt::mrpt_gui
+  mrpt::mrpt_viz
   mrpt::mrpt_slam
   mrpt_libros_bridge::mrpt_libros_bridge
   rclcpp::rclcpp
@@ -112,6 +115,7 @@ add_library(${PROJECT_NAME}_component SHARED
 target_link_libraries(${PROJECT_NAME}_component PRIVATE
   ${PROJECT_NAME}_core
   mrpt::mrpt_gui
+  mrpt::mrpt_viz
   mrpt::mrpt_slam
   mrpt_libros_bridge::mrpt_libros_bridge
   rclcpp::rclcpp

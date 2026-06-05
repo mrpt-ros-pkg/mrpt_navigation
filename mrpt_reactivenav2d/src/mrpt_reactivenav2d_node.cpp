@@ -654,7 +654,7 @@ void ReactiveNav2DNode::execute_action_goal(const std::shared_ptr<HandleNavigate
 		const auto curNavEnded = currentNavEndedSuccessfully_;
 		currentNavEndedSuccessfullyMtx_.unlock();
 
-		if (navState == mrpt::nav::CAbstractNavigator::NAV_ERROR ||
+		if (navState == mrpt::nav::CAbstractNavigator::TState::NAV_ERROR ||
 			(curNavEnded.has_value() && *curNavEnded == false))
 		{
 			result->state.navigation_status =
@@ -762,7 +762,7 @@ void ReactiveNav2DNode::execute_action_wp(
 		const auto curNavEnded = currentNavEndedSuccessfully_;
 		currentNavEndedSuccessfullyMtx_.unlock();
 
-		if (navState == mrpt::nav::CAbstractNavigator::NAV_ERROR ||
+		if (navState == mrpt::nav::CAbstractNavigator::TState::NAV_ERROR ||
 			(curNavEnded.has_value() && *curNavEnded == false))
 		{
 			result->state.navigation_status =
@@ -795,16 +795,13 @@ void ReactiveNav2DNode::execute_action_wp(
 	}
 }
 
-bool ReactiveNav2DNode::MyReactiveInterface::getCurrentPoseAndSpeeds(
-	mrpt::math::TPose2D& curPose, mrpt::math::TTwist2D& curVel, mrpt::system::TTimeStamp& timestamp,
-	mrpt::math::TPose2D& curOdometry, std::string& frame_id)
+std::optional<ReactiveNav2DNode::MyReactiveInterface::CurrentPoseAndSpeeds>
+ReactiveNav2DNode::MyReactiveInterface::getCurrentPoseAndSpeeds()
 {
 	using mrpt::system::CTimeLoggerEntry;
-	double curV, curW;
 
 	CTimeLoggerEntry tle(parent_.profiler_, "getCurrentPoseAndSpeeds");
 
-	// rclcpp::Duration timeout(0.1);
 	rclcpp::Duration timeout(std::chrono::milliseconds(100));
 
 	geometry_msgs::msg::TransformStamped tfGeom;
@@ -819,7 +816,7 @@ bool ReactiveNav2DNode::MyReactiveInterface::getCurrentPoseAndSpeeds(
 	catch (const tf2::TransformException& ex)
 	{
 		RCLCPP_ERROR(parent_.get_logger(), "%s", ex.what());
-		return false;
+		return std::nullopt;
 	}
 
 	tf2::Transform txRobotPose;
@@ -827,22 +824,20 @@ bool ReactiveNav2DNode::MyReactiveInterface::getCurrentPoseAndSpeeds(
 
 	const mrpt::poses::CPose3D curRobotPose = mrpt::ros2bridge::fromROS(txRobotPose);
 
-	timestamp = mrpt::ros2bridge::fromROS(tfGeom.header.stamp);
+	CurrentPoseAndSpeeds ret;
+	ret.timestamp = mrpt::ros2bridge::fromROS(tfGeom.header.stamp);
 
 	// Explicit 3d->2d to confirm we know we're losing information
-	curPose = mrpt::poses::CPose2D(curRobotPose).asTPose();
-	curOdometry = curPose;
+	ret.pose = mrpt::poses::CPose2D(curRobotPose).asTPose();
+	ret.odometry = ret.pose;
 
-	curV = curW = 0;
 	MRPT_TODO("Retrieve current speeds from /odom topic?");
 	RCLCPP_DEBUG(
 		parent_.get_logger(), "[getCurrentPoseAndSpeeds] Latest pose: %s",
-		curPose.asString().c_str());
+		ret.pose.asString().c_str());
 
-	// From local to global:
-	curVel = mrpt::math::TTwist2D(curV, .0, curW).rotated(curPose.phi);
-
-	return true;
+	// velGlobal stays zero (not implemented)
+	return ret;
 }
 
 bool ReactiveNav2DNode::MyReactiveInterface::changeSpeeds(
@@ -864,7 +859,7 @@ bool ReactiveNav2DNode::MyReactiveInterface::changeSpeeds(
 	return true;
 }
 
-bool ReactiveNav2DNode::MyReactiveInterface::stop(bool isEmergency)
+bool ReactiveNav2DNode::MyReactiveInterface::stop(mrpt::nav::StopType /*stopType*/)
 {
 	mrpt::kinematics::CVehicleVelCmd_DiffDriven vel_cmd;
 	vel_cmd.lin_vel = 0;

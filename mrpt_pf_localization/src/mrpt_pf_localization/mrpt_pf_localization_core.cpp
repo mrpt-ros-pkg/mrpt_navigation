@@ -16,6 +16,7 @@
 #include <mrpt/maps/CSimplePointsMap.h>
 #include <mrpt/obs/CActionCollection.h>
 #include <mrpt/obs/CObservationPointCloud.h>
+#include <mrpt/viz/CVisualObject.h>
 #include <mrpt/viz/CEllipsoid2D.h>
 #include <mrpt/viz/CEllipsoid3D.h>
 #include <mrpt/viz/CPointCloud.h>
@@ -151,8 +152,8 @@ void PFLocalizationCore::Parameters::load_from(const mrpt::containers::yaml& par
 		ASSERT_(params["initial_pose"]["std_x"].isScalar());
 		ASSERT_(params["initial_pose"]["std_y"].isScalar());
 
-		const auto& ipP = params["initial_pose"];
-		const auto& m = ipP["mean"];
+		const mrpt::containers::yaml ipP = params["initial_pose"];
+		const mrpt::containers::yaml m = ipP["mean"];
 		auto& ip = initial_pose;
 		ip.emplace();
 		ip->mean.x(m["x"].as<double>());
@@ -180,7 +181,7 @@ void PFLocalizationCore::Parameters::load_from(const mrpt::containers::yaml& par
 
 	// pf_options:
 	ASSERT_(params.has("pf_options"));
-	auto& pfo = params["pf_options"];
+	mrpt::containers::yaml pfo = params["pf_options"];
 	getOptParam(pfo, pf_options.BETA, "BETA");
 
 	{
@@ -210,7 +211,7 @@ void PFLocalizationCore::Parameters::load_from(const mrpt::containers::yaml& par
 
 	// kld_options:
 	ASSERT_(params.has("kld_options"));
-	auto& kldo = params["kld_options"];
+	mrpt::containers::yaml kldo = params["kld_options"];
 	getOptParam(kldo, kld_options.KLD_binSize_XY, "KLD_binSize_XY");
 	getOptParam(kldo, kld_options.KLD_binSize_PHI, "KLD_binSize_PHI");
 	getOptParam(kldo, kld_options.KLD_delta, "KLD_delta");
@@ -1198,7 +1199,7 @@ void PFLocalizationCore::update_gui(const mrpt::obs::CSensoryFrame& sf)
 
 		// The particles:
 		{
-			CRenderizable::Ptr parts = scene->getByName("particles");
+			mrpt::viz::CVisualObject::Ptr parts = scene->getByName("particles");
 			if (parts) scene->removeObject(parts);
 
 			CSetOfObjects::Ptr p = state_.pdf2d ? state_.pdf2d->getAs3DObject<CSetOfObjects::Ptr>()
@@ -1210,7 +1211,7 @@ void PFLocalizationCore::update_gui(const mrpt::obs::CSensoryFrame& sf)
 		// The particles' covariance as an ellipsoid:
 		if (state_.pdf2d)
 		{
-			CRenderizable::Ptr ellip = scene->getByName("parts_cov");
+			mrpt::viz::CVisualObject::Ptr ellip = scene->getByName("parts_cov");
 			if (!ellip)
 			{
 				auto o = CEllipsoid2D::Create();
@@ -1229,7 +1230,7 @@ void PFLocalizationCore::update_gui(const mrpt::obs::CSensoryFrame& sf)
 		}
 		else
 		{
-			CRenderizable::Ptr ellip = scene->getByName("parts_cov");
+			mrpt::viz::CVisualObject::Ptr ellip = scene->getByName("parts_cov");
 			if (!ellip)
 			{
 				auto o = CEllipsoid3D::Create();
@@ -1249,7 +1250,7 @@ void PFLocalizationCore::update_gui(const mrpt::obs::CSensoryFrame& sf)
 
 		// The laser scan and other observations:
 		{
-			CRenderizable::Ptr scan_pts = scene->getByName("scan");
+			mrpt::viz::CVisualObject::Ptr scan_pts = scene->getByName("scan");
 			if (!scan_pts)
 			{
 				auto o = CPointCloud::Create();
