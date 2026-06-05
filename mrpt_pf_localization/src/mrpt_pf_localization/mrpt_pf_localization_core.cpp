@@ -1064,7 +1064,7 @@ void PFLocalizationCore::init_from_yaml(
 	// Load all required and optional params:
 	params_.load_from(pf_params);
 
-	if (pf_params.asMap().count("log_level_core"))
+	if (pf_params.has("log_level_core"))
 	{
 		const auto coreLogLevel = mrpt::typemeta::str2enum<mrpt::system::VerbosityLevel>(
 			pf_params["log_level_core"].as<std::string>());

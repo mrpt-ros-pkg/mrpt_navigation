@@ -27,7 +27,7 @@ find_package(mrpt_system REQUIRED)
 find_package(mrpt_containers REQUIRED)
 find_package(mrpt_maps REQUIRED)
 find_package(mrpt_gui REQUIRED)
-find_package(mrpt-opengl REQUIRED)
+find_package(mrpt_opengl REQUIRED)
 
 find_package(mrpt_path_planning REQUIRED)
 if (TARGET mrpt_path_planning AND NOT TARGET mrpt_path_planning::mrpt_path_planning)
