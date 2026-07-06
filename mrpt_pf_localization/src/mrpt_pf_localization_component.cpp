@@ -187,7 +187,7 @@ PFLocalizationNode::PFLocalizationNode(const rclcpp::NodeOptions& options)
 		std::chrono::microseconds(mrpt::round(0.5 * 1.0e6 * nodeParams_.transform_tolerance)),
 		[this]()
 		{
-			this->publishTF();
+			if (nodeParams_.publish_tf) this->publishTF();
 			// publishParticles() && publishPose() are done inside loop()
 		});
 }
@@ -609,6 +609,9 @@ void PFLocalizationNode::publishParticlesAndStampedPose()
  */
 void PFLocalizationNode::update_tf_pub_data()
 {
+	if (!nodeParams_.publish_tf) {
+		return;
+	}
 	std::string base_frame_id = nodeParams_.base_link_frame_id;
 	std::string odom_frame_id = nodeParams_.odom_frame_id;
 	std::string global_frame_id = nodeParams_.global_frame_id;
@@ -711,6 +714,7 @@ void PFLocalizationNode::NodeParameters::loadFrom(const mrpt::containers::yaml& 
 
 	MCP_LOAD_OPT(cfg, pub_topic_particles);
 	MCP_LOAD_OPT(cfg, pub_topic_pose);
+	MCP_LOAD_OPT(cfg, publish_tf);
 
 	MCP_LOAD_OPT(cfg, topic_sensors_2d_scan);
 	MCP_LOAD_OPT(cfg, topic_sensors_point_clouds);
