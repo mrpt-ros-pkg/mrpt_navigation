@@ -8,6 +8,7 @@
 
 #include <mp2p_icp/metricmap.h>
 #include <mrpt/maps/COccupancyGridMap2D.h>
+#include <mrpt/maps/CSimplePointsMap.h>
 #include <mrpt/obs/CObservation2DRangeScan.h>
 #include <mrpt/obs/CObservationBeaconRanges.h>
 #include <mrpt/obs/CObservationOdometry.h>
@@ -151,6 +152,17 @@ PFLocalizationNode::PFLocalizationNode(const rclcpp::NodeOptions& options)
 	pubPose_ = this->create_publisher<geometry_msgs::msg::PoseWithCovarianceStamped>(
 		nodeParams_.pub_topic_pose, rclcpp::SystemDefaultsQoS());
 
+	if (!nodeParams_.pub_topic_map_grid.empty())
+	{
+		pubMapGrid_ = this->create_publisher<nav_msgs::msg::OccupancyGrid>(
+			nodeParams_.pub_topic_map_grid, mapQoS);
+	}
+	if (!nodeParams_.pub_topic_map_points.empty())
+	{
+		pubMapPoints_ = this->create_publisher<sensor_msgs::msg::PointCloud2>(
+			nodeParams_.pub_topic_map_points, mapQoS);
+	}
+
 #if 0
 		else if (sources[i].find("beacon") != std::string::npos)
 		{
@@ -187,9 +199,11 @@ PFLocalizationNode::PFLocalizationNode(const rclcpp::NodeOptions& options)
 		std::chrono::microseconds(mrpt::round(0.5 * 1.0e6 * nodeParams_.transform_tolerance)),
 		[this]()
 		{
-			this->publishTF();
+			if (nodeParams_.publish_tf) this->publishTF();
 			// publishParticles() && publishPose() are done inside loop()
 		});
+
+	publishMetricMapViz();
 }
 
 PFLocalizationNode::~PFLocalizationNode() = default;
@@ -268,6 +282,34 @@ void PFLocalizationNode::reload_params_from_ros()
 
 	core_.init_from_yaml(paramsBlock, relocalizationCfg);
 	nodeParams_.loadFrom(paramsBlock);
+
+	if (paramsBlock.has("simplemap_file"))
+	{
+		const auto simplemapFile = paramsBlock["simplemap_file"].as<std::string>();
+		if (!simplemapFile.empty())
+		{
+			if (!paramsBlock.has("map_config_ini_file"))
+			{
+				RCLCPP_FATAL(
+					get_logger(),
+					"Parameter 'map_config_ini_file' is required when 'simplemap_file' is set");
+				return;
+			}
+			const auto mapConfigIni = paramsBlock["map_config_ini_file"].as<std::string>();
+			RCLCPP_INFO(
+				get_logger(), "Loading metric map from simplemap '%s' (ini: '%s')",
+				simplemapFile.c_str(), mapConfigIni.c_str());
+			if (!core_.set_map_from_simple_map(mapConfigIni, simplemapFile))
+			{
+				RCLCPP_FATAL(
+					get_logger(), "Failed to load simplemap '%s'", simplemapFile.c_str());
+			}
+			else
+			{
+				publishMetricMapViz();
+			}
+		}
+	}
 }
 
 void PFLocalizationNode::loop()
@@ -489,6 +531,7 @@ void PFLocalizationNode::callbackMap(const mrpt_msgs::msg::GenericObject& obj)
 	RCLCPP_INFO_STREAM(get_logger(), "[callbackMap] Map contents: " << mm->contents_summary());
 
 	core_.set_map_from_metric_map(*mm);
+	publishMetricMapViz();
 }
 
 void PFLocalizationNode::callbackInitialpose(
@@ -551,6 +594,85 @@ void PFLocalizationNode::callbackGNSS(const sensor_msgs::msg::NavSatFix& msg)
 	core_.on_observation(obs);
 }
 
+void PFLocalizationNode::publishMetricMapViz()
+{
+	publishMetricMapGrid();
+	publishMetricMapPoints();
+}
+
+void PFLocalizationNode::publishMetricMapGrid()
+{
+	if (!pubMapGrid_) return;
+
+	const auto params = core_.getParams();
+	if (!params.metric_map)
+	{
+		RCLCPP_WARN(get_logger(), "Metric map not loaded, skip grid publish");
+		return;
+	}
+
+	auto grid = params.metric_map->mapByClass<mrpt::maps::COccupancyGridMap2D>();
+	if (!grid)
+	{
+		RCLCPP_WARN(
+			get_logger(),
+			"No COccupancyGridMap2D in metric map (check map_config_ini_file layers)");
+		return;
+	}
+
+	nav_msgs::msg::OccupancyGrid rosMap;
+	std_msgs::msg::Header header;
+	header.frame_id = nodeParams_.global_frame_id;
+	header.stamp = this->now();
+	if (!mrpt::ros2bridge::toROS(*grid, rosMap, header))
+	{
+		RCLCPP_ERROR(get_logger(), "Failed to convert MRPT grid to OccupancyGrid");
+		return;
+	}
+
+	pubMapGrid_->publish(rosMap);
+	RCLCPP_INFO(
+		get_logger(), "Published metric map grid on '%s' (%ux%u, res=%.3f)",
+		nodeParams_.pub_topic_map_grid.c_str(), rosMap.info.width, rosMap.info.height,
+		rosMap.info.resolution);
+}
+
+void PFLocalizationNode::publishMetricMapPoints()
+{
+	if (!pubMapPoints_) return;
+
+	const auto params = core_.getParams();
+	if (!params.metric_map)
+	{
+		RCLCPP_WARN(get_logger(), "Metric map not loaded, skip points publish");
+		return;
+	}
+
+	auto pts = params.metric_map->mapByClass<mrpt::maps::CSimplePointsMap>();
+	if (!pts)
+	{
+		RCLCPP_WARN(
+			get_logger(),
+			"No CSimplePointsMap in metric map (check map_config_ini_file layers)");
+		return;
+	}
+
+	sensor_msgs::msg::PointCloud2 rosCloud;
+	std_msgs::msg::Header header;
+	header.frame_id = nodeParams_.global_frame_id;
+	header.stamp = this->now();
+	if (!mrpt::ros2bridge::toROS(*pts, header, rosCloud))
+	{
+		RCLCPP_ERROR(get_logger(), "Failed to convert MRPT points map to PointCloud2");
+		return;
+	}
+
+	pubMapPoints_->publish(rosCloud);
+	RCLCPP_INFO(
+		get_logger(), "Published metric map points on '%s' (%u points)",
+		nodeParams_.pub_topic_map_points.c_str(), rosCloud.width * rosCloud.height);
+}
+
 void PFLocalizationNode::publishParticlesAndStampedPose()
 {
 	const mrpt::poses::CPose3DPDFParticles::Ptr parts = core_.getLastPoseEstimation();
@@ -609,6 +731,9 @@ void PFLocalizationNode::publishParticlesAndStampedPose()
  */
 void PFLocalizationNode::update_tf_pub_data()
 {
+	if (!nodeParams_.publish_tf) {
+		return;
+	}
 	std::string base_frame_id = nodeParams_.base_link_frame_id;
 	std::string odom_frame_id = nodeParams_.odom_frame_id;
 	std::string global_frame_id = nodeParams_.global_frame_id;
@@ -711,6 +836,9 @@ void PFLocalizationNode::NodeParameters::loadFrom(const mrpt::containers::yaml& 
 
 	MCP_LOAD_OPT(cfg, pub_topic_particles);
 	MCP_LOAD_OPT(cfg, pub_topic_pose);
+	MCP_LOAD_OPT(cfg, pub_topic_map_grid);
+	MCP_LOAD_OPT(cfg, pub_topic_map_points);
+	MCP_LOAD_OPT(cfg, publish_tf);
 
 	MCP_LOAD_OPT(cfg, topic_sensors_2d_scan);
 	MCP_LOAD_OPT(cfg, topic_sensors_point_clouds);

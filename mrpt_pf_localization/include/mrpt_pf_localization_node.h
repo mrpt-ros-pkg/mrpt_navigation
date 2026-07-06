@@ -78,6 +78,11 @@ class PFLocalizationNode : public rclcpp::Node
 
 		std::string pub_topic_particles = "/particlecloud";
 		std::string pub_topic_pose = "/pf_pose";
+		std::string pub_topic_map_grid;
+		std::string pub_topic_map_points;
+
+		/// If false, skip publishing map→odom (e.g. robot_localization EKF owns that TF)
+		bool publish_tf = true;
 
 		/// Comma "," separated list of topics to subscribe for LaserScan msgs
 		std::string topic_sensors_2d_scan;
@@ -123,6 +128,9 @@ class PFLocalizationNode : public rclcpp::Node
 	void publishTF();
 	/// Publish the PF output as a PoseArray & PoseWithCovarianceStamped msg
 	void publishParticlesAndStampedPose();
+	void publishMetricMapGrid();
+	void publishMetricMapPoints();
+	void publishMetricMapViz();
 
 	void updateEstimatedTwist();
 	void createOdometryFromTwist();
@@ -146,6 +154,9 @@ class PFLocalizationNode : public rclcpp::Node
 	rclcpp::Publisher<geometry_msgs::msg::PoseArray>::SharedPtr pubParticles_;
 
 	rclcpp::Publisher<geometry_msgs::msg::PoseWithCovarianceStamped>::SharedPtr pubPose_;
+
+	rclcpp::Publisher<nav_msgs::msg::OccupancyGrid>::SharedPtr pubMapGrid_;
+	rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr pubMapPoints_;
 
 	std::shared_ptr<tf2_ros::Buffer> tf_buffer_;
 	std::shared_ptr<tf2_ros::TransformListener> tf_listener_;
