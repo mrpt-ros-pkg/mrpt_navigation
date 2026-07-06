@@ -27,6 +27,8 @@
 #include <mrpt/topography/data_types.h>	 // TGeodeticCoords
 #include <mrpt_pf_localization/mrpt_pf_localization_core.h>
 
+#include <cmath>
+
 #ifdef HAVE_MOLA_RELOCALIZATION
 #include <mola_relocalization/relocalization.h>
 #endif
@@ -1306,6 +1308,39 @@ void PFLocalizationCore::relocalize_here(const mrpt::poses::CPose3DPDFGaussian& 
 	{
 		state_.fsm_state = State::TO_BE_INITIALIZED;
 	}
+}
+
+bool PFLocalizationCore::nudge_pose_towards(
+	const mrpt::poses::CPose3DPDFGaussian& pose, double gain)
+{
+	auto lck = mrpt::lockHelper(stateMtx_);
+
+	if (state_.fsm_state != State::RUNNING || !state_.pdf2d)
+	{
+		return false;
+	}
+
+	if (gain <= 0.0) return true;
+	if (gain > 1.0) gain = 1.0;
+
+	const auto [cov2D, meanPose2D] = state_.pdf2d->getCovarianceAndMean();
+	(void)cov2D;
+
+	const double dx = pose.mean.x() - meanPose2D.x();
+	const double dy = pose.mean.y() - meanPose2D.y();
+	const double dyaw = std::atan2(
+		std::sin(pose.mean.yaw() - meanPose2D.phi()), std::cos(pose.mean.yaw() - meanPose2D.phi()));
+
+	for (auto& p : state_.pdf2d->m_particles)
+	{
+		p.d.x += gain * dx;
+		p.d.y += gain * dy;
+		p.d.phi += gain * dyaw;
+		p.d.normalizePhi();
+	}
+
+	internal_fill_state_lastResult();
+	return true;
 }
 
 mrpt::poses::CPose3DPDFParticles::Ptr PFLocalizationCore::getLastPoseEstimation() const
