@@ -187,7 +187,7 @@ PFLocalizationNode::PFLocalizationNode(const rclcpp::NodeOptions& options)
 		std::chrono::microseconds(mrpt::round(0.5 * 1.0e6 * nodeParams_.transform_tolerance)),
 		[this]()
 		{
-			this->publishTF();
+			if (nodeParams_.publish_tf) this->publishTF();
 			// publishParticles() && publishPose() are done inside loop()
 		});
 }
@@ -268,6 +268,30 @@ void PFLocalizationNode::reload_params_from_ros()
 
 	core_.init_from_yaml(paramsBlock, relocalizationCfg);
 	nodeParams_.loadFrom(paramsBlock);
+
+	if (paramsBlock.has("simplemap_file"))
+	{
+		const auto simplemapFile = paramsBlock["simplemap_file"].as<std::string>();
+		if (!simplemapFile.empty())
+		{
+			if (!paramsBlock.has("map_config_ini_file"))
+			{
+				RCLCPP_FATAL(
+					get_logger(),
+					"Parameter 'map_config_ini_file' is required when 'simplemap_file' is set");
+				return;
+			}
+			const auto mapConfigIni = paramsBlock["map_config_ini_file"].as<std::string>();
+			RCLCPP_INFO(
+				get_logger(), "Loading metric map from simplemap '%s' (ini: '%s')",
+				simplemapFile.c_str(), mapConfigIni.c_str());
+			if (!core_.set_map_from_simple_map(mapConfigIni, simplemapFile))
+			{
+				RCLCPP_FATAL(
+					get_logger(), "Failed to load simplemap '%s'", simplemapFile.c_str());
+			}
+		}
+	}
 }
 
 void PFLocalizationNode::loop()
@@ -609,6 +633,9 @@ void PFLocalizationNode::publishParticlesAndStampedPose()
  */
 void PFLocalizationNode::update_tf_pub_data()
 {
+	if (!nodeParams_.publish_tf) {
+		return;
+	}
 	std::string base_frame_id = nodeParams_.base_link_frame_id;
 	std::string odom_frame_id = nodeParams_.odom_frame_id;
 	std::string global_frame_id = nodeParams_.global_frame_id;
@@ -711,6 +738,7 @@ void PFLocalizationNode::NodeParameters::loadFrom(const mrpt::containers::yaml& 
 
 	MCP_LOAD_OPT(cfg, pub_topic_particles);
 	MCP_LOAD_OPT(cfg, pub_topic_pose);
+	MCP_LOAD_OPT(cfg, publish_tf);
 
 	MCP_LOAD_OPT(cfg, topic_sensors_2d_scan);
 	MCP_LOAD_OPT(cfg, topic_sensors_point_clouds);
