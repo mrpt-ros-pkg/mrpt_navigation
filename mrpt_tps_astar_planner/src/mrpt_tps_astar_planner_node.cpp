@@ -191,6 +191,16 @@ class TPS_Astar_Planner_Node : public rclcpp::Node
 
 	mpp::TrajectoriesAndRobotShape ptgs_;
 
+	// ptgs_ holds shared_ptr<ptg_t> entries that are reused (not cloned) by
+	// every do_path_plan() call via pi.ptgs = ptgs_. The PTG implementations
+	// mutate internal scratch state while evaluating a plan, so with the
+	// reentrant callback group + MultiThreadedExecutor below, concurrent
+	// service calls can run plan() on the same PTG objects at once and
+	// corrupt each other's search. Serialize the actual planning call with
+	// this mutex instead of trying to make every PTG implementation
+	// thread-safe.
+	std::mutex planning_cs_;
+
 	/// Parameters for the cost evaluator
 	mpp::CostEvaluatorCostMap::Parameters costMapParams_;
 
@@ -809,7 +819,13 @@ TPS_Astar_Planner_Node::PlanResult TPS_Astar_Planner_Node::do_path_plan(
 													 << " bestPathLength: " << pcd.bestPath.size());
 	};
 
-	const mpp::PlannerOutput plan = local_planner.plan(pi);
+	// See planning_cs_ comment: pi.ptgs shares PTG instances with any other
+	// concurrent do_path_plan() call, and PTG evaluation is not reentrant.
+	mpp::PlannerOutput plan;
+	{
+		auto lckPlan = mrpt::lockHelper(planning_cs_);
+		plan = local_planner.plan(pi);
+	}
 
 	RCLCPP_INFO_STREAM(
 		this->get_logger(), "Done.\n"
