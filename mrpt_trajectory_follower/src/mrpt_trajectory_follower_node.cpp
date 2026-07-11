@@ -12,6 +12,7 @@
 #include <mrpt/config/CConfigFile.h>
 #include <mrpt/containers/yaml.h>
 #include <mrpt/maps/CSimplePointsMap.h>
+#include <mrpt/math/wrap2pi.h>
 #include <mrpt/poses/CPose2D.h>
 #include <mrpt/poses/CPose3D.h>
 #include <mrpt/ros2bridge/point_cloud2.h>
@@ -119,8 +120,23 @@ class TrajectoryFollowerNode : public rclcpp::Node, public mpp::TrajectoryVehicl
 	std::string topic_cmd_vel_pub_ = "/cmd_vel";
 	std::string ptg_ini_file_ = "";
 	std::string follower_params_file_ = "";
+	double robot_radius_ = 0.0;	 //!< footprint fallback when no ptg_ini given
+
+	// Obstacle cloud height band (in the map frame). Points outside are dropped
+	// before the 2D predictive-safety check, so a raw 3D lidar can be used as an
+	// obstacle source without its ground/overhead returns causing false stops.
+	// Defaults are permissive (effectively disabled); set them for a 3D lidar.
+	double obstacle_z_min_ = -1e6;
+	double obstacle_z_max_ = 1e6;
+
+	// Drop obstacle returns within this radius [m] of the robot base (removes
+	// the robot's own body seen by a 3D lidar). <=0 disables the self-filter.
+	double self_filter_radius_ = 0.0;
 
 	mpp::TrajectoriesAndRobotShape ptgs_;
+
+	mpp::Trajectory last_trajectory_;  //!< to ignore identical re-published paths
+	bool have_trajectory_ = false;
 
 	void read_parameters();
 	void control_tick();
@@ -163,12 +179,17 @@ TrajectoryFollowerNode::TrajectoryFollowerNode()
 		follower_.setRobotShape(ptgs_.robotShape);
 		RCLCPP_INFO(get_logger(), "Loaded robot shape from '%s'.", ptg_ini_file_.c_str());
 	}
+	else if (robot_radius_ > 0)
+	{
+		follower_.setRobotShape(mpp::robot_radius_t{robot_radius_});
+		RCLCPP_INFO(get_logger(), "Using circular footprint, radius %.3f m.", robot_radius_);
+	}
 	else
 	{
 		RCLCPP_WARN(
 			get_logger(),
-			"No 'ptg_ini' given: predictive safety will sample the reference "
-			"point only (no footprint).");
+			"No 'ptg_ini' or 'robot_radius' given: predictive safety will "
+			"sample the reference point only (no footprint).");
 	}
 
 	const auto qos = rclcpp::SystemDefaultsQoS();
@@ -221,6 +242,22 @@ void TrajectoryFollowerNode::read_parameters()
 	p("topic_cmd_vel_pub", topic_cmd_vel_pub_);
 	p("ptg_ini", ptg_ini_file_);
 	p("follower_parameters", follower_params_file_);
+
+	this->declare_parameter<double>("robot_radius", robot_radius_);
+	this->get_parameter("robot_radius", robot_radius_);
+	RCLCPP_INFO(get_logger(), "robot_radius: %.3f", robot_radius_);
+
+	this->declare_parameter<double>("obstacle_z_min", obstacle_z_min_);
+	this->get_parameter("obstacle_z_min", obstacle_z_min_);
+	this->declare_parameter<double>("obstacle_z_max", obstacle_z_max_);
+	this->get_parameter("obstacle_z_max", obstacle_z_max_);
+	RCLCPP_INFO(
+		get_logger(), "obstacle_z band (map frame): [%.2f, %.2f] m", obstacle_z_min_,
+		obstacle_z_max_);
+
+	this->declare_parameter<double>("self_filter_radius", self_filter_radius_);
+	this->get_parameter("self_filter_radius", self_filter_radius_);
+	RCLCPP_INFO(get_logger(), "self_filter_radius: %.3f m", self_filter_radius_);
 }
 
 bool TrajectoryFollowerNode::wait_for_transform(
@@ -370,8 +407,30 @@ void TrajectoryFollowerNode::callback_path(const nav_msgs::msg::Path& msg)
 		return;
 	}
 
+	// Ignore a re-published identical path (e.g. from a transient_local/latched
+	// publisher): resetting the follower would restart its speed profile from
+	// zero and prevent it from ever accelerating.
+	if (have_trajectory_ && tr.size() == last_trajectory_.size())
+	{
+		bool same = true;
+		for (std::size_t i = 0; i < tr.size(); i++)
+		{
+			const auto& a = tr[i].pose;
+			const auto& b = last_trajectory_[i].pose;
+			if (std::abs(a.x - b.x) > 1e-3 || std::abs(a.y - b.y) > 1e-3 ||
+				std::abs(mrpt::math::wrapToPi(a.phi - b.phi)) > 1e-3)
+			{
+				same = false;
+				break;
+			}
+		}
+		if (same) return;
+	}
+
 	auto lck = std::lock_guard(follower_cs_);
 	follower_.setTrajectory(tr);
+	last_trajectory_ = tr;
+	have_trajectory_ = true;
 	RCLCPP_INFO(get_logger(), "New reference path with %zu poses.", tr.size());
 }
 
@@ -391,8 +450,44 @@ void TrajectoryFollowerNode::callback_obstacles(
 	if (!wait_for_transform(sensorPoseInMap, pcMsg->header.frame_id, frame_id_map_)) return;
 	pc->changeCoordinatesReference(sensorPoseInMap);
 
+	// Robot base in map, for the self-filter (points on the robot's own body).
+	double robotX = 0;
+	double robotY = 0;
+	bool haveRobot = false;
+	if (self_filter_radius_ > 0)
+	{
+		mrpt::poses::CPose3D robotInMap;
+		if (wait_for_transform(robotInMap, frame_id_robot_, frame_id_map_))
+		{
+			robotX = robotInMap.x();
+			robotY = robotInMap.y();
+			haveRobot = true;
+		}
+	}
+	const double selfR2 = self_filter_radius_ * self_filter_radius_;
+
+	// Drop points outside the collision height band (removes ground and
+	// overhead returns from a raw 3D lidar) and those on the robot itself.
+	const auto& xs = pc->getPointsBufferRef_x();
+	const auto& ys = pc->getPointsBufferRef_y();
+	const auto& zs = pc->getPointsBufferRef_z();
+	auto filtered = mrpt::maps::CSimplePointsMap::Create();
+	filtered->reserve(xs.size());
+	for (std::size_t i = 0; i < xs.size(); i++)
+	{
+		if (zs[i] < obstacle_z_min_ || zs[i] > obstacle_z_max_) continue;
+		if (haveRobot)
+		{
+			const double dx = xs[i] - robotX;
+			const double dy = ys[i] - robotY;
+			if (dx * dx + dy * dy < selfR2) continue;
+		}
+		filtered->insertPointFast(xs[i], ys[i], zs[i]);
+	}
+	filtered->mark_as_modified();
+
 	auto lck = std::lock_guard(follower_cs_);
-	follower_.setObstacles(*pc);
+	follower_.setObstacles(*filtered);
 }
 
 void TrajectoryFollowerNode::callback_odom(const nav_msgs::msg::Odometry::SharedPtr& msg)
@@ -433,6 +528,10 @@ void TrajectoryFollowerNode::control_tick()
 			follow(out.command);
 			break;
 	}
+
+	RCLCPP_DEBUG_THROTTLE(
+		get_logger(), *get_clock(), 1000, "status=%s safety_scale=%.2f v=%.2f",
+		to_string(out.status), out.safety_scale, out.target_speed);
 
 	std_msgs::msg::String sm;
 	sm.data = to_string(out.status);
