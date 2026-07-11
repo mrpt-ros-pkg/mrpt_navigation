@@ -26,7 +26,7 @@ find_package(mrpt-system REQUIRED)
 find_package(mrpt-containers REQUIRED)
 
 find_package(mrpt_path_planning REQUIRED)
-if (TARGET mrpt_path_planning AND NOT TARGET mrpt_path_planning::mrpt_path_planning)
+if(TARGET mrpt_path_planning AND NOT TARGET mrpt_path_planning::mrpt_path_planning)
   add_library(mrpt_path_planning::mrpt_path_planning ALIAS mrpt_path_planning)
 endif()
 
@@ -34,11 +34,11 @@ if(NOT CMAKE_CXX_STANDARD)
   set(CMAKE_CXX_STANDARD 17)
 endif()
 
-if (CMAKE_COMPILER_IS_GNUCXX)
-	add_compile_options(-Wall -Wno-long-long -Wno-variadic-macros)
-	if (NOT ${CMAKE_CXX_COMPILER_VERSION} LESS "6.0")
-		add_compile_options(-Wno-ignored-attributes -Wno-int-in-bool-context)
-	endif()
+if(CMAKE_COMPILER_IS_GNUCXX)
+  add_compile_options(-Wall -Wno-long-long -Wno-variadic-macros)
+  if(NOT ${CMAKE_CXX_COMPILER_VERSION} LESS "6.0")
+    add_compile_options(-Wno-ignored-attributes -Wno-int-in-bool-context)
+  endif()
 endif()
 
 ###########
