@@ -81,6 +81,25 @@
 #define MRPT_ROS2_SRV_QOS rmw_qos_profile_services_default
 #endif
 
+namespace
+{
+// Build the obstacle clearance costmap. The robot shape is forwarded to make the
+// costmap footprint-aware when the linked mpp exposes the newer overload
+// (feature macro from CostEvaluatorCostMap.h); against older mpp it falls back
+// to the origin-only signature, so this node keeps building either way.
+mpp::CostEvaluatorCostMap::Ptr makeCostmapEvaluator(
+	const mrpt::maps::CPointsMap& obstacles, const mpp::CostEvaluatorCostMap::Parameters& params,
+	const mrpt::math::TPose2D& startPose, [[maybe_unused]] const mpp::RobotShape& robotShape)
+{
+#if defined(MPP_COSTEVALUATORCOSTMAP_HAS_ROBOT_SHAPE)
+	return mpp::CostEvaluatorCostMap::FromStaticPointObstacles(
+		obstacles, params, startPose, robotShape);
+#else
+	return mpp::CostEvaluatorCostMap::FromStaticPointObstacles(obstacles, params, startPose);
+#endif
+}
+}  // namespace
+
 const char* NODE_NAME = "mrpt_tps_astar_planner_node";
 
 /**
@@ -753,8 +772,8 @@ TPS_Astar_Planner_Node::PlanResult TPS_Astar_Planner_Node::do_path_plan(
 		obstacleSources++;
 		totalObstaclePoints += e.grid_obstacles->size();
 
-		auto costmap = mpp::CostEvaluatorCostMap::FromStaticPointObstacles(
-			*e.grid_obstacles, costMapParams_, pi.stateStart.pose);
+		auto costmap = makeCostmapEvaluator(
+			*e.grid_obstacles, costMapParams_, pi.stateStart.pose, ptgs_.robotShape);
 		local_planner.costEvaluators_.push_back(costmap);
 	}
 	// points:
@@ -779,8 +798,8 @@ TPS_Astar_Planner_Node::PlanResult TPS_Astar_Planner_Node::do_path_plan(
 		obstacleSources++;
 		totalObstaclePoints += e.obstacle_points->size();
 
-		auto costmap = mpp::CostEvaluatorCostMap::FromStaticPointObstacles(
-			*e.obstacle_points, costMapParams_, pi.stateStart.pose);
+		auto costmap = makeCostmapEvaluator(
+			*e.obstacle_points, costMapParams_, pi.stateStart.pose, ptgs_.robotShape);
 		local_planner.costEvaluators_.push_back(costmap);
 	}
 
