@@ -6,6 +6,12 @@
    | All rights reserved. Released under BSD 3-Clause license. See LICENSE  |
    +------------------------------------------------------------------------+ */
 
+// This node is built on mpp::TrajectoryFollower, whose header was added in a
+// newer mrpt_path_planning. Guard the whole translation unit on its presence so
+// the package still builds against older mpp versions (as a stub that errors at
+// runtime) instead of failing the whole workspace build.
+#if __has_include(<mpp/follow/algos/TrajectoryFollower.h>)
+
 #include <mpp/data/TrajectoriesAndRobotShape.h>
 #include <mpp/follow/algos/TrajectoryFollower.h>
 #include <mpp/follow/interfaces/TrajectoryVehicleInterface.h>
@@ -546,3 +552,21 @@ int main(int argc, char** argv)
 	rclcpp::shutdown();
 	return 0;
 }
+
+#else  // mpp::TrajectoryFollower not available in the linked mrpt_path_planning
+
+#include <rclcpp/rclcpp.hpp>
+
+int main(int argc, char** argv)
+{
+	rclcpp::init(argc, argv);
+	RCLCPP_FATAL(
+		rclcpp::get_logger("mrpt_trajectory_follower"),
+		"This node requires a newer mrpt_path_planning providing "
+		"mpp::TrajectoryFollower (mpp/follow/algos/TrajectoryFollower.h). "
+		"Update mrpt_path_planning and rebuild.");
+	rclcpp::shutdown();
+	return 1;
+}
+
+#endif  // __has_include(<mpp/follow/algos/TrajectoryFollower.h>)
