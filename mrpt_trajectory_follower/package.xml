@@ -1,0 +1,36 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>mrpt_trajectory_follower</name>
+  <version>2.5.0</version>
+  <description>ROS 2 node that accurately follows a reference trajectory with minimal predictive safety, wrapping mpp::TrajectoryFollower</description>
+
+  <maintainer email="jlblanco@ual.es">Jose-Luis Blanco-Claraco</maintainer>
+
+  <author email="jlblanco@ual.es">Jose-Luis Blanco-Claraco</author>
+
+  <license>BSD</license>
+  <url type="website">https://github.com/mrpt-ros-pkg/mrpt_navigation</url>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <!-- DEPS -->
+  <depend>mrpt_libmaps</depend>
+  <depend>mrpt_libros_bridge</depend>
+  <depend>mrpt_path_planning</depend>
+  <depend>geometry_msgs</depend>
+  <depend>nav_msgs</depend>
+  <depend>rclcpp</depend>
+  <depend>sensor_msgs</depend>
+  <depend>std_msgs</depend>
+  <depend>tf2</depend>
+  <depend>tf2_geometry_msgs</depend>
+  <depend>tf2_ros</depend>
+
+  <test_depend>ament_cmake_lint_cmake</test_depend>
+  <test_depend>ament_cmake_xmllint</test_depend>
+  <test_depend>ament_lint_auto</test_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

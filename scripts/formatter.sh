@@ -20,6 +20,7 @@ find \
     mrpt_pointcloud_pipeline \
     mrpt_reactivenav2d \
     mrpt_tps_astar_planner \
+    mrpt_trajectory_follower \
     mrpt_tutorials \
     \( -iname "*.h" -o -iname "*.hpp" -o -iname "*.cpp" -o -iname "*.c" \) \
   -print0 | xargs -0 -r -t clang-format-14 "${MODE[@]}"
