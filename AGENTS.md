@@ -21,6 +21,9 @@ list and responsibilities:
 - **mrpt_reactivenav2d** — pure reactive navigator for polygonal robots in 2D.
 - **mrpt_tps_astar_planner** — SE(2)-lattice A* path planner based on PTG
   trajectories.
+- **mrpt_trajectory_follower** — node that accurately follows a reference
+  pose+speed path (pure pursuit) with minimal predictive safety (footprint
+  sweeps stop/slow before obstacles); wraps `mpp::TrajectoryFollower`.
 - **mrpt_msgs_bridge** — C++ conversions between `mrpt_msgs` ROS messages and
   native MRPT classes.
 - **mrpt_nav_interfaces** — msg/srv/action definitions shared by the other

@@ -1,0 +1,34 @@
+# Parameters for mpp::TrajectoryFollower (loaded by mrpt_trajectory_follower_node
+# via the 'follower_parameters' node parameter).
+
+# --- Kinematic limits ---
+max_speed: 0.5             # [m/s]
+max_accel: 0.5             # [m/s^2]
+max_decel: 0.7             # [m/s^2]
+max_lateral_accel: 1.0     # [m/s^2] curvature speed limit
+
+# --- Pure-pursuit lookahead: L = clamp(lookahead_time * v, min, max) ---
+lookahead_min: 0.4         # [m]
+lookahead_max: 1.5         # [m]
+lookahead_time: 1.0        # [s]
+
+# --- Goal / tracking tolerances ---
+goal_dist_tol: 0.15        # [m]
+goal_ang_tol: 12.0         # [deg]
+max_cross_track: 1.0       # [m] -> OffPathExceeded
+
+# --- Loop timing ---
+control_period: 0.05       # [s] (20 Hz)
+horizon: 1.5               # [s] emitted chunk length
+sample_period: 0.1         # [s] emitted chunk sampling
+emit_frame: odom
+
+# --- Predictive safety (inert unless a footprint + obstacles are available) ---
+safety_margin: 0.05                # [m] footprint inflation = "contact"
+stop_distance: 0.3                 # [m] contact within -> full stop
+slow_distance: 1.5                 # [m] contact beyond -> full speed
+safety_horizon: 3.0                # [s] forecast rollout length
+reference_lookahead_dist: 2.5      # [m] reference sweep distance
+footprint_sample_resolution: 0.1   # [m]
+resume_scale: 0.2                  # hysteresis to resume after a stop
+block_timeout: 5.0                 # [s] stopped longer than this -> Blocked
