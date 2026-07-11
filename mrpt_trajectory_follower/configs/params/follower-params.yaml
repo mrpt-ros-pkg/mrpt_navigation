@@ -16,6 +16,7 @@ lookahead_time: 1.0        # [s]
 goal_dist_tol: 0.15        # [m]
 goal_ang_tol: 12.0         # [deg]
 max_cross_track: 1.0       # [m] -> OffPathExceeded
+arrival_radius: 0.3        # [m] settle-and-hold radius at the goal (anti-runaway)
 
 # --- Loop timing ---
 control_period: 0.05       # [s] (20 Hz)
