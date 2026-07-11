@@ -270,7 +270,7 @@ bool TrajectoryFollowerNode::wait_for_transform(
 	mrpt::poses::CPose3D& des, const std::string& target_frame, const std::string& source_frame,
 	int timeout_milliseconds)
 {
-	const rclcpp::Duration timeout(0, 1000 * timeout_milliseconds);
+	const rclcpp::Duration timeout(0, 1000000LL * timeout_milliseconds);
 	try
 	{
 		geometry_msgs::msg::TransformStamped tf = tf_buffer_->lookupTransform(
@@ -308,7 +308,10 @@ mpp::VehicleOdometryState TrajectoryFollowerNode::get_odometry()
 {
 	mpp::VehicleOdometryState st;
 	auto lck = std::lock_guard(odom_cs_);
-	if (!have_odom_) return st;
+	if (!have_odom_)
+	{
+		return st;
+	}
 
 	st.valid = true;
 	st.odometry = mrpt::poses::CPose2D(mrpt::ros2bridge::fromROS(last_odom_.pose.pose)).asTPose();
@@ -342,7 +345,10 @@ void TrajectoryFollowerNode::start_watchdog(std::chrono::milliseconds timeout)
 		wd_timeout_ = timeout;
 		last_cmd_time_ = this->now();
 	}
-	if (watchdog_timer_) return;
+	if (watchdog_timer_)
+	{
+		return;
+	}
 
 	// Check at a fraction of the timeout so a stall is caught promptly.
 	const auto checkPeriod = std::max<int64_t>(50, timeout.count() / 4);
@@ -351,7 +357,10 @@ void TrajectoryFollowerNode::start_watchdog(std::chrono::milliseconds timeout)
 		[this]()
 		{
 			auto lck = std::lock_guard(wd_cs_);
-			if (wd_timeout_.count() <= 0) return;
+			if (wd_timeout_.count() <= 0)
+			{
+				return;
+			}
 			if ((this->now() - last_cmd_time_) > rclcpp::Duration(wd_timeout_))
 			{
 				// Stalled: fail safe. Publish directly (avoid re-entering the
@@ -376,9 +385,12 @@ void TrajectoryFollowerNode::publish_cmd(double vx, double omega)
 
 void TrajectoryFollowerNode::publish_chunk(const mpp::SampledTrajectory& ref)
 {
-	if (pub_chunk_->get_subscription_count() == 0) return;
+	if (pub_chunk_->get_subscription_count() == 0)
+	{
+		return;
+	}
 	nav_msgs::msg::Path path;
-	path.header.frame_id = ref.frame_id.empty() ? frame_id_robot_ : ref.frame_id;
+	path.header.frame_id = ref.frame_id.empty() ? frame_id_map_ : ref.frame_id;
 	path.header.stamp = this->now();
 	for (const auto& s : ref.points)
 	{
@@ -413,6 +425,8 @@ void TrajectoryFollowerNode::callback_path(const nav_msgs::msg::Path& msg)
 		return;
 	}
 
+	auto lck = std::lock_guard(follower_cs_);
+
 	// Ignore a re-published identical path (e.g. from a transient_local/latched
 	// publisher): resetting the follower would restart its speed profile from
 	// zero and prevent it from ever accelerating.
@@ -430,10 +444,12 @@ void TrajectoryFollowerNode::callback_path(const nav_msgs::msg::Path& msg)
 				break;
 			}
 		}
-		if (same) return;
+		if (same)
+		{
+			return;
+		}
 	}
 
-	auto lck = std::lock_guard(follower_cs_);
 	follower_.setTrajectory(tr);
 	last_trajectory_ = tr;
 	have_trajectory_ = true;
@@ -453,7 +469,10 @@ void TrajectoryFollowerNode::callback_obstacles(
 	// Transform to the map frame (do the possibly-blocking TF lookup before
 	// taking the follower lock).
 	mrpt::poses::CPose3D sensorPoseInMap;
-	if (!wait_for_transform(sensorPoseInMap, pcMsg->header.frame_id, frame_id_map_)) return;
+	if (!wait_for_transform(sensorPoseInMap, pcMsg->header.frame_id, frame_id_map_))
+	{
+		return;
+	}
 	pc->changeCoordinatesReference(sensorPoseInMap);
 
 	// Robot base in map, for the self-filter (points on the robot's own body).
@@ -481,12 +500,18 @@ void TrajectoryFollowerNode::callback_obstacles(
 	filtered->reserve(xs.size());
 	for (std::size_t i = 0; i < xs.size(); i++)
 	{
-		if (zs[i] < obstacle_z_min_ || zs[i] > obstacle_z_max_) continue;
+		if (zs[i] < obstacle_z_min_ || zs[i] > obstacle_z_max_)
+		{
+			continue;
+		}
 		if (haveRobot)
 		{
 			const double dx = xs[i] - robotX;
 			const double dy = ys[i] - robotY;
-			if (dx * dx + dy * dy < selfR2) continue;
+			if (dx * dx + dy * dy < selfR2)
+			{
+				continue;
+			}
 		}
 		filtered->insertPointFast(xs[i], ys[i], zs[i]);
 	}
@@ -506,21 +531,27 @@ void TrajectoryFollowerNode::callback_odom(const nav_msgs::msg::Odometry::Shared
 // ------------------------------- control loop -------------------------------
 void TrajectoryFollowerNode::control_tick()
 {
-	mpp::TrajectoryFollower::Output out;
 	{
 		auto lck = std::lock_guard(follower_cs_);
 		if (!follower_.hasTrajectory())
 		{
 			return;	 // nothing to do; robot commanded elsewhere / already idle
 		}
+	}
 
-		const auto loc = get_localization();
-		if (!loc.valid)
-		{
-			stop(mpp::StopKind::EMERGENCY);
-			return;
-		}
-		const auto odo = get_odometry();
+	// Read localization and odometry (possibly-blocking TF lookups) outside the
+	// follower lock so they do not stall the path/obstacle callbacks.
+	const auto loc = get_localization();
+	if (!loc.valid)
+	{
+		stop(mpp::StopKind::EMERGENCY);
+		return;
+	}
+	const auto odo = get_odometry();
+
+	mpp::TrajectoryFollower::Output out;
+	{
+		auto lck = std::lock_guard(follower_cs_);
 		out = follower_.step(loc, odo);
 	}
 
@@ -569,4 +600,4 @@ int main(int argc, char** argv)
 	return 1;
 }
 
-#endif  // __has_include(<mpp/follow/algos/TrajectoryFollower.h>)
+#endif	// __has_include(<mpp/follow/algos/TrajectoryFollower.h>)
