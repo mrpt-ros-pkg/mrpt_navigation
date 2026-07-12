@@ -10,11 +10,11 @@
 // newer mrpt_path_planning. Guard the whole translation unit on its presence so
 // the package still builds against older mpp versions (as a stub that errors at
 // runtime) instead of failing the whole workspace build.
-#if __has_include(<mpp/follow/algos/TrajectoryFollower.h>)
+#if __has_include(<mpp/algos/TrajectoryFollower.h>)
 
+#include <mpp/algos/TrajectoryFollower.h>
 #include <mpp/data/TrajectoriesAndRobotShape.h>
-#include <mpp/follow/algos/TrajectoryFollower.h>
-#include <mpp/follow/interfaces/TrajectoryVehicleInterface.h>
+#include <mpp/interfaces/TrajectoryVehicleInterface.h>
 #include <mrpt/config/CConfigFile.h>
 #include <mrpt/containers/yaml.h>
 #include <mrpt/maps/CSimplePointsMap.h>
@@ -594,10 +594,10 @@ int main(int argc, char** argv)
 	RCLCPP_FATAL(
 		rclcpp::get_logger("mrpt_trajectory_follower"),
 		"This node requires a newer mrpt_path_planning providing "
-		"mpp::TrajectoryFollower (mpp/follow/algos/TrajectoryFollower.h). "
+		"mpp::TrajectoryFollower (mpp/algos/TrajectoryFollower.h). "
 		"Update mrpt_path_planning and rebuild.");
 	rclcpp::shutdown();
 	return 1;
 }
 
-#endif	// __has_include(<mpp/follow/algos/TrajectoryFollower.h>)
+#endif	// __has_include(<mpp/algos/TrajectoryFollower.h>)
