@@ -28,6 +28,7 @@
 #include <tf2_ros/buffer.h>
 #include <tf2_ros/transform_listener.h>
 
+#include <atomic>
 #include <chrono>
 #include <geometry_msgs/msg/pose_stamped.hpp>
 #include <geometry_msgs/msg/transform_stamped.hpp>
@@ -116,6 +117,14 @@ class TrajectoryFollowerNode : public rclcpp::Node, public mpp::TrajectoryVehicl
 	std::mutex wd_cs_;
 	rclcpp::Time last_cmd_time_;
 	std::chrono::milliseconds wd_timeout_{0};
+
+	// True only while actively emitting a driving command (status Running). Used
+	// so the node never spams zero cmd_vel when idle or after ReachedGoal/Blocked
+	// -- otherwise a downstream twist_mux would treat this node as a permanently
+	// active input and fight other cmd_vel sources (e.g. teleop). We publish one
+	// clean zero on the transition to a stopped state, then stay silent until a
+	// new reference path arrives.
+	std::atomic<bool> actively_driving_{false};
 
 	// Params:
 	std::string frame_id_map_ = "map";
@@ -356,6 +365,13 @@ void TrajectoryFollowerNode::start_watchdog(std::chrono::milliseconds timeout)
 		std::chrono::milliseconds(checkPeriod),
 		[this]()
 		{
+			// Only guard an actively driving loop: when idle or already stopped,
+			// staying silent lets a downstream mux time this input out instead of
+			// us fighting other cmd_vel sources with a stream of zeros.
+			if (!actively_driving_.load())
+			{
+				return;
+			}
 			auto lck = std::lock_guard(wd_cs_);
 			if (wd_timeout_.count() <= 0)
 			{
@@ -544,7 +560,11 @@ void TrajectoryFollowerNode::control_tick()
 	const auto loc = get_localization();
 	if (!loc.valid)
 	{
-		stop(mpp::StopKind::EMERGENCY);
+		// Emit a single stop only if we were driving; then stay silent.
+		if (actively_driving_.exchange(false))
+		{
+			stop(mpp::StopKind::EMERGENCY);
+		}
 		return;
 	}
 	const auto odo = get_odometry();
@@ -559,9 +579,16 @@ void TrajectoryFollowerNode::control_tick()
 	{
 		case mpp::FollowerStatus::ReachedGoal:
 		case mpp::FollowerStatus::Blocked:
-			stop(mpp::StopKind::REGULAR);
+			// Publish one clean zero on the transition to stopped, then stay
+			// silent (don't re-publish every tick) so a downstream mux can time
+			// this input out. Status keeps being published below regardless.
+			if (actively_driving_.exchange(false))
+			{
+				stop(mpp::StopKind::REGULAR);
+			}
 			break;
 		default:
+			actively_driving_ = true;
 			follow(out.command);
 			break;
 	}
