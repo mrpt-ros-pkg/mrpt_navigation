@@ -34,8 +34,23 @@ find_package(mrpt-gui REQUIRED)
 find_package(mrpt-opengl REQUIRED)
 
 find_package(mrpt_path_planning REQUIRED)
-if (TARGET mrpt_path_planning AND NOT TARGET mrpt_path_planning::mrpt_path_planning)
-  add_library(mrpt_path_planning::mrpt_path_planning ALIAS mrpt_path_planning)
+# Compat shim: mrpt_path_planning >=2.0 exports a properly-namespaced
+# mpp::mrpt_path_planning target; older (<2.0, pre mrpt_path_planning_core
+# split) releases exported an unnamespaced "mrpt_path_planning" target.
+# Normalize to mpp::mrpt_path_planning either way.
+if(NOT TARGET mpp::mrpt_path_planning AND TARGET mrpt_path_planning)
+  add_library(mpp::mrpt_path_planning ALIAS mrpt_path_planning)
+endif()
+
+# mpp::viz_nav_plan() (used below) lives in the separate mrpt_path_planning_viz
+# library on mrpt_path_planning >=2.0 (split into mrpt_path_planning_core /
+# mrpt_path_planning_apps); on older monolithic releases it's already part of
+# mpp::mrpt_path_planning itself, so this dependency is optional.
+find_package(mrpt_path_planning_viz QUIET)
+if(TARGET mpp::mrpt_path_planning_viz)
+  set(MPP_VIZ_TARGET mpp::mrpt_path_planning_viz)
+else()
+  set(MPP_VIZ_TARGET "")
 endif()
 
 message(STATUS "MRPT_VERSION: ${MRPT_VERSION}")
@@ -79,7 +94,8 @@ target_link_libraries(${PROJECT_NAME}_node PRIVATE
   mrpt::nav
   mrpt::kinematics
   mrpt::ros2bridge
-  mrpt_path_planning::mrpt_path_planning
+  mpp::mrpt_path_planning
+  ${MPP_VIZ_TARGET}
   rclcpp::rclcpp
   ${rclcpp_components_TARGETS}
   ${nav_msgs_TARGETS}

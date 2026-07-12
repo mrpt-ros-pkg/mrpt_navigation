@@ -26,8 +26,12 @@ find_package(mrpt-system REQUIRED)
 find_package(mrpt-containers REQUIRED)
 
 find_package(mrpt_path_planning REQUIRED)
-if(TARGET mrpt_path_planning AND NOT TARGET mrpt_path_planning::mrpt_path_planning)
-  add_library(mrpt_path_planning::mrpt_path_planning ALIAS mrpt_path_planning)
+# Compat shim: mrpt_path_planning >=2.0 exports a properly-namespaced
+# mpp::mrpt_path_planning target; older (<2.0, pre mrpt_path_planning_core
+# split) releases exported an unnamespaced "mrpt_path_planning" target.
+# Normalize to mpp::mrpt_path_planning either way.
+if(NOT TARGET mpp::mrpt_path_planning AND TARGET mrpt_path_planning)
+  add_library(mpp::mrpt_path_planning ALIAS mrpt_path_planning)
 endif()
 
 if(NOT CMAKE_CXX_STANDARD)
@@ -54,7 +58,7 @@ target_link_libraries(${PROJECT_NAME}_node PRIVATE
   mrpt::math
   mrpt::system
   mrpt::containers
-  mrpt_path_planning::mrpt_path_planning
+  mpp::mrpt_path_planning
   rclcpp::rclcpp
   ${nav_msgs_TARGETS}
   ${geometry_msgs_TARGETS}
