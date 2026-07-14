@@ -7,10 +7,12 @@ max_accel: 0.5             # [m/s^2]
 max_decel: 0.7             # [m/s^2]
 max_lateral_accel: 1.0     # [m/s^2] curvature speed limit
 
-# --- Pure-pursuit lookahead: L = clamp(lookahead_time * v, min, max) ---
-lookahead_min: 0.4         # [m]
-lookahead_max: 1.5         # [m]
-lookahead_time: 1.0        # [s]
+# --- Pure-pursuit lookahead (curvature-adaptive) ---
+# Marched along the path until it has bent by lookahead_bend, capped at
+# lookahead_max travel: long/smooth on straights, short on curves and into the
+# terminal maneuver. No per-speed schedule to tune.
+lookahead_max: 1.5         # [m] max lookahead travel
+lookahead_bend: 25.0       # [deg] path bend that caps the lookahead
 
 # --- Goal / tracking tolerances ---
 goal_dist_tol: 0.15        # [m]
