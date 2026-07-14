@@ -10,6 +10,7 @@
 #include <mpp/algos/CostEvaluatorPreferredWaypoint.h>
 #include <mpp/algos/NavEngine.h>
 #include <mpp/algos/TPS_Astar.h>
+#include <mpp/algos/edge_interpolated_path.h>
 #include <mpp/algos/refine_trajectory.h>
 #include <mpp/algos/trajectories.h>
 #include <mpp/algos/viz.h>
@@ -151,6 +152,9 @@ class TPS_Astar_Planner_Node : public rclcpp::Node
 
 	/// Flag for MRPT GUI
 	bool gui_mrpt_ = false;
+
+	/// Counter of planning requests shown in the debug GUI window title
+	unsigned int gui_plan_request_counter_ = 0;
 
 	/// frame_id for "map"
 	std::string frame_id_map_ = "map";
@@ -897,12 +901,29 @@ TPS_Astar_Planner_Node::PlanResult TPS_Astar_Planner_Node::do_path_plan(
 	// Show plan in a GUI for debugging
 	if (gui_mrpt_)
 	{
+		// The tree search only interpolates each edge with a handful of
+		// points (just enough for cost evaluation), so re-interpolate the
+		// solution edges at a much finer resolution here, just for
+		// rendering: this is what makes the published path (built from
+		// plan_to_trajectory(), which always samples the PTGs densely,
+		// regardless of this cached field) look smoother than the raw GUI.
+		constexpr size_t kGuiPathInterpSegments = 50;
+		for (auto* e : pathEdges)
+		{
+			if (!e) continue;
+			const auto reconstrRelPose = e->stateTo.pose - e->stateFrom.pose;
+			mpp::edge_interpolated_path(
+				*e, pi.ptgs, reconstrRelPose, e->ptgStepIndex, kGuiPathInterpSegments);
+		}
+
 		mpp::VisualizationOptions vizOpts;
 
 		vizOpts.renderOptions.highlight_path_to_node_id = plan.bestNodeId;
 		vizOpts.renderOptions.color_normal_edge = {0xb0b0b0, 0x20};	 // RGBA
 		vizOpts.renderOptions.width_normal_edge = 0;  // hide all edges except best path
 		vizOpts.gui_modal = false;	// leave GUI open in a background thread
+		vizOpts.windowTitle =
+			mrpt::format("%uth requested path plan", ++gui_plan_request_counter_);
 
 		mpp::viz_nav_plan(plan, vizOpts, local_planner.costEvaluators_);
 	}
