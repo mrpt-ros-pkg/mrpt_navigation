@@ -6,6 +6,13 @@ max_speed: 0.5             # [m/s]
 max_accel: 0.5             # [m/s^2]
 max_decel: 0.7             # [m/s^2]
 max_lateral_accel: 1.0     # [m/s^2] curvature speed limit
+# max_omega_rate: 0.0      # [rad/s^2] <=0 (default) disables: no cap on how
+                            # fast the commanded omega itself may step between
+                            # cycles. Enable (e.g. a few rad/s^2) if a real
+                            # steering actuator cannot instantly track the
+                            # pure-pursuit command and this shows up as
+                            # oscillation/"dancing", especially near the end
+                            # of a path where the lookahead pins to the goal.
 
 # --- Pure-pursuit lookahead (curvature-adaptive) ---
 # Marched along the path until it has bent by lookahead_bend, capped at
@@ -13,6 +20,13 @@ max_lateral_accel: 1.0     # [m/s^2] curvature speed limit
 # terminal maneuver. No per-speed schedule to tune.
 lookahead_max: 1.5         # [m] max lookahead travel
 lookahead_bend: 25.0       # [deg] path bend that caps the lookahead
+# min_lookahead_dist: 0.0  # [m] <=0 (default) disables: the pure-pursuit
+                            # target's Euclidean distance from the vehicle is
+                            # allowed to collapse to zero as it nears the goal
+                            # (the classic pure-pursuit near-goal instability).
+                            # Enable (e.g. >= min_turn_radius) to extrapolate
+                            # the target past the goal instead once it gets
+                            # this close.
 
 # --- Goal / tracking tolerances ---
 goal_dist_tol: 0.15        # [m]
