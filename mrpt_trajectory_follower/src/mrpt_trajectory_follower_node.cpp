@@ -148,6 +148,11 @@ class TrajectoryFollowerNode : public rclcpp::Node, public mpp::TrajectoryVehicl
 	// the robot's own body seen by a 3D lidar). <=0 disables the self-filter.
 	double self_filter_radius_ = 0.0;
 
+	// Raises follower_'s COutputLogger verbosity to LVL_DEBUG so its internal
+	// per-cycle trace (lookahead, curvature, speed-cap breakdown, safety
+	// scale, ...) is printed to stdout. Off by default (noisy).
+	bool follower_debug_trace_ = false;
+
 	mpp::TrajectoriesAndRobotShape ptgs_;
 
 	mpp::Trajectory last_trajectory_;  //!< to ignore identical re-published paths
@@ -171,6 +176,9 @@ TrajectoryFollowerNode::TrajectoryFollowerNode()
 	: rclcpp::Node(NODE_NAME), last_cmd_time_(this->now())
 {
 	read_parameters();
+
+	follower_.setMinLoggingLevel(
+		follower_debug_trace_ ? mrpt::system::LVL_DEBUG : mrpt::system::LVL_INFO);
 
 	tf_buffer_ = std::make_shared<tf2_ros::Buffer>(this->get_clock());
 	tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
@@ -273,6 +281,10 @@ void TrajectoryFollowerNode::read_parameters()
 	this->declare_parameter<double>("self_filter_radius", self_filter_radius_);
 	this->get_parameter("self_filter_radius", self_filter_radius_);
 	RCLCPP_INFO(get_logger(), "self_filter_radius: %.3f m", self_filter_radius_);
+
+	this->declare_parameter<bool>("follower_debug_trace", follower_debug_trace_);
+	this->get_parameter("follower_debug_trace", follower_debug_trace_);
+	RCLCPP_INFO(get_logger(), "follower_debug_trace: %s", follower_debug_trace_ ? "true" : "false");
 }
 
 bool TrajectoryFollowerNode::wait_for_transform(
