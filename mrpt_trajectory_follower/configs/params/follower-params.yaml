@@ -51,29 +51,28 @@ max_cross_track: 1.0       # [m] -> OffPathExceeded
                             # limit continuously this long.
 arrival_radius: 0.3        # [m] settle-and-hold radius at the goal (anti-runaway)
 
-# --- map->odom anchor (control-pose complementary filter) ---
+# --- control-pose complementary filter (odometry + localization) ---
+# The control pose is dead-reckoned from the wheel odometry and corrected
+# toward the raw localization at the vehicle, so behavior does not depend on
+# the robot's distance from the odom origin. Parameter names keep the
+# historical "anchor_" prefix.
 # anchor_time_constant: 0.0       # [s] 0 (default): no low-pass; each cycle
-                                   # moves the anchor to the localization-
-                                   # implied value (subject to the slew rates).
-                                   # Set ~0.3-0.5 s with a jittery localization
+                                   # applies the whole correction residual
+                                   # (subject to the rate clamps). Set
+                                   # ~0.3-0.5 s with a jittery localization
                                    # so the control pose does not chase the
                                    # jitter.
-# anchor_max_lin_rate: 0.5        # [m/s] anchor translation slew limit
-# anchor_max_ang_rate: 1.0        # [rad/s] anchor rotation slew limit
+# anchor_max_lin_rate: 0.5        # [m/s] translational correction rate limit
+# anchor_max_ang_rate: 1.0        # [rad/s] rotational correction rate limit
 # anchor_max_lin_divergence: 0.0  # [m] <=0 disables: hard bound on how far the
                                    # control pose may stray from the raw
-                                   # localization (safety net when the implied
-                                   # anchor outruns the slew for a long time).
-# anchor_max_ang_divergence: 0.0  # [rad] rotational counterpart. Keep this
-                                   # tight (e.g. ~0.08 rad) with a jittery
-                                   # localization: a yaw error rotates the
-                                   # robot's map-frame position about the
-                                   # (possibly distant) odom origin, so a few
-                                   # degrees of anchor-yaw jitter becomes tens
-                                   # of cm of lateral motion at the vehicle;
-                                   # a tight bound rejects that lever-arm
-                                   # amplified jitter while still passing the
-                                   # slow genuine corrections.
+                                   # localization (safety net when the jitter
+                                   # outruns the filter for a long time).
+# anchor_max_ang_divergence: 0.0  # [rad] rotational counterpart: caps the
+                                   # control pose's heading divergence from
+                                   # the raw localization. Keep tight (e.g.
+                                   # ~0.08 rad) with a jittery localization;
+                                   # slow genuine corrections still pass.
 
 # --- Loop timing ---
 control_period: 0.05       # [s] (20 Hz)
