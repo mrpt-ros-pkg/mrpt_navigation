@@ -64,7 +64,16 @@ arrival_radius: 0.3        # [m] settle-and-hold radius at the goal (anti-runawa
                                    # control pose may stray from the raw
                                    # localization (safety net when the implied
                                    # anchor outruns the slew for a long time).
-# anchor_max_ang_divergence: 0.0  # [rad] rotational counterpart
+# anchor_max_ang_divergence: 0.0  # [rad] rotational counterpart. Keep this
+                                   # tight (e.g. ~0.08 rad) with a jittery
+                                   # localization: a yaw error rotates the
+                                   # robot's map-frame position about the
+                                   # (possibly distant) odom origin, so a few
+                                   # degrees of anchor-yaw jitter becomes tens
+                                   # of cm of lateral motion at the vehicle;
+                                   # a tight bound rejects that lever-arm
+                                   # amplified jitter while still passing the
+                                   # slow genuine corrections.
 
 # --- Loop timing ---
 control_period: 0.05       # [s] (20 Hz)
