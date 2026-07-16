@@ -8,11 +8,18 @@ max_decel: 0.7             # [m/s^2]
 max_lateral_accel: 1.0     # [m/s^2] curvature speed limit
 # max_omega_rate: 0.0      # [rad/s^2] <=0 (default) disables: no cap on how
                             # fast the commanded omega itself may step between
-                            # cycles. Enable (e.g. a few rad/s^2) if a real
-                            # steering actuator cannot instantly track the
-                            # pure-pursuit command and this shows up as
-                            # oscillation/"dancing", especially near the end
-                            # of a path where the lookahead pins to the goal.
+                            # cycles. Prefer max_curvature_rate below on a
+                            # steered (car-like) platform: an omega-domain cap
+                            # corrupts the executed turn radius whenever the
+                            # speed profile changes v, and wrongly slews the
+                            # legitimate instantaneous omega sign flip at a
+                            # cusp (constant curvature, v reversing).
+# max_curvature_rate: 0.0  # [1/m per s] <=0 (default) disables: no cap on how
+                            # fast the commanded curvature may change between
+                            # cycles. Enable to model a finite steering slew
+                            # (steering angle is a function of curvature
+                            # alone); keeps (v, omega) on one consistent
+                            # circle while v ramps.
 
 # --- Pure-pursuit lookahead (curvature-adaptive) ---
 # Marched along the path until it has bent by lookahead_bend, capped at
@@ -20,19 +27,44 @@ max_lateral_accel: 1.0     # [m/s^2] curvature speed limit
 # terminal maneuver. No per-speed schedule to tune.
 lookahead_max: 1.5         # [m] max lookahead travel
 lookahead_bend: 25.0       # [deg] path bend that caps the lookahead
+# min_lookahead_arc: 0.3   # [m] min arc-length advance of the lookahead along
+                            # the path (keeps it off the robot itself).
 # min_lookahead_dist: 0.0  # [m] <=0 (default) disables: the pure-pursuit
                             # target's Euclidean distance from the vehicle is
-                            # allowed to collapse to zero as it nears the goal
-                            # (the classic pure-pursuit near-goal instability).
-                            # Enable (e.g. >= min_turn_radius) to extrapolate
-                            # the target past the goal instead once it gets
-                            # this close.
+                            # allowed to collapse (near the goal, approaching a
+                            # cusp, or on a path curling back on itself), where
+                            # the ~2/Ld^2 pursuit gain turns centimeter-level
+                            # localization noise into full-authority steering
+                            # swings. Enable (e.g. >= min_turn_radius) to keep
+                            # the target at least this far away everywhere:
+                            # first advanced further along the path, then
+                            # extrapolated past the goal/cusp when pinned.
 
 # --- Goal / tracking tolerances ---
 goal_dist_tol: 0.15        # [m]
 goal_ang_tol: 12.0         # [deg]
 max_cross_track: 1.0       # [m] -> OffPathExceeded
+# off_path_min_duration: 0.0 # [s] 0 (default): OffPathExceeded fires on the
+                            # first cycle over the limit. Set > 0 to debounce
+                            # transient localization spikes: the fault only
+                            # fires after the cross-track has stayed over the
+                            # limit continuously this long.
 arrival_radius: 0.3        # [m] settle-and-hold radius at the goal (anti-runaway)
+
+# --- map->odom anchor (control-pose complementary filter) ---
+# anchor_time_constant: 0.0       # [s] 0 (default): no low-pass; each cycle
+                                   # moves the anchor to the localization-
+                                   # implied value (subject to the slew rates).
+                                   # Set ~0.3-0.5 s with a jittery localization
+                                   # so the control pose does not chase the
+                                   # jitter.
+# anchor_max_lin_rate: 0.5        # [m/s] anchor translation slew limit
+# anchor_max_ang_rate: 1.0        # [rad/s] anchor rotation slew limit
+# anchor_max_lin_divergence: 0.0  # [m] <=0 disables: hard bound on how far the
+                                   # control pose may stray from the raw
+                                   # localization (safety net when the implied
+                                   # anchor outruns the slew for a long time).
+# anchor_max_ang_divergence: 0.0  # [rad] rotational counterpart
 
 # --- Loop timing ---
 control_period: 0.05       # [s] (20 Hz)
