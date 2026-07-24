@@ -922,8 +922,7 @@ TPS_Astar_Planner_Node::PlanResult TPS_Astar_Planner_Node::do_path_plan(
 		vizOpts.renderOptions.color_normal_edge = {0xb0b0b0, 0x20};	 // RGBA
 		vizOpts.renderOptions.width_normal_edge = 0;  // hide all edges except best path
 		vizOpts.gui_modal = false;	// leave GUI open in a background thread
-		vizOpts.windowTitle =
-			mrpt::format("%uth requested path plan", ++gui_plan_request_counter_);
+		vizOpts.windowTitle = mrpt::format("%uth requested path plan", ++gui_plan_request_counter_);
 
 		mpp::viz_nav_plan(plan, vizOpts, local_planner.costEvaluators_);
 	}
