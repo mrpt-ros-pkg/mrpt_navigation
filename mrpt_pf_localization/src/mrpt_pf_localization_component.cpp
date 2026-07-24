@@ -187,7 +187,10 @@ PFLocalizationNode::PFLocalizationNode(const rclcpp::NodeOptions& options)
 		std::chrono::microseconds(mrpt::round(0.5 * 1.0e6 * nodeParams_.transform_tolerance)),
 		[this]()
 		{
-			if (nodeParams_.publish_tf) this->publishTF();
+			if (nodeParams_.publish_tf)
+			{
+				this->publishTF();
+			}
 			// publishParticles() && publishPose() are done inside loop()
 		});
 }
@@ -609,7 +612,8 @@ void PFLocalizationNode::publishParticlesAndStampedPose()
  */
 void PFLocalizationNode::update_tf_pub_data()
 {
-	if (!nodeParams_.publish_tf) {
+	if (!nodeParams_.publish_tf)
+	{
 		return;
 	}
 	std::string base_frame_id = nodeParams_.base_link_frame_id;
