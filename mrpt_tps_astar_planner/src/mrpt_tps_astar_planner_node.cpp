@@ -63,6 +63,8 @@
 #include <tf2/LinearMath/Quaternion.hpp>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 #include <thread>
+#include <type_traits>
+#include <utility>
 
 // for debugging
 #include <mrpt/opengl/CGridPlaneXY.h>
@@ -98,6 +100,31 @@ mpp::CostEvaluatorCostMap::Ptr makeCostmapEvaluator(
 #else
 	return mpp::CostEvaluatorCostMap::FromStaticPointObstacles(obstacles, params, startPose);
 #endif
+}
+
+// mpp::VisualizationOptions::windowTitle is only present in newer mpp
+// releases; detect it at compile time so this node keeps building against
+// older, already-released binary packages that lack the field.
+template <typename T, typename = void>
+struct HasWindowTitle : std::false_type
+{
+};
+
+template <typename T>
+struct HasWindowTitle<T, std::void_t<decltype(std::declval<T&>().windowTitle)>> : std::true_type
+{
+};
+
+void setWindowTitle(mpp::VisualizationOptions& vizOpts, const std::string& title)
+{
+	if constexpr (HasWindowTitle<mpp::VisualizationOptions>::value)
+	{
+		vizOpts.windowTitle = title;
+	}
+	else
+	{
+		[[maybe_unused]] const auto& unused = title;
+	}
 }
 }  // namespace
 
@@ -922,7 +949,8 @@ TPS_Astar_Planner_Node::PlanResult TPS_Astar_Planner_Node::do_path_plan(
 		vizOpts.renderOptions.color_normal_edge = {0xb0b0b0, 0x20};	 // RGBA
 		vizOpts.renderOptions.width_normal_edge = 0;  // hide all edges except best path
 		vizOpts.gui_modal = false;	// leave GUI open in a background thread
-		vizOpts.windowTitle = mrpt::format("%uth requested path plan", ++gui_plan_request_counter_);
+		setWindowTitle(
+			vizOpts, mrpt::format("%uth requested path plan", ++gui_plan_request_counter_));
 
 		mpp::viz_nav_plan(plan, vizOpts, local_planner.costEvaluators_);
 	}
