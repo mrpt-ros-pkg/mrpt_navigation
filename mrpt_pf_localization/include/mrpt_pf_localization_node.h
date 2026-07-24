@@ -79,6 +79,9 @@ class PFLocalizationNode : public rclcpp::Node
 		std::string pub_topic_particles = "/particlecloud";
 		std::string pub_topic_pose = "/pf_pose";
 
+		/// If false, skip publishing map→odom (e.g. robot_localization EKF owns that TF)
+		bool publish_tf = true;
+
 		/// Comma "," separated list of topics to subscribe for LaserScan msgs
 		std::string topic_sensors_2d_scan;
 
