@@ -40,16 +40,15 @@ jobs:
       image: ${{ matrix.docker_image }}
 
     steps:
-      - name: Checkout
-        env:
-          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Install git and prerequisites
         run: |
           apt-get -y update
           apt-get -y install git curl gnupg2 ca-certificates
-          git clone https://$TOKEN@github.com/$GITHUB_REPOSITORY.git --recursive "$GITHUB_WORKSPACE"
-          git config --global --add safe.directory "$GITHUB_WORKSPACE"
-          git checkout $GITHUB_SHA
-          git submodule update --init --recursive
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       # Pre-built ros:* images have ROS base but need colcon/rosdep tooling.
       - name: Install colcon and rosdep (pre-built ROS images)
