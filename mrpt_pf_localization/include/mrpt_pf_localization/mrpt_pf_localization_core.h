@@ -230,6 +230,7 @@ class PFLocalizationCore : public mrpt::system::COutputLogger
 	void set_map_from_metric_map(const mp2p_icp::metric_map_t& mm);
 
 	void relocalize_here(const mrpt::poses::CPose3DPDFGaussian& pose);
+	bool nudge_pose_towards(const mrpt::poses::CPose3DPDFGaussian& pose, double gain);
 
 	bool input_queue_has_odometry();
 	std::optional<mrpt::Clock::time_point> input_queue_last_stamp();

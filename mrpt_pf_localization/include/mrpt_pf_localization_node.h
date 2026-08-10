@@ -75,9 +75,16 @@ class PFLocalizationNode : public rclcpp::Node
 		std::string topic_map = "/mrpt_map/metric_map";
 		std::string topic_initialpose = "/initialpose";
 		std::string topic_odometry = "/odom";
+		std::string topic_aruco_pose = "/aruco_pose";
+		double aruco_correction_min_interval = 0.1;
+		double aruco_correction_xy_threshold = 0.05;
+		double aruco_correction_yaw_threshold = 0.05;
+		double aruco_correction_gain = 0.2;
 
 		std::string pub_topic_particles = "/particlecloud";
 		std::string pub_topic_pose = "/pf_pose";
+		std::string pub_topic_map_grid;
+		std::string pub_topic_map_points;
 
 		/// If false, skip publishing map→odom (e.g. robot_localization EKF owns that TF)
 		bool publish_tf = true;
@@ -126,6 +133,9 @@ class PFLocalizationNode : public rclcpp::Node
 	void publishTF();
 	/// Publish the PF output as a PoseArray & PoseWithCovarianceStamped msg
 	void publishParticlesAndStampedPose();
+	void publishMetricMapGrid();
+	void publishMetricMapPoints();
+	void publishMetricMapViz();
 
 	void updateEstimatedTwist();
 	void createOdometryFromTwist();
@@ -137,6 +147,7 @@ class PFLocalizationNode : public rclcpp::Node
 
 	/** Sub for /initialpose */
 	rclcpp::Subscription<geometry_msgs::msg::PoseWithCovarianceStamped>::SharedPtr sub_init_pose_;
+	rclcpp::Subscription<geometry_msgs::msg::PoseWithCovarianceStamped>::SharedPtr sub_aruco_pose_;
 
 	rclcpp::Subscription<mrpt_msgs::msg::GenericObject>::SharedPtr subMap_;
 	rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr subOdometry_;
@@ -150,12 +161,16 @@ class PFLocalizationNode : public rclcpp::Node
 
 	rclcpp::Publisher<geometry_msgs::msg::PoseWithCovarianceStamped>::SharedPtr pubPose_;
 
+	rclcpp::Publisher<nav_msgs::msg::OccupancyGrid>::SharedPtr pubMapGrid_;
+	rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr pubMapPoints_;
+
 	std::shared_ptr<tf2_ros::Buffer> tf_buffer_;
 	std::shared_ptr<tf2_ros::TransformListener> tf_listener_;
 
 	std::shared_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
 
 	std::optional<mrpt::Clock::time_point> last_sensor_stamp_;
+	std::optional<rclcpp::Time> last_aruco_relocalize_time_;
 
 	void useROSLogLevel();
 

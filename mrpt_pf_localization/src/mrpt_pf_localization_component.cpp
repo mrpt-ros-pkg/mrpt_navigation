@@ -8,6 +8,7 @@
 
 #include <mp2p_icp/metricmap.h>
 #include <mrpt/maps/COccupancyGridMap2D.h>
+#include <mrpt/maps/CSimplePointsMap.h>
 #include <mrpt/obs/CObservation2DRangeScan.h>
 #include <mrpt/obs/CObservationBeaconRanges.h>
 #include <mrpt/obs/CObservationOdometry.h>
@@ -25,6 +26,7 @@
 #include <mrpt/version.h>
 #include <pose_cov_ops/pose_cov_ops.h>
 
+#include <cmath>
 #include <geometry_msgs/msg/pose_array.hpp>
 #include <mrpt_msgs_bridge/beacon.hpp>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
@@ -151,6 +153,17 @@ PFLocalizationNode::PFLocalizationNode(const rclcpp::NodeOptions& options)
 	pubPose_ = this->create_publisher<geometry_msgs::msg::PoseWithCovarianceStamped>(
 		nodeParams_.pub_topic_pose, rclcpp::SystemDefaultsQoS());
 
+	if (!nodeParams_.pub_topic_map_grid.empty())
+	{
+		pubMapGrid_ = this->create_publisher<nav_msgs::msg::OccupancyGrid>(
+			nodeParams_.pub_topic_map_grid, mapQoS);
+	}
+	if (!nodeParams_.pub_topic_map_points.empty())
+	{
+		pubMapPoints_ = this->create_publisher<sensor_msgs::msg::PointCloud2>(
+			nodeParams_.pub_topic_map_points, mapQoS);
+	}
+
 #if 0
 		else if (sources[i].find("beacon") != std::string::npos)
 		{
@@ -176,6 +189,13 @@ PFLocalizationNode::PFLocalizationNode(const rclcpp::NodeOptions& options)
 
 	tf_broadcaster_ = std::make_shared<tf2_ros::TransformBroadcaster>(*this);
 
+	if (!nodeParams_.topic_aruco_pose.empty())
+	{
+		sub_aruco_pose_ = this->create_subscription<geometry_msgs::msg::PoseWithCovarianceStamped>(
+			nodeParams_.topic_aruco_pose, rclcpp::SystemDefaultsQoS(),
+			std::bind(&PFLocalizationNode::callbackRobotPose, this, _1));
+	}
+
 	// Create timer:
 	// ------------------------------------------
 	timer_ = this->create_wall_timer(
@@ -193,6 +213,8 @@ PFLocalizationNode::PFLocalizationNode(const rclcpp::NodeOptions& options)
 			}
 			// publishParticles() && publishPose() are done inside loop()
 		});
+
+	publishMetricMapViz();
 }
 
 PFLocalizationNode::~PFLocalizationNode() = default;
@@ -271,6 +293,33 @@ void PFLocalizationNode::reload_params_from_ros()
 
 	core_.init_from_yaml(paramsBlock, relocalizationCfg);
 	nodeParams_.loadFrom(paramsBlock);
+
+	if (paramsBlock.has("simplemap_file"))
+	{
+		const auto simplemapFile = paramsBlock["simplemap_file"].as<std::string>();
+		if (!simplemapFile.empty())
+		{
+			if (!paramsBlock.has("map_config_ini_file"))
+			{
+				RCLCPP_FATAL(
+					get_logger(),
+					"Parameter 'map_config_ini_file' is required when 'simplemap_file' is set");
+				return;
+			}
+			const auto mapConfigIni = paramsBlock["map_config_ini_file"].as<std::string>();
+			RCLCPP_INFO(
+				get_logger(), "Loading metric map from simplemap '%s' (ini: '%s')",
+				simplemapFile.c_str(), mapConfigIni.c_str());
+			if (!core_.set_map_from_simple_map(mapConfigIni, simplemapFile))
+			{
+				RCLCPP_FATAL(get_logger(), "Failed to load simplemap '%s'", simplemapFile.c_str());
+			}
+			else
+			{
+				publishMetricMapViz();
+			}
+		}
+	}
 }
 
 void PFLocalizationNode::loop()
@@ -399,79 +448,86 @@ void PFLocalizationNode::callbackBeacon(const mrpt_msgs::msg::ObservationRangeBe
 #endif
 }
 
-void PFLocalizationNode::callbackRobotPose(
-	const geometry_msgs::msg::PoseWithCovarianceStamped& _msg)
+void PFLocalizationNode::callbackRobotPose(const geometry_msgs::msg::PoseWithCovarianceStamped& msg)
 {
-#if 0
-	using namespace mrpt::maps;
-	using namespace mrpt::obs;
+	geometry_msgs::msg::PoseWithCovarianceStamped obsPoseWorld = msg;
 
-	time_last_input_ = ros::Time::now();
-
-	// Robot pose externally provided; we update filter regardless state_
-	// attribute's value, as these
-	// corrections are typically independent from robot motion (e.g. inputs from
-	// GPS or tracking system)
-	// XXX admittedly an arbitrary choice; feel free to open an issue if you
-	// think it doesn't make sense
-
-	static std::string base_frame_id = param()->base_frame_id;
-	static std::string global_frame_id = param()->global_frame_id;
-
-	geometry_msgs::TransformStamped map_to_obs_tf_msg;
-	try
+	if (!msg.header.frame_id.empty() && msg.header.frame_id != nodeParams_.global_frame_id)
 	{
-		map_to_obs_tf_msg = tf_buffer_.lookupTransform(
-			global_frame_id, _msg.header.frame_id, ros::Time(0.0),
-			ros::Duration(0.5));
+		try
+		{
+			const auto tfMsg = tf_buffer_->lookupTransform(
+				nodeParams_.global_frame_id, msg.header.frame_id, tf2::TimePointZero,
+				tf2::durationFromSec(0.1));
+
+			tf2::Transform mapToObsTf;
+			tf2::fromMsg(tfMsg.transform, mapToObsTf);
+
+			geometry_msgs::msg::Pose mapToObsPose;
+			tf2::toMsg(mapToObsTf, mapToObsPose);
+
+			obsPoseWorld.header.frame_id = nodeParams_.global_frame_id;
+			pose_cov_ops::compose(mapToObsPose, msg.pose, obsPoseWorld.pose);
+		}
+		catch (const tf2::TransformException& ex)
+		{
+			RCLCPP_WARN_THROTTLE(
+				get_logger(), *get_clock(), 5000,
+				"[callbackRobotPose] Failed to transform '%s' to '%s': %s",
+				msg.header.frame_id.c_str(), nodeParams_.global_frame_id.c_str(), ex.what());
+			return;
+		}
 	}
-	catch (const tf2::TransformException& e)
+
+	for (size_t i = 0; i < obsPoseWorld.pose.covariance.size(); i += 7)
 	{
-		ROS_WARN(
-			"Failed to get transform frame (%s) to referenceFrame (%s): "
-			"%s",
-			global_frame_id.c_str(), _msg.header.frame_id.c_str(), e.what());
+		if (obsPoseWorld.pose.covariance[i] <= 0.0)
+		{
+			obsPoseWorld.pose.covariance[i] = 1.0e6;
+		}
+	}
+
+	auto obs = mrpt::obs::CObservationRobotPose::Create();
+	obs->sensorLabel = "external_pose";
+	obs->timestamp = mrpt::ros2bridge::fromROS(msg.header.stamp);
+	obs->pose = mrpt::ros2bridge::fromROS(obsPoseWorld.pose);
+
+	last_sensor_stamp_ = obs->timestamp;
+	core_.on_observation(obs);
+
+	const auto parts = core_.getLastPoseEstimation();
+	if (!parts)
+	{
+		core_.relocalize_here(obs->pose);
+		last_aruco_relocalize_time_ = this->now();
 		return;
 	}
-	tf2::Transform map_to_obs_tf;
-	tf2::fromMsg(map_to_obs_tf_msg.transform, map_to_obs_tf);
 
-	// Transform observation into global frame, including covariance. For that,
-	// we must first obtain
-	// the global frame -> observation frame tf as a Pose msg, as required by
-	// pose_cov_ops::compose
-	geometry_msgs::Pose map_to_obs_pose;
-	tf2::toMsg(map_to_obs_tf, map_to_obs_pose);
-
-	geometry_msgs::PoseWithCovarianceStamped obs_pose_world;
-	obs_pose_world.header.stamp = _msg.header.stamp;
-	obs_pose_world.header.frame_id = global_frame_id;
-	pose_cov_ops::compose(map_to_obs_pose, _msg.pose, obs_pose_world.pose);
-
-	// Ensure the covariance matrix can be inverted (no zeros in the diagonal)
-	for (unsigned int i = 0; i < obs_pose_world.pose.covariance.size(); ++i)
+	const auto now = this->now();
+	if (last_aruco_relocalize_time_ &&
+		(now - *last_aruco_relocalize_time_).seconds() < nodeParams_.aruco_correction_min_interval)
 	{
-		if (i / 6 == i % 6 && obs_pose_world.pose.covariance[i] <= 0.0)
-			obs_pose_world.pose.covariance[i] =
-				std::numeric_limits<double>().infinity();
+		return;
 	}
 
-	// Covert the received pose into an observation the filter can integrate
-	auto feature = CObservationRobotPose::Create();
+	const auto pfPose = parts->getMeanVal();
+	const auto extPose = obs->pose.mean;
+	const double dx = extPose.x() - pfPose.x();
+	const double dy = extPose.y() - pfPose.y();
+	const double dxy = std::hypot(dx, dy);
+	const double dyaw = std::abs(
+		std::atan2(std::sin(extPose.yaw() - pfPose.yaw()), std::cos(extPose.yaw() - pfPose.yaw())));
 
-	feature->sensorLabel = _msg.header.frame_id;
-	feature->timestamp = mrpt::ros2bridge::fromROS(_msg.header.stamp);
-	feature->pose = mrpt::ros2bridge::fromROS(obs_pose_world.pose);
-
-	auto sf = CSensoryFrame::Create();
-	CObservationOdometry::Ptr odometry;
-	odometryForCallback(odometry, _msg.header);
-
-	CObservation::Ptr obs = CObservation::Ptr(feature);
-	sf->insert(obs);
-	observation(sf, odometry);
-	if (param()->gui_mrpt) show3DDebug(sf);
-#endif
+	if (dxy > nodeParams_.aruco_correction_xy_threshold ||
+		dyaw > nodeParams_.aruco_correction_yaw_threshold)
+	{
+		RCLCPP_INFO_THROTTLE(
+			get_logger(), *get_clock(), 2000,
+			"[callbackRobotPose] Nudge PF towards external pose: dxy=%.3f m, dyaw=%.3f rad", dxy,
+			dyaw);
+		core_.nudge_pose_towards(obs->pose, nodeParams_.aruco_correction_gain);
+		last_aruco_relocalize_time_ = now;
+	}
 }
 
 void PFLocalizationNode::callbackMap(const mrpt_msgs::msg::GenericObject& obj)
@@ -492,6 +548,7 @@ void PFLocalizationNode::callbackMap(const mrpt_msgs::msg::GenericObject& obj)
 	RCLCPP_INFO_STREAM(get_logger(), "[callbackMap] Map contents: " << mm->contents_summary());
 
 	core_.set_map_from_metric_map(*mm);
+	publishMetricMapViz();
 }
 
 void PFLocalizationNode::callbackInitialpose(
@@ -552,6 +609,84 @@ void PFLocalizationNode::callbackGNSS(const sensor_msgs::msg::NavSatFix& msg)
 	if (!last_sensor_stamp_) last_sensor_stamp_ = obs->timestamp;
 
 	core_.on_observation(obs);
+}
+
+void PFLocalizationNode::publishMetricMapViz()
+{
+	publishMetricMapGrid();
+	publishMetricMapPoints();
+}
+
+void PFLocalizationNode::publishMetricMapGrid()
+{
+	if (!pubMapGrid_) return;
+
+	const auto params = core_.getParams();
+	if (!params.metric_map)
+	{
+		RCLCPP_WARN(get_logger(), "Metric map not loaded, skip grid publish");
+		return;
+	}
+
+	auto grid = params.metric_map->mapByClass<mrpt::maps::COccupancyGridMap2D>();
+	if (!grid)
+	{
+		RCLCPP_WARN(
+			get_logger(),
+			"No COccupancyGridMap2D in metric map (check map_config_ini_file layers)");
+		return;
+	}
+
+	nav_msgs::msg::OccupancyGrid rosMap;
+	std_msgs::msg::Header header;
+	header.frame_id = nodeParams_.global_frame_id;
+	header.stamp = this->now();
+	if (!mrpt::ros2bridge::toROS(*grid, rosMap, header))
+	{
+		RCLCPP_ERROR(get_logger(), "Failed to convert MRPT grid to OccupancyGrid");
+		return;
+	}
+
+	pubMapGrid_->publish(rosMap);
+	RCLCPP_INFO(
+		get_logger(), "Published metric map grid on '%s' (%ux%u, res=%.3f)",
+		nodeParams_.pub_topic_map_grid.c_str(), rosMap.info.width, rosMap.info.height,
+		rosMap.info.resolution);
+}
+
+void PFLocalizationNode::publishMetricMapPoints()
+{
+	if (!pubMapPoints_) return;
+
+	const auto params = core_.getParams();
+	if (!params.metric_map)
+	{
+		RCLCPP_WARN(get_logger(), "Metric map not loaded, skip points publish");
+		return;
+	}
+
+	auto pts = params.metric_map->mapByClass<mrpt::maps::CSimplePointsMap>();
+	if (!pts)
+	{
+		RCLCPP_WARN(
+			get_logger(), "No CSimplePointsMap in metric map (check map_config_ini_file layers)");
+		return;
+	}
+
+	sensor_msgs::msg::PointCloud2 rosCloud;
+	std_msgs::msg::Header header;
+	header.frame_id = nodeParams_.global_frame_id;
+	header.stamp = this->now();
+	if (!mrpt::ros2bridge::toROS(*pts, header, rosCloud))
+	{
+		RCLCPP_ERROR(get_logger(), "Failed to convert MRPT points map to PointCloud2");
+		return;
+	}
+
+	pubMapPoints_->publish(rosCloud);
+	RCLCPP_INFO(
+		get_logger(), "Published metric map points on '%s' (%u points)",
+		nodeParams_.pub_topic_map_points.c_str(), rosCloud.width * rosCloud.height);
 }
 
 void PFLocalizationNode::publishParticlesAndStampedPose()
@@ -715,9 +850,16 @@ void PFLocalizationNode::NodeParameters::loadFrom(const mrpt::containers::yaml& 
 	MCP_LOAD_OPT(cfg, topic_map);
 	MCP_LOAD_OPT(cfg, topic_initialpose);
 	MCP_LOAD_OPT(cfg, topic_odometry);
+	MCP_LOAD_OPT(cfg, topic_aruco_pose);
+	MCP_LOAD_OPT(cfg, aruco_correction_min_interval);
+	MCP_LOAD_OPT(cfg, aruco_correction_xy_threshold);
+	MCP_LOAD_OPT(cfg, aruco_correction_yaw_threshold);
+	MCP_LOAD_OPT(cfg, aruco_correction_gain);
 
 	MCP_LOAD_OPT(cfg, pub_topic_particles);
 	MCP_LOAD_OPT(cfg, pub_topic_pose);
+	MCP_LOAD_OPT(cfg, pub_topic_map_grid);
+	MCP_LOAD_OPT(cfg, pub_topic_map_points);
 	MCP_LOAD_OPT(cfg, publish_tf);
 
 	MCP_LOAD_OPT(cfg, topic_sensors_2d_scan);
