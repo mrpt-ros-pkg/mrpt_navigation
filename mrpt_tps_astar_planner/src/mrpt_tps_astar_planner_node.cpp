@@ -102,9 +102,12 @@ mpp::CostEvaluatorCostMap::Ptr makeCostmapEvaluator(
 #endif
 }
 
-// mpp::VisualizationOptions::windowTitle is only present in newer mpp
-// releases; detect it at compile time so this node keeps building against
-// older, already-released binary packages that lack the field.
+// mpp::VisualizationOptions::windowTitle and MoveEdgeSE2_TPS::ptgStepIndex are
+// only present in newer mpp releases; detect them at compile time so this node
+// keeps building against older, already-released binary packages that lack
+// those fields. The detection+call must live in a template so `if constexpr`
+// actually discards the invalid branch instead of still requiring it to be
+// well-formed (which is what a plain, non-template function would do).
 template <typename T, typename = void>
 struct HasWindowTitle : std::false_type
 {
@@ -115,15 +118,48 @@ struct HasWindowTitle<T, std::void_t<decltype(std::declval<T&>().windowTitle)>> 
 {
 };
 
-void setWindowTitle(mpp::VisualizationOptions& vizOpts, const std::string& title)
+template <typename T>
+void setWindowTitle(T& vizOpts, const std::string& title)
 {
-	if constexpr (HasWindowTitle<mpp::VisualizationOptions>::value)
+	if constexpr (HasWindowTitle<T>::value)
 	{
 		vizOpts.windowTitle = title;
 	}
 	else
 	{
-		[[maybe_unused]] const auto& unused = title;
+		(void)vizOpts;
+		(void)title;
+	}
+}
+
+template <typename T, typename = void>
+struct HasPtgStepIndex : std::false_type
+{
+};
+
+template <typename T>
+struct HasPtgStepIndex<T, std::void_t<decltype(std::declval<T&>().ptgStepIndex)>> : std::true_type
+{
+};
+
+// Re-interpolate a solution edge at a finer resolution, just for GUI
+// rendering. No-op against older mpp releases lacking
+// MoveEdgeSE2_TPS::ptgStepIndex: the debug GUI then falls back to the
+// coarser interpolation already computed during the tree search.
+template <typename EdgeT, typename PtgsT>
+void densifyEdgeForGui(
+	EdgeT& edge, const PtgsT& ptgs, const mrpt::math::TPose2D& reconstrRelPose, size_t numSegments)
+{
+	if constexpr (HasPtgStepIndex<EdgeT>::value)
+	{
+		mpp::edge_interpolated_path(edge, ptgs, reconstrRelPose, edge.ptgStepIndex, numSegments);
+	}
+	else
+	{
+		(void)edge;
+		(void)ptgs;
+		(void)reconstrRelPose;
+		(void)numSegments;
 	}
 }
 }  // namespace
@@ -939,8 +975,7 @@ TPS_Astar_Planner_Node::PlanResult TPS_Astar_Planner_Node::do_path_plan(
 		{
 			if (!e) continue;
 			const auto reconstrRelPose = e->stateTo.pose - e->stateFrom.pose;
-			mpp::edge_interpolated_path(
-				*e, pi.ptgs, reconstrRelPose, e->ptgStepIndex, kGuiPathInterpSegments);
+			densifyEdgeForGui(*e, pi.ptgs, reconstrRelPose, kGuiPathInterpSegments);
 		}
 
 		mpp::VisualizationOptions vizOpts;
