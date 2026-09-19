@@ -17,6 +17,7 @@
   <!-- DEPS -->
   <depend>geometry_msgs</depend>
   <depend>mrpt_nav</depend>
+  <depend>mrpt_kinematics</depend>
   <depend>mrpt_libros_bridge</depend>
   <depend>mrpt_nav_interfaces</depend>
   <depend>nav_msgs</depend>

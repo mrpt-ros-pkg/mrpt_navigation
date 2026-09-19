@@ -26,6 +26,7 @@
   <depend>mola_relocalization</depend>
   <depend>mp2p_icp</depend>
   <depend>mrpt_gui</depend>
+  <depend>mrpt_viz</depend>
   <depend>mrpt_libros_bridge</depend>
   <depend>mrpt_slam</depend>
   <depend>mrpt_msgs</depend>

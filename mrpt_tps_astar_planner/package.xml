@@ -19,6 +19,12 @@
   <depend>mrpt_gui</depend>
   <depend>mrpt_maps</depend>
   <depend>mrpt_nav</depend>
+  <depend>mrpt_kinematics</depend>
+  <depend>mrpt_math</depend>
+  <depend>mrpt_system</depend>
+  <depend>mrpt_containers</depend>
+  <depend>mrpt_opengl</depend>
+  <depend>mrpt_viz</depend>
   <depend>mrpt_libros_bridge</depend>
   <depend>mrpt_msgs</depend>
   <depend>mrpt_nav_interfaces</depend>
