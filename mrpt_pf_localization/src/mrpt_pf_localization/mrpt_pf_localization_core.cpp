@@ -559,7 +559,7 @@ void PFLocalizationCore::onStateToBeInitialized()
 		// in.local_map: to be populated in running state
 
 		// (shallow) copy metric maps into expected format:
-		const auto& maps = _.metric_map->maps;
+		const auto& maps = _.metric_map->mapsList();
 		ASSERT_(!maps.empty());
 		ASSERT_(
 			params_.metric_map_layer_names.empty() ||
@@ -645,7 +645,7 @@ void PFLocalizationCore::onStateRunning()
 	// Do we have *any* usable observation?
 	// Not any observation is usable with any map:
 	bool canComputeLikelihood = false;
-	for (const auto& m : state_.metric_map->maps)
+	for (const auto& m : state_.metric_map->mapsList())
 	{
 		if (m->canComputeObservationsLikelihood(sf))
 		{
@@ -985,7 +985,7 @@ void PFLocalizationCore::set_map_from_metric_map(const mp2p_icp::metric_map_t& m
 			continue;  // filter out this one
 
 		// use this map layer:
-		mMap->maps.push_back(layerMap);
+		mMap->mapsList().push_back(layerMap);
 		layerNames.push_back(layerName);
 	}
 
@@ -999,7 +999,7 @@ void PFLocalizationCore::set_map_from_metric_map(
 {
 	auto lck = mrpt::lockHelper(stateMtx_);
 
-	for (const auto& m : metricMap->maps)
+	for (const auto& m : metricMap->mapsList())
 	{
 		ASSERT_(m);
 
@@ -1026,7 +1026,7 @@ void PFLocalizationCore::set_map_from_metric_map(
 		{
 			std::stringstream ss;
 			ss << metricMap->asString() << ". Maps:\n";
-			for (const auto& m : metricMap->maps)
+			for (const auto& m : metricMap->mapsList())
 			{
 				ASSERT_(m);
 				ss << " - " << m->asString() << "\n";
