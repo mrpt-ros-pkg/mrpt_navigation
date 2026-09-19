@@ -30,6 +30,7 @@ find_package(mrpt_gui REQUIRED)
 find_package(mrpt_opengl REQUIRED)
 
 find_package(mrpt_path_planning REQUIRED)
+find_package(mrpt_path_planning_viz REQUIRED)
 
 message(STATUS "MRPT_VERSION: ${MRPT_VERSION}")
 
@@ -73,6 +74,7 @@ target_link_libraries(${PROJECT_NAME}_node PRIVATE
   mrpt::mrpt_kinematics
   mrpt_libros_bridge::mrpt_libros_bridge
   mpp::mrpt_path_planning
+  mpp::mrpt_path_planning_viz
   rclcpp::rclcpp
   ${rclcpp_components_TARGETS}
   ${nav_msgs_TARGETS}

@@ -22,7 +22,8 @@
   <depend>mrpt_libros_bridge</depend>
   <depend>mrpt_msgs</depend>
   <depend>mrpt_nav_interfaces</depend>
-  <depend>mrpt_path_planning</depend>
+  <depend>mrpt_path_planning_core</depend>
+  <depend>mrpt_path_planning_apps</depend>
   <depend>nav_msgs</depend>
   <depend>rclcpp</depend>
   <depend>rclcpp_components</depend>
