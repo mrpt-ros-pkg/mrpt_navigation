@@ -54,11 +54,8 @@ bool mrpt_msgs_bridge::fromROS(
 bool mrpt_msgs_bridge::toROS(
 	const CObservationBeaconRanges& _obj, mrpt_msgs::msg::ObservationRangeBeacon& _msg)
 {
-	mrpt::poses::CPose3D cpose_obj;
-
 	_msg.header.stamp = mrpt::ros2bridge::toROS(_obj.timestamp);
-	_obj.getSensorPose(cpose_obj);
-	_msg.sensor_pose_on_robot = mrpt::ros2bridge::toROS_Pose(cpose_obj);
+	_msg.sensor_pose_on_robot = mrpt::ros2bridge::toROS_Pose(_obj.getSensorPose());
 
 	_msg.sensor_std_range = _obj.stdError;
 	_msg.header.frame_id = _obj.sensorLabel;
@@ -83,8 +80,6 @@ bool mrpt_msgs_bridge::toROS(
 	geometry_msgs::msg::Pose& _pose)
 {
 	toROS(_obj, _msg);
-	mrpt::poses::CPose3D pose;
-	_obj.getSensorPose(pose);
-	_pose = mrpt::ros2bridge::toROS_Pose(pose);
+	_pose = mrpt::ros2bridge::toROS_Pose(_obj.getSensorPose());
 	return true;
 }

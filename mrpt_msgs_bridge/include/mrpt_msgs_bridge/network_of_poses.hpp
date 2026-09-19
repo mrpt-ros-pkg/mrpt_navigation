@@ -40,14 +40,6 @@ void toROS(
 	const mrpt::graphs::CNetworkOfPoses3DInf& mrpt_graph,
 	mrpt_msgs::msg::NetworkOfPoses& ros_graph);
 
-void toROS(
-	const mrpt::graphs::CNetworkOfPoses2DInf_NA& mrpt_graph,
-	mrpt_msgs::msg::NetworkOfPoses& ros_graph);
-
-void toROS(
-	const mrpt::graphs::CNetworkOfPoses3DInf_NA& mrpt_graph,
-	mrpt_msgs::msg::NetworkOfPoses& ros_graph);
-
 /**\} */
 
 /////////////////////////////////////////////////////////////////////////
@@ -71,14 +63,6 @@ void fromROS(
 void fromROS(
 	const mrpt_msgs::msg::NetworkOfPoses& ros_graph,
 	mrpt::graphs::CNetworkOfPoses3DInf& mrpt_graph);
-
-void fromROS(
-	const mrpt_msgs::msg::NetworkOfPoses& ros_graph,
-	mrpt::graphs::CNetworkOfPoses2DInf_NA& mrpt_graph);
-
-void fromROS(
-	const mrpt_msgs::msg::NetworkOfPoses& ros_graph,
-	mrpt::graphs::CNetworkOfPoses3DInf_NA& mrpt_graph);
 
 /**\} */
 

@@ -19,20 +19,13 @@ find_package(tf2_ros REQUIRED)
 find_package(tf2_geometry_msgs REQUIRED)
 
 ## System dependencies are found with CMake's conventions
-find_package(mrpt-ros2bridge REQUIRED)
-find_package(mrpt-maps REQUIRED)
-find_package(mrpt-math REQUIRED)
-find_package(mrpt-system REQUIRED)
-find_package(mrpt-containers REQUIRED)
+find_package(mrpt_libros_bridge REQUIRED)
+find_package(mrpt_maps REQUIRED)
+find_package(mrpt_math REQUIRED)
+find_package(mrpt_system REQUIRED)
+find_package(mrpt_containers REQUIRED)
 
 find_package(mrpt_path_planning REQUIRED)
-# Compat shim: mrpt_path_planning >=2.0 exports a properly-namespaced
-# mpp::mrpt_path_planning target; older (<2.0, pre mrpt_path_planning_core
-# split) releases exported an unnamespaced "mrpt_path_planning" target.
-# Normalize to mpp::mrpt_path_planning either way.
-if(NOT TARGET mpp::mrpt_path_planning AND TARGET mrpt_path_planning)
-  add_library(mpp::mrpt_path_planning ALIAS mrpt_path_planning)
-endif()
 
 if(NOT CMAKE_CXX_STANDARD)
   set(CMAKE_CXX_STANDARD 17)
@@ -53,11 +46,11 @@ add_executable(${PROJECT_NAME}_node
 )
 
 target_link_libraries(${PROJECT_NAME}_node PRIVATE
-  mrpt::ros2bridge
-  mrpt::maps
-  mrpt::math
-  mrpt::system
-  mrpt::containers
+  mrpt_libros_bridge::mrpt_libros_bridge
+  mrpt::mrpt_maps
+  mrpt::mrpt_math
+  mrpt::mrpt_system
+  mrpt::mrpt_containers
   mpp::mrpt_path_planning
   rclcpp::rclcpp
   ${nav_msgs_TARGETS}

@@ -148,10 +148,7 @@ class ReactiveNav2DNode : public rclcpp::Node
 		 *	 \param curW Current angular speed, in radians per second.
 		 * \return false on any error.
 		 */
-		bool getCurrentPoseAndSpeeds(
-			mrpt::math::TPose2D& curPose, mrpt::math::TTwist2D& curVel,
-			mrpt::system::TTimeStamp& timestamp, mrpt::math::TPose2D& curOdometry,
-			std::string& frame_id) override;
+		std::optional<CurrentPoseAndSpeeds> getCurrentPoseAndSpeeds() override;
 
 		/** Change the instantaneous speeds of robot.
 		 *   \param v Linear speed, in meters per second.
@@ -160,7 +157,7 @@ class ReactiveNav2DNode : public rclcpp::Node
 		 */
 		bool changeSpeeds(const mrpt::kinematics::CVehicleVelCmd& vel_cmd) override;
 
-		bool stop(bool isEmergency) override;
+		bool stop(mrpt::nav::StopType stopType = mrpt::nav::StopType::Emergency) override;
 
 		/** Start the watchdog timer of the robot platform, if any.
 		 * \param T_ms Period, in ms.
