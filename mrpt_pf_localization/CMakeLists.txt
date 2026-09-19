@@ -1,6 +1,12 @@
 cmake_minimum_required(VERSION 3.22...3.31)  # Ubuntu 22.04+
 project(mrpt_pf_localization)
 
+find_program(CCACHE_PROGRAM ccache)
+if(CCACHE_PROGRAM)
+  set(CMAKE_C_COMPILER_LAUNCHER "${CCACHE_PROGRAM}")
+  set(CMAKE_CXX_COMPILER_LAUNCHER "${CCACHE_PROGRAM}")
+endif()
+
 # find dependencies
 find_package(ament_cmake REQUIRED)
 

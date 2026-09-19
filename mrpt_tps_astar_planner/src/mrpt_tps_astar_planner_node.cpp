@@ -10,6 +10,7 @@
 #include <mpp/algos/CostEvaluatorPreferredWaypoint.h>
 #include <mpp/algos/NavEngine.h>
 #include <mpp/algos/TPS_Astar.h>
+#include <mpp/algos/edge_interpolated_path.h>
 #include <mpp/algos/refine_trajectory.h>
 #include <mpp/algos/trajectories.h>
 #include <mpp/algos/viz.h>
@@ -62,6 +63,8 @@
 #include <tf2/LinearMath/Quaternion.hpp>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 #include <thread>
+#include <type_traits>
+#include <utility>
 
 // for debugging
 #include <mrpt/viz/CGridPlaneXY.h>
@@ -80,6 +83,86 @@
 #else
 #define MRPT_ROS2_SRV_QOS rmw_qos_profile_services_default
 #endif
+
+namespace
+{
+// Build the obstacle clearance costmap. The robot shape is forwarded to make the
+// costmap footprint-aware when the linked mpp exposes the newer overload
+// (feature macro from CostEvaluatorCostMap.h); against older mpp it falls back
+// to the origin-only signature, so this node keeps building either way.
+mpp::CostEvaluatorCostMap::Ptr makeCostmapEvaluator(
+	const mrpt::maps::CPointsMap& obstacles, const mpp::CostEvaluatorCostMap::Parameters& params,
+	const mrpt::math::TPose2D& startPose, [[maybe_unused]] const mpp::RobotShape& robotShape)
+{
+#if defined(MPP_COSTEVALUATORCOSTMAP_HAS_ROBOT_SHAPE)
+	return mpp::CostEvaluatorCostMap::FromStaticPointObstacles(
+		obstacles, params, startPose, robotShape);
+#else
+	return mpp::CostEvaluatorCostMap::FromStaticPointObstacles(obstacles, params, startPose);
+#endif
+}
+
+// mpp::VisualizationOptions::windowTitle and MoveEdgeSE2_TPS::ptgStepIndex are
+// only present in newer mpp releases; detect them at compile time so this node
+// keeps building against older, already-released binary packages that lack
+// those fields. The detection+call must live in a template so `if constexpr`
+// actually discards the invalid branch instead of still requiring it to be
+// well-formed (which is what a plain, non-template function would do).
+template <typename T, typename = void>
+struct HasWindowTitle : std::false_type
+{
+};
+
+template <typename T>
+struct HasWindowTitle<T, std::void_t<decltype(std::declval<T&>().windowTitle)>> : std::true_type
+{
+};
+
+template <typename T>
+void setWindowTitle(T& vizOpts, const std::string& title)
+{
+	if constexpr (HasWindowTitle<T>::value)
+	{
+		vizOpts.windowTitle = title;
+	}
+	else
+	{
+		(void)vizOpts;
+		(void)title;
+	}
+}
+
+template <typename T, typename = void>
+struct HasPtgStepIndex : std::false_type
+{
+};
+
+template <typename T>
+struct HasPtgStepIndex<T, std::void_t<decltype(std::declval<T&>().ptgStepIndex)>> : std::true_type
+{
+};
+
+// Re-interpolate a solution edge at a finer resolution, just for GUI
+// rendering. No-op against older mpp releases lacking
+// MoveEdgeSE2_TPS::ptgStepIndex: the debug GUI then falls back to the
+// coarser interpolation already computed during the tree search.
+template <typename EdgeT, typename PtgsT>
+void densifyEdgeForGui(
+	EdgeT& edge, const PtgsT& ptgs, const mrpt::math::TPose2D& reconstrRelPose, size_t numSegments)
+{
+	if constexpr (HasPtgStepIndex<EdgeT>::value)
+	{
+		mpp::edge_interpolated_path(edge, ptgs, reconstrRelPose, edge.ptgStepIndex, numSegments);
+	}
+	else
+	{
+		(void)edge;
+		(void)ptgs;
+		(void)reconstrRelPose;
+		(void)numSegments;
+	}
+}
+}  // namespace
 
 const char* NODE_NAME = "mrpt_tps_astar_planner_node";
 
@@ -132,6 +215,9 @@ class TPS_Astar_Planner_Node : public rclcpp::Node
 
 	/// Flag for MRPT GUI
 	bool gui_mrpt_ = false;
+
+	/// Counter of planning requests shown in the debug GUI window title
+	unsigned int gui_plan_request_counter_ = 0;
 
 	/// frame_id for "map"
 	std::string frame_id_map_ = "map";
@@ -190,6 +276,16 @@ class TPS_Astar_Planner_Node : public rclcpp::Node
 	mrpt::containers::yaml planner_params_yaml_;
 
 	mpp::TrajectoriesAndRobotShape ptgs_;
+
+	// ptgs_ holds shared_ptr<ptg_t> entries that are reused (not cloned) by
+	// every do_path_plan() call via pi.ptgs = ptgs_. The PTG implementations
+	// mutate internal scratch state while evaluating a plan, so with the
+	// reentrant callback group + MultiThreadedExecutor below, concurrent
+	// service calls can run plan() on the same PTG objects at once and
+	// corrupt each other's search. Serialize the actual planning call with
+	// this mutex instead of trying to make every PTG implementation
+	// thread-safe.
+	std::mutex planning_cs_;
 
 	/// Parameters for the cost evaluator
 	mpp::CostEvaluatorCostMap::Parameters costMapParams_;
@@ -743,8 +839,8 @@ TPS_Astar_Planner_Node::PlanResult TPS_Astar_Planner_Node::do_path_plan(
 		obstacleSources++;
 		totalObstaclePoints += e.grid_obstacles->size();
 
-		auto costmap = mpp::CostEvaluatorCostMap::FromStaticPointObstacles(
-			*e.grid_obstacles, costMapParams_, pi.stateStart.pose);
+		auto costmap = makeCostmapEvaluator(
+			*e.grid_obstacles, costMapParams_, pi.stateStart.pose, ptgs_.robotShape);
 		local_planner.costEvaluators_.push_back(costmap);
 	}
 	// points:
@@ -769,8 +865,8 @@ TPS_Astar_Planner_Node::PlanResult TPS_Astar_Planner_Node::do_path_plan(
 		obstacleSources++;
 		totalObstaclePoints += e.obstacle_points->size();
 
-		auto costmap = mpp::CostEvaluatorCostMap::FromStaticPointObstacles(
-			*e.obstacle_points, costMapParams_, pi.stateStart.pose);
+		auto costmap = makeCostmapEvaluator(
+			*e.obstacle_points, costMapParams_, pi.stateStart.pose, ptgs_.robotShape);
 		local_planner.costEvaluators_.push_back(costmap);
 	}
 
@@ -809,7 +905,13 @@ TPS_Astar_Planner_Node::PlanResult TPS_Astar_Planner_Node::do_path_plan(
 													 << " bestPathLength: " << pcd.bestPath.size());
 	};
 
-	const mpp::PlannerOutput plan = local_planner.plan(pi);
+	// See planning_cs_ comment: pi.ptgs shares PTG instances with any other
+	// concurrent do_path_plan() call, and PTG evaluation is not reentrant.
+	mpp::PlannerOutput plan;
+	{
+		auto lckPlan = mrpt::lockHelper(planning_cs_);
+		plan = local_planner.plan(pi);
+	}
 
 	RCLCPP_INFO_STREAM(
 		this->get_logger(), "Done.\n"
@@ -862,12 +964,28 @@ TPS_Astar_Planner_Node::PlanResult TPS_Astar_Planner_Node::do_path_plan(
 	// Show plan in a GUI for debugging
 	if (gui_mrpt_)
 	{
+		// The tree search only interpolates each edge with a handful of
+		// points (just enough for cost evaluation), so re-interpolate the
+		// solution edges at a much finer resolution here, just for
+		// rendering: this is what makes the published path (built from
+		// plan_to_trajectory(), which always samples the PTGs densely,
+		// regardless of this cached field) look smoother than the raw GUI.
+		constexpr size_t kGuiPathInterpSegments = 50;
+		for (auto* e : pathEdges)
+		{
+			if (!e) continue;
+			const auto reconstrRelPose = e->stateTo.pose - e->stateFrom.pose;
+			densifyEdgeForGui(*e, pi.ptgs, reconstrRelPose, kGuiPathInterpSegments);
+		}
+
 		mpp::VisualizationOptions vizOpts;
 
 		vizOpts.renderOptions.highlight_path_to_node_id = plan.bestNodeId;
 		vizOpts.renderOptions.color_normal_edge = {0xb0b0b0, 0x20};	 // RGBA
 		vizOpts.renderOptions.width_normal_edge = 0;  // hide all edges except best path
 		vizOpts.gui_modal = false;	// leave GUI open in a background thread
+		setWindowTitle(
+			vizOpts, mrpt::format("%uth requested path plan", ++gui_plan_request_counter_));
 
 		mpp::viz_nav_plan(plan, vizOpts, local_planner.costEvaluators_);
 	}
