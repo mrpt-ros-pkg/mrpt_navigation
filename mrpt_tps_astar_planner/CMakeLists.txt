@@ -30,9 +30,6 @@ find_package(mrpt_gui REQUIRED)
 find_package(mrpt_opengl REQUIRED)
 
 find_package(mrpt_path_planning REQUIRED)
-if (TARGET mrpt_path_planning AND NOT TARGET mrpt_path_planning::mrpt_path_planning)
-  add_library(mrpt_path_planning::mrpt_path_planning ALIAS mrpt_path_planning)
-endif()
 
 message(STATUS "MRPT_VERSION: ${MRPT_VERSION}")
 
@@ -75,7 +72,7 @@ target_link_libraries(${PROJECT_NAME}_node PRIVATE
   mrpt::mrpt_nav
   mrpt::mrpt_kinematics
   mrpt_libros_bridge::mrpt_libros_bridge
-  mrpt_path_planning::mrpt_path_planning
+  mpp::mrpt_path_planning
   rclcpp::rclcpp
   ${rclcpp_components_TARGETS}
   ${nav_msgs_TARGETS}
