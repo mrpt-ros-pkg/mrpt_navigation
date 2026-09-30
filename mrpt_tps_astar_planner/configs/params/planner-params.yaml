@@ -16,6 +16,20 @@ ptg_sample_timestamps: [1.0, 2.0]  # seconds
 # the larger, the most favorable to move "looking at" the target direction.
 heuristic_heading_weight: 0.25
 
+# Weighted A*: the path cost is within this factor of the optimum of the
+# lattice abstraction (1.0 = exact A*, slower):
+heuristic_epsilon: 1.5
+
+# Full-pose goals (all of these need forward and reverse DiffDrive_C PTGs):
+# - admissible Reeds-Shepp heuristic, which accounts for the maneuvers a goal
+#   heading may require:
+use_reeds_shepp_heuristic: false
+# - certified Reeds-Shepp shots from expanded nodes within this distance of the
+#   goal, executed exactly as PTG trajectories, so that the path ends at the goal
+#   pose itself (also needs an odd number of trajectories per PTG):
+use_reeds_shepp_expansion: true
+reeds_shepp_expansion_max_length: 5.0  # [m]
+
 SE2_metricAngleWeight: 2.0
 pathInterpolatedSegments: 3
 
