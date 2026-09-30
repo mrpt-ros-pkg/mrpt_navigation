@@ -26,7 +26,8 @@ heuristic_epsilon: 1.5
 use_reeds_shepp_heuristic: false
 # - certified Reeds-Shepp shots from expanded nodes within this distance of the
 #   goal, executed exactly as PTG trajectories, so that the path ends at the goal
-#   pose itself (also needs an odd number of trajectories per PTG):
+#   pose itself (also needs the same, odd number of trajectories in both
+#   PTGs; see ptgs_jackal.ini):
 use_reeds_shepp_expansion: true
 reeds_shepp_expansion_max_length: 5.0  # [m]
 
