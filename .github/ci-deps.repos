@@ -1,7 +1,18 @@
-# Dependencies built from source in CI, until released on the ROS buildfarm.
+# Dependencies built from source in CI, until their MRPT 3 versions are
+# released on the ROS buildfarm (remove each entry once released).
 repositories:
   # mrpt_path_planning_core and mrpt_path_planning_apps (split packages):
   mrpt_path_planning:
     type: git
     url: https://github.com/MRPT/mrpt_path_planning.git
     version: develop
+  # The released 0.4.0 depends on MRPT 2:
+  pose_cov_ops:
+    type: git
+    url: https://github.com/mrpt-ros-pkg/pose_cov_ops.git
+    version: master
+  # Jazzy still releases 1.4.0, which depends on MRPT 2:
+  mvsim:
+    type: git
+    url: https://github.com/MRPT/mvsim.git
+    version: 1.5.0
