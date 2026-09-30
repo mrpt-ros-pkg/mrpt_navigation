@@ -12,6 +12,7 @@ jobs:
       DEBIAN_FRONTEND: noninteractive
     continue-on-error: ${{ matrix.allow_failure == true }}
     strategy:
+      fail-fast: false
       matrix:
         include:
           # Humble Hawksbill (May 2022 - May 2027)
@@ -64,6 +65,12 @@ jobs:
         with:
           required-ros-distributions: ${{ matrix.ros_distribution }}
           use-ros2-testing: ${{ matrix.use_ros_testing }}
+
+      - name: Import dependencies built from source
+        run: |
+          apt-get -y install python3-vcstool
+          mkdir -p ci_deps
+          vcs import ci_deps < .github/ci-deps.repos
 
       - name: Install rosdep dependencies
         run: |

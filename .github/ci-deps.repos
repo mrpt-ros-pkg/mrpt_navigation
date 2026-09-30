@@ -1,0 +1,7 @@
+# Dependencies built from source in CI, until released on the ROS buildfarm.
+repositories:
+  # mrpt_path_planning_core and mrpt_path_planning_apps (split packages):
+  mrpt_path_planning:
+    type: git
+    url: https://github.com/MRPT/mrpt_path_planning.git
+    version: develop
