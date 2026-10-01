@@ -9,27 +9,28 @@ localization and navigation functionality. Active development happens on the
 `ros2` branch (this branch); `ros1` is frozen, no further development. Package
 list and responsibilities:
 
-- **mrpt_map_server** — node that loads/publishes a static metric map (gridmap,
+- **mrpt_map_server**: node that loads/publishes a static metric map (gridmap,
   MRPT map, or mp2p_icp map), not limited to occupancy grids like classic
   ROS 1 `map_server`.
-- **mrpt_pf_localization** — particle-filter 2D self-localization node (like
+- **mrpt_pf_localization**: particle-filter 2D self-localization node (like
   `amcl`, but supports multiple PF algorithms, multi-height gridmaps,
   range-only localization, etc).
-- **mrpt_pointcloud_pipeline** — maintains a local obstacle map from recent
+- **mrpt_pointcloud_pipeline**: maintains a local obstacle map from recent
   sensor readings; supports point cloud filtering pipelines (volume/area
   filters, downsampling, 2D scan obstacle memory, etc).
-- **mrpt_reactivenav2d** — pure reactive navigator for polygonal robots in 2D.
-- **mrpt_tps_astar_planner** — SE(2)-lattice A* path planner based on PTG
+- **mrpt_reactivenav2d**: pure reactive navigator for polygonal robots in 2D.
+- **mrpt_tps_astar_planner**: SE(2)-lattice A* path planner based on PTG
   trajectories.
-- **mrpt_trajectory_follower** — node that accurately follows a reference
+- **mrpt_trajectory_follower**: node that accurately follows a reference
   pose+speed path (pure pursuit) with minimal predictive safety (footprint
   sweeps stop/slow before obstacles); wraps `mpp::TrajectoryFollower`.
-- **mrpt_msgs_bridge** — C++ conversions between `mrpt_msgs` ROS messages and
+- **mrpt_msgs_bridge**: C++ conversions between `mrpt_msgs` ROS messages and
   native MRPT classes.
-- **mrpt_nav_interfaces** — msg/srv/action definitions shared by the other
+- **mrpt_nav_interfaces**: msg/srv/action definitions shared by the other
   packages.
-- **mrpt_tutorials** — launch/config files and example datasets/maps tying
+- **mrpt_tutorials**: launch/config files and example datasets/maps tying
   the other packages together.
+- **mrpt_navigation**: metapackage depending on all of the above.
 
 All packages follow REP-2003 for ROS 2 topic QoS.
 
@@ -47,11 +48,22 @@ All packages follow REP-2003 for ROS 2 topic QoS.
 - Comments explaining a fix should state generic reasoning, not
   dataset/case-specific detail (e.g. not "fixes XXX failing on dataset YYY").
 - Avoid unnecessary complexity; keep changes minimal and scoped.
-- At present, this package uses MRPT 2.x API. It will soon be ported to MRPT 3.x (at that moment, update this line).
+- This repo uses the MRPT 3.x API and its split packages (`mrpt_maps`,
+  `mrpt_viz`, `mrpt_path_planning_core`, ...), not MRPT 2.x.
 - Don't sign commits/PRs as an AI, and don't reference internal plan/design
   document section numbers in commits, PRs, or code comments.
-- If a change affects something documented here, keep this file in sync;
-  but keep additions terse.
+
+## Maintaining this file
+
+- Keep it short and concise: it is a map of the repo (packages, architecture,
+  conventions, build/CI/release workflow), not a changelog or design doc.
+- Keep it up to date: when a change affects anything stated here (packages,
+  dependencies, MRPT version, CI, tooling, conventions), update it in the
+  same commit, and remove statements that are no longer true.
+- Do not log individual bug fixes, feature histories, or per-change notes;
+  git history and the generated `CHANGELOG.rst` files cover that.
+- Prefer one terse line over a paragraph; link to package READMEs for
+  details instead of duplicating them.
 
 ## Build & test
 
@@ -65,7 +77,8 @@ colcon test-result --verbose
 ```
 
 CI (`.github/workflows/build-ros.yml`) builds and tests against Humble and
-Jazzy (stable + testing repos) on every push.
+Jazzy (stable + testing repos) on every push. Dependencies not yet released
+with MRPT 3 support are built from source via `.github/ci-deps.repos`.
 
 ## Release process (maintainer only)
 
@@ -91,7 +104,7 @@ unless explicitly asked to.**
      `README.md`).
 
 Consequences for day-to-day work:
-- Never hand-edit `<version>` in `package.xml` or `CHANGELOG.rst` — these are
+- Never hand-edit `<version>` in `package.xml` or `CHANGELOG.rst` - these are
   machine-generated at release time from git history.
 - Git tags matching package versions (e.g. `2.5.0`) are release markers; don't
   create/move them manually.
