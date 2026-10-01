@@ -91,6 +91,9 @@ def generate_launch_description():
             'log_level': 'INFO',
             'log_level_core': 'INFO',
             'topic_sensors_2d_scan': '/laser1',
+            # Start localized at the robot pose in the mvsim world file:
+            'pf_params_overrides_file': os.path.join(
+                tutsDir, 'params', 'pf-initial-pose-demo_world2.yaml'),
             'topic_sensors_point_clouds': '',
 
             # For robots with wheels odometry, use:     'base_link'-> 'odom'      -> 'map'
