@@ -2,6 +2,32 @@
 Changelog for package mrpt_tps_astar_planner_node
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Merge pull request `#176 <https://github.com/mrpt-ros-pkg/mrpt_navigation/issues/176>`_ from mrpt-ros-pkg/docs/tps-astar-planner-params
+* Enable backward motion in the default PTG set
+* mrpt_tps_astar_planner: document the weighted-A* and Reeds-Shepp planner options
+* Merge pull request `#175 <https://github.com/mrpt-ros-pkg/mrpt_navigation/issues/175>`_ from mrpt-ros-pkg/mrpt3
+* Merge ros2 into mrpt3
+* Declare missing MRPT 3.x package.xml dependencies
+* mrpt_tps_astar_planner: link the split-off mrpt_path_planning_viz lib
+* mrpt_tps_astar_planner: link against the actual mpp::mrpt_path_planning target
+* Merge pull request `#174 <https://github.com/mrpt-ros-pkg/mrpt_navigation/issues/174>`_ from mrpt-ros-pkg/fix/astar-planner-mpp-compat
+* fix(tps_astar_planner): properly SFINAE-guard windowTitle and ptgStepIndex
+* fix: sfinae to set window title on mrpt_path_planning newer versions
+* tps_astar_planner: fix clang-format violation blocking CI
+* tps_astar_planner_node: densify solution path before GUI render, titled window
+* update to use new mpp lib structure
+* Merge pull request `#169 <https://github.com/mrpt-ros-pkg/mrpt_navigation/issues/169>`_ from mrpt-ros-pkg/feat/astar-footprint-aware-costmap
+* feat(tps_astar_planner): footprint-aware clearance costmap (back-compatible)
+* Merge pull request `#168 <https://github.com/mrpt-ros-pkg/mrpt_navigation/issues/168>`_ from mrpt-ros-pkg/fix/tps-astar-concurrent-planning-race
+* fix(tps_astar_planner): serialize planning to avoid concurrent PTG corruption
+* Merge pull request `#163 <https://github.com/mrpt-ros-pkg/mrpt_navigation/issues/163>`_ from mrpt-ros-pkg/feature/ccache-support
+* build: enable ccache in all packages when available
+* Port to mrpt3: fix yaml API, mrpt::opengl→viz, CImage, asCvMatRef
+* Port to MRPT 3.x: rename packages and targets
+* Contributors: Jose Luis Blanco-Claraco
+
 2.5.0 (2026-05-11)
 ------------------
 * Merge pull request `#161 <https://github.com/mrpt-ros-pkg/mrpt_navigation/issues/161>`_ from mrpt-ros-pkg/fix-threads

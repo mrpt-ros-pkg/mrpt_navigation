@@ -2,6 +2,27 @@
 Changelog for package mrpt_pf_localization
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Merge pull request `#175 <https://github.com/mrpt-ros-pkg/mrpt_navigation/issues/175>`_ from mrpt-ros-pkg/mrpt3
+* Merge ros2 into mrpt3
+* Declare missing MRPT 3.x package.xml dependencies
+* mrpt_pf_localization: use CMultiMetricMap::mapsList() instead of ->maps
+* Merge pull request `#167 <https://github.com/mrpt-ros-pkg/mrpt_navigation/issues/167>`_ from T1moha5/feat/pf-external-pose
+* External pose correction for particle filter
+* Add publish_tf parameter (`#164 <https://github.com/mrpt-ros-pkg/mrpt_navigation/issues/164>`_)
+* Merge pull request `#170 <https://github.com/mrpt-ros-pkg/mrpt_navigation/issues/170>`_ from mrpt-ros-pkg/feat/trajectory-follower-node
+* fix cmake linter and tolerances
+* Merge pull request `#163 <https://github.com/mrpt-ros-pkg/mrpt_navigation/issues/163>`_ from mrpt-ros-pkg/feature/ccache-support
+* build: enable ccache in all packages when available
+* Apply clang-format-14 to all sources
+* Port to MRPT3: remove unregistered map class entries from ini files
+* Port to mrpt3: fix CNetworkOfPoses*_NA removal, CRobot2NavInterface API changes
+* Port to mrpt3: fix yaml API, mrpt::opengl→viz, CImage, asCvMatRef
+* Port to MRPT 3.x: rename packages and targets
+* docs: update mrpt docs URI
+* Contributors: Jose Luis Blanco-Claraco, Timofei_Demkov, tdemkov
+
 2.5.0 (2026-05-11)
 ------------------
 * Merge pull request `#159 <https://github.com/mrpt-ros-pkg/mrpt_navigation/issues/159>`_ from mrpt-ros-pkg/bump-cmake

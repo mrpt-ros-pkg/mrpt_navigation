@@ -2,6 +2,17 @@
 Changelog for package mrpt_map_server
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Merge pull request `#175 <https://github.com/mrpt-ros-pkg/mrpt_navigation/issues/175>`_ from mrpt-ros-pkg/mrpt3
+* Merge ros2 into mrpt3
+* Declare missing MRPT 3.x package.xml dependencies
+* Merge pull request `#163 <https://github.com/mrpt-ros-pkg/mrpt_navigation/issues/163>`_ from mrpt-ros-pkg/feature/ccache-support
+* build: enable ccache in all packages when available
+* Port to MRPT 3.x: rename packages and targets
+* docs: update mrpt docs URI
+* Contributors: Jose Luis Blanco-Claraco
+
 2.5.0 (2026-05-11)
 ------------------
 * Remove support for deprecated mrpt::maps classes

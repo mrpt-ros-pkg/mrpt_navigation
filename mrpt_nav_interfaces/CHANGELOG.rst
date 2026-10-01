@@ -2,6 +2,13 @@
 Changelog for package mrpt_nav_interfaces
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Merge ros2 into mrpt3
+* Merge pull request `#163 <https://github.com/mrpt-ros-pkg/mrpt_navigation/issues/163>`_ from mrpt-ros-pkg/feature/ccache-support
+* build: enable ccache in all packages when available
+* Contributors: Jose Luis Blanco-Claraco
+
 2.5.0 (2026-05-11)
 ------------------
 * fix: rollback min cmake version for local builds in Humble with modern cmake
