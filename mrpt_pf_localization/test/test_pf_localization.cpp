@@ -164,7 +164,7 @@ TEST(PF_Localization, RunRealDataset)
 
 	// Run for a small dataset:
 	mrpt::obs::CRawlog dataset;
-	dataset.loadFromRawLogFile(_.TEST_RAWLOG_FILE);
+	ASSERT_(dataset.loadFromRawLogFile(_.TEST_RAWLOG_FILE));
 	EXPECT_GT(dataset.size(), 20U);
 
 	double lastStepTime = 0.0;
