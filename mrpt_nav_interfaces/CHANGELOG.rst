@@ -2,8 +2,8 @@
 Changelog for package mrpt_nav_interfaces
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+2.6.0 (2026-10-01)
+------------------
 * Merge ros2 into mrpt3
 * Merge pull request `#163 <https://github.com/mrpt-ros-pkg/mrpt_navigation/issues/163>`_ from mrpt-ros-pkg/feature/ccache-support
 * build: enable ccache in all packages when available

@@ -2,8 +2,8 @@
 Changelog for package mrpt_trajectory_follower
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+2.6.0 (2026-10-01)
+------------------
 * Merge pull request `#175 <https://github.com/mrpt-ros-pkg/mrpt_navigation/issues/175>`_ from mrpt-ros-pkg/mrpt3
 * Merge ros2 into mrpt3
 * trajectory_follower: update sample config comments for the vehicle-centered control-pose filter

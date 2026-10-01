@@ -2,8 +2,8 @@
 Changelog for package mrpt_tutorials
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+2.6.0 (2026-10-01)
+------------------
 * Merge ros2 into mrpt3
 * add tutorial/demo with Astar planner+new path follower
 * Contributors: Jose Luis Blanco-Claraco

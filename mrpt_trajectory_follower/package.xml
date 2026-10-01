@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <package format="3">
   <name>mrpt_trajectory_follower</name>
-  <version>2.5.0</version>
+  <version>2.6.0</version>
   <description>ROS 2 node that accurately follows a reference trajectory with minimal predictive safety, wrapping mpp::TrajectoryFollower</description>
 
   <maintainer email="jlblanco@ual.es">Jose-Luis Blanco-Claraco</maintainer>
