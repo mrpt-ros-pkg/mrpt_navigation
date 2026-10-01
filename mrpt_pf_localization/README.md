@@ -147,5 +147,7 @@ which can be used in user projects to launch the MRPT PF localization node, by s
 
 * ``pf_params_file`` (Default: [params/default.config.yaml](params/default.config.yaml)): If defined, overrides the default
 particle filter algorithm.
+* ``pf_params_overrides_file`` (Default: [params/no-overrides.yaml](params/no-overrides.yaml)): Optional YAML file whose
+parameters override those in ``pf_params_file``. Useful to set, for example, just the ``initial_pose`` for a given map.
 
 

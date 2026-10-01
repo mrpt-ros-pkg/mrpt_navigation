@@ -1,0 +1,4 @@
+# Empty parameter file, used as default for the "pf_params_overrides_file"
+# launch argument in localization.launch.py.
+/**:
+  ros__parameters: {}

@@ -1,0 +1,12 @@
+# mrpt_pf_localization parameter overrides: initial pose matching the robot
+# <init_pose> in mvsim/demo_world2.world.xml, so the PF starts localized.
+/**:
+  ros__parameters:
+    initial_pose:
+      mean: { x: 30.0, y: 30.0, z: 0.0, yaw: 0.0, pitch: 0.0, roll: 0.0 }
+      std_x: 0.5     # 1 sigma uncertainty [meters]
+      std_y: 0.5
+      std_z: 0.0
+      std_yaw: 0.2   # 1 sigma uncertainty [radians]
+      std_pitch: 0.0
+      std_roll: 0.0

@@ -39,6 +39,11 @@ def generate_launch_description():
         "pf_params_file", default_value=TextSubstitution(
             text=os.path.join(pfLocDir, 'params', 'default.config.yaml')))
 
+    pf_params_overrides_file_launch_arg = DeclareLaunchArgument(
+        "pf_params_overrides_file", default_value=TextSubstitution(
+            text=os.path.join(pfLocDir, 'params', 'no-overrides.yaml')),
+        description="Optional YAML file with parameters overriding those in pf_params_file (e.g. initial_pose)")
+
     relocalization_params_file_launch_arg = DeclareLaunchArgument(
         "relocalization_params_file", default_value=TextSubstitution(
             text=os.path.join(pfLocDir, 'params', 'default-relocalization-pipeline.yaml')))
@@ -108,6 +113,7 @@ def generate_launch_description():
         output='screen',
         parameters=[
             LaunchConfiguration('pf_params_file'),
+            LaunchConfiguration('pf_params_overrides_file'),
             {
                 "topic_sensors_2d_scan": LaunchConfiguration('topic_sensors_2d_scan'),
                 "topic_sensors_point_clouds": LaunchConfiguration('topic_sensors_point_clouds'),
@@ -133,6 +139,7 @@ def generate_launch_description():
                 plugin='PFLocalizationNode',
                 parameters=[
                     LaunchConfiguration('pf_params_file'),
+                    LaunchConfiguration('pf_params_overrides_file'),
                     {
                         "topic_sensors_2d_scan": LaunchConfiguration('topic_sensors_2d_scan'),
                         "topic_sensors_point_clouds": LaunchConfiguration('topic_sensors_point_clouds'),
@@ -155,6 +162,7 @@ def generate_launch_description():
         pf_log_level_core_launch_arg,
         relocalization_params_file_launch_arg,
         pf_params_file_launch_arg,
+        pf_params_overrides_file_launch_arg,
         topic_sensors_2d_scan_arg,
         topic_sensors_point_clouds_arg,
         topic_gnss_args,
