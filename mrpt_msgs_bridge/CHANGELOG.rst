@@ -2,6 +2,11 @@
 Changelog for package mrpt_msgs_bridge
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Declare the mrpt_graphs and Eigen dependencies (Fixes `#179 <https://github.com/mrpt-ros-pkg/mrpt_navigation/issues/179>`_)
+* Contributors: Jose Luis Blanco-Claraco
+
 2.6.0 (2026-10-01)
 ------------------
 * Merge pull request `#175 <https://github.com/mrpt-ros-pkg/mrpt_navigation/issues/175>`_ from mrpt-ros-pkg/mrpt3
