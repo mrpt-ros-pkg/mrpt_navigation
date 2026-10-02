@@ -2,8 +2,8 @@
 Changelog for package mrpt_pf_localization
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+2.6.1 (2026-10-02)
+------------------
 * demo_astar* launches: start with the PF localized at the simulated robot initial pose
   Adds an optional pf_params_overrides_file launch argument to mrpt_pf_localization localization.launch.py.
 * mrpt_pf_localization test: check the result of CRawlog::loadFromRawLogFile()
