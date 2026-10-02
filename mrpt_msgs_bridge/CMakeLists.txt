@@ -24,6 +24,9 @@ find_package(mrpt_libros_bridge REQUIRED)
 # Ensure workspace mrpt_libros_bridge headers take priority over system ones:
 include_directories(BEFORE ${mrpt_libros_bridge_INCLUDE_DIRS})
 find_package(mrpt_obs REQUIRED)
+find_package(mrpt_graphs REQUIRED)
+# mrpt_graphs headers may require Eigen, which it does not export to users:
+find_package(Eigen3 REQUIRED)
 
 message(STATUS "MRPT_VERSION: ${mrpt_obs_VERSION}")
 
@@ -77,6 +80,8 @@ install(DIRECTORY include/${PROJECT_NAME}
 # Specify libraries to link a library or executable target against
 target_link_libraries(${PROJECT_NAME} PRIVATE
   mrpt::mrpt_obs
+  mrpt::mrpt_graphs
+  Eigen3::Eigen
   mrpt_libros_bridge::mrpt_libros_bridge
   rclcpp::rclcpp
   tf2::tf2
