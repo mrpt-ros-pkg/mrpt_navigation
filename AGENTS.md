@@ -22,15 +22,23 @@ list and responsibilities:
 - **mrpt_tps_astar_planner**: SE(2)-lattice A* path planner based on PTG
   trajectories.
 - **mrpt_trajectory_follower**: node that accurately follows a reference
-  pose+speed path (pure pursuit) with minimal predictive safety (footprint
-  sweeps stop/slow before obstacles); wraps `mpp::TrajectoryFollower`.
+  pose+speed path (pure pursuit) with predictive safety, a last-resort
+  collision guard on every command, run-time speed limit, and optional
+  replanning on failure; wraps `mpp::TrajectoryFollower` and
+  `mpp::CollisionGuard`.
 - **mrpt_msgs_bridge**: C++ conversions between `mrpt_msgs` ROS messages and
   native MRPT classes.
 - **mrpt_nav_interfaces**: msg/srv/action definitions shared by the other
   packages.
 - **mrpt_tutorials**: launch/config files and example datasets/maps tying
-  the other packages together.
-- **mrpt_navigation**: metapackage depending on all of the above.
+  the other packages together (simulated `ackermann` and `diffdrive` robots).
+  In mvsim demos, all nodes but mvsim run on its clock (`use_sim_time`).
+- **mrpt_navigation**: metapackage depending on all of the above; holds the
+  end-to-end navigation tests in simulation (`mrpt_navigation/test/`).
+
+The PTG `.ini` file is the robot description (footprint, kinematics) shared by
+the planner and the follower; pass the same file to both. Platform properties
+(speed, accel, actuation lag) go in follower parameter overrides.
 
 All packages follow REP-2003 for ROS 2 topic QoS.
 
@@ -75,6 +83,9 @@ colcon build --symlink-install --packages-up-to mrpt_navigation
 colcon test --packages-select <pkg>
 colcon test-result --verbose
 ```
+
+`colcon test --packages-select mrpt_navigation` runs headless end-to-end
+navigation batteries in mvsim (several minutes).
 
 CI (`.github/workflows/build-ros.yml`) builds and tests against Humble and
 Jazzy (stable + testing repos) on every push. Dependencies not yet released
