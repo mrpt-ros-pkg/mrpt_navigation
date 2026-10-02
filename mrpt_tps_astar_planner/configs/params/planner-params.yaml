@@ -2,9 +2,10 @@
 ---
 # It is safe to use coarse lattice values, since a post-processing path
 # refining stage will normally improve the result, with a very reduced overall
-# time cost:
-grid_resolution_xy: 0.20    # [meters]
-grid_resolution_yaw: 10.0   # [deg]
+# time cost. Coarse lattices also plan long paths through maze-like maps much
+# faster:
+grid_resolution_xy: 0.30    # [meters]
+grid_resolution_yaw: 15.0   # [deg]
 
 # find_feasible_paths_to_neighbors() params:
 # Note: path refining will always use *all* PTG trajectories, despite this value
@@ -18,12 +19,13 @@ heuristic_heading_weight: 0.25
 
 # Weighted A*: the path cost is within this factor of the optimum of the
 # lattice abstraction (1.0 = exact A*, slower):
-heuristic_epsilon: 1.5
+heuristic_epsilon: 2.0
 
 # Full-pose goals (all of these need forward and reverse DiffDrive_C PTGs):
 # - admissible Reeds-Shepp heuristic, which accounts for the maneuvers a goal
-#   heading may require:
-use_reeds_shepp_heuristic: false
+#   heading may require. It also keeps the search fast with the extra cost of
+#   reverse motion (see the node 'reverse_motion_cost_factor' parameter):
+use_reeds_shepp_heuristic: true
 # - certified Reeds-Shepp shots from expanded nodes within this distance of the
 #   goal, executed exactly as PTG trajectories, so that the path ends at the goal
 #   pose itself (also needs the same, odd number of trajectories in both
