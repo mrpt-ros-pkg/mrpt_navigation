@@ -6,6 +6,8 @@ max_speed: 0.5             # [m/s]
 max_accel: 0.5             # [m/s^2]
 max_decel: 0.7             # [m/s^2]
 max_lateral_accel: 1.0     # [m/s^2] curvature speed limit
+max_omega: 1.0             # [rad/s] max angular speed, enforced by lowering the
+                           # linear speed (keeps the path curvature). <=0 disables.
 # max_omega_rate: 0.0      # [rad/s^2] <=0 (default) disables: no cap on how
                             # fast the commanded omega itself may step between
                             # cycles. Prefer max_curvature_rate below on a
@@ -29,7 +31,7 @@ lookahead_max: 1.5         # [m] max lookahead travel
 lookahead_bend: 25.0       # [deg] path bend that caps the lookahead
 # min_lookahead_arc: 0.3   # [m] min arc-length advance of the lookahead along
                             # the path (keeps it off the robot itself).
-# min_lookahead_dist: 0.0  # [m] <=0 (default) disables: the pure-pursuit
+min_lookahead_dist: 0.8    # [m] <=0 disables: the pure-pursuit
                             # target's Euclidean distance from the vehicle is
                             # allowed to collapse (near the goal, approaching a
                             # cusp, or on a path curling back on itself), where
@@ -50,6 +52,9 @@ max_cross_track: 1.0       # [m] -> OffPathExceeded
                             # fires after the cross-track has stayed over the
                             # limit continuously this long.
 arrival_radius: 0.3        # [m] settle-and-hold radius at the goal (anti-runaway)
+arrival_ang_tol: 25.0      # [deg] settling there with a larger heading error
+                           # reports MissedGoal (and replans, if enabled)
+                           # instead of ReachedGoal. 0: always ReachedGoal.
 
 # --- control-pose complementary filter (odometry + localization) ---
 # The control pose is dead-reckoned from the wheel odometry and corrected
@@ -89,3 +94,17 @@ reference_lookahead_dist: 2.5      # [m] reference sweep distance
 footprint_sample_resolution: 0.1   # [m]
 resume_scale: 0.2                  # hysteresis to resume after a stop
 block_timeout: 5.0                 # [s] stopped longer than this -> Blocked
+
+# --- Last-resort collision guard (mpp::CollisionGuard) ---
+# Applied to every published command, using only the latest sensed obstacles in
+# the robot frame (independent of localization and of the reference path): the
+# speed is reduced so the robot can always brake to a stop, along the commanded
+# arc, before its footprint (inflated by 'margin') touches any obstacle.
+# Missing or stale obstacle data stops the robot. Enable/disable with the
+# 'collision_guard' node parameter (needs 'topic_obstacles_sub').
+collision_guard:
+  max_decel: 1.0           # [m/s^2] braking deceleration the robot surely achieves
+  max_ang_decel: 1.5       # [rad/s^2]
+  reaction_time: 0.25      # [s] >= control period + actuation latency
+  margin: 0.05             # [m] footprint inflation
+  max_obstacles_age: 0.5   # [s] older obstacle data => full stop

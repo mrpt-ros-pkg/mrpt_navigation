@@ -20,6 +20,7 @@
   <depend>mrpt_containers</depend>
   <depend>mrpt_libros_bridge</depend>
   <depend>mrpt_path_planning_core</depend>
+  <depend>mrpt_nav_interfaces</depend>
   <depend>geometry_msgs</depend>
   <depend>nav_msgs</depend>
   <depend>rclcpp</depend>
