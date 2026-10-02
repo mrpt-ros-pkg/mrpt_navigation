@@ -1,13 +1,18 @@
 # ROS 2 launch file for example in mrpt_tutorials
 #
+# All nodes except mvsim run on the simulation clock published by mvsim
+# (launch argument use_sim_time, default True), so they stay consistent with
+# sensor timestamps even if the simulation runs slower than real time.
+#
 # See repo online: https://github.com/mrpt-ros-pkg/mrpt_navigation
 #
 
 from launch import LaunchDescription
 from launch.substitutions import TextSubstitution
 from launch.substitutions import LaunchConfiguration
-from launch_ros.actions import Node
-from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
+from launch.conditions import IfCondition
+from launch_ros.actions import Node, SetParameter
+from launch.actions import DeclareLaunchArgument, GroupAction, IncludeLaunchDescription
 from ament_index_python import get_package_share_directory
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 import os
@@ -25,7 +30,7 @@ def generate_launch_description():
         launch_arguments={
             'log_level': 'INFO',
             'log_level_core': 'INFO',
-            'topic_sensors_2d_scan': '/laser1',
+            'topic_sensors_2d_scan': '/laser1, /laser2',
             # Start localized at the robot pose in the mvsim world file:
             'pf_params_overrides_file': os.path.join(
                 tutsDir, 'params', 'pf-initial-pose-demo_world2.yaml'),
@@ -64,13 +69,24 @@ def generate_launch_description():
         package='rviz2',
         executable='rviz2',
         name='rviz2',
+        condition=IfCondition(LaunchConfiguration('use_rviz')),
         arguments=[
                 '-d', [os.path.join(tutsDir, 'rviz2', 'gridmap.rviz')]]
     )
 
     return LaunchDescription([
-        pf_localization_launch,
+        DeclareLaunchArgument(
+            'use_rviz', default_value='True',
+            description='Whether to launch RViz2 (False for headless runs)'),
+        DeclareLaunchArgument(
+            'use_sim_time', default_value='True',
+            description='Run the nodes on the simulation clock from mvsim'),
         mvsim_node,
-        rviz2_node,
-        mrpt_map_launch,
+        GroupAction([
+            SetParameter(name='use_sim_time',
+                         value=LaunchConfiguration('use_sim_time')),
+            pf_localization_launch,
+            rviz2_node,
+            mrpt_map_launch,
+        ]),
     ])

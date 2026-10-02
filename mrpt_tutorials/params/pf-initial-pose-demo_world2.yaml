@@ -7,6 +7,6 @@
       std_x: 0.5     # 1 sigma uncertainty [meters]
       std_y: 0.5
       std_z: 0.0
-      std_yaw: 0.2   # 1 sigma uncertainty [radians]
+      std_yaw: 0.05  # 1 sigma uncertainty [radians]
       std_pitch: 0.0
       std_roll: 0.0

@@ -1,0 +1,13 @@
+# Robot-specific overrides of mrpt_trajectory_follower parameters for the
+# mvsim "car_ackermann" vehicle. Only platform properties go here; everything
+# else comes from the shared follower-params.yaml, and the footprint and min
+# turning radius from the robot description (PTG .ini file).
+max_speed: 3.0        # [m/s] platform max (see the 'speed_limit' node param)
+max_accel: 0.5        # [m/s^2]
+max_decel: 0.5        # [m/s^2] what the (heavy, laggy) platform tracks well
+# The car speed controller behaves as a ~0.7 s first-order lag: after a stop
+# command it keeps moving about v*0.7 m.
+actuation_lag: 0.7    # [s]
+
+collision_guard:
+  reaction_time: 0.8  # [s] must cover the actuation lag above
