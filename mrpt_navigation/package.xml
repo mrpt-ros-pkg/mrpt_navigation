@@ -23,7 +23,20 @@
   <depend>mrpt_pointcloud_pipeline</depend>
   <depend>mrpt_reactivenav2d</depend>
   <depend>mrpt_tps_astar_planner</depend>
+  <depend>mrpt_trajectory_follower</depend>
   <depend>mrpt_tutorials</depend>
+
+  <!-- End-to-end navigation tests in simulation -->
+  <test_depend>mvsim</test_depend>
+  <test_depend>ament_cmake_pytest</test_depend>
+  <test_depend>ament_cmake_ros</test_depend>
+  <test_depend>launch_testing</test_depend>
+  <test_depend>launch_testing_ros</test_depend>
+  <test_depend>rclpy</test_depend>
+  <test_depend>geometry_msgs</test_depend>
+  <test_depend>nav_msgs</test_depend>
+  <test_depend>std_msgs</test_depend>
+  <test_depend>tf2_ros_py</test_depend>
 
   <depend>ament_cmake_lint_cmake</depend>
   <depend>ament_cmake_xmllint</depend>

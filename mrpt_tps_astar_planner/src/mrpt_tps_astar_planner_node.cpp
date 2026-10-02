@@ -8,6 +8,7 @@
 
 #include <mpp/algos/CostEvaluatorCostMap.h>
 #include <mpp/algos/CostEvaluatorPreferredWaypoint.h>
+#include <mpp/algos/CostEvaluatorReverseMotion.h>
 #include <mpp/algos/NavEngine.h>
 #include <mpp/algos/TPS_Astar.h>
 #include <mpp/algos/edge_interpolated_path.h>
@@ -17,6 +18,7 @@
 #include <mpp/data/EnqueuedMotionCmd.h>
 #include <mpp/data/MotionPrimitivesTree.h>
 #include <mpp/data/PlannerOutput.h>
+#include <mpp/data/robot_shape_sampling.h>
 #include <mpp/interfaces/ObstacleSource.h>
 #include <mpp/interfaces/VehicleMotionInterface.h>
 #include <mrpt/config/CConfigFile.h>
@@ -40,6 +42,7 @@
 #include <tf2_ros/buffer.h>
 #include <tf2_ros/transform_listener.h>
 
+#include <geometry_msgs/msg/polygon_stamped.hpp>
 #include <geometry_msgs/msg/pose_array.hpp>
 #include <geometry_msgs/msg/pose_stamped.hpp>
 #include <geometry_msgs/msg/pose_with_covariance_stamped.hpp>
@@ -57,6 +60,7 @@
 #include <optional>
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
+#include <set>
 #include <std_msgs/msg/bool.hpp>
 #include <string>
 #include <tf2/LinearMath/Matrix3x3.hpp>
@@ -207,6 +211,10 @@ class TPS_Astar_Planner_Node : public rclcpp::Node
 	rclcpp::Publisher<mrpt_msgs::msg::WaypointSequence>::SharedPtr pub_wp_seq_;
 	rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr pub_wp_path_seq_;
 	std::vector<rclcpp::Publisher<nav_msgs::msg::OccupancyGrid>::SharedPtr> pub_costmaps_;
+
+	/// Robot footprint used for planning (latched), so other nodes can
+	/// check their configuration is consistent with it:
+	rclcpp::Publisher<geometry_msgs::msg::PolygonStamped>::SharedPtr pub_robot_shape_;
 	std::mutex pub_costmaps_cs_;
 
 	// tf2 buffer and listener
@@ -261,6 +269,10 @@ class TPS_Astar_Planner_Node : public rclcpp::Node
 	bool problem_world_bbox_ignore_obstacles_ = false;
 
 	bool astar_skip_refine_ = false;
+
+	/// Extra cost per second of reverse motion (0: reversing costs the same as
+	/// driving forward)
+	double reverse_motion_cost_factor_ = 1.0;
 
 	/// Waypoint parameters
 	double mid_waypoints_allowed_distance_ = 0.5;
@@ -496,6 +508,23 @@ TPS_Astar_Planner_Node::TPS_Astar_Planner_Node() : rclcpp::Node(NODE_NAME)
 	// Init planner:
 	// --------------------------
 	initialize_planner();
+
+	// Publish the robot footprint once (latched):
+	// --------------------------
+	pub_robot_shape_ =
+		this->create_publisher<geometry_msgs::msg::PolygonStamped>("~/robot_shape", mapQoS);
+	{
+		geometry_msgs::msg::PolygonStamped msg;
+		msg.header.frame_id = frame_id_robot_;
+		msg.header.stamp = this->now();
+		for (const auto& pt : mpp::robotShapeAsPolygon(ptgs_.robotShape))
+		{
+			auto& q = msg.polygon.points.emplace_back();
+			q.x = static_cast<float>(pt.x);
+			q.y = static_cast<float>(pt.y);
+		}
+		pub_robot_shape_->publish(msg);
+	}
 }
 
 bool TPS_Astar_Planner_Node::wait_for_transform(
@@ -609,6 +638,11 @@ void TPS_Astar_Planner_Node::read_parameters()
 	this->get_parameter("astar_skip_refine", astar_skip_refine_);
 	RCLCPP_INFO_STREAM(this->get_logger(), "astar_skip_refine: " << astar_skip_refine_);
 
+	this->declare_parameter<double>("reverse_motion_cost_factor", reverse_motion_cost_factor_);
+	this->get_parameter("reverse_motion_cost_factor", reverse_motion_cost_factor_);
+	RCLCPP_INFO(
+		this->get_logger(), "reverse_motion_cost_factor: %.03f", reverse_motion_cost_factor_);
+
 	this->declare_parameter<double>(
 		"final_waypoint_allowed_distance", final_waypoint_allowed_distance_);
 	this->get_parameter("final_waypoint_allowed_distance", final_waypoint_allowed_distance_);
@@ -707,8 +741,20 @@ void TPS_Astar_Planner_Node::callback_goal(const geometry_msgs::msg::PoseStamped
 
 		const auto res = do_path_plan(start_pose, nav_goal);
 
-		// Publish:
-		if (res.valid) publish_waypoint_sequence(res.wps);
+		// Publish. On failure, publish an empty sequence so that downstream
+		// path followers stop instead of continuing on a previous path:
+		if (res.valid)
+		{
+			publish_waypoint_sequence(res.wps);
+		}
+		else
+		{
+			RCLCPP_WARN(this->get_logger(), "No valid path found: publishing an empty path.");
+			mrpt_msgs::msg::WaypointSequence empty;
+			empty.header.frame_id = frame_id_map_;
+			empty.header.stamp = this->now();
+			publish_waypoint_sequence(empty);
+		}
 	}
 	catch (const std::exception& e)
 	{
@@ -782,8 +828,40 @@ void TPS_Astar_Planner_Node::update_map(
 	e.grid = mrpt::maps::COccupancyGridMap2D::Create();
 	mrpt::ros2bridge::fromROS(*msg, *e.grid);
 
+	// Occupied (border) cells as obstacle points. Each cell is represented by
+	// its corners, not only its center, so the planning clearance is kept to
+	// the actual cell extent (walls reach half a cell beyond the centers):
+	mrpt::maps::CSimplePointsMap centers;
+	e.grid->getAsPointCloud(centers);
+	const double res = e.grid->getResolution();
+	const double x0 = e.grid->getXMin();
+	const double y0 = e.grid->getYMin();
+	std::set<std::pair<int, int>> corners;
+	const auto& xs = centers.getPointsBufferRef_x();
+	const auto& ys = centers.getPointsBufferRef_y();
+	for (size_t i = 0; i < xs.size(); i++)
+	{
+		const int cx = static_cast<int>(std::floor((xs[i] - x0) / res));
+		const int cy = static_cast<int>(std::floor((ys[i] - y0) / res));
+		for (int dx = 0; dx <= 1; dx++)
+		{
+			for (int dy = 0; dy <= 1; dy++)
+			{
+				corners.emplace(cx + dx, cy + dy);
+			}
+		}
+	}
 	e.grid_obstacles = mrpt::maps::CSimplePointsMap::Create();
-	e.grid->getAsPointCloud(*e.grid_obstacles);
+	e.grid_obstacles->reserve(corners.size());
+	for (const auto& [ix, iy] : corners)
+	{
+		e.grid_obstacles->insertPointFast(
+			static_cast<float>(x0 + ix * res), static_cast<float>(y0 + iy * res), 0);
+	}
+	e.grid_obstacles->mark_as_modified();
+	RCLCPP_INFO(
+		get_logger(), "Gridmap obstacles: %zu occupied border cells -> %zu corner points.",
+		xs.size(), corners.size());
 }
 
 TPS_Astar_Planner_Node::PlanResult TPS_Astar_Planner_Node::do_path_plan(
@@ -872,6 +950,14 @@ TPS_Astar_Planner_Node::PlanResult TPS_Astar_Planner_Node::do_path_plan(
 
 	lckObs.unlock();
 
+	if (reverse_motion_cost_factor_ > 0)
+	{
+		auto ev = mpp::CostEvaluatorReverseMotion::Create();
+		ev->params_.reverseTimeCostFactor = reverse_motion_cost_factor_;
+		ev->setPTGs(ptgs_);
+		local_planner.costEvaluators_.push_back(ev);
+	}
+
 	{
 		const auto bboxMargin =
 			mrpt::math::TPoint3Df(problem_world_bbox_margin_, problem_world_bbox_margin_, .0f);
@@ -933,6 +1019,12 @@ TPS_Astar_Planner_Node::PlanResult TPS_Astar_Planner_Node::do_path_plan(
 		pub_costmaps_.resize(local_planner.costEvaluators_.size());
 		for (size_t i = 0; i < local_planner.costEvaluators_.size(); i++)
 		{
+			// Only costmaps have a meaningful grid representation:
+			if (!std::dynamic_pointer_cast<mpp::CostEvaluatorCostMap>(
+					local_planner.costEvaluators_.at(i)))
+			{
+				continue;
+			}
 			if (!pub_costmaps_[i])
 			{
 				// See: REP-2003: https://ros.org/reps/rep-2003.html
@@ -1026,6 +1118,18 @@ TPS_Astar_Planner_Node::PlanResult TPS_Astar_Planner_Node::do_path_plan(
 		wp_msg.ignore_heading = mid_waypoints_ignore_heading_;
 
 		res.wps.waypoints.push_back(wp_msg);
+	}
+
+	// The path ends at (or very close to) the goal: replace its last sample
+	// with the goal itself instead of appending it, since a tiny final segment
+	// could point in any direction (e.g. be taken for a direction reversal).
+	if (!res.wps.waypoints.empty() && !interpPath.empty())
+	{
+		const auto& last = interpPath.rbegin()->second.state.pose;
+		if (std::hypot(last.x - goal.x, last.y - goal.y) < 0.15)
+		{
+			res.wps.waypoints.pop_back();
+		}
 	}
 
 	auto wp_msg = mrpt_msgs::msg::Waypoint();

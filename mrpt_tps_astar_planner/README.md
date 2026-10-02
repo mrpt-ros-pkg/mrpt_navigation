@@ -76,6 +76,7 @@ time allows, then returns the best found. An optional refinement pass
 | `problem_world_bbox_margin` | `2.0` | Extra margin [m] added around the planning bounding box |
 | `problem_world_bbox_ignore_obstacles` | `false` | If true, obstacle extents are excluded from the bounding box |
 | `astar_skip_refine` | `false` | If true, skip the post-A\* trajectory refinement pass |
+| `reverse_motion_cost_factor` | `1.0` | Extra cost per second driven in reverse, so paths only back up when it pays off (0: same cost as forward) |
 | `mid_waypoints_allowed_distance` | `0.5` | Acceptance radius [m] for intermediate waypoints |
 | `final_waypoint_allowed_distance` | `0.4` | Acceptance radius [m] for the goal waypoint |
 | `mid_waypoints_allow_skip` | `true` | Whether intermediate waypoints may be skipped |
@@ -96,7 +97,8 @@ time allows, then returns the best found. An optional refinement pass
 | Topic | Type | Description |
 |---|---|---|
 | `<topic_wp_seq_pub>` (default `/waypoints`) | `mrpt_msgs/WaypointSequence` | Full waypoint sequence with per-waypoint tolerances and flags |
-| `<topic_wp_seq_pub>_path` (default `/waypoints_path`) | `nav_msgs/Path` | Same path as `nav_msgs/Path`, mainly for RViz visualization |
+| `<topic_wp_seq_pub>_path` (default `/waypoints_path`) | `nav_msgs/Path` | Same path as `nav_msgs/Path` (empty if no path was found for a goal topic request, which cancels path followers) |
+| `~/robot_shape` | `geometry_msgs/PolygonStamped` | Robot footprint used for planning (latched), so other nodes can check they use the same robot description |
 | `<topic_costmaps_pub>_0`, `_1`, … | `nav_msgs/OccupancyGrid` | Inflated costmaps (one per obstacle source), published after each plan |
 
 ### Services

@@ -17,6 +17,7 @@ find_package(std_msgs REQUIRED)
 find_package(tf2 REQUIRED)
 find_package(tf2_ros REQUIRED)
 find_package(tf2_geometry_msgs REQUIRED)
+find_package(mrpt_nav_interfaces REQUIRED)
 
 ## System dependencies are found with CMake's conventions
 find_package(mrpt_libros_bridge REQUIRED)
@@ -60,6 +61,7 @@ target_link_libraries(${PROJECT_NAME}_node PRIVATE
   tf2::tf2
   ${tf2_ros_TARGETS}
   ${tf2_geometry_msgs_TARGETS}
+  ${mrpt_nav_interfaces_TARGETS}
 )
 
 #############

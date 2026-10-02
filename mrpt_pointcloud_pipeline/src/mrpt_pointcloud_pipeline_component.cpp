@@ -159,8 +159,10 @@ void LocalObstaclesNode::on_do_publish()
 			// Insert obs:
 			CTimeLoggerEntry tleObsFilter(m_profiler, "on_do_publish.apply_per_obs_pipeline");
 
-			// Apply optional generators for auxiliary map layers, etc:
-			mp2p_icp_filters::apply_generators(m_generator, *ipt.observation, mm);
+			// Apply optional generators for auxiliary map layers, etc.
+			// Points are inserted relative to the latest robot pose, so
+			// observations taken while moving stay consistent:
+			mp2p_icp_filters::apply_generators(m_generator, *ipt.observation, mm, relPose);
 
 			// per-observation filtering:
 			mp2p_icp_filters::apply_filter_pipeline(m_per_obs_pipeline, mm);

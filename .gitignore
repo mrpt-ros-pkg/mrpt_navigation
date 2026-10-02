@@ -7,3 +7,5 @@ LOG_*
 CMakeLists.txt.user
 .vscode/settings.json
 .vscode
+__pycache__/
+*.pyc

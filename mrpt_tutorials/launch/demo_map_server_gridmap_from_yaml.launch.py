@@ -6,6 +6,7 @@
 from launch import LaunchDescription
 from launch.substitutions import TextSubstitution
 from launch.substitutions import LaunchConfiguration
+from launch.conditions import IfCondition
 from launch_ros.actions import Node
 from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
 from ament_index_python import get_package_share_directory
@@ -30,10 +31,14 @@ def generate_launch_description():
         package='rviz2',
         executable='rviz2',
         name='rviz2',
+        condition=IfCondition(LaunchConfiguration('use_rviz')),
         arguments=[
                 '-d', [os.path.join(tutsDir, 'rviz2', 'gridmap.rviz')]]
     )
     return LaunchDescription([
+        DeclareLaunchArgument(
+            'use_rviz', default_value='True',
+            description='Whether to launch RViz2 (False for headless runs)'),
         mrpt_map_launch,
         rviz2_node
     ])

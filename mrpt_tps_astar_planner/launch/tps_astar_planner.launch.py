@@ -1,5 +1,6 @@
 from launch import LaunchDescription
 from launch_ros.actions import Node
+from launch_ros.descriptions import ParameterValue
 from launch.actions import DeclareLaunchArgument
 from launch.substitutions import LaunchConfiguration
 from launch.substitutions import Command
@@ -95,6 +96,10 @@ def generate_launch_description():
         'astar_skip_refine', default_value='false',
         description='If true, the refine stage after A* will be skipped')
 
+    reverse_motion_cost_factor_arg = DeclareLaunchArgument(
+        'reverse_motion_cost_factor', default_value='1.0',
+        description='Extra cost per second of reverse motion (0: reversing costs the same as driving forward)')
+
     # Node configuration
     tps_astar_nav_node = Node(
         package='mrpt_tps_astar_planner',
@@ -129,6 +134,8 @@ def generate_launch_description():
             {'problem_world_bbox_ignore_obstacles': LaunchConfiguration(
                 'problem_world_bbox_ignore_obstacles')},
             {'astar_skip_refine': LaunchConfiguration('astar_skip_refine')},
+            {'reverse_motion_cost_factor': ParameterValue(LaunchConfiguration(
+                'reverse_motion_cost_factor'), value_type=float)},
             # Param files:
             {'planner_parameters': LaunchConfiguration('planner_parameters')},
             {'global_costmap_parameters': LaunchConfiguration(
@@ -162,5 +169,6 @@ def generate_launch_description():
         problem_world_bbox_margin_arg,
         problem_world_bbox_ignore_obstacles_arg,
         astar_skip_refine_arg,
+        reverse_motion_cost_factor_arg,
         tps_astar_nav_node
     ])

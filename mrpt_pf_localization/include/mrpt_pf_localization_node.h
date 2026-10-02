@@ -174,9 +174,12 @@ class PFLocalizationNode : public rclcpp::Node
 
 	void useROSLogLevel();
 
+	/// Looks up the pose of `target_frame` in `source_frame`, at the given
+	/// time (or the latest one, if not given).
 	[[nodiscard]] bool waitForTransform(
 		mrpt::poses::CPose3D& des, const std::string& target_frame, const std::string& source_frame,
-		const int timeoutMilliseconds = 50);
+		const int timeoutMilliseconds = 50,
+		const std::optional<mrpt::Clock::time_point>& stamp = std::nullopt);
 
 	void update_tf_pub_data();
 	std::optional<geometry_msgs::msg::TransformStamped> tfMapOdomToPublish_;

@@ -5,8 +5,8 @@
 
 import os
 from launch import LaunchDescription
-from launch_ros.actions import Node
-from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
+from launch_ros.actions import Node, SetParameter
+from launch.actions import DeclareLaunchArgument, GroupAction, IncludeLaunchDescription
 from launch.substitutions import LaunchConfiguration
 from ament_index_python.packages import get_package_share_directory
 from launch.launch_description_sources import PythonLaunchDescriptionSource
@@ -41,8 +41,15 @@ def generate_launch_description():
             f"Launch file '{mvsim_launch_file_path}' does not exist!")
 
     return LaunchDescription([
+        DeclareLaunchArgument(
+            'use_sim_time', default_value='True',
+            description='Run the pipeline on the simulation clock from mvsim'),
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(mvsim_launch_file_path)
         ),
-        pointcloud_pipeline_launch
+        GroupAction([
+            SetParameter(name='use_sim_time',
+                         value=LaunchConfiguration('use_sim_time')),
+            pointcloud_pipeline_launch,
+        ]),
     ])

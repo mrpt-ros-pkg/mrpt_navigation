@@ -74,6 +74,26 @@ Individual package build status
 Each cell shows one badge per OS and architecture: Ubuntu `amd64` and `arm64`,
 plus RHEL and Fedora `x86_64` where the distro targets them.
 
+Navigation demo and tests
+----------------------------------
+A* planning (`mrpt_tps_astar_planner`) + path following
+(`mrpt_trajectory_follower`) + localization (`mrpt_pf_localization`) in the
+[mvsim](https://github.com/MRPT/mvsim) simulator. Set goals with RViz "2D Goal
+Pose":
+
+    ros2 launch mrpt_tutorials demo_astar_trajectory_follower_gridmap.launch.py \
+        robot:=ackermann speed_limit:=1.0
+
+- `robot`: `ackermann` (car-like) or `diffdrive` (Jackal-like).
+- `speed_limit` [m/s]: `0` for the platform max speed. It can be changed at
+  run time with `ros2 param set /mrpt_trajectory_follower speed_limit 2.0`.
+
+End-to-end tests (headless, both robots, a battery of A->B navigations checking
+there are no collisions, the robot stays on its path, and goals are reached or
+reported as failed in time; the car must reach only some of them):
+
+    colcon test --packages-select mrpt_navigation
+
 
 
 

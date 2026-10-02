@@ -1,14 +1,19 @@
 # ROS 2 launch file for example in mrpt_tutorials
 #
+# All nodes except mvsim run on the simulation clock published by mvsim
+# (launch argument use_sim_time, default True), so they stay consistent with
+# sensor timestamps even if the simulation runs slower than real time.
+#
 # See repo online: https://github.com/mrpt-ros-pkg/mrpt_navigation
 #
 
 import os
 from launch import LaunchDescription
 from ament_index_python.packages import get_package_share_directory
-from launch_ros.actions import Node
-from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
+from launch_ros.actions import Node, SetParameter
+from launch.actions import DeclareLaunchArgument, GroupAction, IncludeLaunchDescription
 from launch.substitutions import LaunchConfiguration
+from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 
 
@@ -62,6 +67,7 @@ def generate_launch_description():
         package='rviz2',
         executable='rviz2',
         name='rviz2',
+        condition=IfCondition(LaunchConfiguration('use_rviz')),
         arguments=[
             '-d', [os.path.join(tutsDir, 'rviz2', 'rnav_demo.rviz')]]
     )
@@ -80,9 +86,19 @@ def generate_launch_description():
     )
 
     return LaunchDescription([
+        DeclareLaunchArgument(
+            'use_rviz', default_value='True',
+            description='Whether to launch RViz2 (False for headless runs)'),
         arg_world_file_launch,
-        pointcloud_pipeline_launch,
+        DeclareLaunchArgument(
+            'use_sim_time', default_value='True',
+            description='Run the nodes on the simulation clock from mvsim'),
         node_mvsim_launch,
-        node_rviz2_launch,
-        node_rnav2d_launch
+        GroupAction([
+            SetParameter(name='use_sim_time',
+                         value=LaunchConfiguration('use_sim_time')),
+            pointcloud_pipeline_launch,
+            node_rviz2_launch,
+            node_rnav2d_launch,
+        ]),
     ])

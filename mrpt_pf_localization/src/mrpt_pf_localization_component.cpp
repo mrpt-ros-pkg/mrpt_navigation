@@ -355,13 +355,15 @@ void PFLocalizationNode::loop()
 
 bool PFLocalizationNode::waitForTransform(
 	mrpt::poses::CPose3D& des, const std::string& frame, const std::string& referenceFrame,
-	const int timeoutMilliseconds)
+	const int timeoutMilliseconds, const std::optional<mrpt::Clock::time_point>& stamp)
 {
 	const rclcpp::Duration timeout(0, 1000 * timeoutMilliseconds);
 	try
 	{
+		const tf2::TimePoint when =
+			stamp ? tf2_ros::fromMsg(mrpt::ros2bridge::toROS(*stamp)) : tf2::TimePointZero;
 		geometry_msgs::msg::TransformStamped ref_to_trgFrame = tf_buffer_->lookupTransform(
-			referenceFrame, frame, tf2::TimePointZero, tf2::durationFromSec(timeout.seconds()));
+			referenceFrame, frame, when, tf2::durationFromSec(timeout.seconds()));
 
 		tf2::Transform tf;
 		tf2::fromMsg(ref_to_trgFrame.transform, tf);
@@ -771,8 +773,21 @@ void PFLocalizationNode::update_tf_pub_data()
 
 	MRPT_TODO("Use param: no_update_tolerance");
 
+	// The odom->base_link transform must be taken at the time the estimate
+	// refers to: the robot may have moved since then (e.g. while the filter
+	// was running), and using a later odometry would offset map->odom by
+	// that motion.
+	// (Falls back to the latest one if not available, e.g. not yet received.)
 	mrpt::poses::CPose3D T_base_to_odom;
-	bool base_to_odom_ok = this->waitForTransform(T_base_to_odom, odom_frame_id, base_frame_id);
+	std::optional<mrpt::Clock::time_point> stamp = core_.getLastPoseEstimationStamp();
+	if (stamp &&
+		!tf_buffer_->canTransform(
+			base_frame_id, odom_frame_id, tf2_ros::fromMsg(mrpt::ros2bridge::toROS(*stamp))))
+	{
+		stamp.reset();
+	}
+	bool base_to_odom_ok =
+		this->waitForTransform(T_base_to_odom, odom_frame_id, base_frame_id, 50, stamp);
 	// Note: this wait above typ takes ~50 us
 
 	if (!base_to_odom_ok)

@@ -1,0 +1,7 @@
+# Robot-specific overrides of mrpt_trajectory_follower parameters for the
+# mvsim "jackal" vehicle. Only platform limits go here; everything else comes
+# from the shared follower-params.yaml, and the footprint from the robot
+# description (PTG .ini file).
+max_speed: 1.5        # [m/s] platform max (see the 'speed_limit' node param)
+max_accel: 0.8        # [m/s^2]
+max_decel: 1.0        # [m/s^2]
