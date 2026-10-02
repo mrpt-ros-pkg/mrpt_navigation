@@ -248,6 +248,12 @@ class PFLocalizationCore : public mrpt::system::COutputLogger
 	 */
 	mrpt::poses::CPose3DPDFParticles::Ptr getLastPoseEstimation() const;
 
+	/** Returns the time the last filter estimate refers to (that of the
+	 * odometry used in its prediction step, if any), or empty if never run
+	 * yet. Multi thread safe.
+	 */
+	std::optional<mrpt::Clock::time_point> getLastPoseEstimationStamp() const;
+
 	/** @} */
 
    protected:
@@ -283,6 +289,9 @@ class PFLocalizationCore : public mrpt::system::COutputLogger
 		/** The last state of the filter, for sending as a copy to the user API
 		 */
 		mrpt::poses::CPose3DPDFParticles::Ptr lastResult;
+
+		/** The time lastResult refers to */
+		std::optional<mrpt::Clock::time_point> lastResultStamp;
 
 		std::optional<mrpt::poses::CPose3D> nextFakeOdometryIncrPose;
 

@@ -930,6 +930,9 @@ void PFLocalizationCore::onStateRunning()
 	state_.time_last_update = sfLastTimeStamp;
 
 	internal_fill_state_lastResult();
+	// The estimate refers to the time of the odometry used to predict it
+	// (stateMtx_ is held by step()):
+	state_.lastResultStamp = odomObs ? odomObs->timestamp : sfLastTimeStamp;
 
 	// clear last GNSS so we do not use it more than once:
 	last_gnss_.reset();
@@ -1349,6 +1352,12 @@ mrpt::poses::CPose3DPDFParticles::Ptr PFLocalizationCore::getLastPoseEstimation(
 {
 	auto lck = mrpt::lockHelper(stateMtx_);
 	return state_.lastResult;
+}
+
+std::optional<mrpt::Clock::time_point> PFLocalizationCore::getLastPoseEstimationStamp() const
+{
+	auto lck = mrpt::lockHelper(stateMtx_);
+	return state_.lastResultStamp;
 }
 
 void PFLocalizationCore::internal_fill_state_lastResult()
