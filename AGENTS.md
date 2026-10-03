@@ -36,6 +36,10 @@ list and responsibilities:
 - **mrpt_navigation**: metapackage depending on all of the above; holds the
   end-to-end navigation tests in simulation (`mrpt_navigation/test/`).
 
+The planner and follower are built as a `<pkg>_component` library (composable
+node) plus a thin `<pkg>_node` executable; their launch files take
+`use_composable` / `container_name` to load them into a container instead.
+
 The PTG `.ini` file is the robot description (footprint, kinematics) shared by
 the planner and the follower; pass the same file to both. Platform properties
 (speed, accel, actuation lag) go in follower parameter overrides.

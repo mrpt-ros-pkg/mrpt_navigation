@@ -1,7 +1,8 @@
 from launch import LaunchDescription
-from launch_ros.actions import Node
-from launch_ros.descriptions import ParameterValue
+from launch_ros.actions import Node, LoadComposableNodes
+from launch_ros.descriptions import ComposableNode, ParameterValue
 from launch.actions import DeclareLaunchArgument
+from launch.conditions import IfCondition, UnlessCondition
 from launch.substitutions import LaunchConfiguration
 from launch.substitutions import Command
 from ament_index_python.packages import get_package_share_directory
@@ -100,54 +101,82 @@ def generate_launch_description():
         'reverse_motion_cost_factor', default_value='1.0',
         description='Extra cost per second of reverse motion (0: reversing costs the same as driving forward)')
 
-    # Node configuration
+    use_composable = LaunchConfiguration('use_composable')
+
+    use_composable_arg = DeclareLaunchArgument(
+        'use_composable', default_value='false',
+        description='If true, load as a composable node into container_name instead of a standalone node. Use a multi-threaded container (component_container_mt) to let planning service calls run concurrently')
+
+    container_name_arg = DeclareLaunchArgument(
+        'container_name', default_value='',
+        description='Name of the composable node container (required when use_composable:=true)')
+
+    # Node parameters, shared by the standalone and the composable node:
+    node_parameters = [
+        {'topic_goal_sub': LaunchConfiguration('topic_goal_sub')},
+        {'show_gui': LaunchConfiguration('show_gui')},
+        {'topic_obstacles_gridmap_sub': LaunchConfiguration(
+            'topic_obstacles_gridmap_sub')},
+        {'topic_obstacles_sub': LaunchConfiguration(
+            'topic_obstacles_sub')},
+        {'topic_static_maps': LaunchConfiguration('topic_static_maps')},
+        {'topic_wp_seq_pub': LaunchConfiguration('topic_wp_seq_pub')},
+        {'frame_id_robot': LaunchConfiguration('frame_id_robot')},
+        {'frame_id_map': LaunchConfiguration('frame_id_map')},
+        {'mid_waypoints_allowed_distance': LaunchConfiguration(
+            'mid_waypoints_allowed_distance')},
+        {'final_waypoint_allowed_distance': LaunchConfiguration(
+            'final_waypoint_allowed_distance')},
+        {'mid_waypoints_allow_skip': LaunchConfiguration(
+            'mid_waypoints_allow_skip')},
+        {'final_waypoint_allow_skip': LaunchConfiguration(
+            'final_waypoint_allow_skip')},
+        {'mid_waypoints_ignore_heading': LaunchConfiguration(
+            'mid_waypoints_ignore_heading')},
+        {'final_waypoint_ignore_heading': LaunchConfiguration(
+            'final_waypoint_ignore_heading')},
+        {'problem_world_bbox_margin': LaunchConfiguration(
+            'problem_world_bbox_margin')},
+        {'problem_world_bbox_ignore_obstacles': LaunchConfiguration(
+            'problem_world_bbox_ignore_obstacles')},
+        {'astar_skip_refine': LaunchConfiguration('astar_skip_refine')},
+        {'reverse_motion_cost_factor': ParameterValue(LaunchConfiguration(
+            'reverse_motion_cost_factor'), value_type=float)},
+        # Param files:
+        {'planner_parameters': LaunchConfiguration('planner_parameters')},
+        {'global_costmap_parameters': LaunchConfiguration(
+            'global_costmap_parameters')},
+        {'prefer_waypoints_parameters': LaunchConfiguration(
+            'prefer_waypoints_parameters')},
+        {'ptg_ini': LaunchConfiguration('ptg_ini')},
+    ]
+
     tps_astar_nav_node = Node(
+        condition=UnlessCondition(use_composable),
         package='mrpt_tps_astar_planner',
         executable='mrpt_tps_astar_planner_node',
         name='mrpt_tps_astar_planner_node',
         output='screen',
-        parameters=[
-            {'topic_goal_sub': LaunchConfiguration('topic_goal_sub')},
-            {'show_gui': LaunchConfiguration('show_gui')},
-            {'topic_obstacles_gridmap_sub': LaunchConfiguration(
-                'topic_obstacles_gridmap_sub')},
-            {'topic_obstacles_sub': LaunchConfiguration(
-                'topic_obstacles_sub')},
-            {'topic_static_maps': LaunchConfiguration('topic_static_maps')},
-            {'topic_wp_seq_pub': LaunchConfiguration('topic_wp_seq_pub')},
-            {'frame_id_robot': LaunchConfiguration('frame_id_robot')},
-            {'frame_id_map': LaunchConfiguration('frame_id_map')},
-            {'mid_waypoints_allowed_distance': LaunchConfiguration(
-                'mid_waypoints_allowed_distance')},
-            {'final_waypoint_allowed_distance': LaunchConfiguration(
-                'final_waypoint_allowed_distance')},
-            {'mid_waypoints_allow_skip': LaunchConfiguration(
-                'mid_waypoints_allow_skip')},
-            {'final_waypoint_allow_skip': LaunchConfiguration(
-                'final_waypoint_allow_skip')},
-            {'mid_waypoints_ignore_heading': LaunchConfiguration(
-                'mid_waypoints_ignore_heading')},
-            {'final_waypoint_ignore_heading': LaunchConfiguration(
-                'final_waypoint_ignore_heading')},
-            {'problem_world_bbox_margin': LaunchConfiguration(
-                'problem_world_bbox_margin')},
-            {'problem_world_bbox_ignore_obstacles': LaunchConfiguration(
-                'problem_world_bbox_ignore_obstacles')},
-            {'astar_skip_refine': LaunchConfiguration('astar_skip_refine')},
-            {'reverse_motion_cost_factor': ParameterValue(LaunchConfiguration(
-                'reverse_motion_cost_factor'), value_type=float)},
-            # Param files:
-            {'planner_parameters': LaunchConfiguration('planner_parameters')},
-            {'global_costmap_parameters': LaunchConfiguration(
-                'global_costmap_parameters')},
-            {'prefer_waypoints_parameters': LaunchConfiguration(
-                'prefer_waypoints_parameters')},
-            {'ptg_ini': LaunchConfiguration('ptg_ini')},
+        parameters=node_parameters,
+    )
+
+    composable_tps_astar_nav_node = LoadComposableNodes(
+        condition=IfCondition(use_composable),
+        target_container=LaunchConfiguration('container_name'),
+        composable_node_descriptions=[
+            ComposableNode(
+                package='mrpt_tps_astar_planner',
+                name='mrpt_tps_astar_planner_node',
+                plugin='mrpt_tps_astar_planner::TPS_Astar_Planner_Node',
+                parameters=node_parameters,
+            )
         ]
     )
 
     # Launch description
     return LaunchDescription([
+        use_composable_arg,
+        container_name_arg,
         topic_goal_sub,
         show_gui,
         topic_obstacles_gridmap_sub,
@@ -170,5 +199,6 @@ def generate_launch_description():
         problem_world_bbox_ignore_obstacles_arg,
         astar_skip_refine_arg,
         reverse_motion_cost_factor_arg,
-        tps_astar_nav_node
+        tps_astar_nav_node,
+        composable_tps_astar_nav_node,
     ])
