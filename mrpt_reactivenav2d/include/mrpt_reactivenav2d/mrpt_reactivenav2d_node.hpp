@@ -93,6 +93,7 @@ class ReactiveNav2DNode : public rclcpp::Node
 	/// time, so it runs in a background thread to keep the node responsive.
 	/// Navigation requests are rejected (with a warning) until it is done.
 	std::atomic<bool> engineReady_{false};
+	std::atomic<bool> engineFailed_{false};
 	std::thread engineInitThread_;
 	void initialize_engine();
 

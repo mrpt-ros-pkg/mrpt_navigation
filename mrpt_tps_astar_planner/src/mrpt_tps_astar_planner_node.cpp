@@ -301,6 +301,7 @@ class TPS_Astar_Planner_Node : public rclcpp::Node
 	/// background thread to keep the node responsive. Planning requests are
 	/// rejected (with a warning) until this flag is set.
 	std::atomic<bool> ptgs_ready_{false};
+	std::atomic<bool> ptgs_failed_{false};
 	std::thread ptgs_init_thread_;
 
 	// ptgs_ holds shared_ptr<ptg_t> entries that are reused (not cloned) by
@@ -551,10 +552,6 @@ void TPS_Astar_Planner_Node::initialize_ptgs_and_publish_shape()
 		const double elapsed =
 			std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
 
-		RCLCPP_INFO(
-			this->get_logger(), "PTGs initialized in %.1f s. Ready to accept navigation goals.",
-			elapsed);
-
 		geometry_msgs::msg::PolygonStamped msg;
 		msg.header.frame_id = frame_id_robot_;
 		msg.header.stamp = this->now();
@@ -567,11 +564,18 @@ void TPS_Astar_Planner_Node::initialize_ptgs_and_publish_shape()
 		pub_robot_shape_->publish(msg);
 
 		ptgs_ready_ = true;
+
+		RCLCPP_INFO(
+			this->get_logger(), "PTGs initialized in %.1f s. Ready to accept navigation goals.",
+			elapsed);
 	}
 	catch (const std::exception& e)
 	{
-		RCLCPP_FATAL(this->get_logger(), "Failed to initialize PTGs: %s", e.what());
-		rclcpp::shutdown();
+		// Do not shut down the ROS context: this node may share it with others.
+		ptgs_failed_ = true;
+		RCLCPP_FATAL(
+			this->get_logger(),
+			"Failed to initialize PTGs, all navigation requests will be rejected: %s", e.what());
 	}
 }
 
@@ -580,6 +584,14 @@ bool TPS_Astar_Planner_Node::check_ptgs_ready(const char* requestKind)
 	if (ptgs_ready_)
 	{
 		return true;
+	}
+	if (ptgs_failed_)
+	{
+		RCLCPP_ERROR(
+			this->get_logger(),
+			"%s received but PTG initialization failed: the request is being IGNORED.",
+			requestKind);
+		return false;
 	}
 	RCLCPP_WARN(
 		this->get_logger(),

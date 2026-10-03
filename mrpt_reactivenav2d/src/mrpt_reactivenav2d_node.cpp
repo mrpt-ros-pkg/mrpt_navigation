@@ -376,8 +376,12 @@ void ReactiveNav2DNode::initialize_engine()
 	}
 	catch (const std::exception& e)
 	{
-		RCLCPP_FATAL(this->get_logger(), "Failed to initialize reactive engine: %s", e.what());
-		rclcpp::shutdown();
+		// Do not shut down the ROS context: this node may share it with others.
+		engineFailed_ = true;
+		RCLCPP_FATAL(
+			this->get_logger(),
+			"Failed to initialize reactive engine, all navigation requests will be rejected: %s",
+			e.what());
 	}
 }
 
@@ -386,6 +390,15 @@ bool ReactiveNav2DNode::check_engine_ready(const char* requestKind)
 	if (engineReady_)
 	{
 		return true;
+	}
+	if (engineFailed_)
+	{
+		RCLCPP_ERROR(
+			this->get_logger(),
+			"%s received but the reactive engine initialization failed: the request is being "
+			"IGNORED.",
+			requestKind);
+		return false;
 	}
 	RCLCPP_WARN(
 		this->get_logger(),
