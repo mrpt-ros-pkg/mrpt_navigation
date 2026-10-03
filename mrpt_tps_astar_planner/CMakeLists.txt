@@ -63,19 +63,18 @@ endif()
 ## Build ##
 ###########
 
-## Declare a cpp executable
-add_executable(${PROJECT_NAME}_node
-  src/mrpt_tps_astar_planner_node.cpp
+# Node implementation, loadable as a composable node:
+add_library(${PROJECT_NAME}_component SHARED
+  src/${PROJECT_NAME}_component.cpp
 )
 
-#target_include_directories(${PROJECT_NAME}_node
-#                          PUBLIC
-#                          $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-#                          $<INSTALL_INTERFACE:include>
-#)
+target_include_directories(${PROJECT_NAME}_component
+  PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+)
 
 # Specify libraries to link a library or executable target against
-target_link_libraries(${PROJECT_NAME}_node PRIVATE
+target_link_libraries(${PROJECT_NAME}_component PUBLIC
   mrpt::mrpt_nav
   mrpt::mrpt_kinematics
   mrpt_libros_bridge::mrpt_libros_bridge
@@ -94,6 +93,22 @@ target_link_libraries(${PROJECT_NAME}_node PRIVATE
   ${visualization_msgs_TARGETS}
 )
 
+rclcpp_components_register_node(
+  ${PROJECT_NAME}_component
+  PLUGIN "mrpt_tps_astar_planner::TPS_Astar_Planner_Node"
+  EXECUTABLE ${PROJECT_NAME}_composable
+)
+
+# Standalone executable (multi-threaded executor):
+add_executable(${PROJECT_NAME}_node
+  src/main.cpp
+)
+
+target_link_libraries(${PROJECT_NAME}_node PRIVATE
+  ${PROJECT_NAME}_component
+  rclcpp::rclcpp
+)
+
 #############
 ## Install ##
 #############
@@ -103,6 +118,12 @@ target_link_libraries(${PROJECT_NAME}_node PRIVATE
 
 
 ## Mark executables and/or libraries for installation
+install(TARGETS ${PROJECT_NAME}_component
+  ARCHIVE DESTINATION lib
+  LIBRARY DESTINATION lib
+  RUNTIME DESTINATION bin
+)
+
 install(TARGETS ${PROJECT_NAME}_node
   DESTINATION lib/${PROJECT_NAME}
 )

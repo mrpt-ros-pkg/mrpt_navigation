@@ -129,3 +129,17 @@ ros2 launch mrpt_tps_astar_planner tps_astar_planner.launch.py \
 
 All parameters have defaults in the launch file; only the config-file paths
 are typically required to be overridden for a real deployment.
+
+### Running as a composable node
+
+The planner is also available as the component
+`mrpt_tps_astar_planner::TPS_Astar_Planner_Node`. With the same launch file:
+
+```bash
+ros2 run rclcpp_components component_container_mt --ros-args -r __node:=nav_container
+ros2 launch mrpt_tps_astar_planner tps_astar_planner.launch.py \
+    use_composable:=true container_name:=/nav_container ptg_ini:=/path/to/ptgs.ini
+```
+
+Use a multi-threaded container (`component_container_mt`) so planning service
+calls can run concurrently, as in the standalone node.

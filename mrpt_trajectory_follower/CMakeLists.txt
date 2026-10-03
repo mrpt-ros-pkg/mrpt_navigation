@@ -10,6 +10,7 @@ endif()
 # find dependencies
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
+find_package(rclcpp_components REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
@@ -42,11 +43,17 @@ endif()
 ###########
 ## Build ##
 ###########
-add_executable(${PROJECT_NAME}_node
-  src/mrpt_trajectory_follower_node.cpp
+# Node implementation, loadable as a composable node:
+add_library(${PROJECT_NAME}_component SHARED
+  src/${PROJECT_NAME}_component.cpp
 )
 
-target_link_libraries(${PROJECT_NAME}_node PRIVATE
+target_include_directories(${PROJECT_NAME}_component
+  PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+)
+
+target_link_libraries(${PROJECT_NAME}_component PUBLIC
   mrpt_libros_bridge::mrpt_libros_bridge
   mrpt::mrpt_maps
   mrpt::mrpt_math
@@ -54,6 +61,7 @@ target_link_libraries(${PROJECT_NAME}_node PRIVATE
   mrpt::mrpt_containers
   mpp::mrpt_path_planning
   rclcpp::rclcpp
+  ${rclcpp_components_TARGETS}
   ${nav_msgs_TARGETS}
   ${geometry_msgs_TARGETS}
   ${sensor_msgs_TARGETS}
@@ -64,9 +72,31 @@ target_link_libraries(${PROJECT_NAME}_node PRIVATE
   ${mrpt_nav_interfaces_TARGETS}
 )
 
+rclcpp_components_register_node(
+  ${PROJECT_NAME}_component
+  PLUGIN "mrpt_trajectory_follower::TrajectoryFollowerNode"
+  EXECUTABLE ${PROJECT_NAME}_composable
+)
+
+# Standalone executable:
+add_executable(${PROJECT_NAME}_node
+  src/main.cpp
+)
+
+target_link_libraries(${PROJECT_NAME}_node PRIVATE
+  ${PROJECT_NAME}_component
+  rclcpp::rclcpp
+)
+
 #############
 ## Install ##
 #############
+install(TARGETS ${PROJECT_NAME}_component
+  ARCHIVE DESTINATION lib
+  LIBRARY DESTINATION lib
+  RUNTIME DESTINATION bin
+)
+
 install(TARGETS ${PROJECT_NAME}_node
   DESTINATION lib/${PROJECT_NAME}
 )
