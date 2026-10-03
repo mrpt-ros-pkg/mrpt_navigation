@@ -186,10 +186,17 @@ ReactiveNav2DNode::ReactiveNav2DNode(const rclcpp::NodeOptions& options)
 	timerRunNav_ = this->create_wall_timer(
 		std::chrono::duration<double>(navPeriod_), [this]() { this->on_do_navigation(); });
 
+	engineInitThread_ = std::thread([this]() { initialize_engine(); });
+
 }  // end ctor
 
 ReactiveNav2DNode::~ReactiveNav2DNode()
 {
+	if (engineInitThread_.joinable())
+	{
+		engineInitThread_.join();
+	}
+
 	// Stop the nav timer so no new navigationStep() calls fire during teardown
 	if (timerRunNav_) timerRunNav_->cancel();
 
@@ -325,24 +332,76 @@ void ReactiveNav2DNode::navigate_to(const mrpt::math::TPose2D& target)
 	}
 }
 
-/** Callback: On run navigation */
-void ReactiveNav2DNode::on_do_navigation()
+void ReactiveNav2DNode::initialize_engine()
 {
-	// 1st time init:
-	// ----------------------------------------------------
-	if (!initialized_)
+	try
 	{
-		initialized_ = true;
 		RCLCPP_INFO(
 			this->get_logger(),
-			"[ReactiveNav2DNode] Initializing reactive navigation "
-			"engine...");
+			"[ReactiveNav2DNode] Initializing reactive navigation engine in the background, this "
+			"may take a while (building PTG lookup tables). Navigation requests received until "
+			"then will be rejected...");
+
+		const auto t0 = std::chrono::steady_clock::now();
 		{
 			std::lock_guard<std::mutex> csl(rnavEngineMtx_);
 			rnavEngine_.initialize();
 		}
+
+		// Apply a robot shape received meanwhile. The ready flag is set only when
+		// none is pending, so on_set_robot_shape() never loses an update:
+		for (;;)
+		{
+			std::optional<mrpt::math::CPolygon> shape;
+			{
+				std::lock_guard<std::mutex> lck(pendingRobotShapeMtx_);
+				shape.swap(pendingRobotShape_);
+				if (!shape)
+				{
+					engineReady_ = true;
+					break;
+				}
+			}
+			std::lock_guard<std::mutex> csl(rnavEngineMtx_);
+			rnavEngine_.changeRobotShape(*shape);
+		}
+
+		const double elapsed =
+			std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
 		RCLCPP_INFO(
-			this->get_logger(), "[ReactiveNav2DNode] Reactive navigation engine init done!");
+			this->get_logger(),
+			"[ReactiveNav2DNode] Reactive navigation engine initialized in %.1f s. Ready to accept "
+			"navigation requests.",
+			elapsed);
+	}
+	catch (const std::exception& e)
+	{
+		RCLCPP_FATAL(this->get_logger(), "Failed to initialize reactive engine: %s", e.what());
+		rclcpp::shutdown();
+	}
+}
+
+bool ReactiveNav2DNode::check_engine_ready(const char* requestKind)
+{
+	if (engineReady_)
+	{
+		return true;
+	}
+	RCLCPP_WARN(
+		this->get_logger(),
+		"%s received but the reactive engine is still initializing (building PTG lookup tables): "
+		"the request CANNOT be processed yet and is being IGNORED. Please try again once the "
+		"'engine initialized' message is shown.",
+		requestKind);
+	return false;
+}
+
+/** Callback: On run navigation */
+void ReactiveNav2DNode::on_do_navigation()
+{
+	if (!engineReady_)
+	{
+		return;
 	}
 
 	{
@@ -397,6 +456,10 @@ void ReactiveNav2DNode::on_waypoint_seq_received(
 
 void ReactiveNav2DNode::update_waypoint_sequence(const mrpt_msgs::msg::WaypointSequence& msg)
 {
+	if (!check_engine_ready("Waypoint sequence"))
+	{
+		return;
+	}
 	mrpt::nav::TWaypointSequence wps;
 
 	mrpt::poses::CPose3D relPose = mrpt::poses::CPose3D::Identity();
@@ -431,6 +494,11 @@ void ReactiveNav2DNode::update_waypoint_sequence(const mrpt_msgs::msg::WaypointS
 
 void ReactiveNav2DNode::on_goal_received(const geometry_msgs::msg::PoseStamped::SharedPtr& trg_ptr)
 {
+	if (!check_engine_ready("Navigation goal"))
+	{
+		return;
+	}
+
 	geometry_msgs::msg::PoseStamped trg = *trg_ptr;
 
 	RCLCPP_INFO(
@@ -481,9 +549,16 @@ void ReactiveNav2DNode::on_set_robot_shape(const geometry_msgs::msg::Polygon::Sh
 	}
 
 	{
-		std::lock_guard<std::mutex> csl(rnavEngineMtx_);
-		rnavEngine_.changeRobotShape(poly);
+		std::lock_guard<std::mutex> lck(pendingRobotShapeMtx_);
+		if (!engineReady_)
+		{
+			pendingRobotShape_ = poly;
+			return;
+		}
 	}
+
+	std::lock_guard<std::mutex> csl(rnavEngineMtx_);
+	rnavEngine_.changeRobotShape(poly);
 }
 
 bool ReactiveNav2DNode::waitForTransform(
@@ -590,6 +665,10 @@ rclcpp_action::GoalResponse ReactiveNav2DNode::handle_goal(
 		get_logger(),
 		"[NavigateGoal] Received request for: " << mrpt::ros2bridge::fromROS(goal->target.pose));
 	(void)uuid;
+	if (!check_engine_ready("NavigateGoal action request"))
+	{
+		return rclcpp_action::GoalResponse::REJECT;
+	}
 	return rclcpp_action::GoalResponse::ACCEPT_AND_EXECUTE;
 }
 
@@ -598,6 +677,7 @@ rclcpp_action::CancelResponse ReactiveNav2DNode::handle_cancel(
 {
 	RCLCPP_INFO(this->get_logger(), "[NavigateGoal] Received request to cancel goal");
 	(void)goal_handle;
+	if (engineReady_)
 	{
 		std::lock_guard<std::mutex> csl(rnavEngineMtx_);
 		rnavEngine_.cancel();
@@ -695,6 +775,10 @@ rclcpp_action::GoalResponse ReactiveNav2DNode::handle_goal_wp(
 		get_logger(), "[NavigateWaypoints] Received request with "
 						  << goal->waypoints.waypoints.size() << " waypoints.");
 	(void)uuid;
+	if (!check_engine_ready("NavigateWaypoints action request"))
+	{
+		return rclcpp_action::GoalResponse::REJECT;
+	}
 	return rclcpp_action::GoalResponse::ACCEPT_AND_EXECUTE;
 }
 
@@ -703,6 +787,7 @@ rclcpp_action::CancelResponse ReactiveNav2DNode::handle_cancel_wp(
 {
 	RCLCPP_INFO(this->get_logger(), "[NavigateWaypoints] Received request to cancel waypoints");
 	(void)goal_handle;
+	if (engineReady_)
 	{
 		std::lock_guard<std::mutex> csl(rnavEngineMtx_);
 		rnavEngine_.cancel();

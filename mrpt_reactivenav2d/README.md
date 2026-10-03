@@ -86,6 +86,11 @@ to start:
 
 The C++ ROS 2 node comprises XXX
 
+At startup the PTG lookup tables are built in the background, which can take
+tens of seconds. Goals, waypoint sequences and action requests received
+meanwhile are rejected with a warning in the log (`engine initialized` marks
+when the node is ready).
+
 
 ### ROS 2 parameters
 

@@ -42,6 +42,8 @@
 #include <tf2_ros/buffer.h>
 #include <tf2_ros/transform_listener.h>
 
+#include <atomic>
+#include <chrono>
 #include <geometry_msgs/msg/polygon_stamped.hpp>
 #include <geometry_msgs/msg/pose_array.hpp>
 #include <geometry_msgs/msg/pose_stamped.hpp>
@@ -177,7 +179,13 @@ class TPS_Astar_Planner_Node : public rclcpp::Node
 {
    public:
 	TPS_Astar_Planner_Node();
-	virtual ~TPS_Astar_Planner_Node() = default;
+	virtual ~TPS_Astar_Planner_Node()
+	{
+		if (ptgs_init_thread_.joinable())
+		{
+			ptgs_init_thread_.join();
+		}
+	}
 
    private:
 	/// CTimeLogger instance for profiling
@@ -289,6 +297,12 @@ class TPS_Astar_Planner_Node : public rclcpp::Node
 
 	mpp::TrajectoriesAndRobotShape ptgs_;
 
+	/// Building the PTG lookup tables can take a long time, so it runs in a
+	/// background thread to keep the node responsive. Planning requests are
+	/// rejected (with a warning) until this flag is set.
+	std::atomic<bool> ptgs_ready_{false};
+	std::thread ptgs_init_thread_;
+
 	// ptgs_ holds shared_ptr<ptg_t> entries that are reused (not cloned) by
 	// every do_path_plan() call via pi.ptgs = ptgs_. The PTG implementations
 	// mutate internal scratch state while evaluating a plan, so with the
@@ -332,6 +346,12 @@ class TPS_Astar_Planner_Node : public rclcpp::Node
 	 * @brief Initialize A* planner with required params
 	 */
 	void initialize_planner();
+
+	/// Builds the PTGs (slow), then publishes the robot footprint. Run in a background thread.
+	void initialize_ptgs_and_publish_shape();
+
+	/// Warns that a request cannot be served yet. Returns true if PTGs are ready.
+	[[nodiscard]] bool check_ptgs_ready(const char* requestKind);
 
 	/**
 	 * @brief Callback function when a new goal location is received
@@ -509,11 +529,32 @@ TPS_Astar_Planner_Node::TPS_Astar_Planner_Node() : rclcpp::Node(NODE_NAME)
 	// --------------------------
 	initialize_planner();
 
-	// Publish the robot footprint once (latched):
-	// --------------------------
+	// The robot footprint is published once (latched) when the PTGs are ready.
 	pub_robot_shape_ =
 		this->create_publisher<geometry_msgs::msg::PolygonStamped>("~/robot_shape", mapQoS);
+
+	ptgs_init_thread_ = std::thread([this]() { initialize_ptgs_and_publish_shape(); });
+}
+
+void TPS_Astar_Planner_Node::initialize_ptgs_and_publish_shape()
+{
+	try
 	{
+		mrpt::config::CConfigFile cfg(ptg_ini_file_);
+		RCLCPP_INFO_STREAM(
+			this->get_logger(),
+			"Building PTG lookup tables in the background, this may take a while. Navigation "
+			"goals received until then will be rejected...");
+
+		const auto t0 = std::chrono::steady_clock::now();
+		ptgs_.initFromConfigFile(cfg, "SelfDriving");
+		const double elapsed =
+			std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
+
+		RCLCPP_INFO(
+			this->get_logger(), "PTGs initialized in %.1f s. Ready to accept navigation goals.",
+			elapsed);
+
 		geometry_msgs::msg::PolygonStamped msg;
 		msg.header.frame_id = frame_id_robot_;
 		msg.header.stamp = this->now();
@@ -524,7 +565,29 @@ TPS_Astar_Planner_Node::TPS_Astar_Planner_Node() : rclcpp::Node(NODE_NAME)
 			q.y = static_cast<float>(pt.y);
 		}
 		pub_robot_shape_->publish(msg);
+
+		ptgs_ready_ = true;
 	}
+	catch (const std::exception& e)
+	{
+		RCLCPP_FATAL(this->get_logger(), "Failed to initialize PTGs: %s", e.what());
+		rclcpp::shutdown();
+	}
+}
+
+bool TPS_Astar_Planner_Node::check_ptgs_ready(const char* requestKind)
+{
+	if (ptgs_ready_)
+	{
+		return true;
+	}
+	RCLCPP_WARN(
+		this->get_logger(),
+		"%s received but the PTG lookup tables are still being built: the request CANNOT be "
+		"processed yet and is being IGNORED. Please try again once the 'PTGs initialized' "
+		"message is shown.",
+		requestKind);
+	return false;
 }
 
 bool TPS_Astar_Planner_Node::wait_for_transform(
@@ -687,13 +750,6 @@ void TPS_Astar_Planner_Node::initialize_planner()
 			this->get_logger(), "Loaded these planner params:" << tmp->params_as_yaml());
 	}
 
-	mrpt::config::CConfigFile cfg(ptg_ini_file_);
-	RCLCPP_INFO_STREAM(this->get_logger(), "Initializing PTGs...");
-
-	ptgs_.initFromConfigFile(cfg, "SelfDriving");
-
-	RCLCPP_INFO_STREAM(this->get_logger(), "PTGs initialized.");
-
 	costMapParams_ = mpp::CostEvaluatorCostMap::Parameters::FromYAML(
 		mrpt::containers::yaml::FromFile(costmap_params_file_));
 }
@@ -717,6 +773,10 @@ mpp::Planner& TPS_Astar_Planner_Node::get_thread_planner()
 
 void TPS_Astar_Planner_Node::callback_goal(const geometry_msgs::msg::PoseStamped& _goal)
 {
+	if (!check_ptgs_ready("Navigation goal"))
+	{
+		return;
+	}
 	try
 	{
 		const auto p = mrpt::ros2bridge::fromROS(_goal.pose);
@@ -1151,6 +1211,11 @@ void TPS_Astar_Planner_Node::srv_make_plan_to(
 	const std::shared_ptr<mrpt_nav_interfaces::srv::MakePlanTo::Request> req,
 	std::shared_ptr<mrpt_nav_interfaces::srv::MakePlanTo::Response> resp)
 {
+	if (!check_ptgs_ready("make_plan_to service request"))
+	{
+		resp->valid_path_found = false;
+		return;
+	}
 	try
 	{
 		const auto p = mrpt::ros2bridge::fromROS(req->target.pose);
@@ -1185,6 +1250,11 @@ void TPS_Astar_Planner_Node::srv_make_plan_from_to(
 	const std::shared_ptr<mrpt_nav_interfaces::srv::MakePlanFromTo::Request> req,
 	std::shared_ptr<mrpt_nav_interfaces::srv::MakePlanFromTo::Response> resp)
 {
+	if (!check_ptgs_ready("make_plan_from_to service request"))
+	{
+		resp->valid_path_found = false;
+		return;
+	}
 	try
 	{
 		const auto p = mrpt::ros2bridge::fromROS(req->target);

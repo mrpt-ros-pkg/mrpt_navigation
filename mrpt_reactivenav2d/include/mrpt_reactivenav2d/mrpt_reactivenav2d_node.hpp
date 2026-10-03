@@ -33,6 +33,7 @@
 #include <mrpt_nav_interfaces/action/navigate_waypoints.hpp>
 #include <mutex>
 #include <nav_msgs/msg/odometry.hpp>
+#include <optional>
 #include <rclcpp/rclcpp.hpp>
 #include <rclcpp_action/rclcpp_action.hpp>
 #include <sensor_msgs/msg/laser_scan.hpp>
@@ -87,7 +88,20 @@ class ReactiveNav2DNode : public rclcpp::Node
 	/** @} */
 
 	mrpt::system::CTimeLogger profiler_;
-	bool initialized_ = false;	//!< Reactive initialization done?
+
+	/// Initializing the engine (building the PTG lookup tables) can take a long
+	/// time, so it runs in a background thread to keep the node responsive.
+	/// Navigation requests are rejected (with a warning) until it is done.
+	std::atomic<bool> engineReady_{false};
+	std::thread engineInitThread_;
+	void initialize_engine();
+
+	/// Warns that a request cannot be served yet. Returns true if the engine is ready.
+	[[nodiscard]] bool check_engine_ready(const char* requestKind);
+
+	/// Robot shape received while the engine was initializing, applied right after.
+	std::optional<mrpt::math::CPolygon> pendingRobotShape_;
+	std::mutex pendingRobotShapeMtx_;
 
 	std::shared_ptr<rclcpp::ParameterEventHandler> param_subscriber_;
 
