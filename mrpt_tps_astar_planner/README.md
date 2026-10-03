@@ -52,6 +52,10 @@ sample maps.
 3. The planned path is interpolated at a fixed time step and converted to a
    `WaypointSequence`.
 
+At startup the PTG lookup tables are built in the background, which can take
+tens of seconds. Goals and service requests received meanwhile are rejected
+with a warning in the log (`PTGs initialized` marks when the node is ready).
+
 The A\* implementation is an anytime algorithm: it improves the solution while
 time allows, then returns the best found. An optional refinement pass
 (`astar_skip_refine: false`) further smooths the result.
