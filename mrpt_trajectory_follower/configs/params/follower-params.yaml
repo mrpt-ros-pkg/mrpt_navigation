@@ -46,7 +46,7 @@ min_lookahead_dist: 0.8    # [m] <=0 disables: the pure-pursuit
 goal_dist_tol: 0.15        # [m]
 goal_ang_tol: 12.0         # [deg]
 max_cross_track: 1.0       # [m] -> OffPathExceeded
-# off_path_min_duration: 0.0 # [s] 0 (default): OffPathExceeded fires on the
+off_path_min_duration: 0.5  # [s] 0: OffPathExceeded fires on the
                             # first cycle over the limit. Set > 0 to debounce
                             # transient localization spikes: the fault only
                             # fires after the cross-track has stayed over the

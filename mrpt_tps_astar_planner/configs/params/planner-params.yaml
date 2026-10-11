@@ -8,10 +8,11 @@ grid_resolution_xy: 0.30    # [meters]
 grid_resolution_yaw: 15.0   # [deg]
 
 # find_feasible_paths_to_neighbors() params:
-# Note: path refining will always use *all* PTG trajectories, despite this value
-max_ptg_trajectories_to_explore: 51
+# Note: path refining will always use *all* PTG trajectories, despite this value.
+# Fewer trajectories and longer time steps mean fewer expansions on long paths:
+max_ptg_trajectories_to_explore: 20
 max_ptg_speeds_to_explore: 1
-ptg_sample_timestamps: [1.0, 2.0]  # seconds
+ptg_sample_timestamps: [1.0, 3.0, 5.0]  # seconds
 
 # Weight of heading towards the target: 
 # the larger, the most favorable to move "looking at" the target direction.
@@ -36,7 +37,7 @@ reeds_shepp_expansion_max_length: 5.0  # [m]
 SE2_metricAngleWeight: 2.0
 pathInterpolatedSegments: 3
 
-maximumComputationTime: 10.0  # [seconds]
+maximumComputationTime: 30.0  # [seconds]
 
 #saveDebugVisualizationDecimation: 1
 debugVisualizationShowEdgeCosts: true

@@ -221,6 +221,7 @@ class NavigationBattery(unittest.TestCase):
     def navigate_to(self, g):
         """Sends a goal and waits for the outcome. Returns a dict of metrics."""
         t_sent = time.time()
+        collisions0 = self.collisions
         self.send_goal(g)
         res = {'max_dev': 0.0, 'max_loc_err': 0.0, 'statuses': []}
         t_reached = None
@@ -256,6 +257,7 @@ class NavigationBattery(unittest.TestCase):
             else:
                 t_reached = None
         res['time'] = time.time() - t_sent
+        res['collisions'] = self.collisions - collisions0
         res['final_status'] = self.status
         res['pos_err'] = math.hypot(self.gt[0] - g[0], self.gt[1] - g[1])
         res['yaw_err'] = abs(math.degrees(angle_diff(self.gt[2], math.radians(g[2]))))
