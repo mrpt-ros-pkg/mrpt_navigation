@@ -25,7 +25,10 @@ list and responsibilities:
   pose+speed path (pure pursuit) with predictive safety, a last-resort
   collision guard on every command, run-time speed limit, and optional
   replanning on failure; wraps `mpp::TrajectoryFollower` and
-  `mpp::CollisionGuard`.
+  `mpp::CollisionGuard`. It takes the robot pose as the latest map->odom
+  composed with the latest odometry (the localization arrives late), runs its
+  control loop on the ROS clock, and processes obstacle clouds in their own
+  callback group.
 - **mrpt_msgs_bridge**: C++ conversions between `mrpt_msgs` ROS messages and
   native MRPT classes.
 - **mrpt_nav_interfaces**: msg/srv/action definitions shared by the other
@@ -44,7 +47,8 @@ node) plus a thin `<pkg>_node` executable; their launch files take
 
 The PTG `.ini` file is the robot description (footprint, kinematics) shared by
 the planner and the follower; pass the same file to both. Platform properties
-(speed, accel, actuation lag) go in follower parameter overrides.
+(speed, accel, actuation lag, rotating in place at the goal) go in follower
+parameter overrides.
 
 All packages follow REP-2003 for ROS 2 topic QoS.
 
