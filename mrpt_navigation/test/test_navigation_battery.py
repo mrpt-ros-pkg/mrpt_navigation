@@ -193,19 +193,34 @@ class NavigationBattery(unittest.TestCase):
                 return True
         return False
 
+    def localized_pose(self):
+        """Current robot pose (x, y, yaw) estimated by the localization, or
+        None. The localization (map->odom) is published with a latency, so,
+        as the navigation nodes do, the latest map->odom is composed with the
+        latest odometry (map->base_link at the latest time both exist would
+        lag behind the robot)."""
+        try:
+            m2o = self.tf_buffer.lookup_transform('map', 'odom', rclpy.time.Time())
+            o2b = self.tf_buffer.lookup_transform('odom', 'base_link', rclpy.time.Time())
+        except Exception:
+            return None
+        a = m2o.transform
+        b = o2b.transform
+        ya = yaw_of(a.rotation)
+        bx = b.translation.x
+        by = b.translation.y
+        return (a.translation.x + math.cos(ya) * bx - math.sin(ya) * by,
+                a.translation.y + math.sin(ya) * bx + math.cos(ya) * by,
+                angle_diff(ya + yaw_of(b.rotation), 0.0))
+
     def localization_error(self):
         """Position [m] and heading [deg] errors of the localization estimate
         with respect to the ground truth, or None if not available."""
-        if self.gt is None:
+        p = self.localized_pose()
+        if self.gt is None or p is None:
             return None
-        try:
-            t = self.tf_buffer.lookup_transform('map', 'base_link', rclpy.time.Time())
-        except Exception:
-            return None
-        q = t.transform.rotation
-        return (math.hypot(t.transform.translation.x - self.gt[0],
-                           t.transform.translation.y - self.gt[1]),
-                abs(math.degrees(angle_diff(yaw_of(q), self.gt[2]))))
+        return (math.hypot(p[0] - self.gt[0], p[1] - self.gt[1]),
+                abs(math.degrees(angle_diff(p[2], self.gt[2]))))
 
     def localized(self):
         """Whether the localization estimate agrees with the ground truth."""
@@ -278,13 +293,9 @@ class NavigationBattery(unittest.TestCase):
         t = time.time() - t_sent
         if self.gt is not None and (not trace['gt'] or t - trace['gt'][-1][0] > 0.1):
             trace['gt'].append((t, *self.gt[:3]))
-            try:
-                tf = self.tf_buffer.lookup_transform('map', 'base_link', rclpy.time.Time())
-                trace['loc'].append((t, tf.transform.translation.x,
-                                     tf.transform.translation.y,
-                                     yaw_of(tf.transform.rotation)))
-            except Exception:
-                pass
+            p = self.localized_pose()
+            if p is not None:
+                trace['loc'].append((t, *p))
         if self.ref_path_stamp > t_sent and (
                 not trace['ref_paths'] or trace['ref_paths'][-1][0] < self.ref_path_stamp - t_sent):
             trace['ref_paths'].append((self.ref_path_stamp - t_sent, self.ref_path))
