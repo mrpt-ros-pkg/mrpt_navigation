@@ -27,7 +27,9 @@ def load_map(yaml_file):
     img = np.array(Image.open(os.path.join(os.path.dirname(yaml_file), cfg['image'])).convert('L'))
     res = float(cfg['resolution'])
     ox, oy = [float(x) for x in cfg['origin'].strip('[]').split(',')[:2]]
-    occ = (255 - img) / 255.0 > float(cfg['occupied_thresh'])
+    # Occupancy probability as in the ROS map_server format:
+    p = img / 255.0 if int(cfg.get('negate', '0')) else (255 - img) / 255.0
+    occ = p > float(cfg['occupied_thresh'])
     h, w = img.shape
     return occ, [ox, ox + w * res, oy, oy + h * res]
 
