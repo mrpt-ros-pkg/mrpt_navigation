@@ -26,7 +26,8 @@
 	<!-- =============================
 		   Vehicle classes definition
 	     ============================= -->
-	<include file="${DEFS_DIR}/ackermann.vehicle.xml" />
+	<!-- Controller overridable with an environment variable (e.g. twist_ideal in tests): -->
+	<include file="car_ackermann.vehicle.xml" controller="${MRPT_TUTORIALS_ACKERMANN_CONTROLLER|twist_front_steer_pid}" />
 
 	<!-- ========================
 		   Vehicle(s) definition

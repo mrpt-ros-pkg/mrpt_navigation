@@ -26,7 +26,8 @@
 	<!-- =============================
 		   Vehicle classes definition
 	     ============================= -->
-	<include file="${DEFS_DIR}/jackal.vehicle.xml" controller="twist_pid" />
+	<!-- Controller overridable with an environment variable (e.g. twist_ideal in tests): -->
+	<include file="${DEFS_DIR}/jackal.vehicle.xml" controller="${MRPT_TUTORIALS_DIFFDRIVE_CONTROLLER|twist_pid}" />
 
 	<!-- ========================
 		   Vehicle(s) definition

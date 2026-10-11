@@ -34,7 +34,9 @@ list and responsibilities:
   the other packages together (simulated `ackermann` and `diffdrive` robots).
   In mvsim demos, all nodes but mvsim run on its clock (`use_sim_time`).
 - **mrpt_navigation**: metapackage depending on all of the above; holds the
-  end-to-end navigation tests in simulation (`mrpt_navigation/test/`).
+  end-to-end navigation tests in simulation (`mrpt_navigation/test/`), run
+  with mvsim's ideal twist controllers; `MRPT_NAV_TEST_LOG` saves traces to
+  plot with `plot_nav_traces.py`.
 
 The planner and follower are built as a `<pkg>_component` library (composable
 node) plus a thin `<pkg>_node` executable; their launch files take

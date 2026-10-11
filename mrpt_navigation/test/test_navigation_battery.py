@@ -11,10 +11,14 @@
 # Environment variables:
 #  - MRPT_NAV_TEST_ROBOT: 'diffdrive' (default) or 'ackermann'.
 #  - MRPT_NAV_TEST_SPEED_LIMIT: follower speed limit [m/s] (default: 1.0).
+#  - MRPT_NAV_TEST_LOG: if set, a .json file where to save, per goal, the
+#    ground truth and localized trajectories and the reference paths. Plot
+#    it with plot_nav_traces.py.
 #
 # Run it with:
 #   colcon test --packages-select mrpt_navigation
 
+import json
 import math
 import os
 import time
@@ -36,6 +40,7 @@ from std_msgs.msg import Bool, String
 
 ROBOT = os.environ.get('MRPT_NAV_TEST_ROBOT', 'diffdrive')
 SPEED_LIMIT = os.environ.get('MRPT_NAV_TEST_SPEED_LIMIT', '1.0')
+LOG_FILE = os.environ.get('MRPT_NAV_TEST_LOG', '')
 
 # Goals (x [m], y [m], yaw [deg]) in the map frame, starting from the robot
 # initial pose in the mvsim world (30, 30, 0 deg). Long and short trips,
@@ -134,6 +139,7 @@ class NavigationBattery(unittest.TestCase):
         cls.ref_path = None
         cls.ref_path_stamp = 0.0
         cls.robot_shape = None
+        cls.traces = []
         cls.chassis = None
 
         def on_gt(m):
@@ -224,9 +230,12 @@ class NavigationBattery(unittest.TestCase):
         collisions0 = self.collisions
         self.send_goal(g)
         res = {'max_dev': 0.0, 'max_loc_err': 0.0, 'statuses': []}
+        trace = {'goal': g, 'gt': [], 'loc': [], 'ref_paths': []}
         t_reached = None
         while time.time() - t_sent < GOAL_TIMEOUT:
             rclpy.spin_once(self.node, timeout_sec=0.05)
+            if LOG_FILE:
+                self.append_trace(trace, t_sent)
             # Only statuses after the new path started being followed (or a
             # planning failure) refer to this goal. The idle status is
             # re-published periodically, so a failure still reported from the
@@ -261,7 +270,24 @@ class NavigationBattery(unittest.TestCase):
         res['final_status'] = self.status
         res['pos_err'] = math.hypot(self.gt[0] - g[0], self.gt[1] - g[1])
         res['yaw_err'] = abs(math.degrees(angle_diff(self.gt[2], math.radians(g[2]))))
+        trace['result'] = res
+        self.traces.append(trace)
         return res
+
+    def append_trace(self, trace, t_sent):
+        t = time.time() - t_sent
+        if self.gt is not None and (not trace['gt'] or t - trace['gt'][-1][0] > 0.1):
+            trace['gt'].append((t, *self.gt[:3]))
+            try:
+                tf = self.tf_buffer.lookup_transform('map', 'base_link', rclpy.time.Time())
+                trace['loc'].append((t, tf.transform.translation.x,
+                                     tf.transform.translation.y,
+                                     yaw_of(tf.transform.rotation)))
+            except Exception:
+                pass
+        if self.ref_path_stamp > t_sent and (
+                not trace['ref_paths'] or trace['ref_paths'][-1][0] < self.ref_path_stamp - t_sent):
+            trace['ref_paths'].append((self.ref_path_stamp - t_sent, self.ref_path))
 
     def test_navigation_battery(self):
         # Wait for the whole system to be up: simulator, localization, planner
@@ -300,6 +326,11 @@ class NavigationBattery(unittest.TestCase):
         if reached < crit['min_reached']:
             failures.append(f'only {reached} of {len(GOALS)} goals reached '
                             f'(required: {crit["min_reached"]})')
+
+        if LOG_FILE:
+            with open(LOG_FILE, 'w') as f:
+                json.dump({'robot': ROBOT, 'robot_shape': self.robot_shape,
+                           'goals': self.traces}, f)
 
         self.assertEqual(self.collisions, 0, 'The robot collided')
         self.assertFalse(failures, '\n'.join(failures))

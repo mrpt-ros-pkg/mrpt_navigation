@@ -23,7 +23,11 @@ if(BUILD_TESTING)
     ament_add_ros_isolated_pytest_test(test_navigation_battery_${ROBOT}
       test/test_navigation_battery.py
       TIMEOUT 1200
+      # Ideal mvsim twist controllers: test the navigation stack, not the
+      # simulated vehicle dynamics:
       ENV MRPT_NAV_TEST_ROBOT=${ROBOT}
+          MRPT_TUTORIALS_DIFFDRIVE_CONTROLLER=twist_ideal
+          MRPT_TUTORIALS_ACKERMANN_CONTROLLER=twist_ideal
     )
   endforeach()
 endif()
