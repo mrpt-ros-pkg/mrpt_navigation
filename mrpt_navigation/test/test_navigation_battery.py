@@ -51,6 +51,7 @@ GOALS = [
 # Acceptance criteria:
 STARTUP_TIMEOUT = 300.0     # [s] nodes ready (PTG collision grids may be built)
 GOAL_TIMEOUT = 150.0        # [s] per goal
+PLANNING_TIMEOUT = 30.0     # [s] new path for a goal, else it failed
 MAX_PATH_DEVIATION = 1.5    # [m] ground truth vs reference path, while moving
 MAX_STARTUP_LOC_ERROR = 0.4       # [m] localization converged before the first goal
 MAX_STARTUP_LOC_YAW_ERROR = 10.0  # [deg]
@@ -128,6 +129,7 @@ class NavigationBattery(unittest.TestCase):
         cls.gt = None
         cls.status = None
         cls.status_stamp = 0.0
+        cls.status_change_stamp = 0.0
         cls.collisions = 0
         cls.ref_path = None
         cls.ref_path_stamp = 0.0
@@ -141,6 +143,8 @@ class NavigationBattery(unittest.TestCase):
                       time.time())
 
         def on_status(m):
+            if m.data != cls.status:
+                cls.status_change_stamp = time.time()
             cls.status = m.data
             cls.status_stamp = time.time()
 
@@ -183,18 +187,25 @@ class NavigationBattery(unittest.TestCase):
                 return True
         return False
 
-    def localized(self):
-        """Whether the localization estimate agrees with the ground truth."""
+    def localization_error(self):
+        """Position [m] and heading [deg] errors of the localization estimate
+        with respect to the ground truth, or None if not available."""
         if self.gt is None:
-            return False
+            return None
         try:
             t = self.tf_buffer.lookup_transform('map', 'base_link', rclpy.time.Time())
         except Exception:
-            return False
+            return None
         q = t.transform.rotation
         return (math.hypot(t.transform.translation.x - self.gt[0],
-                           t.transform.translation.y - self.gt[1]) < MAX_STARTUP_LOC_ERROR and
-                abs(math.degrees(angle_diff(yaw_of(q), self.gt[2]))) < MAX_STARTUP_LOC_YAW_ERROR)
+                           t.transform.translation.y - self.gt[1]),
+                abs(math.degrees(angle_diff(yaw_of(q), self.gt[2]))))
+
+    def localized(self):
+        """Whether the localization estimate agrees with the ground truth."""
+        e = self.localization_error()
+        return (e is not None and e[0] < MAX_STARTUP_LOC_ERROR and
+                e[1] < MAX_STARTUP_LOC_YAW_ERROR)
 
     def send_goal(self, g):
         msg = PoseStamped()
@@ -211,14 +222,18 @@ class NavigationBattery(unittest.TestCase):
         """Sends a goal and waits for the outcome. Returns a dict of metrics."""
         t_sent = time.time()
         self.send_goal(g)
-        res = {'max_dev': 0.0, 'statuses': []}
+        res = {'max_dev': 0.0, 'max_loc_err': 0.0, 'statuses': []}
         t_reached = None
         while time.time() - t_sent < GOAL_TIMEOUT:
             rclpy.spin_once(self.node, timeout_sec=0.05)
             # Only statuses after the new path started being followed (or a
-            # planning failure) refer to this goal:
-            started = self.ref_path_stamp > t_sent or (
-                self.status in ('Canceled', 'Failed') and self.status_stamp > t_sent)
+            # planning failure) refer to this goal. The idle status is
+            # re-published periodically, so a failure still reported from the
+            # previous goal only counts if no new path shows up in time:
+            planning_failed = self.status in ('Canceled', 'Failed') and (
+                self.status_change_stamp > t_sent or
+                time.time() - t_sent > PLANNING_TIMEOUT)
+            started = self.ref_path_stamp > t_sent or planning_failed
             fresh = started and self.status_stamp > max(t_sent, self.ref_path_stamp)
             if fresh and (not res['statuses'] or res['statuses'][-1] != self.status):
                 res['statuses'].append(self.status)
@@ -229,6 +244,10 @@ class NavigationBattery(unittest.TestCase):
                     self.status == 'Running' and self.gt[3] > 0.05):
                 res['max_dev'] = max(
                     res['max_dev'], dist_to_polyline(self.gt[:2], self.ref_path))
+                # Reported only, to tell localization from tracking errors:
+                e = self.localization_error()
+                if e is not None:
+                    res['max_loc_err'] = max(res['max_loc_err'], e[0])
             if self.status == 'ReachedGoal' and fresh:
                 t_reached = t_reached or time.time()
                 # Let it settle:
