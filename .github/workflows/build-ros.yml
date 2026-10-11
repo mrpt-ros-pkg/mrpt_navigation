@@ -20,6 +20,9 @@ jobs:
             docker_image: ros:humble
             ros_distribution: humble
             use_ros_testing: false
+            # MRPT 3 based dependencies not synced to Humble stable yet:
+            # remove once they are.
+            allow_failure: true
 
           - name: humble testing
             docker_image: ubuntu:jammy
