@@ -17,7 +17,9 @@ list and responsibilities:
   range-only localization, etc).
 - **mrpt_pointcloud_pipeline**: maintains a local obstacle map from recent
   sensor readings; supports point cloud filtering pipelines (volume/area
-  filters, downsampling, 2D scan obstacle memory, etc).
+  filters, downsampling, 2D scan obstacle memory, etc). Optionally
+  (`memory_layers`, `memory_region`) it keeps reporting obstacles that moved
+  into a region the sensors can't see (e.g. close to a high-mounted lidar).
 - **mrpt_reactivenav2d**: pure reactive navigator for polygonal robots in 2D.
 - **mrpt_tps_astar_planner**: SE(2)-lattice A* path planner based on PTG
   trajectories.

@@ -584,9 +584,12 @@ void LocalObstaclesNode::read_parameters()
 	this->get_parameter("memory_layers", memory_layers);
 	RCLCPP_INFO(get_logger(), "memory_layers: '%s'", memory_layers.c_str());
 
-	std::vector<double> memory_region;
-	this->declare_parameter<std::vector<double>>("memory_region", memory_region);
-	this->get_parameter("memory_region", memory_region);
+	// "x_min, y_min, x_max, y_max" (robot frame):
+	std::string memory_region_str;
+	this->declare_parameter<std::string>("memory_region", memory_region_str);
+	this->get_parameter("memory_region", memory_region_str);
+	std::vector<std::string> memory_region;
+	mrpt::system::tokenize(memory_region_str, ", \t\r\n", memory_region);
 
 	mrpt_pointcloud_pipeline::ObstacleMemory::Parameters mp;
 	this->declare_parameter<double>("memory_max_age", mp.max_age);
@@ -608,11 +611,11 @@ void LocalObstaclesNode::read_parameters()
 	{
 		ASSERTMSG_(
 			memory_region.size() == 4,
-			"memory_region must be [x_min, y_min, x_max, y_max] (robot frame)");
-		mp.region_min_x = static_cast<float>(memory_region[0]);
-		mp.region_min_y = static_cast<float>(memory_region[1]);
-		mp.region_max_x = static_cast<float>(memory_region[2]);
-		mp.region_max_y = static_cast<float>(memory_region[3]);
+			"memory_region must be \"x_min, y_min, x_max, y_max\" (robot frame)");
+		mp.region_min_x = std::stof(memory_region[0]);
+		mp.region_min_y = std::stof(memory_region[1]);
+		mp.region_max_x = std::stof(memory_region[2]);
+		mp.region_max_y = std::stof(memory_region[3]);
 		RCLCPP_INFO(
 			get_logger(),
 			"memory_region: [%.2f, %.2f, %.2f, %.2f] memory_max_age: %.1f s "
