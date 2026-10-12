@@ -121,6 +121,12 @@ if(BUILD_TESTING)
     test/test_aisle_maneuvers.py
     TIMEOUT 300
   )
+
+  # Commanded to move, but stuck against an obstacle it doesn't see: Blocked.
+  ament_add_ros_isolated_pytest_test(test_stall_blocked
+    test/test_stall_blocked.py
+    TIMEOUT 300
+  )
 endif()
 
 ament_package()
