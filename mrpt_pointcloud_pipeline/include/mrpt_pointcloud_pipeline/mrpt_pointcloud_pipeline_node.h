@@ -28,6 +28,7 @@
 #include <mrpt/viz/CPointCloud.h>
 #include <mrpt/viz/Scene.h>
 #include <mrpt/viz/stock_objects.h>
+#include <mrpt_pointcloud_pipeline/ObstacleMemory.h>
 
 /* ros2 deps */
 #include <tf2_ros/buffer.h>
@@ -152,6 +153,9 @@ class LocalObstaclesNode : public rclcpp::Node
 		rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr pub;
 	};
 	std::vector<LayerTopicNames> layer2topic_;
+
+	/// Optional memory of obstacles in the sensors blind zone, per layer
+	std::map<std::string, mrpt_pointcloud_pipeline::ObstacleMemory> m_memory;
 
 	/**
 	 * @name ROS2 pubs/subs

@@ -51,6 +51,7 @@ find_package(mp2p_icp_filters REQUIRED)
 
 add_executable(${PROJECT_NAME}_node
               src/main.cpp
+              src/ObstacleMemory.cpp
               include/${PROJECT_NAME}/mrpt_pointcloud_pipeline_node.h)
 
 target_include_directories(${PROJECT_NAME}_node
@@ -80,6 +81,7 @@ target_link_libraries(
 
 add_library(${PROJECT_NAME}_component SHARED
               src/${PROJECT_NAME}_component.cpp
+              src/ObstacleMemory.cpp
               include/${PROJECT_NAME}/${PROJECT_NAME}_node.h)
 
 target_include_directories(${PROJECT_NAME}_component
@@ -138,6 +140,14 @@ if(BUILD_TESTING)
   # uncomment the line when this package is not in a git repo
   #set(ament_cmake_cpplint_FOUND TRUE)
   ament_lint_auto_find_test_dependencies()
+
+  find_package(ament_cmake_gtest REQUIRED)
+  ament_add_gtest(test_obstacle_memory
+    test/test_obstacle_memory.cpp
+    src/ObstacleMemory.cpp)
+  target_include_directories(test_obstacle_memory PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/include)
+  target_link_libraries(test_obstacle_memory mrpt::mrpt_maps)
 endif()
 
 ament_package()
