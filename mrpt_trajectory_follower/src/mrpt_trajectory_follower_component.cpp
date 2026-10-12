@@ -502,6 +502,14 @@ void TrajectoryFollowerNode::follow(const mpp::SampledTrajectory& ref)
 	{
 		stalled_since_ = this->now();
 	}
+	// Stuck for too long (reported as Blocked): don't keep pushing. Held
+	// until a new path, or a cancel, resets it.
+	if (stalled_since_ &&
+		(this->now() - *stalled_since_).seconds() > follower_.params.block_timeout)
+	{
+		vx = 0;
+		omega = 0;
+	}
 
 	publish_cmd(vx, omega);
 	publish_chunk(ref);

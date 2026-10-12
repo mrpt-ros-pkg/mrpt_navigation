@@ -23,7 +23,7 @@ import launch_testing.actions
 import launch_testing.markers
 import pytest
 import rclpy
-from geometry_msgs.msg import PoseStamped
+from geometry_msgs.msg import PoseStamped, Twist
 from launch_ros.actions import Node
 from nav_msgs.msg import Odometry, Path
 from rclpy.parameter import Parameter
@@ -39,6 +39,7 @@ PATH_TOPIC = '/waypoints_path'
 OBSTACLES_TOPIC = '/test_obstacles'
 
 BOXES_X = 4.0          # [m] near face of the column of boxes ahead
+ROBOT_FRONT_X = 1.4    # [m] front of the footprint, from the robot origin
 STARTUP_TIMEOUT = 60.0  # [s]
 LEG_TIMEOUT = 60.0      # [s] driving there, plus the follower block_timeout
 
@@ -90,6 +91,7 @@ class StallBlocked(unittest.TestCase):
         cls.gt = None
         cls.status = None
         cls.status_count = 0
+        cls.cmds = []
 
         def on_gt(m):
             p = m.pose.pose
@@ -101,6 +103,7 @@ class StallBlocked(unittest.TestCase):
 
         n.create_subscription(Odometry, '/base_pose_ground_truth', on_gt, 10)
         n.create_subscription(String, STATUS_TOPIC, on_status, latched)
+        n.create_subscription(Twist, '/cmd_vel', lambda m: cls.cmds.append(m.linear.x), 10)
         cls.pub_path = n.create_publisher(Path, PATH_TOPIC, latched)
         cls.pub_obs = n.create_publisher(PointCloud2, OBSTACLES_TOPIC, 10)
         n.create_timer(0.1, cls.publish_no_obstacles)
@@ -152,4 +155,12 @@ class StallBlocked(unittest.TestCase):
             f'status {self.status} after {time.time() - t0:.1f} s, robot x={x:.2f}')
         self.assertTrue(started, 'The follower never started')
         self.assertEqual(self.status, 'Blocked')
-        self.assertLess(x + 1.4, BOXES_X + 0.05, 'The robot went through the boxes')
+        self.assertLess(x + ROBOT_FRONT_X, BOXES_X + 0.05, 'The robot went through the boxes')
+
+        # Once Blocked, it stops pushing:
+        self.cmds.clear()
+        t0 = time.time()
+        while time.time() - t0 < 1.0:
+            rclpy.spin_once(self.node, timeout_sec=0.05)
+        self.assertTrue(all(abs(v) < 1e-3 for v in self.cmds),
+                        f'Still commanding motion while Blocked: {self.cmds[:5]}')
