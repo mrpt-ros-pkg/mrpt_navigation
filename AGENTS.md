@@ -90,6 +90,8 @@ colcon test-result --verbose
 
 `colcon test --packages-select mrpt_navigation` runs headless end-to-end
 navigation batteries in mvsim (several minutes).
+`colcon test --packages-select mrpt_trajectory_follower` drives a car-like
+robot out of and back into narrow aisles in mvsim (`mrpt_trajectory_follower/test/`).
 
 CI (`.github/workflows/build-ros.yml`) builds and tests against Humble and
 Jazzy (stable + testing repos) on every push. Dependencies not yet released
