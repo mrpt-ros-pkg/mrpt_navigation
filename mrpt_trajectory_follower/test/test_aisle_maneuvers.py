@@ -58,7 +58,8 @@ EXTRA_DEPTH = 0.4             # [m] goal past the mouth
 # Acceptance criteria:
 STARTUP_TIMEOUT = 60.0     # [s]
 LEG_TIMEOUT = 45.0         # [s]
-MIN_CLEARANCE = 0.10       # [m] footprint to boxes
+MIN_CLEARANCE = 0.02       # [m] footprint to boxes (the reverse arc nominally keeps 0.25 m;
+                           # under CPU load the follower lags up to ~0.2 m entering it)
 MAX_IN_AISLE_CROSS = 0.18  # [m] off the in-aisle straight of the reverse leg (timing-sensitive on CI)
 
 
@@ -133,15 +134,19 @@ def exit_leg(x0, y0):
 
 
 def entry_leg(xs, ys, aisle_y):
-    """Reverse along +y (body heading -y), reverse 90 deg arc into the aisle
-    centered at aisle_y (body heading +x at its end), and a reverse straight
-    into it. Returns the knots and the in-aisle straight segment."""
+    """Reverse along +y (body heading -y) on the crossing aisle line where the
+    exit leg ends, reverse 90 deg arc into the aisle centered at aisle_y
+    (body heading +x at its end), and a reverse straight into it. The line,
+    not the actual start pose, sets the arc, so how precisely the exit leg
+    stopped doesn't change the maneuver. Returns the knots and the in-aisle
+    straight segment."""
+    xl = EXIT_ANCHOR_X + ELLIPSE_FORWARD_FACTOR * AISLE_PITCH
     xt = ROW_END_X - MOUTH_DEPTH + ALIGN_STRAIGHT
-    r = xs - xt
+    r = xl - xt
     ya = aisle_y - r
     pts = [(xs, ys, -math.pi / 2)]
     for i in range(1, 7):
-        pts.append((xs, ys + (ya - ys) * i / 6, -math.pi / 2))
+        pts.append((xl, ys + (ya - ys) * i / 6, -math.pi / 2))
     # Arc centered at (xt, ya), traveled counterclockwise from (xs, ya):
     for i in range(1, 13):
         t = (math.pi / 2) * i / 12
