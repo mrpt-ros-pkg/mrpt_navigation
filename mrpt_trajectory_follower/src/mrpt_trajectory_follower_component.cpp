@@ -480,8 +480,11 @@ void TrajectoryFollowerNode::follow(const mpp::SampledTrajectory& ref)
 #endif
 
 	// Commanded to move, but not moving (e.g. pushing against an obstacle
-	// not seen, or allowed to crawl by the guard while in contact):
+	// not seen, or allowed to crawl by the guard while in contact). Slow
+	// commands in between neither start nor reset it, so a crawl around
+	// kMinCmdSpeed is still detected:
 	constexpr double kMinCmdSpeed = 0.05;  // [m/s]
+	constexpr double kStopCmdSpeed = 0.01;	// [m/s]
 	constexpr double kStallSpeed = 0.02;  // [m/s]
 	std::optional<double> measuredSpeed;
 	{
@@ -491,18 +494,13 @@ void TrajectoryFollowerNode::follow(const mpp::SampledTrajectory& ref)
 			measuredSpeed = last_odom_.twist.twist.linear.x;
 		}
 	}
-	const bool stalled =
-		measuredSpeed && std::abs(vx) >= kMinCmdSpeed && std::abs(*measuredSpeed) < kStallSpeed;
-	if (stalled)
-	{
-		if (!stalled_since_)
-		{
-			stalled_since_ = this->now();
-		}
-	}
-	else
+	if (!measuredSpeed || std::abs(*measuredSpeed) >= kStallSpeed || std::abs(vx) < kStopCmdSpeed)
 	{
 		stalled_since_.reset();
+	}
+	else if (std::abs(vx) >= kMinCmdSpeed && !stalled_since_)
+	{
+		stalled_since_ = this->now();
 	}
 
 	publish_cmd(vx, omega);
