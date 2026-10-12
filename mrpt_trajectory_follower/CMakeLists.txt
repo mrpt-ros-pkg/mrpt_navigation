@@ -113,6 +113,14 @@ install(DIRECTORY
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
   ament_lint_auto_find_test_dependencies()
+
+  # Closed-loop maneuvers of a car-like robot between narrow aisles, in
+  # simulation (mvsim, headless).
+  find_package(ament_cmake_ros REQUIRED)
+  ament_add_ros_isolated_pytest_test(test_aisle_maneuvers
+    test/test_aisle_maneuvers.py
+    TIMEOUT 300
+  )
 endif()
 
 ament_package()
