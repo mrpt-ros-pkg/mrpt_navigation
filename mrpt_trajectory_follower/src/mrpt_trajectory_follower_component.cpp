@@ -367,7 +367,19 @@ bool TrajectoryFollowerNode::robot_pose_in_map(
 			odomFrame = last_odom_.header.frame_id;
 		}
 	}
-	if (odomFrame.empty() || odomFrame == frame_id_map_)
+	const bool noOdomFrame = odomFrame.empty() || odomFrame == frame_id_map_;
+	const std::string& robotParentFrame = noOdomFrame ? frame_id_map_ : odomFrame;
+
+	// The robot pose at the requested time may not be available yet (e.g. a
+	// sensor stamp slightly ahead of the odometry): use the latest one then.
+	if (at != tf2::TimePointZero &&
+		!tf_buffer_->canTransform(
+			robotParentFrame, frame_id_robot_, at, tf2::durationFromSec(0.05)))
+	{
+		at = tf2::TimePointZero;
+	}
+
+	if (noOdomFrame)
 	{
 		// No odometry frame: the localization alone.
 		return wait_for_transform(pose, frame_id_robot_, frame_id_map_, 50, at, &stamp);
