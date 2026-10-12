@@ -58,8 +58,8 @@ EXTRA_DEPTH = 0.4             # [m] goal past the mouth
 # Acceptance criteria:
 STARTUP_TIMEOUT = 60.0     # [s]
 LEG_TIMEOUT = 45.0         # [s]
-MIN_CLEARANCE = 0.05       # [m] footprint to boxes
-MAX_IN_AISLE_CROSS = 0.15  # [m] off the in-aisle straight of the reverse leg
+MIN_CLEARANCE = 0.10       # [m] footprint to boxes
+MAX_IN_AISLE_CROSS = 0.12  # [m] off the in-aisle straight of the reverse leg
 
 
 def box_outlines():
