@@ -1,0 +1,18 @@
+# mrpt_pf_localization parameter overrides for the navigation tests: the
+# initial pose of mrpt_tutorials' pf-initial-pose-demo_world2.yaml, with fewer
+# particles and no GUI, to keep the CPU load low on CI runners.
+/**:
+  ros__parameters:
+    gui_enable: false
+    initial_particles_per_m2: 20
+    initial_pose:
+      mean: { x: 30.0, y: 30.0, z: 0.0, yaw: 0.0, pitch: 0.0, roll: 0.0 }
+      std_x: 0.5     # 1 sigma uncertainty [meters]
+      std_y: 0.5
+      std_z: 0.0
+      std_yaw: 0.05  # 1 sigma uncertainty [radians]
+      std_pitch: 0.0
+      std_roll: 0.0
+    kld_options:
+      KLD_minSampleSize: 50
+      KLD_maxSampleSize: 1500

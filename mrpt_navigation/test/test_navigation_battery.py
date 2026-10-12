@@ -95,6 +95,8 @@ def generate_test_description():
                 'robot': ROBOT,
                 'speed_limit': SPEED_LIMIT,
                 'use_rviz': 'False',
+                'pf_params_overrides_file': os.path.join(
+                    os.path.dirname(os.path.abspath(__file__)), 'pf-test-overrides.yaml'),
             }.items()),
         launch_testing.actions.ReadyToTest(),
     ])
