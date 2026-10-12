@@ -9,6 +9,7 @@
 #include <mrpt/ros2bridge/time.h>
 #include <mrpt_pointcloud_pipeline/mrpt_pointcloud_pipeline_node.h>
 
+#include <algorithm>
 #include <sstream>
 
 // for now, not needed (node=executable)
@@ -88,25 +89,19 @@ void LocalObstaclesNode::on_do_publish()
 		obs = m_hist_obs;
 	}
 
-	// Keep only one obs per topic?
+	// Keep only the latest obs per topic?
 	if (m_one_observation_per_topic)
 	{
-		// TODO(jlbc): Remove in reverse order to keep the latest one!
 		std::set<std::string> foundTopics;
-		for (auto it = obs.begin(); it != obs.end();)
+		obs_list_t latest;
+		for (auto it = obs.rbegin(); it != obs.rend(); ++it)
 		{
-			const auto& topic = it->second.sourceTopic;
-			if (foundTopics.count(topic) != 0)
+			if (foundTopics.insert(it->second.sourceTopic).second)
 			{
-				// duplicated entry, delete:
-				it = obs.erase(it);
-			}
-			else
-			{
-				foundTopics.insert(topic);
-				++it;  // move on:
+				latest.insert(*it);
 			}
 		}
+		obs = std::move(latest);
 	}
 
 	RCLCPP_DEBUG(
@@ -177,6 +172,17 @@ void LocalObstaclesNode::on_do_publish()
 	mp2p_icp_filters::apply_filter_pipeline(m_final_pipeline, mm);
 
 	tleFilter.stop();
+
+	// Add the remembered obstacles in the blind zone, if enabled:
+	for (auto& [layer, memory] : m_memory)
+	{
+		CTimeLoggerEntry tleMem(m_profiler, "on_do_publish.obstacle_memory");
+		auto pts = mm.point_layer(layer);
+		ASSERT_(pts);
+		CSimplePointsMap remembered;
+		memory.update(*pts, curRobotPose, obs.rbegin()->first, remembered);
+		pts->insertAnotherMap(&remembered, mrpt::poses::CPose3D::Identity());
+	}
 
 	// Publish them:
 	for (auto& e : layer2topic_)
@@ -570,6 +576,81 @@ void LocalObstaclesNode::read_parameters()
 
 		// Create publisher for local map point cloud:
 		e.pub = this->create_publisher<sensor_msgs::msg::PointCloud2>(e.topic, 10);
+	}
+
+	// Optional memory of obstacles in the sensors blind zone:
+	// --------------------------------------------------------
+	std::string memory_layers;
+	this->declare_parameter<std::string>("memory_layers", memory_layers);
+	this->get_parameter("memory_layers", memory_layers);
+	RCLCPP_INFO(get_logger(), "memory_layers: '%s'", memory_layers.c_str());
+
+	// "x_min, y_min, x_max, y_max" (robot frame):
+	std::string memory_region_str;
+	this->declare_parameter<std::string>("memory_region", memory_region_str);
+	this->get_parameter("memory_region", memory_region_str);
+	std::vector<std::string> memory_region;
+	mrpt::system::tokenize(memory_region_str, ", \t\r\n", memory_region);
+
+	// "x_min, y_min, x_max, y_max" (robot frame):
+	std::string memory_self_box_str;
+	this->declare_parameter<std::string>("memory_self_box", memory_self_box_str);
+	this->get_parameter("memory_self_box", memory_self_box_str);
+	std::vector<std::string> memory_self_box;
+	mrpt::system::tokenize(memory_self_box_str, ", \t\r\n", memory_self_box);
+
+	mrpt_pointcloud_pipeline::ObstacleMemory::Parameters mp;
+	this->declare_parameter<double>("memory_max_age", mp.max_age);
+	this->get_parameter("memory_max_age", mp.max_age);
+
+	double voxel_size = mp.voxel_size;
+	this->declare_parameter<double>("memory_voxel_size", voxel_size);
+	this->get_parameter("memory_voxel_size", voxel_size);
+	mp.voxel_size = static_cast<float>(voxel_size);
+
+	int min_hits = static_cast<int>(mp.min_hits);
+	this->declare_parameter<int>("memory_min_hits", min_hits);
+	this->get_parameter("memory_min_hits", min_hits);
+	mp.min_hits = static_cast<unsigned int>(std::max(1, min_hits));
+
+	double store_margin = mp.store_margin;
+	this->declare_parameter<double>("memory_store_margin", store_margin);
+	this->get_parameter("memory_store_margin", store_margin);
+	mp.store_margin = static_cast<float>(store_margin);
+
+	std::vector<std::string> lstMemLayers;
+	mrpt::system::tokenize(memory_layers, ", \t\r\n", lstMemLayers);
+	if (!lstMemLayers.empty())
+	{
+		ASSERTMSG_(
+			memory_region.size() == 4,
+			"memory_region must be \"x_min, y_min, x_max, y_max\" (robot frame)");
+		mp.region_min_x = std::stof(memory_region[0]);
+		mp.region_min_y = std::stof(memory_region[1]);
+		mp.region_max_x = std::stof(memory_region[2]);
+		mp.region_max_y = std::stof(memory_region[3]);
+		if (!memory_self_box.empty())
+		{
+			ASSERTMSG_(
+				memory_self_box.size() == 4,
+				"memory_self_box must be \"x_min, y_min, x_max, y_max\" (robot frame)");
+			mp.self_min_x = std::stof(memory_self_box[0]);
+			mp.self_min_y = std::stof(memory_self_box[1]);
+			mp.self_max_x = std::stof(memory_self_box[2]);
+			mp.self_max_y = std::stof(memory_self_box[3]);
+		}
+		RCLCPP_INFO(
+			get_logger(),
+			"memory_region: [%.2f, %.2f, %.2f, %.2f] memory_self_box: [%.2f, %.2f, %.2f, %.2f] "
+			"memory_max_age: %.1f s memory_voxel_size: %.2f m memory_store_margin: %.2f m "
+			"memory_min_hits: %u",
+			mp.region_min_x, mp.region_min_y, mp.region_max_x, mp.region_max_y, mp.self_min_x,
+			mp.self_min_y, mp.self_max_x, mp.self_max_y, mp.max_age, mp.voxel_size, mp.store_margin,
+			mp.min_hits);
+	}
+	for (const auto& layer : lstMemLayers)
+	{
+		m_memory[layer].params = mp;
 	}
 }
 

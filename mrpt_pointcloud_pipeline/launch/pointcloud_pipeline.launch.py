@@ -52,6 +52,26 @@ def generate_launch_description():
         'one_observation_per_topic',
         default_value='false'
     )
+    memory_layers_arg = DeclareLaunchArgument(
+        'memory_layers',
+        default_value='',
+        description='Output layer(s) that also report obstacles remembered inside memory_region (comma-separated). Empty: disabled.'
+    )
+    memory_region_arg = DeclareLaunchArgument(
+        'memory_region',
+        default_value='',
+        description='Region where the sensors are blind, as "x_min, y_min, x_max, y_max" in the robot frame [m]'
+    )
+    memory_self_box_arg = DeclareLaunchArgument(
+        'memory_self_box',
+        default_value='',
+        description='Points inside this box are never remembered (they may be the robot itself), as "x_min, y_min, x_max, y_max" in the robot frame [m]'
+    )
+    memory_max_age_arg = DeclareLaunchArgument(
+        'memory_max_age',
+        default_value='10.0',
+        description='Remembered obstacles are forgotten after this long without being observed [s]'
+    )
     pipeline_yaml_file_arg = DeclareLaunchArgument(
         'pipeline_yaml_file',
         default_value=os.path.join(
@@ -112,6 +132,10 @@ def generate_launch_description():
             {'frameid_robot': LaunchConfiguration('frameid_robot')},
             {'one_observation_per_topic': LaunchConfiguration(
                 'one_observation_per_topic')},
+            {'memory_layers': LaunchConfiguration('memory_layers')},
+            {'memory_region': LaunchConfiguration('memory_region')},
+            {'memory_self_box': LaunchConfiguration('memory_self_box')},
+            {'memory_max_age': LaunchConfiguration('memory_max_age')},
         ],
         arguments=['--ros-args', '--log-level',
                    LaunchConfiguration('log_level')],
@@ -137,6 +161,10 @@ def generate_launch_description():
                     {'frameid_reference': LaunchConfiguration('frameid_reference')},
                     {'frameid_robot': LaunchConfiguration('frameid_robot')},
                     {'one_observation_per_topic': LaunchConfiguration('one_observation_per_topic')},
+                    {'memory_layers': LaunchConfiguration('memory_layers')},
+                    {'memory_region': LaunchConfiguration('memory_region')},
+                    {'memory_self_box': LaunchConfiguration('memory_self_box')},
+                    {'memory_max_age': LaunchConfiguration('memory_max_age')},
                 ],
             )
         ]
@@ -156,6 +184,10 @@ def generate_launch_description():
         frameid_robot_arg,
         log_level_launch_arg,
         one_observation_per_topic_arg,
+        memory_layers_arg,
+        memory_region_arg,
+        memory_self_box_arg,
+        memory_max_age_arg,
         mrpt_pointcloud_pipeline_node,
         composable_mrpt_pointcloud_pipeline,
     ])
