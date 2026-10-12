@@ -188,10 +188,15 @@ TrajectoryFollowerNode::TrajectoryFollowerNode(const rclcpp::NodeOptions& option
 
 	if (!topic_obstacles_sub_.empty())
 	{
+		obstacles_cb_group_ =
+			this->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
+		rclcpp::SubscriptionOptions subOpts;
+		subOpts.callback_group = obstacles_cb_group_;
 		sub_obstacles_ = this->create_subscription<sensor_msgs::msg::PointCloud2>(
 			topic_obstacles_sub_, qos,
 			[this](const sensor_msgs::msg::PointCloud2::SharedPtr msg)
-			{ this->callback_obstacles(msg); });
+			{ this->callback_obstacles(msg); },
+			subOpts);
 	}
 
 	sub_speed_limit_ = this->create_subscription<std_msgs::msg::Float64>(
@@ -239,8 +244,10 @@ TrajectoryFollowerNode::TrajectoryFollowerNode(const rclcpp::NodeOptions& option
 
 	// Control loop at the follower's control period:
 	const auto period = std::chrono::duration<double>(follower_.params.control_period);
-	control_timer_ = this->create_wall_timer(
-		std::chrono::duration_cast<std::chrono::nanoseconds>(period),
+	// (on the ROS clock, i.e. the simulation time if use_sim_time, as all the
+	// timestamps it works with):
+	control_timer_ = rclcpp::create_timer(
+		this, this->get_clock(), std::chrono::duration_cast<std::chrono::nanoseconds>(period),
 		[this]() { this->control_tick(); });
 
 	// Watchdog: a few control periods without a fresh command -> zero cmd_vel.
@@ -325,17 +332,20 @@ void TrajectoryFollowerNode::apply_speed_limit(double limit)
 
 bool TrajectoryFollowerNode::wait_for_transform(
 	mrpt::poses::CPose3D& des, const std::string& target_frame, const std::string& source_frame,
-	int timeout_milliseconds)
+	int timeout_milliseconds, tf2::TimePoint at, mrpt::system::TTimeStamp* stamp)
 {
 	const rclcpp::Duration timeout(0, 1000000LL * timeout_milliseconds);
 	try
 	{
 		geometry_msgs::msg::TransformStamped tf = tf_buffer_->lookupTransform(
-			source_frame, target_frame, tf2::TimePointZero,
-			tf2::durationFromSec(timeout.seconds()));
+			source_frame, target_frame, at, tf2::durationFromSec(timeout.seconds()));
 		tf2::Transform t;
 		tf2::fromMsg(tf.transform, t);
 		des = mrpt::ros2bridge::fromROS(t);
+		if (stamp)
+		{
+			*stamp = mrpt::ros2bridge::fromROS(tf.header.stamp);
+		}
 		return true;
 	}
 	catch (const tf2::TransformException& ex)
@@ -346,17 +356,46 @@ bool TrajectoryFollowerNode::wait_for_transform(
 	}
 }
 
+bool TrajectoryFollowerNode::robot_pose_in_map(
+	mrpt::poses::CPose3D& pose, mrpt::system::TTimeStamp& stamp, tf2::TimePoint at)
+{
+	std::string odomFrame;
+	{
+		auto lck = std::lock_guard(odom_cs_);
+		if (have_odom_)
+		{
+			odomFrame = last_odom_.header.frame_id;
+		}
+	}
+	if (odomFrame.empty() || odomFrame == frame_id_map_)
+	{
+		// No odometry frame: the localization alone.
+		return wait_for_transform(pose, frame_id_robot_, frame_id_map_, 50, at, &stamp);
+	}
+
+	mrpt::poses::CPose3D mapToOdom;
+	mrpt::poses::CPose3D odomToRobot;
+	if (!wait_for_transform(mapToOdom, odomFrame, frame_id_map_) ||
+		!wait_for_transform(odomToRobot, frame_id_robot_, odomFrame, 50, at, &stamp))
+	{
+		return false;
+	}
+	pose = mapToOdom + odomToRobot;
+	return true;
+}
+
 // --------------------------- TrajectoryVehicleInterface ---------------------
 mpp::VehicleLocalizationState TrajectoryFollowerNode::get_localization()
 {
 	mpp::VehicleLocalizationState st;
 	mrpt::poses::CPose3D p;
-	if (wait_for_transform(p, frame_id_robot_, frame_id_map_))
+	mrpt::system::TTimeStamp stamp;
+	if (robot_pose_in_map(p, stamp))
 	{
 		st.valid = true;
 		st.pose = mrpt::poses::CPose2D(p).asTPose();
 		st.frame_id = frame_id_map_;
-		st.timestamp = mrpt::Clock::now();
+		st.timestamp = stamp;
 	}
 	return st;
 }
@@ -766,9 +805,11 @@ void TrajectoryFollowerNode::callback_obstacles(
 	}
 #endif
 
-	// The follower predictive safety works in the map frame:
+	// The follower predictive safety works in the map frame (robot pose when
+	// the points were sensed):
 	mrpt::poses::CPose3D robotPoseInMap;
-	if (!wait_for_transform(robotPoseInMap, frame_id_robot_, frame_id_map_))
+	mrpt::system::TTimeStamp unusedStamp;
+	if (!robot_pose_in_map(robotPoseInMap, unusedStamp, tf2_ros::fromMsg(pcMsg->header.stamp)))
 	{
 		return;
 	}

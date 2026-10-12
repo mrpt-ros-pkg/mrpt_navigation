@@ -111,6 +111,9 @@ class TrajectoryFollowerNode : public rclcpp::Node, public mpp::TrajectoryVehicl
 	// Subs / pubs:
 	rclcpp::Subscription<nav_msgs::msg::Path>::SharedPtr sub_path_;
 	rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr sub_obstacles_;
+	/// Obstacle clouds are processed in their own callback group, so they
+	/// never delay the control loop or odometry (with a multithreaded executor).
+	rclcpp::CallbackGroup::SharedPtr obstacles_cb_group_;
 	rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr sub_odom_;
 	rclcpp::Subscription<std_msgs::msg::Float64>::SharedPtr sub_speed_limit_;
 	rclcpp::Subscription<geometry_msgs::msg::PolygonStamped>::SharedPtr sub_robot_shape_;
@@ -220,9 +223,20 @@ class TrajectoryFollowerNode : public rclcpp::Node, public mpp::TrajectoryVehicl
 
 	void publish_status(const std::string& s);
 
+	/// Pose of target_frame in source_frame, at time `at` (default: latest
+	/// available), and the time it refers to (if `stamp` is given).
 	[[nodiscard]] bool wait_for_transform(
 		mrpt::poses::CPose3D& des, const std::string& target_frame, const std::string& source_frame,
-		int timeout_milliseconds = 50);
+		int timeout_milliseconds = 50, tf2::TimePoint at = tf2::TimePointZero,
+		mrpt::system::TTimeStamp* stamp = nullptr);
+
+	/// Robot pose in the map frame at time `at` (default: latest), and the
+	/// time it refers to. The localization (map->odom) is published with a
+	/// latency, so the latest map->odom is composed with the odometry at that
+	/// time, instead of looking up map->robot at the latest time both exist.
+	[[nodiscard]] bool robot_pose_in_map(
+		mrpt::poses::CPose3D& pose, mrpt::system::TTimeStamp& stamp,
+		tf2::TimePoint at = tf2::TimePointZero);
 
 	void publish_cmd(double vx, double omega);
 	void publish_chunk(const mpp::SampledTrajectory& ref);

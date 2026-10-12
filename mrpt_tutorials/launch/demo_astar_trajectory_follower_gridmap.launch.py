@@ -108,8 +108,7 @@ def launch_setup(context, *args, **kwargs):
             'log_level_core': 'INFO',
             'topic_sensors_2d_scan': cfg['scan_topics'],
             # Start localized at the robot pose in the mvsim world file:
-            'pf_params_overrides_file': os.path.join(
-                tutsDir, 'params', 'pf-initial-pose-demo_world2.yaml'),
+            'pf_params_overrides_file': LaunchConfiguration('pf_params_overrides_file'),
             'topic_sensors_point_clouds': '',
             'base_link_frame_id': 'base_link',
             'odom_frame_id': 'odom',
@@ -194,5 +193,12 @@ def generate_launch_description():
         DeclareLaunchArgument(
             'use_sim_time', default_value='True',
             description='Run the nodes on the simulation clock from mvsim'),
+        DeclareLaunchArgument(
+            'pf_params_overrides_file',
+            default_value=os.path.join(
+                get_package_share_directory('mrpt_tutorials'), 'params',
+                'pf-initial-pose-demo_world2.yaml'),
+            description='mrpt_pf_localization parameter overrides (the initial pose must '
+            'match the robot pose in the mvsim world)'),
         OpaqueFunction(function=launch_setup),
     ])

@@ -5,16 +5,23 @@
 # and drives the robot through a sequence of A->B goals, checking that the
 # simulator reports no collisions, that the robot never moves far from its
 # reference path, that each navigation ends (reached or reported as failed) in
-# time, and that goals reported as reached really are. How many goals must be
-# reached depends on the robot (see CRITERIA).
+# time, that goals reported as reached really are (judged on the localized
+# pose, so the follower is not blamed for localization errors) and that the
+# localization does not drift away. How many goals must be reached depends on
+# the robot (see CRITERIA).
 #
 # Environment variables:
 #  - MRPT_NAV_TEST_ROBOT: 'diffdrive' (default) or 'ackermann'.
 #  - MRPT_NAV_TEST_SPEED_LIMIT: follower speed limit [m/s] (default: 1.0).
+#  - MRPT_NAV_TEST_LOG: if set, a .json file where to save, per goal, the
+#    ground truth and localized trajectories and the reference paths, with the
+#    robot name appended (e.g. traces_diffdrive.json). Plot it with
+#    plot_nav_traces.py.
 #
 # Run it with:
 #   colcon test --packages-select mrpt_navigation
 
+import json
 import math
 import os
 import time
@@ -36,6 +43,9 @@ from std_msgs.msg import Bool, String
 
 ROBOT = os.environ.get('MRPT_NAV_TEST_ROBOT', 'diffdrive')
 SPEED_LIMIT = os.environ.get('MRPT_NAV_TEST_SPEED_LIMIT', '1.0')
+LOG_FILE = os.environ.get('MRPT_NAV_TEST_LOG', '')
+if LOG_FILE:
+    LOG_FILE = f'{os.path.splitext(LOG_FILE)[0]}_{ROBOT}.json'
 
 # Goals (x [m], y [m], yaw [deg]) in the map frame, starting from the robot
 # initial pose in the mvsim world (30, 30, 0 deg). Long and short trips,
@@ -56,13 +66,15 @@ MAX_PATH_DEVIATION = 1.5    # [m] ground truth vs reference path, while moving
 MAX_STARTUP_LOC_ERROR = 0.4       # [m] localization converged before the first goal
 MAX_STARTUP_LOC_YAW_ERROR = 10.0  # [deg]
 
+MAX_LOC_ERROR = 1.0         # [m] localized vs ground truth pose, while moving
+
 # Per robot: minimum number of goals reached, and max final errors of reached
-# goals (ground truth vs goal, so they include the localization error). The
+# goals (localized pose vs goal; the ground truth error is only reported). The
 # car does not reliably complete short maneuvers near goals yet (it then stops
 # and reports a failure), so it must reach only some of them.
 CRITERIA = {
-    'diffdrive': {'min_reached': len(GOALS), 'max_pos_err': 0.6, 'max_yaw_err': 30.0},
-    'ackermann': {'min_reached': 2, 'max_pos_err': 1.0, 'max_yaw_err': 30.0},
+    'diffdrive': {'min_reached': len(GOALS), 'max_pos_err': 0.4, 'max_yaw_err': 20.0},
+    'ackermann': {'min_reached': 2, 'max_pos_err': 0.5, 'max_yaw_err': 30.0},
 }
 
 STATUS_TOPIC = '/mrpt_trajectory_follower/status'
@@ -83,6 +95,8 @@ def generate_test_description():
                 'robot': ROBOT,
                 'speed_limit': SPEED_LIMIT,
                 'use_rviz': 'False',
+                'pf_params_overrides_file': os.path.join(
+                    os.path.dirname(os.path.abspath(__file__)), 'pf-test-overrides.yaml'),
             }.items()),
         launch_testing.actions.ReadyToTest(),
     ])
@@ -134,6 +148,7 @@ class NavigationBattery(unittest.TestCase):
         cls.ref_path = None
         cls.ref_path_stamp = 0.0
         cls.robot_shape = None
+        cls.traces = []
         cls.chassis = None
 
         def on_gt(m):
@@ -187,19 +202,34 @@ class NavigationBattery(unittest.TestCase):
                 return True
         return False
 
+    def localized_pose(self):
+        """Current robot pose (x, y, yaw) estimated by the localization, or
+        None. The localization (map->odom) is published with a latency, so,
+        as the navigation nodes do, the latest map->odom is composed with the
+        latest odometry (map->base_link at the latest time both exist would
+        lag behind the robot)."""
+        try:
+            m2o = self.tf_buffer.lookup_transform('map', 'odom', rclpy.time.Time())
+            o2b = self.tf_buffer.lookup_transform('odom', 'base_link', rclpy.time.Time())
+        except Exception:
+            return None
+        a = m2o.transform
+        b = o2b.transform
+        ya = yaw_of(a.rotation)
+        bx = b.translation.x
+        by = b.translation.y
+        return (a.translation.x + math.cos(ya) * bx - math.sin(ya) * by,
+                a.translation.y + math.sin(ya) * bx + math.cos(ya) * by,
+                angle_diff(ya + yaw_of(b.rotation), 0.0))
+
     def localization_error(self):
         """Position [m] and heading [deg] errors of the localization estimate
         with respect to the ground truth, or None if not available."""
-        if self.gt is None:
+        p = self.localized_pose()
+        if self.gt is None or p is None:
             return None
-        try:
-            t = self.tf_buffer.lookup_transform('map', 'base_link', rclpy.time.Time())
-        except Exception:
-            return None
-        q = t.transform.rotation
-        return (math.hypot(t.transform.translation.x - self.gt[0],
-                           t.transform.translation.y - self.gt[1]),
-                abs(math.degrees(angle_diff(yaw_of(q), self.gt[2]))))
+        return (math.hypot(p[0] - self.gt[0], p[1] - self.gt[1]),
+                abs(math.degrees(angle_diff(p[2], self.gt[2]))))
 
     def localized(self):
         """Whether the localization estimate agrees with the ground truth."""
@@ -224,9 +254,12 @@ class NavigationBattery(unittest.TestCase):
         collisions0 = self.collisions
         self.send_goal(g)
         res = {'max_dev': 0.0, 'max_loc_err': 0.0, 'statuses': []}
+        trace = {'goal': g, 'gt': [], 'loc': [], 'ref_paths': []}
         t_reached = None
         while time.time() - t_sent < GOAL_TIMEOUT:
             rclpy.spin_once(self.node, timeout_sec=0.05)
+            if LOG_FILE:
+                self.append_trace(trace, t_sent)
             # Only statuses after the new path started being followed (or a
             # planning failure) refer to this goal. The idle status is
             # re-published periodically, so a failure still reported from the
@@ -261,7 +294,24 @@ class NavigationBattery(unittest.TestCase):
         res['final_status'] = self.status
         res['pos_err'] = math.hypot(self.gt[0] - g[0], self.gt[1] - g[1])
         res['yaw_err'] = abs(math.degrees(angle_diff(self.gt[2], math.radians(g[2]))))
+        p = self.localized_pose()
+        if p is not None:
+            res['loc_pos_err'] = math.hypot(p[0] - g[0], p[1] - g[1])
+            res['loc_yaw_err'] = abs(math.degrees(angle_diff(p[2], math.radians(g[2]))))
+        trace['result'] = res
+        self.traces.append(trace)
         return res
+
+    def append_trace(self, trace, t_sent):
+        t = time.time() - t_sent
+        if self.gt is not None and (not trace['gt'] or t - trace['gt'][-1][0] > 0.1):
+            trace['gt'].append((t, *self.gt[:3]))
+            p = self.localized_pose()
+            if p is not None:
+                trace['loc'].append((t, *p))
+        if self.ref_path_stamp > t_sent and (
+                not trace['ref_paths'] or trace['ref_paths'][-1][0] < self.ref_path_stamp - t_sent):
+            trace['ref_paths'].append((self.ref_path_stamp - t_sent, self.ref_path))
 
     def test_navigation_battery(self):
         # Wait for the whole system to be up: simulator, localization, planner
@@ -291,15 +341,23 @@ class NavigationBattery(unittest.TestCase):
             print(f'[{ROBOT}] goal #{i} {g}: {r}', flush=True)
             if r['final_status'] == 'ReachedGoal':
                 reached += 1
-                if r['pos_err'] > crit['max_pos_err'] or r['yaw_err'] > crit['max_yaw_err']:
+                if ('loc_pos_err' not in r or r['loc_pos_err'] > crit['max_pos_err'] or
+                        r['loc_yaw_err'] > crit['max_yaw_err']):
                     failures.append(f'goal #{i} reported as reached, but it is not: {r}')
             elif r['final_status'] not in ('Failed', 'Canceled'):
                 failures.append(f'goal #{i}: navigation did not end in time: {r}')
             if r['max_dev'] > MAX_PATH_DEVIATION:
                 failures.append(f'goal #{i}: robot too far from its path: {r}')
+            if r['max_loc_err'] > MAX_LOC_ERROR:
+                failures.append(f'goal #{i}: localization too far from ground truth: {r}')
         if reached < crit['min_reached']:
             failures.append(f'only {reached} of {len(GOALS)} goals reached '
                             f'(required: {crit["min_reached"]})')
+
+        if LOG_FILE:
+            with open(LOG_FILE, 'w') as f:
+                json.dump({'robot': ROBOT, 'robot_shape': self.robot_shape,
+                           'goals': self.traces}, f)
 
         self.assertEqual(self.collisions, 0, 'The robot collided')
         self.assertFalse(failures, '\n'.join(failures))
