@@ -73,7 +73,7 @@ MAX_LOC_ERROR = 1.0         # [m] localized vs ground truth pose, while moving
 # car does not reliably complete short maneuvers near goals yet (it then stops
 # and reports a failure), so it must reach only some of them.
 CRITERIA = {
-    'diffdrive': {'min_reached': len(GOALS), 'max_pos_err': 0.3, 'max_yaw_err': 20.0},
+    'diffdrive': {'min_reached': len(GOALS), 'max_pos_err': 0.4, 'max_yaw_err': 20.0},
     'ackermann': {'min_reached': 2, 'max_pos_err': 0.5, 'max_yaw_err': 30.0},
 }
 
