@@ -42,6 +42,15 @@ class ObstacleMemory
 		/// are known if they enter it later [m]
 		float store_margin = 1.0f;
 
+		/// Live points inside this box (robot frame, XY) are never stored:
+		/// they may be the robot itself (e.g. its front bumper), and would
+		/// leave a trail of phantom obstacles as it moves. Empty if
+		/// self_max_x <= self_min_x.
+		float self_min_x = 0;
+		float self_min_y = 0;
+		float self_max_x = 0;
+		float self_max_y = 0;
+
 		/// Storage resolution [m]
 		float voxel_size = 0.10f;
 
@@ -82,6 +91,7 @@ class ObstacleMemory
 	std::unordered_map<uint64_t, Cell> voxels_;
 
 	[[nodiscard]] bool in_region(float x, float y, float margin) const;
+	[[nodiscard]] bool in_self_box(float x, float y) const;
 	[[nodiscard]] uint64_t voxel_key(float x, float y, float z) const;
 };
 

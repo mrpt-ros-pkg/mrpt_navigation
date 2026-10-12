@@ -18,6 +18,12 @@ bool ObstacleMemory::in_region(float x, float y, float margin) const
 		   y >= params.region_min_y - margin && y <= params.region_max_y + margin;
 }
 
+bool ObstacleMemory::in_self_box(float x, float y) const
+{
+	return params.self_max_x > params.self_min_x && x >= params.self_min_x &&
+		   x <= params.self_max_x && y >= params.self_min_y && y <= params.self_max_y;
+}
+
 uint64_t ObstacleMemory::voxel_key(float x, float y, float z) const
 {
 	// 21 bits per axis: +-100 km at 0.1 m resolution.
@@ -38,7 +44,7 @@ void ObstacleMemory::update(
 
 	for (size_t i = 0; i < xs.size(); i++)
 	{
-		if (!in_region(xs[i], ys[i], params.store_margin))
+		if (!in_region(xs[i], ys[i], params.store_margin) || in_self_box(xs[i], ys[i]))
 		{
 			continue;
 		}

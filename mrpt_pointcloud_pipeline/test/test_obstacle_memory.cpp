@@ -147,3 +147,35 @@ TEST(ObstacleMemory, IgnoresFarPointsAndFollowsRotation)
 	m.update(empty, CPose3D(0.6, 0, 0, 0, 0, 0), 2.0, out);
 	EXPECT_EQ(out.size(), 0U);
 }
+
+TEST(ObstacleMemory, NoTrailFromSelfHits)
+{
+	auto m = make_memory();
+	m.params.self_min_x = -0.5f;
+	m.params.self_max_x = 1.55f;
+	m.params.self_min_y = -0.6f;
+	m.params.self_max_y = 0.6f;
+
+	// The sensor always sees the robot's own bumper 1.45 m ahead, while the
+	// robot moves forward and turns: nothing must be remembered.
+	double t = 0;
+	for (int i = 0; i < 30; i++, t += 0.1)
+	{
+		CSimplePointsMap live;
+		live.insertPoint(1.45f, 0.1f, 0.3f);
+		CSimplePointsMap out;
+		m.update(live, CPose3D(0.05 * i, 0, 0, 0.03 * i, 0, 0), t, out);
+		EXPECT_EQ(out.size(), 0U) << "i=" << i;
+	}
+	EXPECT_EQ(m.size(), 0U);
+
+	// A real obstacle seen farther out is still remembered once it gets
+	// that close:
+	CSimplePointsMap live;
+	live.insertPoint(2.1f, 0.0f, 0.3f);
+	CSimplePointsMap out;
+	m.update(live, CPose3D(), t, out);
+	out.clear();
+	m.update(CSimplePointsMap(), CPose3D(0.6, 0, 0, 0, 0, 0), t + 0.1, out);
+	EXPECT_EQ(out.size(), 1U);
+}

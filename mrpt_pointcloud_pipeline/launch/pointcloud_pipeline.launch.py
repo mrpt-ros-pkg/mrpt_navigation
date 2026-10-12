@@ -62,6 +62,11 @@ def generate_launch_description():
         default_value='',
         description='Region where the sensors are blind, as "x_min, y_min, x_max, y_max" in the robot frame [m]'
     )
+    memory_self_box_arg = DeclareLaunchArgument(
+        'memory_self_box',
+        default_value='',
+        description='Points inside this box are never remembered (they may be the robot itself), as "x_min, y_min, x_max, y_max" in the robot frame [m]'
+    )
     memory_max_age_arg = DeclareLaunchArgument(
         'memory_max_age',
         default_value='10.0',
@@ -129,6 +134,7 @@ def generate_launch_description():
                 'one_observation_per_topic')},
             {'memory_layers': LaunchConfiguration('memory_layers')},
             {'memory_region': LaunchConfiguration('memory_region')},
+            {'memory_self_box': LaunchConfiguration('memory_self_box')},
             {'memory_max_age': LaunchConfiguration('memory_max_age')},
         ],
         arguments=['--ros-args', '--log-level',
@@ -157,6 +163,7 @@ def generate_launch_description():
                     {'one_observation_per_topic': LaunchConfiguration('one_observation_per_topic')},
                     {'memory_layers': LaunchConfiguration('memory_layers')},
                     {'memory_region': LaunchConfiguration('memory_region')},
+                    {'memory_self_box': LaunchConfiguration('memory_self_box')},
                     {'memory_max_age': LaunchConfiguration('memory_max_age')},
                 ],
             )
@@ -179,6 +186,7 @@ def generate_launch_description():
         one_observation_per_topic_arg,
         memory_layers_arg,
         memory_region_arg,
+        memory_self_box_arg,
         memory_max_age_arg,
         mrpt_pointcloud_pipeline_node,
         composable_mrpt_pointcloud_pipeline,

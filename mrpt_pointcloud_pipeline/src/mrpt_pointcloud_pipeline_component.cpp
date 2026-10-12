@@ -591,6 +591,13 @@ void LocalObstaclesNode::read_parameters()
 	std::vector<std::string> memory_region;
 	mrpt::system::tokenize(memory_region_str, ", \t\r\n", memory_region);
 
+	// "x_min, y_min, x_max, y_max" (robot frame):
+	std::string memory_self_box_str;
+	this->declare_parameter<std::string>("memory_self_box", memory_self_box_str);
+	this->get_parameter("memory_self_box", memory_self_box_str);
+	std::vector<std::string> memory_self_box;
+	mrpt::system::tokenize(memory_self_box_str, ", \t\r\n", memory_self_box);
+
 	mrpt_pointcloud_pipeline::ObstacleMemory::Parameters mp;
 	this->declare_parameter<double>("memory_max_age", mp.max_age);
 	this->get_parameter("memory_max_age", mp.max_age);
@@ -616,12 +623,23 @@ void LocalObstaclesNode::read_parameters()
 		mp.region_min_y = std::stof(memory_region[1]);
 		mp.region_max_x = std::stof(memory_region[2]);
 		mp.region_max_y = std::stof(memory_region[3]);
+		if (!memory_self_box.empty())
+		{
+			ASSERTMSG_(
+				memory_self_box.size() == 4,
+				"memory_self_box must be \"x_min, y_min, x_max, y_max\" (robot frame)");
+			mp.self_min_x = std::stof(memory_self_box[0]);
+			mp.self_min_y = std::stof(memory_self_box[1]);
+			mp.self_max_x = std::stof(memory_self_box[2]);
+			mp.self_max_y = std::stof(memory_self_box[3]);
+		}
 		RCLCPP_INFO(
 			get_logger(),
-			"memory_region: [%.2f, %.2f, %.2f, %.2f] memory_max_age: %.1f s "
-			"memory_voxel_size: %.2f m memory_store_margin: %.2f m",
-			mp.region_min_x, mp.region_min_y, mp.region_max_x, mp.region_max_y, mp.max_age,
-			mp.voxel_size, mp.store_margin);
+			"memory_region: [%.2f, %.2f, %.2f, %.2f] memory_self_box: [%.2f, %.2f, %.2f, %.2f] "
+			"memory_max_age: %.1f s memory_voxel_size: %.2f m memory_store_margin: %.2f m",
+			mp.region_min_x, mp.region_min_y, mp.region_max_x, mp.region_max_y, mp.self_min_x,
+			mp.self_min_y, mp.self_max_x, mp.self_max_y, mp.max_age, mp.voxel_size,
+			mp.store_margin);
 	}
 	for (const auto& layer : lstMemLayers)
 	{
