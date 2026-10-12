@@ -104,6 +104,10 @@ class TrajectoryFollowerNode : public rclcpp::Node, public mpp::TrajectoryVehicl
 	/// Since when the guard holds the robot stopped (to detect blockages)
 	std::optional<rclcpp::Time> guard_stopped_since_;
 
+	/// Since when the robot doesn't move although commanded to (e.g. pushing
+	/// against an obstacle), to detect blockages
+	std::optional<rclcpp::Time> stalled_since_;
+
 	// tf2:
 	std::shared_ptr<tf2_ros::Buffer> tf_buffer_;
 	std::shared_ptr<tf2_ros::TransformListener> tf_listener_;
