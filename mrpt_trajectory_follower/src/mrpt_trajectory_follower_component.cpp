@@ -491,6 +491,38 @@ void TrajectoryFollowerNode::follow(const mpp::SampledTrajectory& ref)
 	}
 #endif
 
+	// Commanded to move, but not moving (e.g. pushing against an obstacle
+	// not seen, or allowed to crawl by the guard while in contact). Slow
+	// commands in between neither start nor reset it, so a crawl around
+	// kMinCmdSpeed is still detected:
+	constexpr double kMinCmdSpeed = 0.05;  // [m/s]
+	constexpr double kStopCmdSpeed = 0.01;	// [m/s]
+	constexpr double kStallSpeed = 0.02;  // [m/s]
+	std::optional<double> measuredSpeed;
+	{
+		auto lck = std::lock_guard(odom_cs_);
+		if (have_odom_)
+		{
+			measuredSpeed = last_odom_.twist.twist.linear.x;
+		}
+	}
+	if (!measuredSpeed || std::abs(*measuredSpeed) >= kStallSpeed || std::abs(vx) < kStopCmdSpeed)
+	{
+		stalled_since_.reset();
+	}
+	else if (std::abs(vx) >= kMinCmdSpeed && !stalled_since_)
+	{
+		stalled_since_ = this->now();
+	}
+	// Stuck for too long (reported as Blocked): don't keep pushing. Held
+	// until a new path, or a cancel, resets it.
+	if (stalled_since_ &&
+		(this->now() - *stalled_since_).seconds() > follower_.params.block_timeout)
+	{
+		vx = 0;
+		omega = 0;
+	}
+
 	publish_cmd(vx, omega);
 	publish_chunk(ref);
 }
@@ -594,6 +626,7 @@ void TrajectoryFollowerNode::set_reference_path(const mpp::Trajectory& tr)
 	last_trajectory_ = tr;
 	have_trajectory_ = true;
 	guard_stopped_since_.reset();
+	stalled_since_.reset();
 
 	nav_msgs::msg::Path p;
 	p.header.frame_id = frame_id_map_;
@@ -616,6 +649,7 @@ void TrajectoryFollowerNode::abort_navigation(mpp::StopKind kind)
 	follower_.reset();
 	have_trajectory_ = false;
 	guard_stopped_since_.reset();
+	stalled_since_.reset();
 }
 
 void TrajectoryFollowerNode::on_navigation_failure(const std::string& reason)
@@ -966,11 +1000,14 @@ void TrajectoryFollowerNode::control_tick()
 			actively_driving_ = true;
 			follow(out.command);
 
-			// Held stopped by the collision guard for too long:
-			const bool guardBlocked =
-				guard_stopped_since_ &&
-				(this->now() - *guard_stopped_since_).seconds() > follower_.params.block_timeout;
-			if (!guardBlocked)
+			// Held stopped by the collision guard, or not moving although
+			// commanded to, for too long:
+			const auto now = this->now();
+			const auto heldTooLong = [&](const std::optional<rclcpp::Time>& since)
+			{ return since && (now - *since).seconds() > follower_.params.block_timeout; };
+			const bool guardBlocked = heldTooLong(guard_stopped_since_);
+			const bool stallBlocked = heldTooLong(stalled_since_);
+			if (!guardBlocked && !stallBlocked)
 			{
 				publish_status(to_string(out.status));
 				break;
@@ -978,7 +1015,10 @@ void TrajectoryFollowerNode::control_tick()
 			const std::string blocked = to_string(mpp::FollowerStatus::Blocked);
 			if (status_ != blocked)
 			{
-				RCLCPP_WARN(get_logger(), "Blocked by the collision guard.");
+				RCLCPP_WARN(
+					get_logger(), "%s",
+					guardBlocked ? "Blocked by the collision guard."
+								 : "Blocked: commanded to move, but the robot doesn't move.");
 			}
 			if (replan_on_failure_)
 			{
