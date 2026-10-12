@@ -54,6 +54,11 @@ class ObstacleMemory
 		/// Storage resolution [m]
 		float voxel_size = 0.10f;
 
+		/// A voxel is only reported after being observed in this many
+		/// distinct updates (times), so one-off sensor artifacts are not
+		/// remembered
+		unsigned int min_hits = 3;
+
 		/// Remembered points are forgotten after this long without being
 		/// observed [s]
 		double max_age = 10.0;
@@ -86,6 +91,7 @@ class ObstacleMemory
 		float y = 0;
 		float z = 0;
 		double last_seen = 0;
+		unsigned int hits = 0;
 	};
 
 	std::unordered_map<uint64_t, Cell> voxels_;

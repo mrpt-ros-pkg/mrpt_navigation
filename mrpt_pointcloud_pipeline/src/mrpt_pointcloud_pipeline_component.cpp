@@ -9,6 +9,7 @@
 #include <mrpt/ros2bridge/time.h>
 #include <mrpt_pointcloud_pipeline/mrpt_pointcloud_pipeline_node.h>
 
+#include <algorithm>
 #include <sstream>
 
 // for now, not needed (node=executable)
@@ -607,6 +608,11 @@ void LocalObstaclesNode::read_parameters()
 	this->get_parameter("memory_voxel_size", voxel_size);
 	mp.voxel_size = static_cast<float>(voxel_size);
 
+	int min_hits = static_cast<int>(mp.min_hits);
+	this->declare_parameter<int>("memory_min_hits", min_hits);
+	this->get_parameter("memory_min_hits", min_hits);
+	mp.min_hits = static_cast<unsigned int>(std::max(1, min_hits));
+
 	double store_margin = mp.store_margin;
 	this->declare_parameter<double>("memory_store_margin", store_margin);
 	this->get_parameter("memory_store_margin", store_margin);
@@ -636,10 +642,11 @@ void LocalObstaclesNode::read_parameters()
 		RCLCPP_INFO(
 			get_logger(),
 			"memory_region: [%.2f, %.2f, %.2f, %.2f] memory_self_box: [%.2f, %.2f, %.2f, %.2f] "
-			"memory_max_age: %.1f s memory_voxel_size: %.2f m memory_store_margin: %.2f m",
+			"memory_max_age: %.1f s memory_voxel_size: %.2f m memory_store_margin: %.2f m "
+			"memory_min_hits: %u",
 			mp.region_min_x, mp.region_min_y, mp.region_max_x, mp.region_max_y, mp.self_min_x,
-			mp.self_min_y, mp.self_max_x, mp.self_max_y, mp.max_age, mp.voxel_size,
-			mp.store_margin);
+			mp.self_min_y, mp.self_max_x, mp.self_max_y, mp.max_age, mp.voxel_size, mp.store_margin,
+			mp.min_hits);
 	}
 	for (const auto& layer : lstMemLayers)
 	{

@@ -174,8 +174,31 @@ TEST(ObstacleMemory, NoTrailFromSelfHits)
 	CSimplePointsMap live;
 	live.insertPoint(2.1f, 0.0f, 0.3f);
 	CSimplePointsMap out;
-	m.update(live, CPose3D(), t, out);
+	for (int i = 0; i < 3; i++)
+	{
+		m.update(live, CPose3D(), t - 0.3 + 0.1 * i, out);
+	}
 	out.clear();
 	m.update(CSimplePointsMap(), CPose3D(0.6, 0, 0, 0, 0, 0), t + 0.1, out);
 	EXPECT_EQ(out.size(), 1U);
+}
+
+TEST(ObstacleMemory, OneOffArtifactsAreNotRemembered)
+{
+	auto m = make_memory();
+	m.params.min_hits = 3;
+
+	// A spurious point seen once (twice in the same update time), just
+	// outside the blind zone, which the robot then approaches:
+	CSimplePointsMap glitch;
+	glitch.insertPoint(2.3f, 0.0f, 0.3f);
+	CSimplePointsMap out;
+	m.update(glitch, CPose3D(), 0.0, out);
+	m.update(glitch, CPose3D(), 0.0, out);
+	for (int i = 1; i <= 5; i++)
+	{
+		out.clear();
+		m.update(CSimplePointsMap(), CPose3D(0.1 * i, 0, 0, 0, 0, 0), 0.05 * i, out);
+		EXPECT_EQ(out.size(), 0U) << "i=" << i;
+	}
 }

@@ -57,6 +57,11 @@ void ObstacleMemory::update(
 		c.x = static_cast<float>(gx);
 		c.y = static_cast<float>(gy);
 		c.z = static_cast<float>(gz);
+		// The same data may be passed more than once: count distinct times.
+		if (c.hits == 0 || t > c.last_seen)
+		{
+			c.hits++;
+		}
 		c.last_seen = t;
 	}
 
@@ -82,7 +87,7 @@ void ObstacleMemory::update(
 			continue;
 		}
 		// Points seen in this update are already in the live data:
-		if (inside && age > 0)
+		if (inside && age > 0 && c.hits >= params.min_hits)
 		{
 			out.insertPoint(fx, fy, static_cast<float>(lz));
 		}
