@@ -128,6 +128,10 @@ unless explicitly asked to.**
      and produces binary `.deb` packages (tracked by the badges in
      `README.md`).
 
+Pushing a version tag triggers `.github/workflows/github-release.yml`, which
+checks it against `scripts/release.py check` and publishes a GitHub release
+with notes taken from the `CHANGELOG.rst` entries (`scripts/release.py notes`).
+
 Consequences for day-to-day work:
 - Never hand-edit `<version>` in `package.xml` or `CHANGELOG.rst` - these are
   machine-generated at release time from git history.
