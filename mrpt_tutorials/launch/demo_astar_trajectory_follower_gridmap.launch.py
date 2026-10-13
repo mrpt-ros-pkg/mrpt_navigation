@@ -12,6 +12,8 @@
 #  - speed_limit: initial follower speed limit [m/s] (<=0: platform max).
 #    Can be changed at run time, e.g.:
 #      ros2 param set /mrpt_trajectory_follower speed_limit 2.0
+#  - max_computation_time: max A* computation time per plan request [s]
+#    (<=0: value of the planner parameters file).
 #  - use_rviz: False for headless runs.
 #  - use_sim_time: True (default) to run all nodes on the simulation clock
 #    published by mvsim, so they stay consistent with sensor timestamps even
@@ -73,6 +75,7 @@ def launch_setup(context, *args, **kwargs):
             'topic_obstacles_sub': '/local_map_pointcloud',
             'topic_wp_seq_pub': '/waypoints',
             'ptg_ini': ptg_ini_file,
+            'max_computation_time': LaunchConfiguration('max_computation_time'),
         }.items()
     )
 
@@ -184,6 +187,9 @@ def generate_launch_description():
         DeclareLaunchArgument(
             'robot', default_value='ackermann',
             description='Simulated robot: ' + ', '.join(ROBOTS.keys())),
+        DeclareLaunchArgument(
+            'max_computation_time', default_value='0.0',
+            description='Max A* computation time per plan request [s] (<=0: planner file value)'),
         DeclareLaunchArgument(
             'speed_limit', default_value='0.0',
             description='Initial follower speed limit [m/s] (<=0: platform max)'),
