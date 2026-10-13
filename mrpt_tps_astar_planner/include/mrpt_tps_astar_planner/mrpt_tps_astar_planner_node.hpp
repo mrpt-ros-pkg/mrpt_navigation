@@ -184,6 +184,8 @@ class TPS_Astar_Planner_Node : public rclcpp::Node
 	/// Extra cost per second of reverse motion (0: reversing costs the same as
 	/// driving forward)
 	double reverse_motion_cost_factor_ = 1.0;
+	/// Overrides maximumComputationTime of the planner parameters file if > 0 [s]
+	double max_computation_time_ = 0.0;
 
 	/// Waypoint parameters
 	double mid_waypoints_allowed_distance_ = 0.5;

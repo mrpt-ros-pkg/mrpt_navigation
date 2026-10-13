@@ -390,6 +390,12 @@ void TPS_Astar_Planner_Node::read_parameters()
 	RCLCPP_INFO(
 		this->get_logger(), "reverse_motion_cost_factor: %.03f", reverse_motion_cost_factor_);
 
+	this->declare_parameter<double>("max_computation_time", max_computation_time_);
+	this->get_parameter("max_computation_time", max_computation_time_);
+	RCLCPP_INFO(
+		this->get_logger(), "max_computation_time: %.03f (<=0: use the planner parameters file)",
+		max_computation_time_);
+
 	this->declare_parameter<double>(
 		"final_waypoint_allowed_distance", final_waypoint_allowed_distance_);
 	this->get_parameter("final_waypoint_allowed_distance", final_waypoint_allowed_distance_);
@@ -425,6 +431,10 @@ void TPS_Astar_Planner_Node::read_parameters()
 void TPS_Astar_Planner_Node::initialize_planner()
 {
 	planner_params_yaml_ = mrpt::containers::yaml::FromFile(planner_params_file_);
+	if (max_computation_time_ > 0)
+	{
+		planner_params_yaml_["maximumComputationTime"] = max_computation_time_;
+	}
 
 	// Log loaded params using a temporary instance (not kept as shared state):
 	{

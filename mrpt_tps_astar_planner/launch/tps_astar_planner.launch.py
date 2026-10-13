@@ -101,6 +101,11 @@ def generate_launch_description():
         'reverse_motion_cost_factor', default_value='1.0',
         description='Extra cost per second of reverse motion (0: reversing costs the same as driving forward)')
 
+    max_computation_time_arg = DeclareLaunchArgument(
+        'max_computation_time', default_value='0.0',
+        description='Maximum A* computation time per plan request [s]. '
+        '<=0: use maximumComputationTime from planner_parameters')
+
     use_composable = LaunchConfiguration('use_composable')
 
     use_composable_arg = DeclareLaunchArgument(
@@ -142,6 +147,8 @@ def generate_launch_description():
         {'astar_skip_refine': LaunchConfiguration('astar_skip_refine')},
         {'reverse_motion_cost_factor': ParameterValue(LaunchConfiguration(
             'reverse_motion_cost_factor'), value_type=float)},
+        {'max_computation_time': ParameterValue(LaunchConfiguration(
+            'max_computation_time'), value_type=float)},
         # Param files:
         {'planner_parameters': LaunchConfiguration('planner_parameters')},
         {'global_costmap_parameters': LaunchConfiguration(
@@ -199,6 +206,7 @@ def generate_launch_description():
         problem_world_bbox_ignore_obstacles_arg,
         astar_skip_refine_arg,
         reverse_motion_cost_factor_arg,
+        max_computation_time_arg,
         tps_astar_nav_node,
         composable_tps_astar_nav_node,
     ])

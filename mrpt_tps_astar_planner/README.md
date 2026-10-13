@@ -81,6 +81,7 @@ time allows, then returns the best found. An optional refinement pass
 | `problem_world_bbox_ignore_obstacles` | `false` | If true, obstacle extents are excluded from the bounding box |
 | `astar_skip_refine` | `false` | If true, skip the post-A\* trajectory refinement pass |
 | `reverse_motion_cost_factor` | `1.0` | Extra cost per second driven in reverse, so paths only back up when it pays off (0: same cost as forward) |
+| `max_computation_time` | `0.0` | Maximum A\* computation time per plan request [s]; `<=0` uses `maximumComputationTime` from `planner_parameters` |
 | `mid_waypoints_allowed_distance` | `0.5` | Acceptance radius [m] for intermediate waypoints |
 | `final_waypoint_allowed_distance` | `0.4` | Acceptance radius [m] for the goal waypoint |
 | `mid_waypoints_allow_skip` | `true` | Whether intermediate waypoints may be skipped |
