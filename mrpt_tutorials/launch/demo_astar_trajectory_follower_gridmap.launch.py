@@ -1,6 +1,6 @@
 # ROS 2 launch file for example in mrpt_tutorials
 #
-# Same as demo_astar_planner_gridmap.launch.py, but uses the newer
+# Same as demo_astar_rnav_gridmap.launch.py, but uses the newer
 # mrpt_trajectory_follower (mpp::TrajectoryFollower) instead of
 # mrpt_reactivenav2d to drive the robot along the A* planned path.
 #

@@ -88,6 +88,11 @@ Pose":
 - `speed_limit` [m/s]: `0` for the platform max speed. It can be changed at
   run time with `ros2 param set /mrpt_trajectory_follower speed_limit 2.0`.
 
+`demo_astar_trajectory_follower_street.launch.py` is the same demo (ackermann
+robot) in a street with parking bays at different angles, to try the planner on
+parking maneuvers. `demo_astar_rnav_gridmap.launch.py` uses the older
+`mrpt_reactivenav2d` navigator instead of the trajectory follower.
+
 End-to-end tests (headless, both robots, a battery of A->B navigations checking
 there are no collisions, the robot stays on its path, and goals are reached or
 reported as failed in time; the car must reach only some of them):
