@@ -66,6 +66,7 @@ endif()
 # Node implementation, loadable as a composable node:
 add_library(${PROJECT_NAME}_component SHARED
   src/${PROJECT_NAME}_component.cpp
+  src/obstacle_regions.cpp
 )
 
 target_include_directories(${PROJECT_NAME}_component
@@ -147,6 +148,14 @@ if(BUILD_TESTING)
   # uncomment the line when this package is not in a git repo
   #set(ament_cmake_cpplint_FOUND TRUE)
   ament_lint_auto_find_test_dependencies()
+
+  find_package(ament_cmake_gtest REQUIRED)
+  ament_add_gtest(test_obstacle_regions
+    test/test_obstacle_regions.cpp
+    src/obstacle_regions.cpp)
+  target_include_directories(test_obstacle_regions PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/include)
+  target_link_libraries(test_obstacle_regions mrpt::mrpt_maps ${geometry_msgs_TARGETS})
 endif()
 
 ament_package()

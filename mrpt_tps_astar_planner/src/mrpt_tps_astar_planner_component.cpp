@@ -7,6 +7,7 @@
    +------------------------------------------------------------------------+ */
 
 #include <mrpt_tps_astar_planner/mrpt_tps_astar_planner_node.hpp>
+#include <mrpt_tps_astar_planner/obstacle_regions.hpp>
 #include <rclcpp_components/register_node_macro.hpp>
 
 // for debugging
@@ -608,7 +609,8 @@ void TPS_Astar_Planner_Node::update_map(
 }
 
 TPS_Astar_Planner_Node::PlanResult TPS_Astar_Planner_Node::do_path_plan(
-	const mrpt::math::TPose2D& start, const mrpt::math::TPose2D& goal)
+	const mrpt::math::TPose2D& start, const mrpt::math::TPose2D& goal,
+	const std::vector<mrpt::math::TPolygon2D>& ignore_regions)
 {
 	RCLCPP_INFO_STREAM(this->get_logger(), "Do path planning");
 
@@ -640,7 +642,16 @@ TPS_Astar_Planner_Node::PlanResult TPS_Astar_Planner_Node::do_path_plan(
 
 	pi.obstacles.clear();
 
-	size_t obstacleSources = 0, totalObstaclePoints = 0;
+	size_t obstacleSources = 0;
+	size_t totalObstaclePoints = 0;
+	size_t ignoredObstaclePoints = 0;
+	const auto without_ignored = [&](const mrpt::maps::CPointsMap::Ptr& pts)
+	{
+		auto kept = without_points_in(pts, ignore_regions);
+		ignoredObstaclePoints += pts->size() - kept->size();
+		return kept;
+	};
+
 	// gridmaps:
 	for (const auto& e : gridmaps_)
 	{
@@ -651,17 +662,18 @@ TPS_Astar_Planner_Node::PlanResult TPS_Astar_Planner_Node::do_path_plan(
 				"do_path_plan: gridmap not yet received, skipping.");
 			continue;
 		}
-		auto obs = mpp::ObstacleSource::FromStaticPointcloud(e.grid_obstacles);
+		const auto gridObstacles = without_ignored(e.grid_obstacles);
+		auto obs = mpp::ObstacleSource::FromStaticPointcloud(gridObstacles);
 		pi.obstacles.emplace_back(obs);
 
 		auto bb = e.grid_obstacles->boundingBox();
 		bbox = bbox.unionWith(bb);
 
 		obstacleSources++;
-		totalObstaclePoints += e.grid_obstacles->size();
+		totalObstaclePoints += gridObstacles->size();
 
 		auto costmap = makeCostmapEvaluator(
-			*e.grid_obstacles, costMapParams_, pi.stateStart.pose, ptgs_.robotShape);
+			*gridObstacles, costMapParams_, pi.stateStart.pose, ptgs_.robotShape);
 		local_planner.costEvaluators_.push_back(costmap);
 	}
 	// points:
@@ -674,7 +686,8 @@ TPS_Astar_Planner_Node::PlanResult TPS_Astar_Planner_Node::do_path_plan(
 				"do_path_plan: obstacle point cloud not yet received, skipping.");
 			continue;
 		}
-		auto obs = mpp::ObstacleSource::FromStaticPointcloud(e.obstacle_points);
+		const auto obstaclePoints = without_ignored(e.obstacle_points);
+		auto obs = mpp::ObstacleSource::FromStaticPointcloud(obstaclePoints);
 		pi.obstacles.emplace_back(obs);
 
 		if (!problem_world_bbox_ignore_obstacles_)
@@ -684,10 +697,10 @@ TPS_Astar_Planner_Node::PlanResult TPS_Astar_Planner_Node::do_path_plan(
 		}
 
 		obstacleSources++;
-		totalObstaclePoints += e.obstacle_points->size();
+		totalObstaclePoints += obstaclePoints->size();
 
 		auto costmap = makeCostmapEvaluator(
-			*e.obstacle_points, costMapParams_, pi.stateStart.pose, ptgs_.robotShape);
+			*obstaclePoints, costMapParams_, pi.stateStart.pose, ptgs_.robotShape);
 		local_planner.costEvaluators_.push_back(costmap);
 	}
 
@@ -717,12 +730,13 @@ TPS_Astar_Planner_Node::PlanResult TPS_Astar_Planner_Node::do_path_plan(
 	pi.worldBboxMin = {bbox.min.x, bbox.min.y, -M_PI};
 
 	RCLCPP_INFO_STREAM(
-		this->get_logger(), "Start state: " << pi.stateStart.asString()
-											<< "\n Goal state: " << pi.stateGoal.asString()
-											<< "\n Obstacle sources: " << obstacleSources
-											<< "\n Total obstacle points: " << totalObstaclePoints
-											<< "\n  World bbox : " << pi.worldBboxMin.asString()
-											<< "-" << pi.worldBboxMax.asString());
+		this->get_logger(),
+		"Start state: " << pi.stateStart.asString() << "\n Goal state: " << pi.stateGoal.asString()
+						<< "\n Obstacle sources: " << obstacleSources
+						<< "\n Total obstacle points: " << totalObstaclePoints
+						<< "\n Ignored obstacle points: " << ignoredObstaclePoints
+						<< "\n  World bbox : " << pi.worldBboxMin.asString() << "-"
+						<< pi.worldBboxMax.asString());
 
 	// Insert custom progress callback:
 	local_planner.progressCallback_ = [this](const mpp::ProgressCallbackData& pcd)
@@ -918,7 +932,7 @@ void TPS_Astar_Planner_Node::srv_make_plan_to(
 
 		const auto start_pose = mrpt::poses::CPose2D(robot_pose).asTPose();
 
-		const auto res = do_path_plan(start_pose, nav_goal);
+		const auto res = do_path_plan(start_pose, nav_goal, to_polygons(req->ignore_obstacles_in));
 
 		resp->valid_path_found = res.valid;
 		resp->waypoints = res.wps;
@@ -946,7 +960,7 @@ void TPS_Astar_Planner_Node::srv_make_plan_from_to(
 		const auto p0 = mrpt::ros2bridge::fromROS(req->start);
 		const auto start_pose = mrpt::math::TPose2D(p0.asTPose());
 
-		const auto res = do_path_plan(start_pose, nav_goal);
+		const auto res = do_path_plan(start_pose, nav_goal, to_polygons(req->ignore_obstacles_in));
 
 		resp->valid_path_found = res.valid;
 		resp->waypoints = res.wps;

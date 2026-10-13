@@ -112,6 +112,10 @@ time allows, then returns the best found. An optional refinement pass
 | `<node_fqn>/make_plan_to` | `mrpt_nav_interfaces/MakePlanTo` | Plan from the current robot TF pose to a given goal `PoseStamped`; returns `valid_path_found` and `waypoints` |
 | `<node_fqn>/make_plan_from_to` | `mrpt_nav_interfaces/MakePlanFromTo` | Plan between two explicitly given `Pose` values; no TF lookup needed |
 
+Both requests take an optional `ignore_obstacles_in` list of polygons (XY, map
+frame): obstacle points inside them, from every source, are ignored for that
+plan only (e.g. where obstacles are known to be traversable).
+
 Both services are registered in a **reentrant callback group** so multiple
 clients can be served simultaneously by the `MultiThreadedExecutor`.
 

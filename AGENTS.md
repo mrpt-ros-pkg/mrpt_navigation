@@ -22,7 +22,8 @@ list and responsibilities:
   into a region the sensors can't see (e.g. close to a high-mounted lidar).
 - **mrpt_reactivenav2d**: pure reactive navigator for polygonal robots in 2D.
 - **mrpt_tps_astar_planner**: SE(2)-lattice A* path planner based on PTG
-  trajectories.
+  trajectories. Plan requests may list polygons where obstacle points are
+  ignored (`ignore_obstacles_in`).
 - **mrpt_trajectory_follower**: node that accurately follows a reference
   pose+speed path (pure pursuit) with predictive safety, a last-resort
   collision guard on every command, run-time speed limit, and optional

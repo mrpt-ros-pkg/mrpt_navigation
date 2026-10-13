@@ -6,6 +6,10 @@
 geometry_msgs/Pose start
 # Goal pose
 geometry_msgs/Pose target
+# Optional: obstacle points inside any of these polygons (XY, in the planner
+# map frame) are ignored for this plan, e.g. where obstacles are known to be
+# traversable.
+geometry_msgs/Polygon[] ignore_obstacles_in
 ---
 # Result
 bool valid_path_found

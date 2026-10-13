@@ -27,6 +27,7 @@
 #include <mrpt/maps/COccupancyGridMap2D.h>
 #include <mrpt/maps/CPointsMap.h>
 #include <mrpt/maps/CSimplePointsMap.h>
+#include <mrpt/math/TPolygon2D.h>
 #include <mrpt/math/TPose2D.h>
 #include <mrpt/math/TTwist2D.h>
 #include <mrpt/obs/CObservationOdometry.h>
@@ -308,9 +309,12 @@ class TPS_Astar_Planner_Node : public rclcpp::Node
 	 * @brief Method to perform the path plan
 	 * @param start robot initial pose
 	 * @param goal  robot goal pose
+	 * @param ignore_regions obstacle points inside these (XY, map frame) are ignored
 	 * @return the plan results
 	 */
-	PlanResult do_path_plan(const mrpt::math::TPose2D& start, const mrpt::math::TPose2D& goal);
+	PlanResult do_path_plan(
+		const mrpt::math::TPose2D& start, const mrpt::math::TPose2D& goal,
+		const std::vector<mrpt::math::TPolygon2D>& ignore_regions = {});
 
 	void srv_make_plan_to(
 		const std::shared_ptr<mrpt_nav_interfaces::srv::MakePlanTo::Request> req,
