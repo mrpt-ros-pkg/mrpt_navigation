@@ -88,6 +88,10 @@ Pose":
 - `speed_limit` [m/s]: `0` for the platform max speed. It can be changed at
   run time with `ros2 param set /mrpt_trajectory_follower speed_limit 2.0`.
 
+A Foxglove layout equivalent to the RViz setup is in
+`mrpt_tutorials/foxglove/astar_demo.json` (import it from the Foxglove layout
+menu, with `foxglove_bridge` running).
+
 `demo_astar_trajectory_follower_street.launch.py` is the same demo (ackermann
 robot) in a street with parking bays at different angles, to try the planner on
 parking maneuvers. `demo_astar_rnav_gridmap.launch.py` uses the older

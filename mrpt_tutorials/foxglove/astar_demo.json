@@ -1,0 +1,73 @@
+{
+  "configById": {
+    "3D!astar_demo": {
+      "layers": {
+        "grid": {
+          "layerId": "foxglove.Grid",
+          "visible": true,
+          "frameId": "map",
+          "size": 100,
+          "divisions": 10,
+          "lineWidth": 1,
+          "color": "#a0a0a4",
+          "position": [30, 20, 0],
+          "rotation": [0, 0, 0]
+        }
+      },
+      "cameraState": {
+        "perspective": false,
+        "distance": 45,
+        "phi": 0,
+        "thetaOffset": 0,
+        "targetOffset": [0, 0, 0],
+        "target": [0, 0, 0],
+        "targetOrientation": [0, 0, 0, 1],
+        "fovy": 45,
+        "near": 0.5,
+        "far": 5000
+      },
+      "followMode": "follow-pose",
+      "followTf": "map",
+      "scene": {
+        "backgroundColor": "#303030",
+        "transforms": { "showLabel": true, "editable": false, "labelSize": 0.3, "axisScale": 0.6 }
+      },
+      "transforms": {},
+      "topics": {
+        "/mrpt_map/map_gridmap": { "visible": true, "colorMode": "map", "alpha": 0.7 },
+        "/costmap_0": { "visible": true, "colorMode": "costmap", "alpha": 0.2 },
+        "/particlecloud": { "visible": true, "type": "arrow", "arrowSize": [0.3, 0.1, 0.1], "color": "#ff1900" },
+        "/chassis_markers": { "visible": true },
+        "/laser1": { "visible": true, "colorMode": "flat", "flatColor": "#ffffff", "pointSize": 3, "pointShape": "square" },
+        "/laser2": { "visible": true, "colorMode": "flat", "flatColor": "#f9f06b", "pointSize": 3, "pointShape": "square" },
+        "/local_map_pointcloud": { "visible": true, "colorMode": "flat", "flatColor": "#f8e45c", "pointSize": 5, "pointShape": "square" },
+        "/waypoints_path": { "visible": true, "lineWidth": 0.06, "gradient": ["#19ff00", "#19ff00"] },
+        "/goal_pose": { "visible": true, "type": "arrow", "arrowSize": [1.0, 0.3, 0.3], "color": "#ff1900" }
+      },
+      "publish": {
+        "type": "pose",
+        "poseTopic": "/goal_pose",
+        "pointTopic": "/clicked_point",
+        "poseEstimateTopic": "/initialpose",
+        "poseEstimateXDeviation": 0.5,
+        "poseEstimateYDeviation": 0.5,
+        "poseEstimateThetaDeviation": 0.26
+      },
+      "imageMode": {}
+    },
+    "RosOut!log": {
+      "searchTerms": [],
+      "minLogLevel": 2,
+      "nameFilter": {}
+    }
+  },
+  "globalVariables": {},
+  "userNodes": {},
+  "playbackConfig": { "speed": 1 },
+  "layout": {
+    "direction": "row",
+    "first": "3D!astar_demo",
+    "second": "RosOut!log",
+    "splitPercentage": 75
+  }
+}

@@ -12,6 +12,7 @@ install(DIRECTORY
   mvsim
   params
   rviz2
+  foxglove
   DESTINATION share/${PROJECT_NAME}
 )
 
