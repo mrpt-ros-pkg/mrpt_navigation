@@ -118,30 +118,17 @@ void LocalObstaclesNode::on_do_publish()
 	{
 		CTimeLoggerEntry tle2(m_profiler, "on_do_publish.buildLocalMap");
 
-		// Get the latest robot pose in the reference frame (typ: /odom ->
-		// /base_link)
-		// so we can build the local map RELATIVE to it:
-
-		try
+		// Build the local map relative to the robot pose at the time of the
+		// latest observation, so it is consistent with the published stamp:
+		const auto latestObsStamp =
+			mrpt::ros2bridge::toROS(mrpt::Clock::fromDouble(obs.rbegin()->first));
+		if (!robot_pose_at(latestObsStamp, curRobotPose))
 		{
-			geometry_msgs::msg::TransformStamped tx;
-			tx = m_tf_buffer->lookupTransform(
-				m_frameid_reference, m_frameid_robot, tf2::TimePointZero);
-
-			tf2::Transform tfx;
-			tf2::fromMsg(tx.transform, tfx);
-			curRobotPose = mrpt::ros2bridge::fromROS(tfx);
-		}
-		catch (const tf2::ExtrapolationException& ex)
-		{
-			RCLCPP_ERROR(get_logger(), "%s", ex.what());
 			return;
 		}
 
 		RCLCPP_DEBUG(
-			get_logger(),
-			"[onDoPublish] Building local map relative to latest robot "
-			"pose: %s",
+			get_logger(), "[onDoPublish] Building local map relative to robot pose: %s",
 			curRobotPose.asString().c_str());
 
 		// For each observation: compute relative robot pose & insert obs
@@ -356,36 +343,14 @@ void LocalObstaclesNode::on_new_sensor_laser_2d(
 	// Get robot pose at that time in the reference frame, typ: /odom ->
 	// /base_link
 	mrpt::poses::CPose3D robotPose;
-	try
 	{
 		CTimeLoggerEntry tle3(m_profiler, "onNewSensor_Laser2D.lookupTransform_robot");
-
-		geometry_msgs::msg::TransformStamped robotTfStamp;
-		try
+		if (!robot_pose_at(stamp, robotPose))
 		{
-			robotTfStamp = m_tf_buffer->lookupTransform(
-				m_frameid_reference, m_frameid_robot, tf2::TimePointZero);
-		}
-		catch (const tf2::ExtrapolationException& ex)
-		{
-			RCLCPP_ERROR(get_logger(), "%s", ex.what());
 			return;
 		}
-
-		robotPose = [&]()
-		{
-			tf2::Transform tx;
-			tf2::fromMsg(robotTfStamp.transform, tx);
-			return mrpt::ros2bridge::fromROS(tx);
-		}();
-
 		RCLCPP_DEBUG(
 			get_logger(), "[onNewSensor_Laser2D] robot pose %s", robotPose.asString().c_str());
-	}
-	catch (const tf2::TransformException& ex)
-	{
-		RCLCPP_ERROR(get_logger(), "%s", ex.what());
-		return;
 	}
 
 	// Insert into the observation history:
@@ -448,36 +413,14 @@ void LocalObstaclesNode::on_new_sensor_pointcloud(
 	// Get robot pose at that time in the reference frame, typ: /odom ->
 	// /base_link
 	mrpt::poses::CPose3D robotPose;
-	try
 	{
 		CTimeLoggerEntry tle3(m_profiler, "onNewSensor_pointcloud.lookupTransform_robot");
-
-		geometry_msgs::msg::TransformStamped robotTfStamp;
-		try
+		if (!robot_pose_at(stamp, robotPose))
 		{
-			robotTfStamp = m_tf_buffer->lookupTransform(
-				m_frameid_reference, m_frameid_robot, tf2::TimePointZero);
-		}
-		catch (const tf2::ExtrapolationException& ex)
-		{
-			RCLCPP_ERROR(get_logger(), "%s", ex.what());
 			return;
 		}
-
-		robotPose = [&]()
-		{
-			tf2::Transform tx;
-			tf2::fromMsg(robotTfStamp.transform, tx);
-			return mrpt::ros2bridge::fromROS(tx);
-		}();
-
 		RCLCPP_DEBUG(
 			get_logger(), "[onNewSensor_pointcloud] robot pose %s", robotPose.asString().c_str());
-	}
-	catch (const tf2::TransformException& ex)
-	{
-		RCLCPP_ERROR(get_logger(), "%s", ex.what());
-		return;
 	}
 
 	// Insert into the observation history:
@@ -491,6 +434,37 @@ void LocalObstaclesNode::on_new_sensor_pointcloud(
 		m_hist_obs.insert(m_hist_obs.end(), obs_list_t::value_type(timestamp, ipt));
 	}
 }  // end on_new_sensor_pointcloud
+
+bool LocalObstaclesNode::robot_pose_at(
+	const builtin_interfaces::msg::Time& stamp, mrpt::poses::CPose3D& pose)
+{
+	geometry_msgs::msg::TransformStamped tx;
+	try
+	{
+		// The pose when the data was sensed, so that points taken while
+		// moving are not displaced by the processing delay:
+		tx = m_tf_buffer->lookupTransform(
+			m_frameid_reference, m_frameid_robot, tf2_ros::fromMsg(stamp));
+	}
+	catch (const tf2::TransformException&)
+	{
+		// Not available (yet): use the latest one.
+		try
+		{
+			tx = m_tf_buffer->lookupTransform(
+				m_frameid_reference, m_frameid_robot, tf2::TimePointZero);
+		}
+		catch (const tf2::TransformException& ex)
+		{
+			RCLCPP_ERROR(get_logger(), "%s", ex.what());
+			return false;
+		}
+	}
+	tf2::Transform t;
+	tf2::fromMsg(tx.transform, t);
+	pose = mrpt::ros2bridge::fromROS(t);
+	return true;
+}
 
 // read params from parameter server
 void LocalObstaclesNode::read_parameters()

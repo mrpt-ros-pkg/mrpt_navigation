@@ -20,6 +20,9 @@ list and responsibilities:
   filters, downsampling, 2D scan obstacle memory, etc). Optionally
   (`memory_layers`, `memory_region`) it keeps reporting obstacles that moved
   into a region the sensors can't see (e.g. close to a high-mounted lidar).
+  Each observation is placed with the robot pose at its timestamp, and the
+  local map is built relative to the pose at the latest observation (the
+  published stamp).
 - **mrpt_reactivenav2d**: pure reactive navigator for polygonal robots in 2D.
 - **mrpt_tps_astar_planner**: SE(2)-lattice A* path planner based on PTG
   trajectories. Plan requests may list polygons where obstacle points are

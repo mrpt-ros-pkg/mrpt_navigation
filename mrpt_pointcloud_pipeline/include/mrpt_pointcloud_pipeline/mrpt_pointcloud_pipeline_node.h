@@ -72,6 +72,10 @@ class LocalObstaclesNode : public rclcpp::Node
 	void on_new_sensor_pointcloud(
 		const sensor_msgs::msg::PointCloud2::SharedPtr& pts, const std::string& topicName);
 
+	/* Robot pose in the reference frame at the given time, or the latest one
+	 * if that one is not available. False if there is none. */
+	bool robot_pose_at(const builtin_interfaces::msg::Time& stamp, mrpt::poses::CPose3D& pose);
+
 	/**
 	 * @brief Subscribe to a variable number of topics.
 	 * @param lstTopics String with list of topics separated with ","
