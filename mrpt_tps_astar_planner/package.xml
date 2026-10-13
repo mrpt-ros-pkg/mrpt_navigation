@@ -26,6 +26,7 @@
   <depend>mrpt_opengl</depend>
   <depend>mrpt_viz</depend>
   <depend>mrpt_libros_bridge</depend>
+  <depend>geometry_msgs</depend>
   <depend>mrpt_msgs</depend>
   <depend>mrpt_nav_interfaces</depend>
   <depend>mrpt_path_planning_core</depend>
@@ -42,6 +43,7 @@
   <depend>ament_cmake_lint_cmake</depend>
   <depend>ament_cmake_xmllint</depend>
   <depend>ament_lint_auto</depend>
+  <test_depend>ament_cmake_gtest</test_depend>
 
   <export>
     <build_type>ament_cmake</build_type>
