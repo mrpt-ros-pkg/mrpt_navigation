@@ -7,6 +7,8 @@
    +------------------------------------------------------------------------+ */
 
 #include <chrono>
+#include <cstdlib>
+#include <filesystem>
 #include <mrpt_reactivenav2d/mrpt_reactivenav2d_node.hpp>
 #include <rclcpp_components/register_node_macro.hpp>
 
@@ -17,6 +19,36 @@ using namespace mrpt::config;
 using namespace mrpt_reactivenav2d;
 
 RCLCPP_COMPONENTS_REGISTER_NODE(mrpt_reactivenav2d::ReactiveNav2DNode)
+
+namespace
+{
+// Directory for PTG collision grid cache files ("." if it cannot be created).
+std::string ptgCacheDirectory()
+{
+	std::string base;
+	if (const char* xdg = std::getenv("XDG_CACHE_HOME"); xdg && *xdg)
+	{
+		base = xdg;
+	}
+	else if (const char* home = std::getenv("HOME"); home && *home)
+	{
+		base = std::string(home) + "/.cache";
+	}
+	if (base.empty())
+	{
+		return ".";
+	}
+	const std::string dir = base + "/mrpt_reactivenav2d";
+	// Best effort: the cache is optional, so never throw from here.
+	std::error_code ec;
+	std::filesystem::create_directories(dir, ec);
+	if (ec || !std::filesystem::is_directory(dir, ec))
+	{
+		return ".";
+	}
+	return dir;
+}
+}  // namespace
 
 /**  Constructor: Inits ROS system */
 ReactiveNav2DNode::ReactiveNav2DNode(const rclcpp::NodeOptions& options)
@@ -43,6 +75,7 @@ ReactiveNav2DNode::ReactiveNav2DNode(const rclcpp::NodeOptions& options)
 	}
 
 	rnavEngine_.enableLogFile(saveNavLog_);
+	rnavEngine_.params_abstract_ptg_navigator.ptg_cache_files_directory = ptgCacheDirectory();
 
 	// Load reactive config:
 	// ----------------------------------------------------
