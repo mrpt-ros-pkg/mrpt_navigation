@@ -85,8 +85,36 @@ void LocalObstaclesNode::on_do_publish()
 				static_cast<unsigned int>(nToRemove), last_time);
 			m_hist_obs.erase(m_hist_obs.begin(), it_first_valid);
 		}
+
+		// Place each observation with the robot pose at its time, once known.
+		// The odometry may arrive after the sensor data: wait for it up to
+		// tf_max_wait, then use the latest pose instead.
+		const double now = this->get_clock()->now().seconds();
+		for (auto& [timestamp, ipt] : m_hist_obs)
+		{
+			if (ipt.robot_pose)
+			{
+				continue;
+			}
+			ipt.robot_pose = robot_pose_at(ipt.stamp);
+			if (!ipt.robot_pose && now - timestamp > m_tf_max_wait)
+			{
+				ipt.robot_pose = latest_robot_pose();
+				RCLCPP_WARN_THROTTLE(
+					get_logger(), *get_clock(), 5000,
+					"No robot pose at the time of an observation after %.2f s: using the latest "
+					"one",
+					m_tf_max_wait);
+			}
+		}
 		// Local copy in this thread:
-		obs = m_hist_obs;
+		for (const auto& entry : m_hist_obs)
+		{
+			if (entry.second.robot_pose)
+			{
+				obs.insert(entry);
+			}
+		}
 	}
 
 	// Keep only the latest obs per topic?
@@ -120,12 +148,7 @@ void LocalObstaclesNode::on_do_publish()
 
 		// Build the local map relative to the robot pose at the time of the
 		// latest observation, so it is consistent with the published stamp:
-		const auto latestObsStamp =
-			mrpt::ros2bridge::toROS(mrpt::Clock::fromDouble(obs.rbegin()->first));
-		if (!robot_pose_at(latestObsStamp, curRobotPose))
-		{
-			return;
-		}
+		curRobotPose = *obs.rbegin()->second.robot_pose;
 
 		RCLCPP_DEBUG(
 			get_logger(), "[onDoPublish] Building local map relative to robot pose: %s",
@@ -136,7 +159,7 @@ void LocalObstaclesNode::on_do_publish()
 		for (const auto& [timestamp, ipt] : obs)
 		{
 			// Relative pose in the past:
-			const mrpt::poses::CPose3D relPose = ipt.robot_pose - curRobotPose;
+			const mrpt::poses::CPose3D relPose = *ipt.robot_pose - curRobotPose;
 
 			// Insert obs:
 			CTimeLoggerEntry tleObsFilter(m_profiler, "on_do_publish.apply_per_obs_pipeline");
@@ -272,7 +295,7 @@ void LocalObstaclesNode::on_do_publish()
 			const InfoPerTimeStep& ipt = o.second;
 			// Relative pose in the past:
 			mrpt::poses::CPose3D relPose(mrpt::poses::UNINITIALIZED_POSE);
-			relPose.inverseComposeFrom(ipt.robot_pose, curRobotPose);
+			relPose.inverseComposeFrom(*ipt.robot_pose, curRobotPose);
 
 			mrpt::viz::CSetOfObjects::Ptr gl_axis =
 				mrpt::viz::stock_objects::CornerXYZSimple(0.9, 2.0);
@@ -340,24 +363,13 @@ void LocalObstaclesNode::on_new_sensor_laser_2d(
 	auto stamp = scan->header.stamp;
 	const double timestamp = stamp.sec + static_cast<double>(stamp.nanosec) / 1e9;
 
-	// Get robot pose at that time in the reference frame, typ: /odom ->
-	// /base_link
-	mrpt::poses::CPose3D robotPose;
-	{
-		CTimeLoggerEntry tle3(m_profiler, "onNewSensor_Laser2D.lookupTransform_robot");
-		if (!robot_pose_at(stamp, robotPose))
-		{
-			return;
-		}
-		RCLCPP_DEBUG(
-			get_logger(), "[onNewSensor_Laser2D] robot pose %s", robotPose.asString().c_str());
-	}
-
 	// Insert into the observation history:
 	InfoPerTimeStep ipt;
 	ipt.sourceTopic = topicName;
 	ipt.observation = obsScan;
-	ipt.robot_pose = robotPose;
+	ipt.stamp = stamp;
+	// The robot pose at that time, if already known (otherwise, see on_do_publish()):
+	ipt.robot_pose = robot_pose_at(stamp);
 
 	{
 		std::lock_guard<std::mutex> lck(m_hist_obs_mtx);
@@ -410,24 +422,13 @@ void LocalObstaclesNode::on_new_sensor_pointcloud(
 	auto stamp = pts->header.stamp;
 	const double timestamp = stamp.sec + static_cast<double>(stamp.nanosec) / 1e9;
 
-	// Get robot pose at that time in the reference frame, typ: /odom ->
-	// /base_link
-	mrpt::poses::CPose3D robotPose;
-	{
-		CTimeLoggerEntry tle3(m_profiler, "onNewSensor_pointcloud.lookupTransform_robot");
-		if (!robot_pose_at(stamp, robotPose))
-		{
-			return;
-		}
-		RCLCPP_DEBUG(
-			get_logger(), "[onNewSensor_pointcloud] robot pose %s", robotPose.asString().c_str());
-	}
-
 	// Insert into the observation history:
 	InfoPerTimeStep ipt;
 	ipt.sourceTopic = topicName;
 	ipt.observation = obsPts;
-	ipt.robot_pose = robotPose;
+	ipt.stamp = stamp;
+	// The robot pose at that time, if already known (otherwise, see on_do_publish()):
+	ipt.robot_pose = robot_pose_at(stamp);
 
 	{
 		std::lock_guard<std::mutex> lck(m_hist_obs_mtx);
@@ -435,35 +436,39 @@ void LocalObstaclesNode::on_new_sensor_pointcloud(
 	}
 }  // end on_new_sensor_pointcloud
 
-bool LocalObstaclesNode::robot_pose_at(
-	const builtin_interfaces::msg::Time& stamp, mrpt::poses::CPose3D& pose)
+std::optional<mrpt::poses::CPose3D> LocalObstaclesNode::robot_pose_at(
+	const builtin_interfaces::msg::Time& stamp)
 {
-	geometry_msgs::msg::TransformStamped tx;
+	CTimeLoggerEntry tle(m_profiler, "robot_pose_at");
 	try
 	{
-		// The pose when the data was sensed, so that points taken while
-		// moving are not displaced by the processing delay:
-		tx = m_tf_buffer->lookupTransform(
+		const auto tx = m_tf_buffer->lookupTransform(
 			m_frameid_reference, m_frameid_robot, tf2_ros::fromMsg(stamp));
+		tf2::Transform t;
+		tf2::fromMsg(tx.transform, t);
+		return mrpt::ros2bridge::fromROS(t);
 	}
 	catch (const tf2::TransformException&)
 	{
-		// Not available (yet): use the latest one.
-		try
-		{
-			tx = m_tf_buffer->lookupTransform(
-				m_frameid_reference, m_frameid_robot, tf2::TimePointZero);
-		}
-		catch (const tf2::TransformException& ex)
-		{
-			RCLCPP_ERROR(get_logger(), "%s", ex.what());
-			return false;
-		}
+		return std::nullopt;
 	}
-	tf2::Transform t;
-	tf2::fromMsg(tx.transform, t);
-	pose = mrpt::ros2bridge::fromROS(t);
-	return true;
+}
+
+std::optional<mrpt::poses::CPose3D> LocalObstaclesNode::latest_robot_pose()
+{
+	try
+	{
+		const auto tx =
+			m_tf_buffer->lookupTransform(m_frameid_reference, m_frameid_robot, tf2::TimePointZero);
+		tf2::Transform t;
+		tf2::fromMsg(tx.transform, t);
+		return mrpt::ros2bridge::fromROS(t);
+	}
+	catch (const tf2::TransformException& ex)
+	{
+		RCLCPP_ERROR_THROTTLE(get_logger(), *get_clock(), 5000, "%s", ex.what());
+		return std::nullopt;
+	}
 }
 
 // read params from parameter server
@@ -490,6 +495,10 @@ void LocalObstaclesNode::read_parameters()
 	RCLCPP_INFO(
 		get_logger(), "one_observation_per_topic: %s",
 		m_one_observation_per_topic ? "true" : "false");
+
+	this->declare_parameter<double>("tf_max_wait", m_tf_max_wait);
+	this->get_parameter("tf_max_wait", m_tf_max_wait);
+	RCLCPP_INFO(get_logger(), "tf_max_wait: %f", m_tf_max_wait);
 
 	this->declare_parameter<double>("publish_period", 0.05);
 	this->get_parameter("publish_period", m_publish_period);

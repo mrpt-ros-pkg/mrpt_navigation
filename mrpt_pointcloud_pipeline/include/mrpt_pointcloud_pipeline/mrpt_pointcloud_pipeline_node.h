@@ -38,6 +38,7 @@
 #include <map>
 #include <mutex>
 #include <nav_msgs/msg/odometry.hpp>
+#include <optional>
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/laser_scan.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
@@ -72,9 +73,11 @@ class LocalObstaclesNode : public rclcpp::Node
 	void on_new_sensor_pointcloud(
 		const sensor_msgs::msg::PointCloud2::SharedPtr& pts, const std::string& topicName);
 
-	/* Robot pose in the reference frame at the given time, or the latest one
-	 * if that one is not available. False if there is none. */
-	bool robot_pose_at(const builtin_interfaces::msg::Time& stamp, mrpt::poses::CPose3D& pose);
+	/* Robot pose in the reference frame at the given time, if already known. */
+	std::optional<mrpt::poses::CPose3D> robot_pose_at(const builtin_interfaces::msg::Time& stamp);
+
+	/* The latest robot pose in the reference frame, if any. */
+	std::optional<mrpt::poses::CPose3D> latest_robot_pose();
 
 	/**
 	 * @brief Subscribe to a variable number of topics.
@@ -126,6 +129,10 @@ class LocalObstaclesNode : public rclcpp::Node
 	//!< In secs (default: 0.05). Can't be larger than m_time_window
 	double m_publish_period = 0.05;
 
+	//!< How long an observation waits for the robot pose at its time before
+	//!< the latest pose is used instead [s]
+	double m_tf_max_wait = 0.5;
+
 	rclcpp::TimerBase::SharedPtr m_timer_publish;
 
 	// Sensor data:
@@ -133,7 +140,10 @@ class LocalObstaclesNode : public rclcpp::Node
 	{
 		std::string sourceTopic;
 		CObservation::Ptr observation;
-		mrpt::poses::CPose3D robot_pose;
+		/// Exact observation time, to look up the robot pose
+		builtin_interfaces::msg::Time stamp;
+		/// Robot pose at the observation time, once known
+		std::optional<mrpt::poses::CPose3D> robot_pose;
 	};
 	using obs_list_t = std::multimap<double, InfoPerTimeStep>;
 
