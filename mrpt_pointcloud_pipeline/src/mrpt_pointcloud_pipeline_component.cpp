@@ -74,18 +74,6 @@ void LocalObstaclesNode::on_do_publish()
 		CTimeLoggerEntry tle(m_profiler, "onDoPublish.removingOld");
 		std::lock_guard<std::mutex> lck(m_hist_obs_mtx);
 
-		// Purge old obs:
-		if (!m_hist_obs.empty())
-		{
-			const double last_time = m_hist_obs.rbegin()->first;
-			obs_list_t::iterator it_first_valid = m_hist_obs.lower_bound(last_time - m_time_window);
-			const size_t nToRemove = std::distance(m_hist_obs.begin(), it_first_valid);
-			RCLCPP_DEBUG(
-				get_logger(), "[onDoPublish] Removing %u old entries, last_time=%lf",
-				static_cast<unsigned int>(nToRemove), last_time);
-			m_hist_obs.erase(m_hist_obs.begin(), it_first_valid);
-		}
-
 		// Place each observation with the robot pose at its time, once known.
 		// The odometry may arrive after the sensor data: wait for it up to
 		// tf_max_wait, then drop the observation rather than misplace it.
@@ -96,6 +84,10 @@ void LocalObstaclesNode::on_do_publish()
 			if (!ipt.robot_pose)
 			{
 				ipt.robot_pose = robot_pose_at(ipt.stamp);
+				if (ipt.robot_pose)
+				{
+					m_max_pose_wait = std::max(m_max_pose_wait, now - timestamp);
+				}
 			}
 			if (!ipt.robot_pose && now - timestamp > m_tf_max_wait)
 			{
@@ -109,6 +101,38 @@ void LocalObstaclesNode::on_do_publish()
 			}
 			++it;
 		}
+		if (now - m_last_pose_wait_report > 10.0)
+		{
+			if (m_max_pose_wait > 0.15)
+			{
+				RCLCPP_INFO(
+					get_logger(), "Robot poses arrived up to %.2f s after their sensor data",
+					m_max_pose_wait);
+			}
+			m_max_pose_wait = 0;
+			m_last_pose_wait_report = now;
+		}
+
+		// Purge old obs, keeping those within the time window of the latest
+		// one already placed (newer ones may still be waiting for their pose):
+		double last_time = 0;
+		for (auto it = m_hist_obs.rbegin(); it != m_hist_obs.rend(); ++it)
+		{
+			if (it->second.robot_pose)
+			{
+				last_time = it->first;
+				break;
+			}
+		}
+		if (last_time > 0)
+		{
+			for (auto it = m_hist_obs.begin();
+				 it != m_hist_obs.end() && it->first < last_time - m_time_window;)
+			{
+				it = m_hist_obs.erase(it);
+			}
+		}
+
 		// Local copy in this thread:
 		for (const auto& entry : m_hist_obs)
 		{

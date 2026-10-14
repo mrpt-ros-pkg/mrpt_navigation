@@ -133,6 +133,10 @@ class LocalObstaclesNode : public rclcpp::Node
 	//!< being dropped [s]
 	double m_tf_max_wait = 0.5;
 
+	/// Longest wait for a robot pose since the last report [s]
+	double m_max_pose_wait = 0;
+	double m_last_pose_wait_report = 0;
+
 	rclcpp::TimerBase::SharedPtr m_timer_publish;
 
 	// Sensor data:

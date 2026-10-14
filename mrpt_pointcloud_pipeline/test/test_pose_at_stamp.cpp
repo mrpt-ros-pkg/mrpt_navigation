@@ -253,6 +253,76 @@ TEST(PointCloudPipeline, DropsObservationWithoutRobotPose)
 	EXPECT_FALSE(gotPoints);
 }
 
+// While newer observations wait for their robot pose, the latest one already
+// placed keeps being published, so the local map does not go stale.
+TEST(PointCloudPipeline, KeepsPlacedObservationWhileNewerOnesWait)
+{
+	rclcpp::NodeOptions opts;
+	opts.parameter_overrides({
+		{"pipeline_yaml_file", std::string(TEST_PIPELINE_YAML)},
+		{"source_topics_2d_scans", std::string("")},
+		{"source_topics_pointclouds", kCloudTopic},
+		{"filter_output_layer_name", std::string("output")},
+		{"topic_local_map_pointcloud", kOutputTopic},
+		{"time_window", 0.2},
+		{"publish_period", 0.05},
+		{"one_observation_per_topic", true},
+		{"tf_max_wait", 5.0},
+	});
+	auto pipeline = std::make_shared<LocalObstaclesNode>(opts);
+	auto helper = std::make_shared<rclcpp::Node>("test_keep_placed_helper");
+
+	std::optional<mrpt::maps::CSimplePointsMap> output;
+	auto sub = helper->create_subscription<sensor_msgs::msg::PointCloud2>(
+		kOutputTopic, 10,
+		[&output](const sensor_msgs::msg::PointCloud2::SharedPtr msg)
+		{
+			mrpt::maps::CSimplePointsMap m;
+			if (mrpt::ros2bridge::fromROS(*msg, m) && m.size() > 0)
+			{
+				output = m;
+			}
+		});
+	auto pub = helper->create_publisher<sensor_msgs::msg::PointCloud2>(kCloudTopic, 10);
+	tf2_ros::TransformBroadcaster tf_pub(*helper);
+
+	rclcpp::executors::SingleThreadedExecutor ex;
+	ex.add_node(pipeline);
+	ex.add_node(helper);
+
+	// The odometry is known up to t0 only:
+	const rclcpp::Time t0 = helper->now() - rclcpp::Duration::from_seconds(1.0);
+	tf_pub.sendTransform(odom_to_robot(t0, 0, 0, 0));
+	spin_for(ex, std::chrono::milliseconds(300));
+
+	const auto publish_point = [&](const rclcpp::Time& t, float x)
+	{
+		mrpt::maps::CSimplePointsMap pts;
+		pts.insertPoint(x, 0.0f, 0.5f);
+		std_msgs::msg::Header h;
+		h.stamp = t;
+		h.frame_id = "base_link";
+		sensor_msgs::msg::PointCloud2 msg;
+		ASSERT_TRUE(mrpt::ros2bridge::toROS(pts, h, msg));
+		pub->publish(msg);
+		spin_for(ex, std::chrono::milliseconds(100));
+	};
+	// One cloud placed at t0, then newer ones, beyond the time window, without a pose yet:
+	publish_point(t0, 3.0f);
+	publish_point(t0 + rclcpp::Duration::from_seconds(0.3), 2.0f);
+	publish_point(t0 + rclcpp::Duration::from_seconds(0.6), 2.5f);
+
+	output.reset();
+	spin_for(ex, std::chrono::milliseconds(300));
+	ASSERT_TRUE(output.has_value());
+	ASSERT_EQ(output->size(), 1u);
+	float x = 0;
+	float y = 0;
+	float z = 0;
+	output->getPoint(0, x, y, z);
+	EXPECT_NEAR(x, 3.0, 0.05);
+}
+
 int main(int argc, char** argv)
 {
 	testing::InitGoogleTest(&argc, argv);
