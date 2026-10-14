@@ -88,24 +88,26 @@ void LocalObstaclesNode::on_do_publish()
 
 		// Place each observation with the robot pose at its time, once known.
 		// The odometry may arrive after the sensor data: wait for it up to
-		// tf_max_wait, then use the latest pose instead.
+		// tf_max_wait, then drop the observation rather than misplace it.
 		const double now = this->get_clock()->now().seconds();
-		for (auto& [timestamp, ipt] : m_hist_obs)
+		for (auto it = m_hist_obs.begin(); it != m_hist_obs.end();)
 		{
-			if (ipt.robot_pose)
+			auto& [timestamp, ipt] = *it;
+			if (!ipt.robot_pose)
 			{
-				continue;
+				ipt.robot_pose = robot_pose_at(ipt.stamp);
 			}
-			ipt.robot_pose = robot_pose_at(ipt.stamp);
 			if (!ipt.robot_pose && now - timestamp > m_tf_max_wait)
 			{
-				ipt.robot_pose = latest_robot_pose();
 				RCLCPP_WARN_THROTTLE(
 					get_logger(), *get_clock(), 5000,
-					"No robot pose at the time of an observation after %.2f s: using the latest "
-					"one",
-					m_tf_max_wait);
+					"Dropping an observation: no robot pose at its time after %.2f s (latest "
+					"one: %.2f s older)",
+					m_tf_max_wait, timestamp - latest_robot_pose_stamp());
+				it = m_hist_obs.erase(it);
+				continue;
 			}
+			++it;
 		}
 		// Local copy in this thread:
 		for (const auto& entry : m_hist_obs)
@@ -454,20 +456,17 @@ std::optional<mrpt::poses::CPose3D> LocalObstaclesNode::robot_pose_at(
 	}
 }
 
-std::optional<mrpt::poses::CPose3D> LocalObstaclesNode::latest_robot_pose()
+double LocalObstaclesNode::latest_robot_pose_stamp()
 {
 	try
 	{
 		const auto tx =
 			m_tf_buffer->lookupTransform(m_frameid_reference, m_frameid_robot, tf2::TimePointZero);
-		tf2::Transform t;
-		tf2::fromMsg(tx.transform, t);
-		return mrpt::ros2bridge::fromROS(t);
+		return tx.header.stamp.sec + tx.header.stamp.nanosec * 1e-9;
 	}
-	catch (const tf2::TransformException& ex)
+	catch (const tf2::TransformException&)
 	{
-		RCLCPP_ERROR_THROTTLE(get_logger(), *get_clock(), 5000, "%s", ex.what());
-		return std::nullopt;
+		return 0;
 	}
 }
 

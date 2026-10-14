@@ -76,8 +76,8 @@ class LocalObstaclesNode : public rclcpp::Node
 	/* Robot pose in the reference frame at the given time, if already known. */
 	std::optional<mrpt::poses::CPose3D> robot_pose_at(const builtin_interfaces::msg::Time& stamp);
 
-	/* The latest robot pose in the reference frame, if any. */
-	std::optional<mrpt::poses::CPose3D> latest_robot_pose();
+	/* Time of the latest robot pose in the reference frame (0 if none). */
+	double latest_robot_pose_stamp();
 
 	/**
 	 * @brief Subscribe to a variable number of topics.
@@ -130,7 +130,7 @@ class LocalObstaclesNode : public rclcpp::Node
 	double m_publish_period = 0.05;
 
 	//!< How long an observation waits for the robot pose at its time before
-	//!< the latest pose is used instead [s]
+	//!< being dropped [s]
 	double m_tf_max_wait = 0.5;
 
 	rclcpp::TimerBase::SharedPtr m_timer_publish;

@@ -199,6 +199,60 @@ TEST(PointCloudPipeline, WaitsForLateRobotPose)
 	EXPECT_NEAR(y, 0.0, 0.05);
 }
 
+// An observation whose robot pose never arrives is dropped, not misplaced.
+TEST(PointCloudPipeline, DropsObservationWithoutRobotPose)
+{
+	rclcpp::NodeOptions opts;
+	opts.parameter_overrides({
+		{"pipeline_yaml_file", std::string(TEST_PIPELINE_YAML)},
+		{"source_topics_2d_scans", std::string("")},
+		{"source_topics_pointclouds", kCloudTopic},
+		{"filter_output_layer_name", std::string("output")},
+		{"topic_local_map_pointcloud", kOutputTopic},
+		{"time_window", 5.0},
+		{"publish_period", 0.05},
+		{"tf_max_wait", 0.3},
+	});
+	auto pipeline = std::make_shared<LocalObstaclesNode>(opts);
+	auto helper = std::make_shared<rclcpp::Node>("test_drop_helper");
+
+	bool gotPoints = false;
+	auto sub = helper->create_subscription<sensor_msgs::msg::PointCloud2>(
+		kOutputTopic, 10,
+		[&gotPoints](const sensor_msgs::msg::PointCloud2::SharedPtr msg)
+		{
+			mrpt::maps::CSimplePointsMap m;
+			if (mrpt::ros2bridge::fromROS(*msg, m) && m.size() > 0)
+			{
+				gotPoints = true;
+			}
+		});
+	auto pub = helper->create_publisher<sensor_msgs::msg::PointCloud2>(kCloudTopic, 10);
+	tf2_ros::TransformBroadcaster tf_pub(*helper);
+
+	rclcpp::executors::SingleThreadedExecutor ex;
+	ex.add_node(pipeline);
+	ex.add_node(helper);
+
+	// The odometry stops at t0, and a cloud sensed later arrives:
+	const rclcpp::Time t1 = helper->now();
+	const rclcpp::Time t0 = t1 - rclcpp::Duration::from_seconds(1.0);
+	tf_pub.sendTransform(odom_to_robot(t0, 0, 0, 0));
+	spin_for(ex, std::chrono::milliseconds(300));
+
+	mrpt::maps::CSimplePointsMap pts;
+	pts.insertPoint(3.0f, 0.0f, 0.5f);
+	std_msgs::msg::Header h;
+	h.stamp = t1;
+	h.frame_id = "base_link";
+	sensor_msgs::msg::PointCloud2 msg;
+	ASSERT_TRUE(mrpt::ros2bridge::toROS(pts, h, msg));
+	pub->publish(msg);
+
+	spin_for(ex, std::chrono::milliseconds(1000));
+	EXPECT_FALSE(gotPoints);
+}
+
 int main(int argc, char** argv)
 {
 	testing::InitGoogleTest(&argc, argv);
