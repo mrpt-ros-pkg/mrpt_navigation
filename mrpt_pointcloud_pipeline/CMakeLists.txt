@@ -148,6 +148,27 @@ if(BUILD_TESTING)
   target_include_directories(test_obstacle_memory PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/include)
   target_link_libraries(test_obstacle_memory mrpt::mrpt_maps)
+
+  ament_add_gtest(test_pose_at_stamp
+    test/test_pose_at_stamp.cpp
+    src/${PROJECT_NAME}_component.cpp
+    src/ObstacleMemory.cpp)
+  target_include_directories(test_pose_at_stamp PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/include)
+  target_compile_definitions(test_pose_at_stamp PRIVATE
+    TEST_PIPELINE_YAML="${CMAKE_CURRENT_SOURCE_DIR}/params/point-cloud-pipeline.yaml")
+  target_link_libraries(test_pose_at_stamp
+    mrpt::mrpt_maps
+    mrpt::mrpt_obs
+    mrpt::mrpt_gui
+    mrpt_libros_bridge::mrpt_libros_bridge
+    mola::mp2p_icp_filters
+    rclcpp::rclcpp
+    ${rclcpp_components_TARGETS}
+    ${nav_msgs_TARGETS}
+    ${sensor_msgs_TARGETS}
+    tf2::tf2
+    ${tf2_geometry_msgs_TARGETS})
 endif()
 
 ament_package()

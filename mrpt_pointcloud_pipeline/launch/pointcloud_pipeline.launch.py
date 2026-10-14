@@ -72,6 +72,11 @@ def generate_launch_description():
         default_value='10.0',
         description='Remembered obstacles are forgotten after this long without being observed [s]'
     )
+    tf_max_wait_arg = DeclareLaunchArgument(
+        'tf_max_wait',
+        default_value='0.5',
+        description='How long an observation waits for the robot pose at its time before being dropped [s]'
+    )
     pipeline_yaml_file_arg = DeclareLaunchArgument(
         'pipeline_yaml_file',
         default_value=os.path.join(
@@ -136,6 +141,7 @@ def generate_launch_description():
             {'memory_region': LaunchConfiguration('memory_region')},
             {'memory_self_box': LaunchConfiguration('memory_self_box')},
             {'memory_max_age': LaunchConfiguration('memory_max_age')},
+            {'tf_max_wait': LaunchConfiguration('tf_max_wait')},
         ],
         arguments=['--ros-args', '--log-level',
                    LaunchConfiguration('log_level')],
@@ -165,6 +171,7 @@ def generate_launch_description():
                     {'memory_region': LaunchConfiguration('memory_region')},
                     {'memory_self_box': LaunchConfiguration('memory_self_box')},
                     {'memory_max_age': LaunchConfiguration('memory_max_age')},
+                    {'tf_max_wait': LaunchConfiguration('tf_max_wait')},
                 ],
             )
         ]
@@ -188,6 +195,7 @@ def generate_launch_description():
         memory_region_arg,
         memory_self_box_arg,
         memory_max_age_arg,
+        tf_max_wait_arg,
         mrpt_pointcloud_pipeline_node,
         composable_mrpt_pointcloud_pipeline,
     ])
