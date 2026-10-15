@@ -29,6 +29,8 @@ def generate_launch_description():
         DeclareLaunchArgument('topic_obstacles_sub', default_value=''),
         DeclareLaunchArgument('topic_odom_sub', default_value='/odom'),
         DeclareLaunchArgument('topic_cmd_vel_pub', default_value='/cmd_vel'),
+        # Publish geometry_msgs/TwistStamped instead of Twist:
+        DeclareLaunchArgument('cmd_vel_stamped', default_value='False'),
         DeclareLaunchArgument('ptg_ini', default_value=''),
         DeclareLaunchArgument('follower_parameters', default_value=default_params),
         # Optional YAML file whose keys override those in follower_parameters
@@ -63,6 +65,8 @@ def generate_launch_description():
         'topic_obstacles_sub': LaunchConfiguration('topic_obstacles_sub'),
         'topic_odom_sub': LaunchConfiguration('topic_odom_sub'),
         'topic_cmd_vel_pub': LaunchConfiguration('topic_cmd_vel_pub'),
+        'cmd_vel_stamped': ParameterValue(
+            LaunchConfiguration('cmd_vel_stamped'), value_type=bool),
         'ptg_ini': LaunchConfiguration('ptg_ini'),
         'follower_parameters': LaunchConfiguration('follower_parameters'),
         'follower_parameters_overrides': LaunchConfiguration(

@@ -232,7 +232,15 @@ TrajectoryFollowerNode::TrajectoryFollowerNode(const rclcpp::NodeOptions& option
 			{ this->callback_robot_shape(msg); });
 	}
 
-	pub_cmd_vel_ = this->create_publisher<geometry_msgs::msg::Twist>(topic_cmd_vel_pub_, qos);
+	if (cmd_vel_stamped_)
+	{
+		pub_cmd_vel_stamped_ =
+			this->create_publisher<geometry_msgs::msg::TwistStamped>(topic_cmd_vel_pub_, qos);
+	}
+	else
+	{
+		pub_cmd_vel_ = this->create_publisher<geometry_msgs::msg::Twist>(topic_cmd_vel_pub_, qos);
+	}
 	pub_chunk_ = this->create_publisher<nav_msgs::msg::Path>("~/predicted_trajectory", qos);
 	pub_ref_path_ = this->create_publisher<nav_msgs::msg::Path>("~/reference_path", latchedQoS);
 	pub_status_ = this->create_publisher<std_msgs::msg::String>("~/status", latchedQoS);
@@ -278,6 +286,10 @@ void TrajectoryFollowerNode::read_parameters()
 	p("follower_parameters_overrides", follower_params_overrides_file_);
 	p("planner_service", planner_service_);
 	p("topic_robot_shape_sub", topic_robot_shape_sub_);
+
+	this->declare_parameter<bool>("cmd_vel_stamped", cmd_vel_stamped_);
+	this->get_parameter("cmd_vel_stamped", cmd_vel_stamped_);
+	RCLCPP_INFO(get_logger(), "cmd_vel_stamped: %s", cmd_vel_stamped_ ? "true" : "false");
 
 	this->declare_parameter<double>("speed_limit", speed_limit_);
 	this->get_parameter("speed_limit", speed_limit_);
@@ -563,8 +575,7 @@ void TrajectoryFollowerNode::start_watchdog(std::chrono::milliseconds timeout)
 			{
 				// Stalled: fail safe. Publish directly (avoid re-entering the
 				// watchdog's own bookkeeping).
-				geometry_msgs::msg::Twist zero;
-				pub_cmd_vel_->publish(zero);
+				send_cmd_vel(geometry_msgs::msg::Twist());
 			}
 		});
 }
@@ -575,10 +586,24 @@ void TrajectoryFollowerNode::publish_cmd(double vx, double omega)
 	geometry_msgs::msg::Twist cmd;
 	cmd.linear.x = vx;
 	cmd.angular.z = omega;
-	pub_cmd_vel_->publish(cmd);
+	send_cmd_vel(cmd);
 
 	auto lck = std::lock_guard(wd_cs_);
 	last_cmd_time_ = this->now();
+}
+
+void TrajectoryFollowerNode::send_cmd_vel(const geometry_msgs::msg::Twist& twist)
+{
+	if (!cmd_vel_stamped_)
+	{
+		pub_cmd_vel_->publish(twist);
+		return;
+	}
+	geometry_msgs::msg::TwistStamped msg;
+	msg.header.stamp = this->now();
+	msg.header.frame_id = frame_id_robot_;
+	msg.twist = twist;
+	pub_cmd_vel_stamped_->publish(msg);
 }
 
 void TrajectoryFollowerNode::publish_chunk(const mpp::SampledTrajectory& ref)

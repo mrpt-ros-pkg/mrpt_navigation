@@ -45,6 +45,7 @@
 #include <geometry_msgs/msg/pose_stamped.hpp>
 #include <geometry_msgs/msg/transform_stamped.hpp>
 #include <geometry_msgs/msg/twist.hpp>
+#include <geometry_msgs/msg/twist_stamped.hpp>
 #include <memory>
 #include <mrpt_nav_interfaces/srv/make_plan_to.hpp>
 #include <mutex>
@@ -123,7 +124,9 @@ class TrajectoryFollowerNode : public rclcpp::Node, public mpp::TrajectoryVehicl
 	rclcpp::Subscription<geometry_msgs::msg::PolygonStamped>::SharedPtr sub_robot_shape_;
 	rclcpp::node_interfaces::OnSetParametersCallbackHandle::SharedPtr param_cb_handle_;
 
+	// Only one of these is created, depending on cmd_vel_stamped_:
 	rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr pub_cmd_vel_;
+	rclcpp::Publisher<geometry_msgs::msg::TwistStamped>::SharedPtr pub_cmd_vel_stamped_;
 	rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr pub_chunk_;
 	rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr pub_ref_path_;
 	rclcpp::Publisher<std_msgs::msg::String>::SharedPtr pub_status_;
@@ -158,6 +161,9 @@ class TrajectoryFollowerNode : public rclcpp::Node, public mpp::TrajectoryVehicl
 	std::string topic_obstacles_sub_ = "";
 	std::string topic_odom_sub_ = "/odom";
 	std::string topic_cmd_vel_pub_ = "/cmd_vel";
+	// Publish geometry_msgs/TwistStamped (frame_id_robot) instead of Twist,
+	// as expected e.g. by ROS 2 Jazzy ros2_control and twist_mux setups:
+	bool cmd_vel_stamped_ = false;
 	std::string ptg_ini_file_ = "";
 	std::string follower_params_file_ = "";
 	std::string follower_params_overrides_file_ = "";
@@ -243,6 +249,8 @@ class TrajectoryFollowerNode : public rclcpp::Node, public mpp::TrajectoryVehicl
 		tf2::TimePoint at = tf2::TimePointZero);
 
 	void publish_cmd(double vx, double omega);
+
+	void send_cmd_vel(const geometry_msgs::msg::Twist& twist);
 	void publish_chunk(const mpp::SampledTrajectory& ref);
 };
 

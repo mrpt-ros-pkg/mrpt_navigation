@@ -88,6 +88,11 @@ Pose":
 - `speed_limit` [m/s]: `0` for the platform max speed. It can be changed at
   run time with `ros2 param set /mrpt_trajectory_follower speed_limit 2.0`.
 
+The follower publishes `geometry_msgs/Twist` on `topic_cmd_vel_pub`, or
+`geometry_msgs/TwistStamped` (frame `frame_id_robot`) with the launch argument
+`cmd_vel_stamped:=True`, as expected by many ROS 2 Jazzy robots (e.g. those
+using `twist_mux` or `diff_drive_controller` with stamped commands).
+
 A Foxglove layout equivalent to the RViz setup is in
 `mrpt_tutorials/foxglove/astar_demo.json` (import it from the Foxglove layout
 menu, with `foxglove_bridge` running).
