@@ -72,7 +72,10 @@ def launch_setup(context, *args, **kwargs):
             'topic_obstacles_gridmap_sub': '/mrpt_map/map_gridmap',
             'topic_static_maps': '/mrpt_map/map_gridmap',
             # Also sensed obstacles, so replans avoid unmapped ones:
-            'topic_obstacles_sub': '/local_map_pointcloud',
+            'topic_obstacles_sub': ', '.join(
+                t for t in ['/local_map_pointcloud',
+                            LaunchConfiguration('planner_extra_obstacles_topic').perform(context)]
+                if t),
             'topic_wp_seq_pub': '/waypoints',
             'ptg_ini': ptg_ini_file,
             'max_computation_time': LaunchConfiguration('max_computation_time'),
@@ -193,6 +196,9 @@ def generate_launch_description():
         DeclareLaunchArgument(
             'speed_limit', default_value='0.0',
             description='Initial follower speed limit [m/s] (<=0: platform max)'),
+        DeclareLaunchArgument(
+            'planner_extra_obstacles_topic', default_value='',
+            description='Additional obstacle points topic for the planner only (e.g. for tests)'),
         DeclareLaunchArgument(
             'use_rviz', default_value='True',
             description='Whether to launch RViz2 (False for headless runs)'),

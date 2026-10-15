@@ -30,6 +30,10 @@ list and responsibilities:
   ignored (`ignore_obstacles_in`). `PoseStamped` goals (topic, `make_plan_to`)
   are transformed into `frame_id_map` with TF (`goal_frame.hpp`; empty
   `frame_id` = map frame, unknown frame = rejected).
+  Goals from the topic or the `NavigateGoal` action go to a goal manager
+  thread (`goal_manager.cpp`): anytime partial paths, then continuous
+  replanning re-rooting the search ahead of the robot, published as
+  `ReferencePath` (committed part never changes). Services stay one-shot.
 - **mrpt_trajectory_follower**: node that accurately follows a reference
   pose+speed path (pure pursuit) with predictive safety, a last-resort
   collision guard on every command, run-time speed limit, and optional
@@ -37,7 +41,9 @@ list and responsibilities:
   `mpp::CollisionGuard`. It takes the robot pose as the latest map->odom
   composed with the latest odometry (the localization arrives late), runs its
   control loop on the ROS clock, and processes obstacle clouds in their own
-  callback group. Commands are `Twist`, or `TwistStamped` with
+  callback group. `ReferencePath` updates for the same goal keep its motion
+  state; partial paths end in `WaitingForPath`, and the planner (not the
+  follower) replans them. Commands are `Twist`, or `TwistStamped` with
   `cmd_vel_stamped:=True` (e.g. Jazzy `twist_mux`/ros2_control setups).
 - **mrpt_msgs_bridge**: C++ conversions between `mrpt_msgs` ROS messages and
   native MRPT classes.
@@ -51,6 +57,9 @@ list and responsibilities:
   end-to-end navigation tests in simulation (`mrpt_navigation/test/`), run
   with mvsim's ideal twist controllers; `MRPT_NAV_TEST_LOG` saves traces to
   plot with `plot_nav_traces.py`.
+
+Newer `mrpt_path_planning` APIs are used behind its `MPP_HAS_*` feature
+macros, so packages keep building against older releases.
 
 The planner and follower are built as a `<pkg>_component` library (composable
 node) plus a thin `<pkg>_node` executable; their launch files take
@@ -106,7 +115,8 @@ colcon test-result --verbose
 ```
 
 `colcon test --packages-select mrpt_navigation` runs headless end-to-end
-navigation batteries in mvsim (several minutes).
+navigation batteries and an anytime/continuous planning test in mvsim
+(several minutes).
 `colcon test --packages-select mrpt_trajectory_follower` drives a car-like
 robot out of and back into narrow aisles in mvsim (`mrpt_trajectory_follower/test/`).
 

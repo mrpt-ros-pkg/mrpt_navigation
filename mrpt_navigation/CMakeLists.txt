@@ -30,6 +30,13 @@ if(BUILD_TESTING)
           MRPT_TUTORIALS_ACKERMANN_CONTROLLER=twist_ideal
     )
   endforeach()
+
+  # Anytime and continuous planning (planner goal manager and action):
+  ament_add_ros_isolated_pytest_test(test_continuous_planning
+    test/test_continuous_planning.py
+    TIMEOUT 900
+    ENV MRPT_TUTORIALS_DIFFDRIVE_CONTROLLER=twist_ideal
+  )
 endif()
 
 # The following is needed for ROS 2's ament to generate the setup hooks
