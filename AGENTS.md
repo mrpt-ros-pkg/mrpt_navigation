@@ -35,7 +35,8 @@ list and responsibilities:
   `mpp::CollisionGuard`. It takes the robot pose as the latest map->odom
   composed with the latest odometry (the localization arrives late), runs its
   control loop on the ROS clock, and processes obstacle clouds in their own
-  callback group.
+  callback group. Commands are `Twist`, or `TwistStamped` with
+  `cmd_vel_stamped:=True` (e.g. Jazzy `twist_mux`/ros2_control setups).
 - **mrpt_msgs_bridge**: C++ conversions between `mrpt_msgs` ROS messages and
   native MRPT classes.
 - **mrpt_nav_interfaces**: msg/srv/action definitions shared by the other
