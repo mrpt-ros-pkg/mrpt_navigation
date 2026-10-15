@@ -93,5 +93,29 @@ jobs:
       - name: Run unit tests
         run: |
           . /opt/ros/*/setup.sh
+          # The navigation battery tests save their trajectories here (one
+          # file per robot), to diagnose failures. GITHUB_WORKSPACE, not
+          # github.workspace, which is the host path in container jobs:
+          mkdir -p nav_traces
+          export MRPT_NAV_TEST_LOG="$GITHUB_WORKSPACE/nav_traces/traces.json"
           colcon test --event-handlers console_direct+
           colcon test-result --verbose
+
+      # Diagnostics only: never fails the job.
+      - name: Plot navigation test traces
+        if: always()
+        continue-on-error: true
+        run: |
+          ls nav_traces/*.json || exit 0
+          apt-get install -y python3-matplotlib python3-pil
+          python3 mrpt_navigation/test/plot_nav_traces.py \
+            mrpt_tutorials/maps/demo_world2.yaml nav_traces nav_traces/*.json
+
+      - name: Upload navigation test traces
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nav-traces-${{ matrix.ros_distribution }}-${{ matrix.use_ros_testing && 'testing' || 'stable' }}
+          path: nav_traces/
+          if-no-files-found: ignore
+          retention-days: 14
