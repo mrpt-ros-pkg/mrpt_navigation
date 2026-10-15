@@ -2,6 +2,8 @@
 # Plots the traces saved by test_navigation_battery.py (MRPT_NAV_TEST_LOG):
 # for each goal, map obstacles, planned and replanned reference paths, ground
 # truth and localized trajectories, and footprints along the ground truth.
+# A second figure per trace file shows the localization error (localized vs
+# ground truth position) over time for each goal.
 #
 # Usage: plot_nav_traces.py <map.yaml> <out_dir> <trace.json>...
 # e.g. map: mrpt_tutorials/maps/demo_world2.yaml
@@ -82,6 +84,29 @@ def plot_goal(ax, occ, extent, tr, shape, title):
     ax.legend(fontsize=7, loc='best')
 
 
+def plot_loc_errors(goals, title, out_file, limit=None):
+    fig, ax = plt.subplots(figsize=(12, 5))
+    for i, tr in enumerate(goals):
+        # Localized poses are sampled together with the ground truth (same t):
+        gt = {round(row[0], 6): row for row in tr['gt']}
+        err = [(t, math.hypot(x - gt[round(t, 6)][1], y - gt[round(t, 6)][2]))
+               for t, x, y, _ in tr['loc'] if round(t, 6) in gt]
+        if err:
+            e = np.array(err)
+            ax.plot(e[:, 0], e[:, 1], lw=1.2, label=f'goal #{i}')
+    if limit is not None:
+        ax.axhline(limit, color='tab:red', ls='--', lw=1, label='test limit')
+    ax.set_xlabel('time since the goal was sent [s]')
+    ax.set_ylabel('localization error [m]')
+    ax.set_title(title)
+    ax.grid(True, alpha=0.3)
+    ax.legend(fontsize=8)
+    fig.tight_layout()
+    fig.savefig(out_file, dpi=110)
+    plt.close(fig)
+    print('saved', out_file)
+
+
 def main():
     occ, extent = load_map(sys.argv[1])
     out = sys.argv[2]
@@ -99,6 +124,9 @@ def main():
         fig.savefig(os.path.join(out, f'{name}.png'), dpi=110)
         plt.close(fig)
         print('saved', os.path.join(out, f'{name}.png'))
+
+        plot_loc_errors(d['goals'], f'{name}: localization error',
+                        os.path.join(out, f'{name}_loc_error.png'), d.get('max_loc_error'))
 
 
 if __name__ == '__main__':

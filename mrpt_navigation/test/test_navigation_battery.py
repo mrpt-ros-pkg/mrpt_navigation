@@ -357,7 +357,7 @@ class NavigationBattery(unittest.TestCase):
         if LOG_FILE:
             with open(LOG_FILE, 'w') as f:
                 json.dump({'robot': ROBOT, 'robot_shape': self.robot_shape,
-                           'goals': self.traces}, f)
+                           'max_loc_error': MAX_LOC_ERROR, 'goals': self.traces}, f)
 
         self.assertEqual(self.collisions, 0, 'The robot collided')
         self.assertFalse(failures, '\n'.join(failures))
