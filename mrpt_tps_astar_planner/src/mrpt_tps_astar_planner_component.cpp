@@ -6,6 +6,7 @@
    | All rights reserved. Released under BSD 3-Clause license. See LICENSE  |
    +------------------------------------------------------------------------+ */
 
+#include <mrpt_tps_astar_planner/goal_frame.hpp>
 #include <mrpt_tps_astar_planner/mrpt_tps_astar_planner_node.hpp>
 #include <mrpt_tps_astar_planner/obstacle_regions.hpp>
 #include <rclcpp_components/register_node_macro.hpp>
@@ -473,8 +474,16 @@ void TPS_Astar_Planner_Node::callback_goal(const geometry_msgs::msg::PoseStamped
 	}
 	try
 	{
-		const auto p = mrpt::ros2bridge::fromROS(_goal.pose);
-		mrpt::math::TPose2D nav_goal = mrpt::math::TPose2D(p.asTPose());
+		std::string error;
+		const auto nav_goal = goal_in_map_frame(_goal, frame_id_map_, *tf_buffer_, &error);
+		if (!nav_goal)
+		{
+			RCLCPP_ERROR(
+				this->get_logger(),
+				"callback_goal: cannot express the goal (frame '%s') in '%s', ignoring it: %s",
+				_goal.header.frame_id.c_str(), frame_id_map_.c_str(), error.c_str());
+			return;
+		}
 
 		mrpt::poses::CPose3D robot_pose;
 		const bool robot_pose_ok = wait_for_transform(robot_pose, frame_id_robot_, frame_id_map_);
@@ -493,7 +502,7 @@ void TPS_Astar_Planner_Node::callback_goal(const geometry_msgs::msg::PoseStamped
 		start_pose.y = robot_pose.y();
 		start_pose.phi = robot_pose.yaw();
 
-		const auto res = do_path_plan(start_pose, nav_goal);
+		const auto res = do_path_plan(start_pose, *nav_goal);
 
 		// Publish. On failure, publish an empty sequence so that downstream
 		// path followers stop instead of continuing on a previous path:
@@ -925,8 +934,18 @@ void TPS_Astar_Planner_Node::srv_make_plan_to(
 	}
 	try
 	{
-		const auto p = mrpt::ros2bridge::fromROS(req->target.pose);
-		const auto nav_goal = mrpt::math::TPose2D(p.asTPose());
+		std::string error;
+		const auto nav_goal = goal_in_map_frame(req->target, frame_id_map_, *tf_buffer_, &error);
+		if (!nav_goal)
+		{
+			RCLCPP_ERROR(
+				this->get_logger(),
+				"srv_make_plan_to: cannot express the target (frame '%s') in '%s', returning "
+				"invalid plan: %s",
+				req->target.header.frame_id.c_str(), frame_id_map_.c_str(), error.c_str());
+			resp->valid_path_found = false;
+			return;
+		}
 
 		mrpt::poses::CPose3D robot_pose;
 		const bool robot_pose_ok = wait_for_transform(robot_pose, frame_id_robot_, frame_id_map_);
@@ -942,7 +961,7 @@ void TPS_Astar_Planner_Node::srv_make_plan_to(
 
 		const auto start_pose = mrpt::poses::CPose2D(robot_pose).asTPose();
 
-		const auto res = do_path_plan(start_pose, nav_goal, to_polygons(req->ignore_obstacles_in));
+		const auto res = do_path_plan(start_pose, *nav_goal, to_polygons(req->ignore_obstacles_in));
 
 		resp->valid_path_found = res.valid;
 		resp->waypoints = res.wps;

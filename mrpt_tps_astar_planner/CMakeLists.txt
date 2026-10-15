@@ -66,6 +66,7 @@ endif()
 # Node implementation, loadable as a composable node:
 add_library(${PROJECT_NAME}_component SHARED
   src/${PROJECT_NAME}_component.cpp
+  src/goal_frame.cpp
   src/obstacle_regions.cpp
 )
 
@@ -156,6 +157,22 @@ if(BUILD_TESTING)
   target_include_directories(test_obstacle_regions PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/include)
   target_link_libraries(test_obstacle_regions mrpt::mrpt_maps ${geometry_msgs_TARGETS})
+
+  # Goal frame handling: the helper alone, then the whole node with TF.
+  ament_add_gtest(test_goal_frame
+    test/test_goal_frame.cpp
+    src/goal_frame.cpp)
+  target_include_directories(test_goal_frame PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/include)
+  target_link_libraries(test_goal_frame
+    mrpt::mrpt_math tf2::tf2 ${geometry_msgs_TARGETS} ${tf2_geometry_msgs_TARGETS})
+
+  ament_add_gtest(test_node_goal_frame
+    test/test_node_goal_frame.cpp
+    TIMEOUT 300)
+  target_compile_definitions(test_node_goal_frame PRIVATE
+    MRPT_TPS_ASTAR_PLANNER_CONFIGS_DIR="${CMAKE_CURRENT_SOURCE_DIR}/configs")
+  target_link_libraries(test_node_goal_frame ${PROJECT_NAME}_component)
 endif()
 
 ament_package()
