@@ -113,6 +113,14 @@ time allows, then returns the best found. An optional refinement pass
 | `<node_fqn>/make_plan_to` | `mrpt_nav_interfaces/MakePlanTo` | Plan from the current robot TF pose to a given goal `PoseStamped`; returns `valid_path_found` and `waypoints` |
 | `<node_fqn>/make_plan_from_to` | `mrpt_nav_interfaces/MakePlanFromTo` | Plan between two explicitly given `Pose` values; no TF lookup needed |
 
+Goal frames: goals on `<topic_goal_sub>` and `make_plan_to` targets
+(`PoseStamped`) are transformed with TF into `frame_id_map`, at their stamp if
+available, else with the latest transform. So goals can be given e.g. in the
+robot frame, or clicked in an RViz/Foxglove view whose fixed frame is not the
+map. A goal with an empty `frame_id` is taken as already in `frame_id_map`, and
+one whose frame cannot be transformed is rejected (no plan). `make_plan_from_to`
+poses carry no frame and are always in `frame_id_map`.
+
 Both requests take an optional `ignore_obstacles_in` list of polygons (XY, map
 frame): obstacle points inside them, from every source, are ignored for that
 plan only (e.g. where obstacles are known to be traversable).
