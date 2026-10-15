@@ -106,6 +106,35 @@ def generate_launch_description():
         description='Maximum A* computation time per plan request [s]. '
         '<=0: use maximumComputationTime from planner_parameters')
 
+    # Goal manager (goals from the goal topic or the navigate_goal action):
+    goal_manager_args = [
+        DeclareLaunchArgument(
+            'anytime_first_path_time', default_value='2.5',
+            description='Publish the best partial path after this time [s] if the goal is not '
+            'reached yet by the search (<=0: only publish full paths)'),
+        DeclareLaunchArgument(
+            'anytime_min_progress', default_value='1.0',
+            description='Minimum progress toward the goal [m] of a partial path'),
+        DeclareLaunchArgument(
+            'continuous_planning', default_value='true',
+            description='Keep replanning while the robot drives: check the path against new '
+            'obstacles, and go on with the search from ahead of the robot. If both this and '
+            'anytime_first_path_time are disabled, goals are planned once as one-shot plans'),
+        DeclareLaunchArgument(
+            'replan_period', default_value='1.0',
+            description='Period of the replanning cycles [s]'),
+        DeclareLaunchArgument(
+            'stitch_lookahead_time', default_value='3.0',
+            description='The search goes on from this far ahead [s] of the robot along its '
+            'path (at max speed): the path up to there does not change anymore'),
+        DeclareLaunchArgument(
+            'max_planning_restarts', default_value='5',
+            description='Searches restarted from scratch for a goal before giving up'),
+        DeclareLaunchArgument(
+            'topic_follower_status_sub', default_value='/mrpt_trajectory_follower/status',
+            description='Path follower status topic (to know when a goal is reached or fails)'),
+    ]
+
     use_composable = LaunchConfiguration('use_composable')
 
     use_composable_arg = DeclareLaunchArgument(
@@ -149,6 +178,19 @@ def generate_launch_description():
             'reverse_motion_cost_factor'), value_type=float)},
         {'max_computation_time': ParameterValue(LaunchConfiguration(
             'max_computation_time'), value_type=float)},
+        {'anytime_first_path_time': ParameterValue(LaunchConfiguration(
+            'anytime_first_path_time'), value_type=float)},
+        {'anytime_min_progress': ParameterValue(LaunchConfiguration(
+            'anytime_min_progress'), value_type=float)},
+        {'continuous_planning': ParameterValue(LaunchConfiguration(
+            'continuous_planning'), value_type=bool)},
+        {'replan_period': ParameterValue(LaunchConfiguration(
+            'replan_period'), value_type=float)},
+        {'stitch_lookahead_time': ParameterValue(LaunchConfiguration(
+            'stitch_lookahead_time'), value_type=float)},
+        {'max_planning_restarts': ParameterValue(LaunchConfiguration(
+            'max_planning_restarts'), value_type=int)},
+        {'topic_follower_status_sub': LaunchConfiguration('topic_follower_status_sub')},
         # Param files:
         {'planner_parameters': LaunchConfiguration('planner_parameters')},
         {'global_costmap_parameters': LaunchConfiguration(
@@ -207,6 +249,7 @@ def generate_launch_description():
         astar_skip_refine_arg,
         reverse_motion_cost_factor_arg,
         max_computation_time_arg,
+        *goal_manager_args,
         tps_astar_nav_node,
         composable_tps_astar_nav_node,
     ])

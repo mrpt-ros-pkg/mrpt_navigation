@@ -207,6 +207,30 @@ TPS_Astar_Planner_Node::TPS_Astar_Planner_Node(const rclcpp::NodeOptions& option
 	pub_robot_shape_ =
 		this->create_publisher<geometry_msgs::msg::PolygonStamped>("~/robot_shape", mapQoS);
 
+#if HAVE_MPP_CONTINUOUS_PLANNING
+	// Goal manager:
+	pub_reference_path_ = this->create_publisher<mrpt_nav_interfaces::msg::ReferencePath>(
+		topic_wp_seq_pub_ + "_reference"s, qos);
+	pub_committed_path_ = this->create_publisher<nav_msgs::msg::Path>("~/committed_path", mapQoS);
+	pub_tentative_path_ = this->create_publisher<nav_msgs::msg::Path>("~/tentative_path", mapQoS);
+
+	if (!topic_follower_status_sub_.empty())
+	{
+		sub_follower_status_ = this->create_subscription<std_msgs::msg::String>(
+			topic_follower_status_sub_, mapQoS,
+			[this](const std_msgs::msg::String& msg) { this->callback_follower_status(msg); });
+	}
+
+	action_server_ = rclcpp_action::create_server<NavigateGoal>(
+		this, "~/navigate_goal",
+		[this](const rclcpp_action::GoalUUID& uuid, std::shared_ptr<const NavigateGoal::Goal> g)
+		{ return action_handle_goal(uuid, g); },
+		[this](const std::shared_ptr<HandleNavigateGoal> h) { return action_handle_cancel(h); },
+		[this](const std::shared_ptr<HandleNavigateGoal> h) { action_handle_accepted(h); });
+
+	goal_manager_thread_ = std::thread([this]() { goal_manager_loop(); });
+#endif
+
 	ptgs_init_thread_ = std::thread([this]() { initialize_ptgs_and_publish_shape(); });
 }
 
@@ -427,6 +451,39 @@ void TPS_Astar_Planner_Node::read_parameters()
 	RCLCPP_INFO(
 		this->get_logger(), "final_waypoint_ignore_heading: %s",
 		final_waypoint_ignore_heading_ ? "true" : "false");
+
+	// Goal manager (anytime and continuous planning):
+	this->declare_parameter<double>("anytime_first_path_time", anytime_first_path_time_);
+	this->get_parameter("anytime_first_path_time", anytime_first_path_time_);
+	this->declare_parameter<double>("anytime_min_progress", anytime_min_progress_);
+	this->get_parameter("anytime_min_progress", anytime_min_progress_);
+	this->declare_parameter<bool>("continuous_planning", continuous_planning_);
+	this->get_parameter("continuous_planning", continuous_planning_);
+	this->declare_parameter<double>("replan_period", replan_period_);
+	this->get_parameter("replan_period", replan_period_);
+	this->declare_parameter<double>("stitch_lookahead_time", stitch_lookahead_time_);
+	this->get_parameter("stitch_lookahead_time", stitch_lookahead_time_);
+	this->declare_parameter<int>("max_planning_restarts", max_planning_restarts_);
+	this->get_parameter("max_planning_restarts", max_planning_restarts_);
+	this->declare_parameter<std::string>("topic_follower_status_sub", topic_follower_status_sub_);
+	this->get_parameter("topic_follower_status_sub", topic_follower_status_sub_);
+	RCLCPP_INFO(
+		this->get_logger(),
+		"anytime_first_path_time: %.2f s (min progress: %.2f m), continuous_planning: %s "
+		"(replan_period: %.2f s, stitch_lookahead_time: %.2f s, max_planning_restarts: %d), "
+		"topic_follower_status_sub: '%s'",
+		anytime_first_path_time_, anytime_min_progress_, continuous_planning_ ? "true" : "false",
+		replan_period_, stitch_lookahead_time_, max_planning_restarts_,
+		topic_follower_status_sub_.c_str());
+#if !HAVE_MPP_CONTINUOUS_PLANNING
+	if (anytime_first_path_time_ > 0 || continuous_planning_)
+	{
+		RCLCPP_WARN(
+			this->get_logger(),
+			"anytime_first_path_time / continuous_planning need a newer mrpt_path_planning: "
+			"goals are planned once.");
+	}
+#endif
 }
 
 void TPS_Astar_Planner_Node::initialize_planner()
@@ -466,6 +523,25 @@ mpp::Planner& TPS_Astar_Planner_Node::get_thread_planner()
 	return *tl_planner;
 }
 
+const mpp::TrajectoriesAndRobotShape& TPS_Astar_Planner_Node::get_thread_ptgs()
+{
+#if defined(MPP_HAS_PTG_CLONE)
+	// Evaluating a PTG changes its state, so concurrent planners must not
+	// share them. Planning starts once ptgs_ is ready, after which it does
+	// not change anymore.
+	// (per node instance, in case several share a process):
+	thread_local std::map<const void*, mpp::TrajectoriesAndRobotShape> tl_ptgs;
+	auto it = tl_ptgs.find(this);
+	if (it == tl_ptgs.end())
+	{
+		it = tl_ptgs.emplace(this, ptgs_.clone()).first;
+	}
+	return it->second;
+#else
+	return ptgs_;
+#endif
+}
+
 void TPS_Astar_Planner_Node::callback_goal(const geometry_msgs::msg::PoseStamped& _goal)
 {
 	if (!check_ptgs_ready("Navigation goal"))
@@ -482,6 +558,12 @@ void TPS_Astar_Planner_Node::callback_goal(const geometry_msgs::msg::PoseStamped
 				this->get_logger(),
 				"callback_goal: cannot express the goal (frame '%s') in '%s', ignoring it: %s",
 				_goal.header.frame_id.c_str(), frame_id_map_.c_str(), error.c_str());
+			return;
+		}
+
+		if (goal_manager_enabled())
+		{
+			submit_goal(*nav_goal, nullptr);
 			return;
 		}
 
@@ -627,6 +709,81 @@ void TPS_Astar_Planner_Node::update_map(
 		xs.size(), corners.size());
 }
 
+size_t TPS_Astar_Planner_Node::build_obstacles(
+	const mrpt::math::TPose2D& start, std::vector<mpp::ObstacleSource::Ptr>& sources,
+	std::vector<mrpt::maps::CPointsMap::Ptr>* points,
+	std::vector<mpp::CostEvaluator::Ptr>* costEvaluators, mrpt::math::TBoundingBoxf& bbox,
+	const std::vector<mrpt::math::TPolygon2D>& ignore_regions)
+{
+	sources.clear();
+	if (points)
+	{
+		points->clear();
+	}
+
+	size_t totalObstaclePoints = 0;
+	size_t ignoredObstaclePoints = 0;
+	const auto without_ignored = [&](const mrpt::maps::CPointsMap::Ptr& pts)
+	{
+		auto kept = without_points_in(pts, ignore_regions);
+		ignoredObstaclePoints += pts->size() - kept->size();
+		return kept;
+	};
+	const auto addSource = [&](const mrpt::maps::CPointsMap::Ptr& pts)
+	{
+		sources.emplace_back(mpp::ObstacleSource::FromStaticPointcloud(pts));
+		if (points)
+		{
+			points->push_back(pts);
+		}
+		totalObstaclePoints += pts->size();
+		if (costEvaluators)
+		{
+			costEvaluators->push_back(
+				makeCostmapEvaluator(*pts, costMapParams_, start, ptgs_.robotShape));
+		}
+	};
+
+	auto lckObs = mrpt::lockHelper(obstacles_cs_);
+
+	// gridmaps:
+	for (const auto& e : gridmaps_)
+	{
+		if (!e.grid_obstacles)
+		{
+			RCLCPP_WARN_THROTTLE(
+				get_logger(), *get_clock(), 5000, "Gridmap not yet received, skipping it.");
+			continue;
+		}
+		addSource(without_ignored(e.grid_obstacles));
+		bbox = bbox.unionWith(e.grid_obstacles->boundingBox());
+	}
+
+	// points:
+	for (const auto& e : obstacle_points_)
+	{
+		if (!e.obstacle_points)
+		{
+			RCLCPP_WARN_THROTTLE(
+				get_logger(), *get_clock(), 5000,
+				"Obstacle point cloud not yet received, skipping it.");
+			continue;
+		}
+		const auto pts = without_ignored(e.obstacle_points);
+		addSource(pts);
+		if (!problem_world_bbox_ignore_obstacles_)
+		{
+			bbox = bbox.unionWith(pts->boundingBox());
+		}
+	}
+
+	RCLCPP_DEBUG(
+		get_logger(), "Obstacles: %zu sources, %zu points (%zu ignored).", sources.size(),
+		totalObstaclePoints, ignoredObstaclePoints);
+
+	return sources.size();
+}
+
 TPS_Astar_Planner_Node::PlanResult TPS_Astar_Planner_Node::do_path_plan(
 	const mrpt::math::TPose2D& start, const mrpt::math::TPose2D& goal,
 	const std::vector<mrpt::math::TPolygon2D>& ignore_regions)
@@ -637,7 +794,7 @@ TPS_Astar_Planner_Node::PlanResult TPS_Astar_Planner_Node::do_path_plan(
 
 	// Path planner input
 	mpp::PlannerInput pi;
-	pi.ptgs = ptgs_;
+	pi.ptgs = get_thread_ptgs();
 
 	// Start => Goal
 	// --------------------------------------------------------------
@@ -657,73 +814,9 @@ TPS_Astar_Planner_Node::PlanResult TPS_Astar_Planner_Node::do_path_plan(
 
 	// Create obstacle sources, and find out bounding box:
 	// --------------------------------------------------------------
-	auto lckObs = mrpt::lockHelper(obstacles_cs_);
-
-	pi.obstacles.clear();
-
-	size_t obstacleSources = 0;
-	size_t totalObstaclePoints = 0;
-	size_t ignoredObstaclePoints = 0;
-	const auto without_ignored = [&](const mrpt::maps::CPointsMap::Ptr& pts)
-	{
-		auto kept = without_points_in(pts, ignore_regions);
-		ignoredObstaclePoints += pts->size() - kept->size();
-		return kept;
-	};
-
-	// gridmaps:
-	for (const auto& e : gridmaps_)
-	{
-		if (!e.grid_obstacles)
-		{
-			RCLCPP_WARN_THROTTLE(
-				get_logger(), *get_clock(), 5000,
-				"do_path_plan: gridmap not yet received, skipping.");
-			continue;
-		}
-		const auto gridObstacles = without_ignored(e.grid_obstacles);
-		auto obs = mpp::ObstacleSource::FromStaticPointcloud(gridObstacles);
-		pi.obstacles.emplace_back(obs);
-
-		auto bb = e.grid_obstacles->boundingBox();
-		bbox = bbox.unionWith(bb);
-
-		obstacleSources++;
-		totalObstaclePoints += gridObstacles->size();
-
-		auto costmap = makeCostmapEvaluator(
-			*gridObstacles, costMapParams_, pi.stateStart.pose, ptgs_.robotShape);
-		local_planner.costEvaluators_.push_back(costmap);
-	}
-	// points:
-	for (const auto& e : obstacle_points_)
-	{
-		if (!e.obstacle_points)
-		{
-			RCLCPP_WARN_THROTTLE(
-				get_logger(), *get_clock(), 5000,
-				"do_path_plan: obstacle point cloud not yet received, skipping.");
-			continue;
-		}
-		const auto obstaclePoints = without_ignored(e.obstacle_points);
-		auto obs = mpp::ObstacleSource::FromStaticPointcloud(obstaclePoints);
-		pi.obstacles.emplace_back(obs);
-
-		if (!problem_world_bbox_ignore_obstacles_)
-		{
-			auto bb = obs->obstacles()->boundingBox();
-			bbox = bbox.unionWith(bb);
-		}
-
-		obstacleSources++;
-		totalObstaclePoints += obstaclePoints->size();
-
-		auto costmap = makeCostmapEvaluator(
-			*obstaclePoints, costMapParams_, pi.stateStart.pose, ptgs_.robotShape);
-		local_planner.costEvaluators_.push_back(costmap);
-	}
-
-	lckObs.unlock();
+	const size_t obstacleSources = build_obstacles(
+		pi.stateStart.pose, pi.obstacles, nullptr, &local_planner.costEvaluators_, bbox,
+		ignore_regions);
 
 	if (reverse_motion_cost_factor_ > 0)
 	{
@@ -751,11 +844,8 @@ TPS_Astar_Planner_Node::PlanResult TPS_Astar_Planner_Node::do_path_plan(
 	RCLCPP_INFO_STREAM(
 		this->get_logger(),
 		"Start state: " << pi.stateStart.asString() << "\n Goal state: " << pi.stateGoal.asString()
-						<< "\n Obstacle sources: " << obstacleSources
-						<< "\n Total obstacle points: " << totalObstaclePoints
-						<< "\n Ignored obstacle points: " << ignoredObstaclePoints
-						<< "\n  World bbox : " << pi.worldBboxMin.asString() << "-"
-						<< pi.worldBboxMax.asString());
+						<< "\n Obstacle sources: " << obstacleSources << "\n  World bbox : "
+						<< pi.worldBboxMin.asString() << "-" << pi.worldBboxMax.asString());
 
 	// Insert custom progress callback:
 	local_planner.progressCallback_ = [this](const mpp::ProgressCallbackData& pcd)
@@ -771,8 +861,13 @@ TPS_Astar_Planner_Node::PlanResult TPS_Astar_Planner_Node::do_path_plan(
 	// concurrent do_path_plan() call, and PTG evaluation is not reentrant.
 	mpp::PlannerOutput plan;
 	{
+#if defined(MPP_HAS_PTG_CLONE)
+		// Each thread has its own PTGs: no need to serialize planning.
+		plan = local_planner.plan(pi);
+#else
 		auto lckPlan = mrpt::lockHelper(planning_cs_);
 		plan = local_planner.plan(pi);
+#endif
 	}
 
 	RCLCPP_INFO_STREAM(

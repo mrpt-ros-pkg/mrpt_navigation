@@ -11,6 +11,7 @@ endif()
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(rclcpp_components REQUIRED)
+find_package(rclcpp_action REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(geometry_msgs)
 find_package(sensor_msgs REQUIRED)
@@ -67,6 +68,7 @@ endif()
 add_library(${PROJECT_NAME}_component SHARED
   src/${PROJECT_NAME}_component.cpp
   src/goal_frame.cpp
+  src/goal_manager.cpp
   src/obstacle_regions.cpp
 )
 
@@ -83,6 +85,7 @@ target_link_libraries(${PROJECT_NAME}_component PUBLIC
   mpp::mrpt_path_planning
   mpp::mrpt_path_planning_viz
   rclcpp::rclcpp
+  rclcpp_action::rclcpp_action
   ${rclcpp_components_TARGETS}
   ${nav_msgs_TARGETS}
   ${sensor_msgs_TARGETS}
