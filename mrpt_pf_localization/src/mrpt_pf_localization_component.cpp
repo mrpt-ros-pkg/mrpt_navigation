@@ -23,7 +23,7 @@
 #include <mrpt/ros2bridge/time.h>
 #include <mrpt/serialization/CSerializable.h>
 #include <mrpt/system/COutputLogger.h>
-#include <mrpt/version.h>
+#include <mrpt/system/hyperlink.h>
 #include <pose_cov_ops/pose_cov_ops.h>
 
 #include <cmath>
@@ -33,20 +33,6 @@
 
 #include "mrpt_pf_localization_node.h"
 #include "rclcpp_components/register_node_macro.hpp"
-
-#if MRPT_VERSION >= 0x020b08
-#include <mrpt/system/hyperlink.h>
-#else
-namespace mrpt::system	// backwards compatibility:
-{
-std::string hyperlink(
-	const std::string& text, const std::string& uri, bool force_format = false,
-	bool show_uri_anyway = false)
-{
-	return text;
-}
-}  // namespace mrpt::system
-#endif
 
 RCLCPP_COMPONENTS_REGISTER_NODE(PFLocalizationNode);  // Register node to make it composable
 
@@ -221,8 +207,7 @@ PFLocalizationNode::~PFLocalizationNode() = default;
 
 void PFLocalizationNode::reload_params_from_ros()
 {
-	// Use MRPT library the same log level as on ROS nodes (only for
-	// MRPT_VERSION >= 0x150)
+	// Use MRPT library the same log level as on ROS nodes
 	useROSLogLevel();
 
 	// Unify all ROS params into a in-memory YAML block and pass it to the core
