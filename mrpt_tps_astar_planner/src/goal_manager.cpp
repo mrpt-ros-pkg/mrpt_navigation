@@ -284,6 +284,9 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 	bool searchHasEvaluators = false;  // cost evaluators can be replaced
 	TPose2D searchStartPose;
 	std::vector<std::pair<const void*, size_t>> costmapSignature;
+	// Since when the follower waits at the end of a partial path:
+	std::optional<double> followerWaitingSince;
+	double tLastHeartbeat = 0;
 
 	auto endGoal = [&](int8_t status, const char* why)
 	{
@@ -594,13 +597,32 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 			{
 				certified.push_back(*e);
 			}
+			std::vector<TPose2D> searchPoses = {out.originalInput.stateStart.pose};
+			std::vector<size_t> unusedEnds;
+			sample_edges(edges, out.originalInput.ptgs, searchPoses, unusedEnds);
+
 			mpp::refine_trajectory(nodes, edgeList, out.originalInput.ptgs);
 
 			std::vector<TPose2D> refinedPoses = {out.originalInput.stateStart.pose};
-			std::vector<size_t> unusedEnds;
+			unusedEnds.clear();
 			sample_edges(edges, out.originalInput.ptgs, refinedPoses, unusedEnds);
-			if (first_colliding_pose(
-					refinedPoses, 0, index, footprintPoly, footprintRadius, kRefinedPathMargin))
+
+			// The refined edges are not checked by the search. They must keep
+			// the footprint clear of obstacles, except where the search path
+			// itself runs at zero clearance (paths may do so in narrow places):
+			// there, they must at least stay within the tolerance used to
+			// validate published paths. Unrefined paths have small jumps
+			// between edges, so they are only a fallback.
+			bool refinedOk = !first_colliding_pose(
+				refinedPoses, 0, index, footprintPoly, footprintRadius, kRefinedPathMargin);
+			if (!refinedOk &&
+				first_colliding_pose(
+					searchPoses, 0, index, footprintPoly, footprintRadius, kRefinedPathMargin))
+			{
+				refinedOk = !first_colliding_pose(
+					refinedPoses, 0, index, footprintPoly, footprintRadius, validationMargin);
+			}
+			if (!refinedOk)
 			{
 				RCLCPP_INFO(
 					get_logger(), "Goal #%u: the refined path is not clear: using the search one.",
@@ -833,6 +855,44 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 						followerEngaged = false;
 						restartSearch(true, followerStatus.c_str());
 					}
+				}
+
+				// A follower waiting at the end of a partial path for too long:
+				// the search is not extending it (stuck or blocked), so start
+				// another one from the robot.
+				// (a backstop: the search timeout normally restarts it first)
+				const double kMaxWaitForPath =
+					1.5 * planner.params_.maximumComputationTime + 5.0;	 // [s]
+				if (goal && statusIsCurrent && followerStatus == FOLLOWER_WAITING && published)
+				{
+					if (!followerWaitingSince)
+					{
+						followerWaitingSince = now_seconds();
+					}
+					else if (now_seconds() - *followerWaitingSince > kMaxWaitForPath)
+					{
+						followerWaitingSince.reset();
+						restartSearch(true, "the follower waits for a path");
+					}
+				}
+				else
+				{
+					followerWaitingSince.reset();
+				}
+
+				// Progress log, to diagnose searches that do not finish:
+				if (goal && now_seconds() - tLastHeartbeat > 10.0)
+				{
+					tLastHeartbeat = now_seconds();
+					RCLCPP_INFO(
+						get_logger(),
+						"Goal #%u: %.0f s after the goal, search %.0f s old, %s, follower: %s, "
+						"search %s.",
+						goal->id, now_seconds() - tGoalStart, now_seconds() - tSearchStart,
+						publishedFull ? "full path published"
+									  : (published ? "partial path published" : "no path yet"),
+						followerStatus.c_str(),
+						planner.search_can_continue() ? "running" : "ended");
 				}
 
 				// Robot progress along the published path:
