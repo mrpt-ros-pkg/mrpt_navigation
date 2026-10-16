@@ -145,7 +145,16 @@ class TPS_Astar_Planner_Node : public rclcpp::Node
 	/// Publisher for waypoint sequence
 	rclcpp::Publisher<mrpt_msgs::msg::WaypointSequence>::SharedPtr pub_wp_seq_;
 	rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr pub_wp_path_seq_;
-	std::vector<rclcpp::Publisher<nav_msgs::msg::OccupancyGrid>::SharedPtr> pub_costmaps_;
+	/// Costmap debug publisher, with the latest costmap (converted to a grid
+	/// only once someone subscribes to it):
+	struct CostmapPublisher
+	{
+		rclcpp::Publisher<nav_msgs::msg::OccupancyGrid>::SharedPtr pub;
+		mpp::CostEvaluator::Ptr latest;
+		bool latest_sent = false;
+	};
+	std::vector<CostmapPublisher> pub_costmaps_;
+	rclcpp::TimerBase::SharedPtr timer_costmaps_;
 
 	/// Robot footprint used for planning (latched), so other nodes can
 	/// check their configuration is consistent with it:
@@ -479,6 +488,16 @@ class TPS_Astar_Planner_Node : public rclcpp::Node
 	 * @param wps Waypoint sequence object
 	 */
 	void publish_waypoint_sequence(const mrpt_msgs::msg::WaypointSequence& wps);
+
+	/**
+	 * @brief Publishes each costmap evaluator as an OccupancyGrid on
+	 * `<topic_costmaps_pub_>_<i>`, with `i` its index in `costEvaluators`
+	 */
+	void publish_costmaps(const std::vector<mpp::CostEvaluator::Ptr>& costEvaluators);
+
+	/// Sends the latest costmaps not sent yet to topics that now have
+	/// subscribers. Call with pub_costmaps_cs_ held.
+	void send_pending_costmaps();
 };
 
 }  // namespace mrpt_tps_astar_planner

@@ -371,7 +371,7 @@ Visualization Manager:
       Name: astar.costmap[0]
       Topic:
         Depth: 5
-        Durability Policy: Volatile
+        Durability Policy: Transient Local
         Filter size: 10
         History Policy: Keep Last
         Reliability Policy: Reliable
@@ -382,6 +382,29 @@ Visualization Manager:
         History Policy: Keep Last
         Reliability Policy: Reliable
         Value: /costmap_0_updates
+      Use Timestamp: false
+      Value: true
+    - Alpha: 0.20000000298023224
+      Binary representation: false
+      Binary threshold: 100
+      Class: rviz_default_plugins/Map
+      Color Scheme: costmap
+      Draw Behind: false
+      Enabled: true
+      Name: astar.costmap[1]
+      Topic:
+        Depth: 5
+        Durability Policy: Transient Local
+        Filter size: 10
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /costmap_1
+      Update Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /costmap_1_updates
       Use Timestamp: false
       Value: true
   Enabled: true

@@ -17,7 +17,6 @@
 #include <mrpt/viz/stock_objects.h>
 
 // version:
-#include <mrpt/version.h>
 #include <rclcpp/version.h>
 
 // create_service() QoS parameter type changed between ROS 2 distros:
@@ -176,6 +175,16 @@ TPS_Astar_Planner_Node::TPS_Astar_Planner_Node(const rclcpp::NodeOptions& option
 	pub_wp_seq_ = this->create_publisher<mrpt_msgs::msg::WaypointSequence>(topic_wp_seq_pub_, qos);
 	pub_wp_path_seq_ =
 		this->create_publisher<nav_msgs::msg::Path>(topic_wp_seq_pub_ + "_path"s, qos);
+
+	// Costmaps are converted only once someone subscribes (see
+	// publish_costmaps()): this sends the latest ones to late subscribers.
+	timer_costmaps_ = this->create_wall_timer(
+		std::chrono::seconds(1),
+		[this]()
+		{
+			auto lck = mrpt::lockHelper(pub_costmaps_cs_);
+			send_pending_costmaps();
+		});
 
 	// Services and the NavigateGoal action are created once the PTGs are
 	// ready, so clients see them as unavailable (not failing) until then.
@@ -695,6 +704,57 @@ void TPS_Astar_Planner_Node::publish_waypoint_sequence(const mrpt_msgs::msg::Way
 	pub_wp_path_seq_->publish(p);
 }
 
+void TPS_Astar_Planner_Node::publish_costmaps(
+	const std::vector<mpp::CostEvaluator::Ptr>& costEvaluators)
+{
+	auto lckPub = mrpt::lockHelper(pub_costmaps_cs_);
+	if (pub_costmaps_.size() < costEvaluators.size())
+	{
+		pub_costmaps_.resize(costEvaluators.size());
+	}
+	for (size_t i = 0; i < costEvaluators.size(); i++)
+	{
+		// Only costmaps have a meaningful grid representation:
+		if (!std::dynamic_pointer_cast<mpp::CostEvaluatorCostMap>(costEvaluators.at(i)))
+		{
+			continue;
+		}
+		auto& cp = pub_costmaps_[i];
+		if (!cp.pub)
+		{
+			// See: REP-2003: https://ros.org/reps/rep-2003.html
+			const auto mapQoS = rclcpp::QoS(rclcpp::KeepLast(1)).transient_local().reliable();
+			cp.pub = this->create_publisher<nav_msgs::msg::OccupancyGrid>(
+				topic_costmaps_pub_ + mrpt::format("_%zu", i), mapQoS);
+		}
+		cp.latest = costEvaluators.at(i);
+		cp.latest_sent = false;
+	}
+	send_pending_costmaps();
+}
+
+void TPS_Astar_Planner_Node::send_pending_costmaps()
+{
+	for (auto& cp : pub_costmaps_)
+	{
+		// Converting the grid is not free, and the goal manager publishes
+		// while replanning: only do it once someone is listening. Later
+		// subscribers get it from the transient local publisher.
+		if (!cp.pub || !cp.latest || cp.latest_sent || cp.pub->get_subscription_count() == 0)
+		{
+			continue;
+		}
+		auto grid = cp.latest->get_visualization_as_grid();
+		nav_msgs::msg::OccupancyGrid costMapMsg;
+		mrpt::ros2bridge::toROS(*grid, costMapMsg, true /*as costmap*/);
+		costMapMsg.header.frame_id = frame_id_map_;
+		costMapMsg.header.stamp = this->now();
+
+		cp.pub->publish(costMapMsg);
+		cp.latest_sent = true;
+	}
+}
+
 void TPS_Astar_Planner_Node::update_map(
 	const nav_msgs::msg::OccupancyGrid::SharedPtr& msg, InfoPerGridMapSource& e)
 {
@@ -913,37 +973,7 @@ TPS_Astar_Planner_Node::PlanResult TPS_Astar_Planner_Node::do_path_plan(
 		return {};
 	}
 
-	// Publish costmaps:
-#if MRPT_VERSION >= 0x020e03  // >=v2.14.3
-	{
-		auto lckPub = mrpt::lockHelper(pub_costmaps_cs_);
-		pub_costmaps_.resize(local_planner.costEvaluators_.size());
-		for (size_t i = 0; i < local_planner.costEvaluators_.size(); i++)
-		{
-			// Only costmaps have a meaningful grid representation:
-			if (!std::dynamic_pointer_cast<mpp::CostEvaluatorCostMap>(
-					local_planner.costEvaluators_.at(i)))
-			{
-				continue;
-			}
-			if (!pub_costmaps_[i])
-			{
-				// See: REP-2003: https://ros.org/reps/rep-2003.html
-				const auto mapQoS = rclcpp::QoS(rclcpp::KeepLast(1)).transient_local().reliable();
-				pub_costmaps_[i] = this->create_publisher<nav_msgs::msg::OccupancyGrid>(
-					topic_costmaps_pub_ + mrpt::format("_%zu", i), mapQoS);
-			}
-			const auto& cm = local_planner.costEvaluators_.at(i);
-			auto grid = cm->get_visualization_as_grid();
-			nav_msgs::msg::OccupancyGrid costMapMsg;
-			mrpt::ros2bridge::toROS(*grid, costMapMsg, true /*as costmap*/);
-			costMapMsg.header.frame_id = frame_id_map_;
-			costMapMsg.header.stamp = this->now();
-
-			pub_costmaps_[i]->publish(costMapMsg);
-		}
-	}
-#endif
+	publish_costmaps(local_planner.costEvaluators_);
 
 	// backtrack:
 	auto [plannedPath, pathEdges] = plan.motionTree.backtrack_path(*plan.bestNodeId);
