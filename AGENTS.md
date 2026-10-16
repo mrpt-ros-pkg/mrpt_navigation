@@ -33,7 +33,9 @@ list and responsibilities:
   Goals from the topic or the `NavigateGoal` action go to a goal manager
   thread (`goal_manager.cpp`): anytime partial paths, then continuous
   replanning re-rooting the search ahead of the robot, published as
-  `ReferencePath` (committed part never changes). Services stay one-shot.
+  `ReferencePath` (committed part never changes); searches from a moving
+  robot start ahead of it on its path (`start_lookahead_time`). Services
+  stay one-shot.
 - **mrpt_trajectory_follower**: node that accurately follows a reference
   pose+speed path (pure pursuit) with predictive safety, a last-resort
   collision guard on every command, run-time speed limit, and optional
@@ -115,8 +117,9 @@ colcon test-result --verbose
 ```
 
 `colcon test --packages-select mrpt_navigation` runs headless end-to-end
-navigation batteries and an anytime/continuous planning test in mvsim
-(several minutes).
+navigation batteries and anytime/continuous/fast-robot replanning tests in
+mvsim (several minutes). The demo_world2 moving box is disabled in tests
+(`MRPT_TUTORIALS_DYNAMIC_OBSTACLES=false`).
 `colcon test --packages-select mrpt_trajectory_follower` drives a car-like
 robot out of and back into narrow aisles in mvsim (`mrpt_trajectory_follower/test/`).
 

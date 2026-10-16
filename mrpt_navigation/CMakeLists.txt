@@ -39,6 +39,14 @@ if(BUILD_TESTING)
     ENV MRPT_TUTORIALS_DIFFDRIVE_CONTROLLER=twist_ideal
         MRPT_TUTORIALS_DYNAMIC_OBSTACLES=false
   )
+
+  # Replanning for a fast robot (searches start ahead of it on its path):
+  ament_add_ros_isolated_pytest_test(test_fast_robot_replanning
+    test/test_fast_robot_replanning.py
+    TIMEOUT 900
+    ENV MRPT_TUTORIALS_DIFFDRIVE_CONTROLLER=twist_ideal
+        MRPT_TUTORIALS_DYNAMIC_OBSTACLES=false
+  )
 endif()
 
 # The following is needed for ROS 2's ament to generate the setup hooks
