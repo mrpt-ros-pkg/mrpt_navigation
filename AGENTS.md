@@ -24,7 +24,8 @@ list and responsibilities:
   up to `tf_max_wait` for it, then dropping the observation), and the local
   map is built relative to the pose of the latest observation (the published
   stamp).
-- **mrpt_reactivenav2d**: pure reactive navigator for polygonal robots in 2D.
+- **mrpt_reactivenav2d**: DEPRECATED. Pure reactive navigator for polygonal robots in 2D;
+  use mrpt_trajectory_follower with the A* planner instead.
 - **mrpt_tps_astar_planner**: SE(2)-lattice A* path planner based on PTG
   trajectories. Plan requests may list polygons where obstacle points are
   ignored (`ignore_obstacles_in`). `PoseStamped` goals (topic, `make_plan_to`)

@@ -54,6 +54,11 @@ std::string ptgCacheDirectory()
 ReactiveNav2DNode::ReactiveNav2DNode(const rclcpp::NodeOptions& options)
 	: Node("mrpt_reactivenav2d", options)
 {
+	RCLCPP_WARN(
+		this->get_logger(),
+		"mrpt_reactivenav2d is DEPRECATED and will be removed in a future release: use "
+		"mrpt_trajectory_follower (with mrpt_tps_astar_planner) instead.");
+
 	// Create subscriber that can be used to monitor parameter changes
 	param_subscriber_ = std::make_shared<rclcpp::ParameterEventHandler>(this);
 

@@ -92,7 +92,7 @@ thread, so the robot starts moving soon and reacts to obstacles in advance:
 
 The goal manager's anytime and continuous planning require
 `mrpt_trajectory_follower`: goals end with its status, and a path follower
-that does not report one (e.g. `mrpt_reactivenav2d` fed with the waypoint
+that does not report one (e.g. the deprecated `mrpt_reactivenav2d` fed with the waypoint
 sequence) never ends them. The launch file therefore disables both by default
 (one-shot plans), and the trajectory follower demos enable them. Paths cut short
 because of an obstacle are published on every path topic.

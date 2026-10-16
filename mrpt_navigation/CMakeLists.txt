@@ -47,6 +47,15 @@ if(BUILD_TESTING)
     ENV MRPT_TUTORIALS_DIFFDRIVE_CONTROLLER=twist_ideal
         MRPT_TUTORIALS_DYNAMIC_OBSTACLES=false
   )
+
+  # Goal manager against late/stale follower statuses and boxes dropped on
+  # the first path:
+  ament_add_ros_isolated_pytest_test(test_goal_manager_robustness
+    test/test_goal_manager_robustness.py
+    TIMEOUT 1200
+    ENV MRPT_TUTORIALS_DIFFDRIVE_CONTROLLER=twist_ideal
+        MRPT_TUTORIALS_DYNAMIC_OBSTACLES=false
+  )
 endif()
 
 # The following is needed for ROS 2's ament to generate the setup hooks
