@@ -172,7 +172,7 @@ manager plan concurrently.
 | `<topic_wp_seq_pub>_reference` (default `/waypoints_reference`) | `mrpt_nav_interfaces/ReferencePath` | Goal manager paths, with goal id, revision and whether they are partial (empty: navigation canceled) |
 | `~/committed_path`, `~/tentative_path` | `nav_msgs/Path` | Goal manager path, split into its committed part and the rest (latched; shown in different colors in the tutorial RViz/Foxglove layouts) |
 | `~/robot_shape` | `geometry_msgs/PolygonStamped` | Robot footprint used for planning (latched), so other nodes can check they use the same robot description |
-| `<topic_costmaps_pub>_0`, `_1`, … | `nav_msgs/OccupancyGrid` | Inflated costmaps (one per obstacle source, latched), published after each one-shot plan and whenever the goal manager rebuilds them |
+| `<topic_costmaps_pub>_0`, `_1`, … | `nav_msgs/OccupancyGrid` | Inflated costmaps (one per obstacle source, latched), published after each one-shot plan and whenever the goal manager rebuilds them, only while subscribed |
 
 ### Actions
 

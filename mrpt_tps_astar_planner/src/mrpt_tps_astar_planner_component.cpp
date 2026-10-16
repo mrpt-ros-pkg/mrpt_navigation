@@ -716,6 +716,12 @@ void TPS_Astar_Planner_Node::publish_costmaps(
 			pub_costmaps_[i] = this->create_publisher<nav_msgs::msg::OccupancyGrid>(
 				topic_costmaps_pub_ + mrpt::format("_%zu", i), mapQoS);
 		}
+		// Converting the grid is not free, and the goal manager calls this
+		// while replanning: skip it when nobody is listening.
+		if (pub_costmaps_[i]->get_subscription_count() == 0)
+		{
+			continue;
+		}
 		auto grid = costEvaluators.at(i)->get_visualization_as_grid();
 		nav_msgs::msg::OccupancyGrid costMapMsg;
 		mrpt::ros2bridge::toROS(*grid, costMapMsg, true /*as costmap*/);
