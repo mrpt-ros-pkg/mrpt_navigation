@@ -90,6 +90,13 @@ thread, so the robot starts moving soon and reacts to obstacles in advance:
 5. The goal ends when the follower (`topic_follower_status_sub`) reaches it
    after following a full path. A new goal preempts the current one.
 
+The goal manager's anytime and continuous planning require
+`mrpt_trajectory_follower`: goals end with its status, and a path follower
+that does not report one (e.g. `mrpt_reactivenav2d` fed with the waypoint
+sequence) never ends them. The launch file therefore disables both by default
+(one-shot plans), and the trajectory follower demos enable them. Paths cut short
+because of an obstacle are published on every path topic.
+
 Paths are published as `mrpt_nav_interfaces/ReferencePath` (for
 `mrpt_trajectory_follower`), and also as before (`WaypointSequence`, `Path`).
 With `continuous_planning: false` and `anytime_first_path_time: 0`, topic goals
@@ -126,14 +133,15 @@ manager plan concurrently.
 | `final_waypoint_allow_skip` | `false` | Whether the final waypoint may be skipped |
 | `mid_waypoints_ignore_heading` | `false` | Whether heading is ignored at intermediate waypoints |
 | `final_waypoint_ignore_heading` | `false` | Whether heading is ignored at the final waypoint |
-| `anytime_first_path_time` | `2.5` | Publish the best partial path after this time [s] if the goal is not reached yet (<=0: only full paths) |
+| `anytime_first_path_time` | `0.0` (launch file) | Publish the best partial path after this time [s] if the goal is not reached yet (<=0: only full paths) |
 | `anytime_min_progress` | `1.0` | Minimum progress toward the goal [m] of a partial path |
-| `continuous_planning` | `true` | Keep replanning while driving (see above) |
+| `continuous_planning` | `false` (launch file) | Keep replanning while driving (see above) |
 | `replan_period` | `1.0` | Period of the replanning cycles [s] |
 | `stitch_lookahead_time` | `3.0` | The search goes on from this far ahead [s] of the robot (at max PTG speed) |
 | `start_lookahead_time` | `3.0` | New searches from the robot (new goals, restarts) start this far ahead [s], at its current speed, on the path it is following (<=0: from the robot pose) |
 | `max_planning_restarts` | `5` | Searches restarted from scratch in a row for a goal, without reaching it, before giving up |
-| `topic_follower_status_sub` | `/mrpt_trajectory_follower/status` | Path follower status (goal reached or failed) |
+| `topic_follower_status_sub` | `/mrpt_trajectory_follower/status` | Path follower status (goal reached or failed), used only if the next one is empty |
+| `topic_follower_status_ex_sub` | `/mrpt_trajectory_follower/status_ex` | Path follower status with the goal id and path revision it refers to: only statuses of the latest published path are acted on |
 
 ### Subscribed topics
 

@@ -20,6 +20,7 @@
 #include <cmath>
 #include <mrpt_tps_astar_planner/goal_frame.hpp>
 #include <mrpt_tps_astar_planner/mrpt_tps_astar_planner_node.hpp>
+#include <mrpt_tps_astar_planner/path_validation.hpp>
 #include <unordered_map>
 
 namespace mrpt_tps_astar_planner
@@ -39,6 +40,11 @@ namespace
 {
 using mrpt::math::TPoint2D;
 using mrpt::math::TPose2D;
+using path_validation::arc_lengths;
+using path_validation::distance_to_footprint;
+using path_validation::first_colliding_pose;
+using path_validation::nearest_pose;
+using path_validation::ObstacleIndex;
 
 // Status strings of mrpt_trajectory_follower:
 const char* FOLLOWER_RUNNING = "Running";
@@ -88,159 +94,6 @@ void sample_edges(
 	}
 }
 
-// Cumulative arc-length of a path:
-std::vector<double> arc_lengths(const std::vector<TPose2D>& poses)
-{
-	std::vector<double> s(poses.size(), 0.0);
-	for (size_t i = 1; i < poses.size(); i++)
-	{
-		s[i] = s[i - 1] + (poses[i].translation() - poses[i - 1].translation()).norm();
-	}
-	return s;
-}
-
-// Index of the path pose nearest to `p`, searching around `hint`:
-size_t nearest_pose(const std::vector<TPose2D>& poses, const TPoint2D& p, size_t hint)
-{
-	constexpr size_t kBack = 10;
-	constexpr size_t kFwd = 80;
-	size_t best = hint;
-	double bestD2 = std::numeric_limits<double>::infinity();
-	const size_t i0 = hint > kBack ? hint - kBack : 0;
-	const size_t i1 = std::min(poses.size(), hint + kFwd);
-	for (size_t i = i0; i < i1; i++)
-	{
-		const double d2 = mrpt::square(poses[i].x - p.x) + mrpt::square(poses[i].y - p.y);
-		if (d2 < bestD2)
-		{
-			bestD2 = d2;
-			best = i;
-		}
-	}
-	return best;
-}
-
-// Signed distance from a point (robot frame) to the robot footprint border
-// (negative: inside).
-double distance_to_footprint(const mrpt::math::TPolygon2D& poly, const TPoint2D& q)
-{
-	double minD2 = std::numeric_limits<double>::infinity();
-	for (size_t i = 0, j = poly.size() - 1; i < poly.size(); j = i++)
-	{
-		const auto& a = poly[j];
-		const auto& b = poly[i];
-		const double ex = b.x - a.x;
-		const double ey = b.y - a.y;
-		const double l2 = ex * ex + ey * ey;
-		const double t =
-			l2 > 0 ? std::clamp(((q.x - a.x) * ex + (q.y - a.y) * ey) / l2, 0.0, 1.0) : 0.0;
-		minD2 = std::min(
-			minD2, mrpt::square(q.x - (a.x + t * ex)) + mrpt::square(q.y - (a.y + t * ey)));
-	}
-	return poly.contains(q) ? -std::sqrt(minD2) : std::sqrt(minD2);
-}
-
-// Obstacle points in a coarse 2D hash grid, for fast footprint checks.
-class ObstacleIndex
-{
-   public:
-	explicit ObstacleIndex(double cellSize) : cell_(cellSize) {}
-
-	void add(const mrpt::maps::CPointsMap& pts)
-	{
-		const auto& xs = pts.getPointsBufferRef_x();
-		const auto& ys = pts.getPointsBufferRef_y();
-		for (size_t i = 0; i < xs.size(); i++)
-		{
-			cells_[key(idx(xs[i]), idx(ys[i]))].emplace_back(xs[i], ys[i]);
-		}
-	}
-
-	// An obstacle closer than `margin` to the footprint border at `pose`
-	// (negative: at least that far inside), if any.
-	std::optional<TPoint2D> collides(
-		const TPose2D& pose, const mrpt::math::TPolygon2D& footprint, double footprintRadius,
-		double margin) const
-	{
-		const double r = footprintRadius + std::max(margin, 0.0);
-		const int64_t ix0 = idx(pose.x - r);
-		const int64_t ix1 = idx(pose.x + r);
-		const int64_t iy0 = idx(pose.y - r);
-		const int64_t iy1 = idx(pose.y + r);
-		const double c = std::cos(pose.phi);
-		const double s = std::sin(pose.phi);
-		for (int64_t ix = ix0; ix <= ix1; ix++)
-		{
-			for (int64_t iy = iy0; iy <= iy1; iy++)
-			{
-				const auto it = cells_.find(key(ix, iy));
-				if (it == cells_.end())
-				{
-					continue;
-				}
-				for (const auto& p : it->second)
-				{
-					const double dx = p.x - pose.x;
-					const double dy = p.y - pose.y;
-					if (dx * dx + dy * dy > r * r)
-					{
-						continue;
-					}
-					// In the robot frame:
-					const TPoint2D q(c * dx + s * dy, -s * dx + c * dy);
-					if (distance_to_footprint(footprint, q) <= margin)
-					{
-						return p;
-					}
-				}
-			}
-		}
-		return std::nullopt;
-	}
-
-   private:
-	double cell_;
-	std::unordered_map<int64_t, std::vector<TPoint2D>> cells_;
-
-	int64_t idx(double v) const { return static_cast<int64_t>(std::floor(v / cell_)); }
-	static int64_t key(int64_t ix, int64_t iy) { return (ix << 32) ^ (iy & 0xffffffff); }
-};
-
-// The first pose index from `from` whose footprint collides, and the obstacle
-// point, checking also between samples (every `step` meters).
-std::optional<std::pair<size_t, TPoint2D>> first_colliding_pose(
-	const std::vector<TPose2D>& poses, size_t from, const ObstacleIndex& obs,
-	const mrpt::math::TPolygon2D& footprint, double footprintRadius, double margin)
-{
-	constexpr double step = 0.05;  // [m]
-	for (size_t i = from; i < poses.size(); i++)
-	{
-		if (i == from)
-		{
-			if (const auto p = obs.collides(poses[i], footprint, footprintRadius, margin); p)
-			{
-				return std::make_pair(i, *p);
-			}
-			continue;
-		}
-		const auto& a = poses[i - 1];
-		const auto& b = poses[i];
-		const double len = (b.translation() - a.translation()).norm();
-		const int n = std::max(1, static_cast<int>(std::ceil(len / step)));
-		const double dphi = mrpt::math::wrapToPi(b.phi - a.phi);
-		for (int k = 1; k <= n; k++)
-		{
-			const double t = static_cast<double>(k) / n;
-			const TPose2D q(a.x + t * (b.x - a.x), a.y + t * (b.y - a.y), a.phi + t * dphi);
-			if (const auto p = obs.collides(q, footprint, footprintRadius, margin); p)
-			{
-				return std::make_pair(i, *p);
-			}
-		}
-	}
-	return std::nullopt;
-}
-
 nav_msgs::msg::Path to_path_msg(
 	const std::vector<TPose2D>& poses, size_t i0, size_t i1, const std::string& frame,
 	const rclcpp::Time& stamp)
@@ -262,6 +115,9 @@ nav_msgs::msg::Path to_path_msg(
 void TPS_Astar_Planner_Node::submit_goal(
 	const mrpt::math::TPose2D& goalInMap, std::shared_ptr<HandleNavigateGoal> h)
 {
+	// A goal replaced before being started (aborted after releasing the lock:
+	// rclcpp_action takes its own locks and may call back into this node):
+	std::shared_ptr<HandleNavigateGoal> replaced;
 	{
 		auto lck = std::lock_guard(goal_cs_);
 		ActiveGoal g;
@@ -270,16 +126,19 @@ void TPS_Astar_Planner_Node::submit_goal(
 		g.action = std::move(h);
 		if (pending_goal_ && pending_goal_->action)
 		{
-			// Replaced before being started:
-			auto result = std::make_shared<NavigateGoal::Result>();
-			result->state.navigation_status =
-				mrpt_nav_interfaces::msg::NavigationFinalStatus::STATUS_CANCELLED;
-			pending_goal_->action->abort(result);
+			replaced = std::move(pending_goal_->action);
 		}
 		pending_goal_ = std::move(g);
 		RCLCPP_INFO(
 			get_logger(), "New navigation goal #%u: (%.2f, %.2f, %.1f deg)", pending_goal_->id,
 			goalInMap.x, goalInMap.y, mrpt::RAD2DEG(goalInMap.phi));
+	}
+	if (replaced)
+	{
+		auto result = std::make_shared<NavigateGoal::Result>();
+		result->state.navigation_status =
+			mrpt_nav_interfaces::msg::NavigationFinalStatus::STATUS_CANCELLED;
+		replaced->abort(result);
 	}
 	goal_cv_.notify_all();
 }
@@ -288,16 +147,36 @@ void TPS_Astar_Planner_Node::callback_follower_status(const std_msgs::msg::Strin
 {
 	{
 		auto lck = std::lock_guard(goal_cs_);
-		if (msg.data == last_follower_status_)
+		if (msg.data == last_follower_status_ && !follower_status_has_id_)
 		{
 			return;
 		}
 		last_follower_status_ = msg.data;
+		follower_status_has_id_ = false;
 		follower_status_changed_ = true;
 		if (msg.data == FOLLOWER_RUNNING || msg.data == FOLLOWER_WAITING)
 		{
 			follower_active_seen_ = true;
 		}
+	}
+	goal_cv_.notify_all();
+}
+
+void TPS_Astar_Planner_Node::callback_follower_status_ex(
+	const mrpt_nav_interfaces::msg::FollowerStatus& msg)
+{
+	{
+		auto lck = std::lock_guard(goal_cs_);
+		if (msg.status == last_follower_status_ && follower_status_has_id_ == msg.has_goal_id &&
+			follower_status_goal_id_ == msg.goal_id && follower_status_revision_ == msg.revision)
+		{
+			return;
+		}
+		last_follower_status_ = msg.status;
+		follower_status_has_id_ = msg.has_goal_id;
+		follower_status_goal_id_ = msg.goal_id;
+		follower_status_revision_ = msg.revision;
+		follower_status_changed_ = true;
 	}
 	goal_cv_.notify_all();
 }
@@ -391,9 +270,20 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 	std::vector<double> pathS;
 	size_t rootIdx = 0;
 	size_t robotIdx = 0;
-	// Tree nodes along the published path after the root, with their pose
-	// index in pathPoses (in order):
-	std::vector<std::pair<mrpt::graphs::TNodeID, size_t>> pathNodes;
+	// Tree nodes along the published path after the root, in order: with their
+	// pose index in pathPoses, and their tree pose when published (to notice
+	// if the search later rewires them):
+	struct PathNode
+	{
+		mrpt::graphs::TNodeID id;
+		size_t poseIdx;
+		TPose2D treePose;
+	};
+	std::vector<PathNode> pathNodes;
+	mpp::PlannerOutput lastOut;	 // of the last search slice (the tree now)
+	bool searchHasEvaluators = false;  // cost evaluators can be replaced
+	TPose2D searchStartPose;
+	std::vector<std::pair<const void*, size_t>> costmapSignature;
 
 	auto endGoal = [&](int8_t status, const char* why)
 	{
@@ -447,7 +337,14 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 
 		planner.costEvaluators_.clear();
 		auto bbox = mrpt::math::TBoundingBoxf::PlusMinusInfinity();
-		build_obstacles(from, pi.obstacles, nullptr, &planner.costEvaluators_, bbox);
+		std::vector<mrpt::maps::CPointsMap::Ptr> startPoints;
+		build_obstacles(from, pi.obstacles, &startPoints, &planner.costEvaluators_, bbox);
+		costmapSignature.clear();
+		for (const auto& p : startPoints)
+		{
+			costmapSignature.emplace_back(p.get(), p->size());
+		}
+		searchStartPose = from;
 		if (reverse_motion_cost_factor_ > 0)
 		{
 			auto ev = mpp::CostEvaluatorReverseMotion::Create();
@@ -467,6 +364,7 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 		pi.worldBboxMin = {bbox.min.x, bbox.min.y, -M_PI};
 
 		planner.start(pi);
+		searchHasEvaluators = !planner.costEvaluators_.empty();
 		searchJustStarted = true;
 		searchPublished = false;
 		tSearchStart = now_seconds();
@@ -591,6 +489,9 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 	// noise of sensed obstacles and the localization, since paths may run at
 	// zero clearance. Obstacles really on the path get much deeper.
 	double validationMargin = 0;
+	// Newly refined edges are not checked by the search: they must keep the
+	// footprint clear of obstacles.
+	constexpr double kRefinedPathMargin = 0.0;
 
 	// The current obstacles, indexed for footprint checks:
 	auto obstacleIndex = [&](const std::vector<mrpt::maps::CPointsMap::Ptr>& points)
@@ -603,9 +504,79 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 		return index;
 	};
 
-	auto publishPath = [&](mpp::PlannerOutput& out, mrpt::graphs::TNodeID target, bool partial)
+	// Publishes the waypoint sequence of the first `n` poses of the path:
+	auto publishWaypoints = [&](size_t n, const rclcpp::Time& stamp)
+	{
+		mrpt_msgs::msg::WaypointSequence wps;
+		wps.header.frame_id = frame_id_map_;
+		wps.header.stamp = stamp;
+		for (size_t i = 0; i < n; i++)
+		{
+			const bool last = i + 1 == n;
+			auto& wp = wps.waypoints.emplace_back();
+			wp.target = mrpt::ros2bridge::toROS_Pose(pathPoses[i]);
+			wp.allowed_distance =
+				last ? final_waypoint_allowed_distance_ : mid_waypoints_allowed_distance_;
+			wp.allow_skip = last ? final_waypoint_allow_skip_ : mid_waypoints_allow_skip_;
+			wp.ignore_heading =
+				last ? final_waypoint_ignore_heading_ : mid_waypoints_ignore_heading_;
+		}
+		publish_waypoint_sequence(wps);
+	};
+
+	// Returns false (publishing nothing) if the new path hits the current
+	// obstacles.
+	// Rebuilds the obstacle-proximity costs when the obstacles changed: new
+	// obstacles get their clearance cost and moved ones lose the old one.
+	// (Edges already in the tree keep the cost they had.) Only if the search
+	// has cost evaluators since its start, as it then keeps full edge paths.
+	auto refreshCostmaps = [&](const std::vector<mrpt::maps::CPointsMap::Ptr>& points)
+	{
+		if (!searchHasEvaluators)
+		{
+			return;
+		}
+		std::vector<std::pair<const void*, size_t>> signature;
+		for (const auto& p : points)
+		{
+			signature.emplace_back(p.get(), p->size());
+		}
+		if (signature == costmapSignature)
+		{
+			return;
+		}
+		costmapSignature = std::move(signature);
+
+		std::vector<mpp::CostEvaluator::Ptr> evaluators;
+		std::vector<mpp::ObstacleSource::Ptr> unusedSources;
+		auto bbox = mrpt::math::TBoundingBoxf::PlusMinusInfinity();
+		build_obstacles(searchStartPose, unusedSources, nullptr, &evaluators, bbox);
+		// Keep the other evaluators (reverse motion cost):
+		for (const auto& ev : planner.costEvaluators_)
+		{
+			if (!std::dynamic_pointer_cast<mpp::CostEvaluatorCostMap>(ev))
+			{
+				evaluators.push_back(ev);
+			}
+		}
+		planner.costEvaluators_ = std::move(evaluators);
+	};
+
+	auto publishPath = [&](mpp::PlannerOutput& out, mrpt::graphs::TNodeID target,
+						   bool partial) -> bool
 	{
 		auto [nodes, edgeList] = out.motionTree.backtrack_path(target);
+
+		// The current obstacles, to check the new path:
+		std::vector<mpp::ObstacleSource::Ptr> unusedSources;
+		std::vector<mrpt::maps::CPointsMap::Ptr> points;
+		{
+			auto unusedBbox = mrpt::math::TBoundingBoxf::PlusMinusInfinity();
+			build_obstacles(
+				out.originalInput.stateStart.pose, unusedSources, &points, nullptr, unusedBbox);
+		}
+		const auto index = obstacleIndex(points);
+
 		std::vector<mpp::MoveEdgeSE2_TPS*> edges;
 		for (auto* e : edgeList)
 		{
@@ -628,14 +599,8 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 			std::vector<TPose2D> refinedPoses = {out.originalInput.stateStart.pose};
 			std::vector<size_t> unusedEnds;
 			sample_edges(edges, out.originalInput.ptgs, refinedPoses, unusedEnds);
-			std::vector<mpp::ObstacleSource::Ptr> unusedSources;
-			std::vector<mrpt::maps::CPointsMap::Ptr> points;
-			auto unusedBbox = mrpt::math::TBoundingBoxf::PlusMinusInfinity();
-			build_obstacles(
-				out.originalInput.stateStart.pose, unusedSources, &points, nullptr, unusedBbox);
 			if (first_colliding_pose(
-					refinedPoses, 0, obstacleIndex(points), footprintPoly, footprintRadius,
-					validationMargin))
+					refinedPoses, 0, index, footprintPoly, footprintRadius, kRefinedPathMargin))
 			{
 				RCLCPP_INFO(
 					get_logger(), "Goal #%u: the refined path is not clear: using the search one.",
@@ -669,6 +634,20 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 			newPoses.back() = goal->pose;
 		}
 
+		// The search edges were checked when created, maybe against older
+		// obstacles: check the new part against the current ones.
+		if (const auto hit = first_colliding_pose(
+				newPoses, std::max(newRootIdx, robotIdx > first ? robotIdx - first : 0), index,
+				footprintPoly, footprintRadius, validationMargin);
+			hit)
+		{
+			RCLCPP_INFO(
+				get_logger(),
+				"Goal #%u: the new %s path hits an obstacle at (%.2f, %.2f): not published.",
+				goal->id, partial ? "partial" : "full", hit->second.x, hit->second.y);
+			return false;
+		}
+
 		pathNodes.clear();
 		auto itNode = nodes.begin();
 		for (size_t i = 0; i < edgeEnd.size() && itNode != nodes.end(); i++)
@@ -676,7 +655,7 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 			++itNode;
 			if (itNode != nodes.end())
 			{
-				pathNodes.emplace_back(itNode->nodeID_, edgeEnd[i]);
+				pathNodes.push_back({itNode->nodeID_, edgeEnd[i], itNode->pose});
 			}
 		}
 
@@ -700,20 +679,7 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 		pub_reference_path_->publish(rp);
 
 		// Also as a waypoint sequence (other path followers, visualization):
-		mrpt_msgs::msg::WaypointSequence wps;
-		wps.header = rp.path.header;
-		for (size_t i = 0; i < pathPoses.size(); i++)
-		{
-			const bool last = i + 1 == pathPoses.size();
-			auto& wp = wps.waypoints.emplace_back();
-			wp.target = mrpt::ros2bridge::toROS_Pose(pathPoses[i]);
-			wp.allowed_distance =
-				last ? final_waypoint_allowed_distance_ : mid_waypoints_allowed_distance_;
-			wp.allow_skip = last ? final_waypoint_allow_skip_ : mid_waypoints_allow_skip_;
-			wp.ignore_heading =
-				last ? final_waypoint_ignore_heading_ : mid_waypoints_ignore_heading_;
-		}
-		publish_waypoint_sequence(wps);
+		publishWaypoints(pathPoses.size(), stamp);
 
 		pub_committed_path_->publish(to_path_msg(pathPoses, 0, rootIdx + 1, frame_id_map_, stamp));
 		pub_tentative_path_->publish(
@@ -724,6 +690,7 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 			"Goal #%u: published %s path (rev. %u, %zu poses, %.1f m, %.1f s after goal)", goal->id,
 			partial ? "PARTIAL" : "full", revision, pathPoses.size(), pathS.back(),
 			now_seconds() - tGoalStart);
+		return true;
 	};
 
 	// Publishes the path up to pose `idx` (exclusive), so the follower stops
@@ -737,6 +704,7 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 		rp.revision = ++revision;
 		rp.is_partial = true;
 		pub_reference_path_->publish(rp);
+		publishWaypoints(std::min(std::max<size_t>(idx, 2), pathPoses.size()), stamp);
 		pub_tentative_path_->publish(to_path_msg({}, 0, 0, frame_id_map_, stamp));
 		publishedFull = false;
 	};
@@ -751,6 +719,9 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 		std::string followerStatus;
 		bool statusChanged = false;
 		bool followerActiveSeen = false;
+		bool followerHasId = false;
+		uint32_t followerGoalId = 0;
+		uint32_t followerRevision = 0;
 		{
 			std::unique_lock lck(goal_cs_);
 			if (shutting_down_)
@@ -762,6 +733,9 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 			followerStatus = last_follower_status_;
 			statusChanged = std::exchange(follower_status_changed_, false);
 			followerActiveSeen = std::exchange(follower_active_seen_, false);
+			followerHasId = follower_status_has_id_;
+			followerGoalId = follower_status_goal_id_;
+			followerRevision = follower_status_revision_;
 		}
 
 		if (!plannerReady && ptgs_ready_)
@@ -830,12 +804,19 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 
 				// Follower status: act on terminal states only once the follower
 				// is following one of our paths for this goal.
-				if (followerActiveSeen || followerStatus == FOLLOWER_RUNNING ||
-					followerStatus == FOLLOWER_WAITING)
+				// With statuses carrying the path they refer to, only those for
+				// the latest path published for this goal count (the previous
+				// path may be reported late, e.g. as reached).
+				const bool statusHasIds = sub_follower_status_ex_ != nullptr;
+				const bool statusIsCurrent =
+					!statusHasIds ||
+					(followerHasId && followerGoalId == goal->id && followerRevision == revision);
+				if (statusIsCurrent && (followerActiveSeen || followerStatus == FOLLOWER_RUNNING ||
+										followerStatus == FOLLOWER_WAITING))
 				{
 					followerEngaged = published;
 				}
-				if (followerEngaged && statusChanged)
+				if (statusIsCurrent && followerEngaged && statusChanged)
 				{
 					if (followerStatus == FOLLOWER_REACHED && publishedFull)
 					{
@@ -916,16 +897,37 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 					const double sStitch = pathS[robotIdx] + stitch_lookahead_time_ * maxLinSpeed;
 					for (size_t k = 0; k < pathNodes.size(); k++)
 					{
-						if (pathS[pathNodes[k].second] < sStitch && k + 1 < pathNodes.size())
+						if (pathS[pathNodes[k].poseIdx] < sStitch && k + 1 < pathNodes.size())
 						{
 							continue;
 						}
-						if (planner.reroot(pathNodes[k].first))
+						// The search may have rewired the node (a cheaper parent
+						// and a new exact pose in its cell) after it was
+						// published: the path would then jump at the root.
+						const auto& nodesNow = lastOut.motionTree.nodes();
+						const auto itNow = nodesNow.find(pathNodes[k].id);
+						if (itNow == nodesNow.end() ||
+							(itNow->second.pose.translation() - pathNodes[k].treePose.translation())
+									.norm() > 1e-6 ||
+							std::abs(mrpt::math::wrapToPi(
+								itNow->second.pose.phi - pathNodes[k].treePose.phi)) > 1e-6)
 						{
-							rootIdx = pathNodes[k].second;
+							RCLCPP_INFO(
+								get_logger(),
+								"Goal #%u: the node to re-root at changed in the search: waiting "
+								"for the next path.",
+								goal->id);
+							break;
+						}
+						if (planner.reroot(pathNodes[k].id))
+						{
+							rootIdx = pathNodes[k].poseIdx;
 							pathNodes.erase(pathNodes.begin(), pathNodes.begin() + k + 1);
 							pub_committed_path_->publish(
 								to_path_msg(pathPoses, 0, rootIdx + 1, frame_id_map_, this->now()));
+							// Progress: the search time and restarts count from here.
+							tSearchStart = now_seconds();
+							restarts = 0;
 						}
 						break;
 					}
@@ -937,6 +939,7 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 					if (!obsSources.empty() && !searchJustStarted)
 					{
 						planner.set_obstacles(obsSources);
+						refreshCostmaps(obsPoints);
 					}
 					searchJustStarted = false;
 					const double sinceSearch = now_seconds() - tSearchStart;
@@ -964,13 +967,17 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 					}
 
 					const double searchTime = now_seconds() - tSearchStart;
+					bool restartedNow = false;
 					if (out.success && out.goalNodeId)
 					{
 						// max_planning_restarts limits consecutive failures:
 						restarts = 0;
-						if (!publishedFull || publishedTarget != out.goalNodeId)
+						if ((!publishedFull || publishedTarget != out.goalNodeId) &&
+							!publishPath(out, *out.goalNodeId, false))
 						{
-							publishPath(out, *out.goalNodeId, false);
+							// (some edge hits the latest obstacles)
+							restartSearch(true, "the new path is blocked");
+							restartedNow = true;
 						}
 					}
 					else if (
@@ -991,7 +998,7 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 						}
 					}
 
-					if (!planner.search_reached_goal() &&
+					if (goal && !restartedNow && !planner.search_reached_goal() &&
 						(!planner.search_can_continue() ||
 						 searchTime > planner.params_.maximumComputationTime))
 					{
@@ -1010,6 +1017,7 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 							restartSearch(true, why);
 						}
 					}
+					lastOut = std::move(out);
 				}
 
 				// Feedback:

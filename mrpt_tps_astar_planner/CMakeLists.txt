@@ -161,6 +161,12 @@ if(BUILD_TESTING)
     ${CMAKE_CURRENT_SOURCE_DIR}/include)
   target_link_libraries(test_obstacle_regions mrpt::mrpt_maps ${geometry_msgs_TARGETS})
 
+  ament_add_gtest(test_path_validation
+    test/test_path_validation.cpp)
+  target_include_directories(test_path_validation PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/include)
+  target_link_libraries(test_path_validation mrpt::mrpt_maps mrpt::mrpt_math)
+
   # Goal frame handling: the helper alone, then the whole node with TF.
   ament_add_gtest(test_goal_frame
     test/test_goal_frame.cpp

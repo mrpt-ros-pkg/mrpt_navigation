@@ -109,14 +109,16 @@ def generate_launch_description():
     # Goal manager (goals from the goal topic or the navigate_goal action):
     goal_manager_args = [
         DeclareLaunchArgument(
-            'anytime_first_path_time', default_value='2.5',
+            'anytime_first_path_time', default_value='0.0',
             description='Publish the best partial path after this time [s] if the goal is not '
-            'reached yet by the search (<=0: only publish full paths)'),
+            'reached yet by the search (<=0: only publish full paths). Partial paths and '
+            'continuous planning need mrpt_trajectory_follower (they use its status to end '
+            'goals): disabled by default, enabled in the follower demos'),
         DeclareLaunchArgument(
             'anytime_min_progress', default_value='1.0',
             description='Minimum progress toward the goal [m] of a partial path'),
         DeclareLaunchArgument(
-            'continuous_planning', default_value='true',
+            'continuous_planning', default_value='false',
             description='Keep replanning while the robot drives: check the path against new '
             'obstacles, and go on with the search from ahead of the robot. If both this and '
             'anytime_first_path_time are disabled, goals are planned once as one-shot plans'),
@@ -138,6 +140,10 @@ def generate_launch_description():
         DeclareLaunchArgument(
             'topic_follower_status_sub', default_value='/mrpt_trajectory_follower/status',
             description='Path follower status topic (to know when a goal is reached or fails)'),
+        DeclareLaunchArgument(
+            'topic_follower_status_ex_sub', default_value='/mrpt_trajectory_follower/status_ex',
+            description='Path follower status with the id of the path it refers to (used '
+            'instead of the plain status topic if not empty)'),
     ]
 
     use_composable = LaunchConfiguration('use_composable')
@@ -198,6 +204,7 @@ def generate_launch_description():
         {'max_planning_restarts': ParameterValue(LaunchConfiguration(
             'max_planning_restarts'), value_type=int)},
         {'topic_follower_status_sub': LaunchConfiguration('topic_follower_status_sub')},
+        {'topic_follower_status_ex_sub': LaunchConfiguration('topic_follower_status_ex_sub')},
         # Param files:
         {'planner_parameters': LaunchConfiguration('planner_parameters')},
         {'global_costmap_parameters': LaunchConfiguration(

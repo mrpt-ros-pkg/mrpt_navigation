@@ -214,7 +214,15 @@ TPS_Astar_Planner_Node::TPS_Astar_Planner_Node(const rclcpp::NodeOptions& option
 	pub_committed_path_ = this->create_publisher<nav_msgs::msg::Path>("~/committed_path", mapQoS);
 	pub_tentative_path_ = this->create_publisher<nav_msgs::msg::Path>("~/tentative_path", mapQoS);
 
-	if (!topic_follower_status_sub_.empty())
+	if (!topic_follower_status_ex_sub_.empty())
+	{
+		sub_follower_status_ex_ =
+			this->create_subscription<mrpt_nav_interfaces::msg::FollowerStatus>(
+				topic_follower_status_ex_sub_, mapQoS,
+				[this](const mrpt_nav_interfaces::msg::FollowerStatus& msg)
+				{ this->callback_follower_status_ex(msg); });
+	}
+	else if (!topic_follower_status_sub_.empty())
 	{
 		sub_follower_status_ = this->create_subscription<std_msgs::msg::String>(
 			topic_follower_status_sub_, mapQoS,
@@ -467,6 +475,9 @@ void TPS_Astar_Planner_Node::read_parameters()
 	this->get_parameter("start_lookahead_time", start_lookahead_time_);
 	this->declare_parameter<int>("max_planning_restarts", max_planning_restarts_);
 	this->get_parameter("max_planning_restarts", max_planning_restarts_);
+	this->declare_parameter<std::string>(
+		"topic_follower_status_ex_sub", topic_follower_status_ex_sub_);
+	this->get_parameter("topic_follower_status_ex_sub", topic_follower_status_ex_sub_);
 	this->declare_parameter<std::string>("topic_follower_status_sub", topic_follower_status_sub_);
 	this->get_parameter("topic_follower_status_sub", topic_follower_status_sub_);
 	RCLCPP_INFO(
@@ -509,21 +520,28 @@ void TPS_Astar_Planner_Node::initialize_planner()
 		mrpt::containers::yaml::FromFile(costmap_params_file_));
 }
 
+TPS_Astar_Planner_Node::ThreadResources& TPS_Astar_Planner_Node::thread_resources()
+{
+	// (std::map nodes are stable: the reference stays valid while others are
+	// added)
+	auto lck = std::lock_guard(thread_resources_cs_);
+	return thread_resources_[std::this_thread::get_id()];
+}
+
 mpp::Planner& TPS_Astar_Planner_Node::get_thread_planner()
 {
-	// One planner instance per OS thread, initialized lazily on first call.
-	// With MultiThreadedExecutor the thread pool is fixed after spin() starts,
-	// so each thread pays the init cost exactly once.
-	thread_local mpp::Planner::Ptr tl_planner;
-	if (!tl_planner)
+	// One planner instance per OS thread and node, initialized lazily on first
+	// call.
+	auto& res = thread_resources();
+	if (!res.planner)
 	{
-		tl_planner = mpp::TPS_Astar::Create();
-		tl_planner->profiler_().enable(true);
-		tl_planner->params_from_yaml(planner_params_yaml_);
+		res.planner = mpp::TPS_Astar::Create();
+		res.planner->profiler_().enable(true);
+		res.planner->params_from_yaml(planner_params_yaml_);
 		RCLCPP_INFO_STREAM(
 			get_logger(), "Initialized planner for thread " << std::this_thread::get_id());
 	}
-	return *tl_planner;
+	return *res.planner;
 }
 
 const mpp::TrajectoriesAndRobotShape& TPS_Astar_Planner_Node::get_thread_ptgs()
@@ -532,14 +550,12 @@ const mpp::TrajectoriesAndRobotShape& TPS_Astar_Planner_Node::get_thread_ptgs()
 	// Evaluating a PTG changes its state, so concurrent planners must not
 	// share them. Planning starts once ptgs_ is ready, after which it does
 	// not change anymore.
-	// (per node instance, in case several share a process):
-	thread_local std::map<const void*, mpp::TrajectoriesAndRobotShape> tl_ptgs;
-	auto it = tl_ptgs.find(this);
-	if (it == tl_ptgs.end())
+	auto& res = thread_resources();
+	if (!res.ptgs)
 	{
-		it = tl_ptgs.emplace(this, ptgs_.clone()).first;
+		res.ptgs = ptgs_.clone();
 	}
-	return it->second;
+	return *res.ptgs;
 #else
 	return ptgs_;
 #endif

@@ -47,6 +47,7 @@
 #include <geometry_msgs/msg/twist.hpp>
 #include <geometry_msgs/msg/twist_stamped.hpp>
 #include <memory>
+#include <mrpt_nav_interfaces/msg/follower_status.hpp>
 #include <mrpt_nav_interfaces/msg/reference_path.hpp>
 #include <mrpt_nav_interfaces/srv/make_plan_to.hpp>
 #include <mutex>
@@ -132,6 +133,7 @@ class TrajectoryFollowerNode : public rclcpp::Node, public mpp::TrajectoryVehicl
 	rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr pub_chunk_;
 	rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr pub_ref_path_;
 	rclcpp::Publisher<std_msgs::msg::String>::SharedPtr pub_status_;
+	rclcpp::Publisher<mrpt_nav_interfaces::msg::FollowerStatus>::SharedPtr pub_status_ex_;
 
 	rclcpp::Client<mrpt_nav_interfaces::srv::MakePlanTo>::SharedPtr plan_client_;
 
@@ -215,6 +217,11 @@ class TrajectoryFollowerNode : public rclcpp::Node, public mpp::TrajectoryVehicl
 	/// Goal of the current path, if it comes from a planner that keeps
 	/// updating it (ReferencePath): that planner then handles failures.
 	std::optional<uint32_t> managed_goal_id_;
+	/// Revision of the last ReferencePath adopted (for managed_goal_id_)
+	uint32_t managed_revision_ = 0;
+	/// Path ids published with the status (the last ones, once the goal ends)
+	std::optional<uint32_t> status_goal_id_;
+	uint32_t status_revision_ = 0;
 	/// The current path does not reach the goal yet (more updates follow)
 	bool path_is_partial_ = false;
 
@@ -231,7 +238,8 @@ class TrajectoryFollowerNode : public rclcpp::Node, public mpp::TrajectoryVehicl
 
 	/// Common handling of a new path. Returns false if it is not followed.
 	bool handle_new_path(
-		const nav_msgs::msg::Path& msg, std::optional<uint32_t> managedGoalId, bool partial);
+		const nav_msgs::msg::Path& msg, std::optional<uint32_t> managedGoalId, bool partial,
+		uint32_t revision = 0);
 	void callback_obstacles(const sensor_msgs::msg::PointCloud2::SharedPtr& pc);
 	void callback_odom(const nav_msgs::msg::Odometry::SharedPtr& msg);
 
