@@ -30,6 +30,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   action/NavigateWaypoints.action
   msg/GeoreferencingMetadata.msg
   msg/NavigationFeedback.msg
+  msg/FollowerStatus.msg
   msg/NavigationFinalStatus.msg
   msg/ReferencePath.msg
   srv/GetLayers.srv

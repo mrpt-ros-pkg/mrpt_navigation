@@ -59,6 +59,8 @@ PLANNER_GOAL_MANAGER_ARGS = [
      'Planner: publish the best partial path after this time [s] (<=0: only full paths)'),
     ('anytime_min_progress', '1.0',
      'Planner: minimum progress toward the goal [m] of a partial path'),
+    ('anytime_max_partial_length', '10.0',
+     'Planner: partial paths are cut to this length [m] (<=0: no limit)'),
     ('continuous_planning', 'true',
      'Planner: keep replanning while the robot drives'),
     ('replan_period', '1.0',
@@ -67,6 +69,8 @@ PLANNER_GOAL_MANAGER_ARGS = [
      'Planner: the search goes on from this far ahead [s] of the robot on its path'),
     ('start_lookahead_time', '3.0',
      'Planner: new searches from a moving robot start this far ahead [s] on its path'),
+    ('topic_follower_status_ex_sub', '/mrpt_trajectory_follower/status_ex',
+     'Planner: follower status with path ids (empty: use the plain status topic)'),
     ('max_planning_restarts', '5',
      'Planner: searches restarted in a row for a goal, without reaching it, before giving up'),
 ]

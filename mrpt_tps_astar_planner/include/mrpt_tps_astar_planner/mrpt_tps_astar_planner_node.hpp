@@ -52,10 +52,12 @@
 #include <geometry_msgs/msg/pose_with_covariance_stamped.hpp>
 #include <geometry_msgs/msg/transform_stamped.hpp>
 #include <geometry_msgs/msg/twist.hpp>
+#include <map>
 #include <memory>
 #include <mrpt_msgs/msg/waypoint.hpp>
 #include <mrpt_msgs/msg/waypoint_sequence.hpp>
 #include <mrpt_nav_interfaces/action/navigate_goal.hpp>
+#include <mrpt_nav_interfaces/msg/follower_status.hpp>
 #include <mrpt_nav_interfaces/msg/reference_path.hpp>
 #include <mrpt_nav_interfaces/srv/make_plan_from_to.hpp>
 #include <mrpt_nav_interfaces/srv/make_plan_to.hpp>
@@ -252,6 +254,17 @@ class TPS_Astar_Planner_Node : public rclcpp::Node
 	/// planning is serialized with planning_cs_).
 	const mpp::TrajectoriesAndRobotShape& get_thread_ptgs();
 
+	/// Planner and PTG copy of each thread using them, owned by this node (so
+	/// they are freed with it, and never shared with another node).
+	struct ThreadResources
+	{
+		mpp::Planner::Ptr planner;
+		std::optional<mpp::TrajectoriesAndRobotShape> ptgs;
+	};
+	std::mutex thread_resources_cs_;
+	std::map<std::thread::id, ThreadResources> thread_resources_;
+	ThreadResources& thread_resources();
+
 	// ---------------------------------------------------------------------
 	// Goal manager: navigation goals from the goal topic or the action are
 	// planned in a background thread, publishing the best partial path soon
@@ -265,6 +278,9 @@ class TPS_Astar_Planner_Node : public rclcpp::Node
 	double anytime_first_path_time_ = 2.5;
 	/// Minimum progress toward the goal [m] for a partial path to be used
 	double anytime_min_progress_ = 1.0;
+	/// Partial paths are cut to this length [m], so a wrong guess (a dead end)
+	/// does not take the robot far (<=0: no limit)
+	double anytime_max_partial_length_ = 10.0;
 	/// Keep replanning (validating the path and moving the search root) while
 	/// the robot drives. Otherwise, a goal is planned once.
 	bool continuous_planning_ = true;
@@ -283,6 +299,9 @@ class TPS_Astar_Planner_Node : public rclcpp::Node
 	int max_planning_restarts_ = 5;
 	/// The follower status topic (to know when goals are reached or fail)
 	std::string topic_follower_status_sub_ = "/mrpt_trajectory_follower/status";
+	/// The follower status with the id of the path it refers to (preferred:
+	/// the plain string one is only used if this is empty)
+	std::string topic_follower_status_ex_sub_ = "/mrpt_trajectory_follower/status_ex";
 
 	/// Whether goals use the goal manager (anytime or continuous planning)
 	[[nodiscard]] bool goal_manager_enabled() const;
@@ -291,6 +310,8 @@ class TPS_Astar_Planner_Node : public rclcpp::Node
 	rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr pub_committed_path_;
 	rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr pub_tentative_path_;
 	rclcpp::Subscription<std_msgs::msg::String>::SharedPtr sub_follower_status_;
+	rclcpp::Subscription<mrpt_nav_interfaces::msg::FollowerStatus>::SharedPtr
+		sub_follower_status_ex_;
 	rclcpp_action::Server<NavigateGoal>::SharedPtr action_server_;
 
 	/// A navigation goal handled by the goal manager:
@@ -305,6 +326,9 @@ class TPS_Astar_Planner_Node : public rclcpp::Node
 	std::optional<ActiveGoal> pending_goal_;  //!< new goal, not taken yet
 	bool cancel_requested_ = false;
 	std::string last_follower_status_;
+	bool follower_status_has_id_ = false;  //!< the status refers to a known path
+	uint32_t follower_status_goal_id_ = 0;
+	uint32_t follower_status_revision_ = 0;
 	bool follower_status_changed_ = false;
 	bool follower_active_seen_ = false;	 //!< Running/WaitingForPath since last cycle
 	bool shutting_down_ = false;
@@ -319,6 +343,7 @@ class TPS_Astar_Planner_Node : public rclcpp::Node
 	void goal_manager_loop();
 
 	void callback_follower_status(const std_msgs::msg::String& msg);
+	void callback_follower_status_ex(const mrpt_nav_interfaces::msg::FollowerStatus& msg);
 
 	rclcpp_action::GoalResponse action_handle_goal(
 		const rclcpp_action::GoalUUID& uuid, std::shared_ptr<const NavigateGoal::Goal> goal);

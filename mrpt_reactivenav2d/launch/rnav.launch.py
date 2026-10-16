@@ -11,7 +11,7 @@ from launch import LaunchDescription
 from launch.substitutions import TextSubstitution
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
-from launch.actions import DeclareLaunchArgument, Shutdown
+from launch.actions import DeclareLaunchArgument, LogInfo, Shutdown
 from ament_index_python import get_package_share_directory
 from launch.actions import GroupAction
 from launch_ros.actions import PushRosNamespace
@@ -108,6 +108,8 @@ def generate_launch_description():
     )
 
     ld = LaunchDescription([
+        LogInfo(msg='[DEPRECATED] mrpt_reactivenav2d will be removed in a future release: '
+                'use mrpt_trajectory_follower with mrpt_tps_astar_planner instead.'),
         rnav_cfg_file_arg,
         log_level_launch_arg,
         topic_robot_shape_arg,

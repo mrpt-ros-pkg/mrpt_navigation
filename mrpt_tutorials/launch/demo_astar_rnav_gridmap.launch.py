@@ -3,6 +3,9 @@
 # A* planner (mrpt_tps_astar_planner) + reactive navigator (mrpt_reactivenav2d)
 # on a simulated differential-drive robot.
 #
+# DEPRECATED: mrpt_reactivenav2d will be removed in a future release. See
+# demo_astar_trajectory_follower_gridmap.launch.py instead.
+#
 # All nodes except mvsim run on the simulation clock published by mvsim
 # (launch argument use_sim_time, default True), so they stay consistent with
 # sensor timestamps even if the simulation runs slower than real time.

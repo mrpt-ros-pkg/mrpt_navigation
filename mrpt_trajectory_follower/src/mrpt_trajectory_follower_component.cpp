@@ -254,6 +254,8 @@ TrajectoryFollowerNode::TrajectoryFollowerNode(const rclcpp::NodeOptions& option
 	pub_chunk_ = this->create_publisher<nav_msgs::msg::Path>("~/predicted_trajectory", qos);
 	pub_ref_path_ = this->create_publisher<nav_msgs::msg::Path>("~/reference_path", latchedQoS);
 	pub_status_ = this->create_publisher<std_msgs::msg::String>("~/status", latchedQoS);
+	pub_status_ex_ =
+		this->create_publisher<mrpt_nav_interfaces::msg::FollowerStatus>("~/status_ex", latchedQoS);
 
 	if (replan_on_failure_)
 	{
@@ -654,6 +656,19 @@ void TrajectoryFollowerNode::publish_status(const std::string& s)
 	std_msgs::msg::String sm;
 	sm.data = s;
 	pub_status_->publish(sm);
+
+	mrpt_nav_interfaces::msg::FollowerStatus ex;
+	ex.header.stamp = this->now();
+	ex.status = s;
+	if (managed_goal_id_)
+	{
+		status_goal_id_ = managed_goal_id_;
+		status_revision_ = managed_revision_;
+	}
+	ex.has_goal_id = status_goal_id_.has_value();
+	ex.goal_id = status_goal_id_.value_or(0);
+	ex.revision = status_revision_;
+	pub_status_ex_->publish(ex);
 }
 
 void TrajectoryFollowerNode::set_reference_path(const mpp::Trajectory& tr, bool keepMotion)
@@ -673,8 +688,13 @@ void TrajectoryFollowerNode::set_reference_path(const mpp::Trajectory& tr, bool 
 #endif
 	last_trajectory_ = tr;
 	have_trajectory_ = true;
-	guard_stopped_since_.reset();
-	stalled_since_.reset();
+	if (!keepMotion)
+	{
+		// (updates of the path being followed must not restart the timers
+		// that report a robot held stopped as Blocked)
+		guard_stopped_since_.reset();
+		stalled_since_.reset();
+	}
 
 	nav_msgs::msg::Path p;
 	p.header.frame_id = frame_id_map_;
@@ -780,6 +800,11 @@ void TrajectoryFollowerNode::callback_path(const nav_msgs::msg::Path& msg)
 		// ReferencePath): ignore it also published as a plain Path.
 		if (managed_goal_id_ && have_trajectory_ && msg.poses.size() >= 2)
 		{
+			RCLCPP_WARN_THROTTLE(
+				get_logger(), *get_clock(), 10000,
+				"Ignoring a plain Path: the current path comes from a planner that publishes "
+				"ReferencePath messages (goal #%u).",
+				*managed_goal_id_);
 			return;
 		}
 	}
@@ -789,11 +814,12 @@ void TrajectoryFollowerNode::callback_path(const nav_msgs::msg::Path& msg)
 void TrajectoryFollowerNode::callback_reference_path(
 	const mrpt_nav_interfaces::msg::ReferencePath& msg)
 {
-	handle_new_path(msg.path, msg.goal_id, msg.is_partial);
+	handle_new_path(msg.path, msg.goal_id, msg.is_partial, msg.revision);
 }
 
 bool TrajectoryFollowerNode::handle_new_path(
-	const nav_msgs::msg::Path& msg, std::optional<uint32_t> managedGoalId, bool partial)
+	const nav_msgs::msg::Path& msg, std::optional<uint32_t> managedGoalId, bool partial,
+	uint32_t revision)
 {
 	if (!msg.header.frame_id.empty() && msg.header.frame_id != frame_id_map_)
 	{
@@ -869,6 +895,7 @@ bool TrajectoryFollowerNode::handle_new_path(
 			if (managedGoalId)
 			{
 				managed_goal_id_ = managedGoalId;
+				managed_revision_ = revision;
 			}
 			path_is_partial_ = partial;
 			return true;
@@ -879,6 +906,11 @@ bool TrajectoryFollowerNode::handle_new_path(
 	replan_attempts_ = 0;
 	replan_pending_ = false;
 	managed_goal_id_ = managedGoalId;
+	managed_revision_ = managedGoalId ? revision : 0;
+	if (!managedGoalId)
+	{
+		status_goal_id_.reset();
+	}
 	path_is_partial_ = partial;
 
 	set_reference_path(tr, keepMotion);

@@ -1,5 +1,11 @@
 # mrpt_reactivenav2d
 
+> **DEPRECATED.** This package is deprecated and will be removed in a future
+> release. Use [mrpt_trajectory_follower](../mrpt_trajectory_follower) together
+> with the [mrpt_tps_astar_planner](../mrpt_tps_astar_planner) instead. It is
+> not part of the anytime and continuous planning of the planner, and it is not
+> covered by the end-to-end tests.
+
 ## Overview
 This package provides a ROS 2 node for reactive navigation for wheeled robots
 using MRPT navigation algorithms (TP-Space).

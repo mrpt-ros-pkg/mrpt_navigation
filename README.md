@@ -37,7 +37,7 @@ Related to sensor pipelines:
   - For 2D laser scanners, to keep a memory of obstacles that get out of the sensor field of view.
 
 Related to autonomous navigation:
-* [mrpt_reactivenav2d](mrpt_reactivenav2d): A pure reactive navigator for polygonal robots on 2D worlds.
+* [mrpt_reactivenav2d](mrpt_reactivenav2d): **Deprecated**, use `mrpt_trajectory_follower` with `mrpt_tps_astar_planner` instead. A pure reactive navigator for polygonal robots on 2D worlds.
 * [mrpt_tps_astar_planner](mrpt_tps_astar_planner): A path planner based on PTG trajectories using A* in a SE(2) lattice.
 
 Others:
@@ -99,7 +99,7 @@ menu, with `foxglove_bridge` running).
 
 `demo_astar_trajectory_follower_street.launch.py` is the same demo (ackermann
 robot) in a street with parking bays at different angles, to try the planner on
-parking maneuvers. `demo_astar_rnav_gridmap.launch.py` uses the older
+parking maneuvers. `demo_astar_rnav_gridmap.launch.py` uses the older, deprecated
 `mrpt_reactivenav2d` navigator instead of the trajectory follower.
 
 End-to-end tests (headless, both robots, a battery of A->B navigations checking
