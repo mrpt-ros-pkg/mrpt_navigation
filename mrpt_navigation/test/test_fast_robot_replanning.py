@@ -227,9 +227,11 @@ class TestFastRobotReplanning(unittest.TestCase):
 
         # 2) An obstacle appears close ahead while driving at full speed:
         self.statuses.clear()
+        self.__class__.ref = None  # (the path to the previous goal)
         self.send_goal(LAST_GOAL)
-        self.assertTrue(self.spin_until(lambda: self.gt[3] > CRUISE_SPEED, 30.0),
-                        'the robot did not reach full speed')
+        self.assertTrue(
+            self.spin_until(lambda: self.ref is not None and self.gt[3] > CRUISE_SPEED, 30.0),
+            'no new path, or the robot did not reach full speed')
         p = self.point_ahead(OBSTACLE_AHEAD)
         self.assertIsNotNone(p, 'path too short to place the obstacle')
         self.__class__.obstacle = p

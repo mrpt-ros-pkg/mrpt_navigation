@@ -120,7 +120,8 @@ size_t nearest_pose(const std::vector<TPose2D>& poses, const TPoint2D& p, size_t
 	return best;
 }
 
-// Distance from a point (robot frame) to the robot footprint (<=0: inside).
+// Signed distance from a point (robot frame) to the robot footprint border
+// (negative: inside).
 double distance_to_footprint(const mrpt::math::TPolygon2D& poly, const TPoint2D& q)
 {
 	double minD2 = std::numeric_limits<double>::infinity();
@@ -136,7 +137,7 @@ double distance_to_footprint(const mrpt::math::TPolygon2D& poly, const TPoint2D&
 		minD2 = std::min(
 			minD2, mrpt::square(q.x - (a.x + t * ex)) + mrpt::square(q.y - (a.y + t * ey)));
 	}
-	return poly.contains(q) ? 0.0 : std::sqrt(minD2);
+	return poly.contains(q) ? -std::sqrt(minD2) : std::sqrt(minD2);
 }
 
 // Obstacle points in a coarse 2D hash grid, for fast footprint checks.
@@ -155,12 +156,13 @@ class ObstacleIndex
 		}
 	}
 
-	// An obstacle within `margin` of the footprint at `pose`, if any.
+	// An obstacle closer than `margin` to the footprint border at `pose`
+	// (negative: at least that far inside), if any.
 	std::optional<TPoint2D> collides(
 		const TPose2D& pose, const mrpt::math::TPolygon2D& footprint, double footprintRadius,
 		double margin) const
 	{
-		const double r = footprintRadius + margin;
+		const double r = footprintRadius + std::max(margin, 0.0);
 		const int64_t ix0 = idx(pose.x - r);
 		const int64_t ix1 = idx(pose.x + r);
 		const int64_t iy0 = idx(pose.y - r);
@@ -584,8 +586,10 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 	// committed part:
 	mrpt::math::TPolygon2D footprintPoly;
 	double footprintRadius = 0;
-	// Obstacles closer than this to the footprint block the path [m]:
-	constexpr double kValidationMargin = 0.0;
+	// Obstacles block the path if this close to the footprint border [m]. It
+	// is negative (into the footprint) to tolerate the noise of sensed
+	// obstacles and the localization, since paths may run at zero clearance:
+	constexpr double kValidationMargin = -0.05;
 
 	// The current obstacles, indexed for footprint checks:
 	auto obstacleIndex = [&](const std::vector<mrpt::maps::CPointsMap::Ptr>& points)
@@ -904,10 +908,13 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 				// up to it is committed.
 				if (goal && continuous_planning_ && published && rp && !pathNodes.empty())
 				{
+					// The first node far enough ahead, or else the last one (the
+					// end of a short partial path, which the robot will drive
+					// anyway), so the search never goes on from behind the robot:
 					const double sStitch = pathS[robotIdx] + stitch_lookahead_time_ * maxLinSpeed;
 					for (size_t k = 0; k < pathNodes.size(); k++)
 					{
-						if (pathS[pathNodes[k].second] < sStitch)
+						if (pathS[pathNodes[k].second] < sStitch && k + 1 < pathNodes.size())
 						{
 							continue;
 						}
@@ -957,6 +964,8 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 					const double searchTime = now_seconds() - tSearchStart;
 					if (out.success && out.goalNodeId)
 					{
+						// max_planning_restarts limits consecutive failures:
+						restarts = 0;
 						if (!publishedFull || publishedTarget != out.goalNodeId)
 						{
 							publishPath(out, *out.goalNodeId, false);

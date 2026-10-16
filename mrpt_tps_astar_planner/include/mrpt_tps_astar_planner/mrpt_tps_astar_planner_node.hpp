@@ -278,8 +278,8 @@ class TPS_Astar_Planner_Node : public rclcpp::Node
 	/// fast robot does not get past the start of the new path before it is
 	/// published (<=0: from the robot pose).
 	double start_lookahead_time_ = 3.0;
-	/// Searches started from scratch for a goal (path blocked, follower
-	/// failure, no path found) before giving up
+	/// Searches started from scratch in a row for a goal (path blocked,
+	/// follower failure, no path found) without reaching it, before giving up
 	int max_planning_restarts_ = 5;
 	/// The follower status topic (to know when goals are reached or fail)
 	std::string topic_follower_status_sub_ = "/mrpt_trajectory_follower/status";

@@ -68,7 +68,7 @@ PLANNER_GOAL_MANAGER_ARGS = [
     ('start_lookahead_time', '3.0',
      'Planner: new searches from a moving robot start this far ahead [s] on its path'),
     ('max_planning_restarts', '5',
-     'Planner: searches restarted from scratch for a goal before giving up'),
+     'Planner: searches restarted in a row for a goal, without reaching it, before giving up'),
 ]
 
 

@@ -133,7 +133,8 @@ def generate_launch_description():
             '[s] (at the current speed) along the path being followed (<=0: from the robot pose)'),
         DeclareLaunchArgument(
             'max_planning_restarts', default_value='5',
-            description='Searches restarted from scratch for a goal before giving up'),
+            description='Searches restarted from scratch in a row for a goal, without '
+            'reaching it, before giving up'),
         DeclareLaunchArgument(
             'topic_follower_status_sub', default_value='/mrpt_trajectory_follower/status',
             description='Path follower status topic (to know when a goal is reached or fails)'),
