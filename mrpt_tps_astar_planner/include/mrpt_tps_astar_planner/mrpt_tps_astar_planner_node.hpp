@@ -479,6 +479,12 @@ class TPS_Astar_Planner_Node : public rclcpp::Node
 	 * @param wps Waypoint sequence object
 	 */
 	void publish_waypoint_sequence(const mrpt_msgs::msg::WaypointSequence& wps);
+
+	/**
+	 * @brief Publishes each costmap evaluator as an OccupancyGrid on
+	 * `<topic_costmaps_pub_>_<i>`, with `i` its index in `costEvaluators`
+	 */
+	void publish_costmaps(const std::vector<mpp::CostEvaluator::Ptr>& costEvaluators);
 };
 
 }  // namespace mrpt_tps_astar_planner

@@ -345,6 +345,7 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 		auto bbox = mrpt::math::TBoundingBoxf::PlusMinusInfinity();
 		std::vector<mrpt::maps::CPointsMap::Ptr> startPoints;
 		build_obstacles(from, pi.obstacles, &startPoints, &planner.costEvaluators_, bbox);
+		publish_costmaps(planner.costEvaluators_);
 		costmapSignature.clear();
 		for (const auto& p : startPoints)
 		{
@@ -568,6 +569,7 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 			}
 		}
 		planner.costEvaluators_ = std::move(evaluators);
+		publish_costmaps(planner.costEvaluators_);
 	};
 
 	auto publishPath = [&](mpp::PlannerOutput& out, mrpt::graphs::TNodeID target,

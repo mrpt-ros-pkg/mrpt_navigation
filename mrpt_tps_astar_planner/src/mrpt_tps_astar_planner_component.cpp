@@ -17,7 +17,6 @@
 #include <mrpt/viz/stock_objects.h>
 
 // version:
-#include <mrpt/version.h>
 #include <rclcpp/version.h>
 
 // create_service() QoS parameter type changed between ROS 2 distros:
@@ -695,6 +694,38 @@ void TPS_Astar_Planner_Node::publish_waypoint_sequence(const mrpt_msgs::msg::Way
 	pub_wp_path_seq_->publish(p);
 }
 
+void TPS_Astar_Planner_Node::publish_costmaps(
+	const std::vector<mpp::CostEvaluator::Ptr>& costEvaluators)
+{
+	auto lckPub = mrpt::lockHelper(pub_costmaps_cs_);
+	if (pub_costmaps_.size() < costEvaluators.size())
+	{
+		pub_costmaps_.resize(costEvaluators.size());
+	}
+	for (size_t i = 0; i < costEvaluators.size(); i++)
+	{
+		// Only costmaps have a meaningful grid representation:
+		if (!std::dynamic_pointer_cast<mpp::CostEvaluatorCostMap>(costEvaluators.at(i)))
+		{
+			continue;
+		}
+		if (!pub_costmaps_[i])
+		{
+			// See: REP-2003: https://ros.org/reps/rep-2003.html
+			const auto mapQoS = rclcpp::QoS(rclcpp::KeepLast(1)).transient_local().reliable();
+			pub_costmaps_[i] = this->create_publisher<nav_msgs::msg::OccupancyGrid>(
+				topic_costmaps_pub_ + mrpt::format("_%zu", i), mapQoS);
+		}
+		auto grid = costEvaluators.at(i)->get_visualization_as_grid();
+		nav_msgs::msg::OccupancyGrid costMapMsg;
+		mrpt::ros2bridge::toROS(*grid, costMapMsg, true /*as costmap*/);
+		costMapMsg.header.frame_id = frame_id_map_;
+		costMapMsg.header.stamp = this->now();
+
+		pub_costmaps_[i]->publish(costMapMsg);
+	}
+}
+
 void TPS_Astar_Planner_Node::update_map(
 	const nav_msgs::msg::OccupancyGrid::SharedPtr& msg, InfoPerGridMapSource& e)
 {
@@ -913,37 +944,7 @@ TPS_Astar_Planner_Node::PlanResult TPS_Astar_Planner_Node::do_path_plan(
 		return {};
 	}
 
-	// Publish costmaps:
-#if MRPT_VERSION >= 0x020e03  // >=v2.14.3
-	{
-		auto lckPub = mrpt::lockHelper(pub_costmaps_cs_);
-		pub_costmaps_.resize(local_planner.costEvaluators_.size());
-		for (size_t i = 0; i < local_planner.costEvaluators_.size(); i++)
-		{
-			// Only costmaps have a meaningful grid representation:
-			if (!std::dynamic_pointer_cast<mpp::CostEvaluatorCostMap>(
-					local_planner.costEvaluators_.at(i)))
-			{
-				continue;
-			}
-			if (!pub_costmaps_[i])
-			{
-				// See: REP-2003: https://ros.org/reps/rep-2003.html
-				const auto mapQoS = rclcpp::QoS(rclcpp::KeepLast(1)).transient_local().reliable();
-				pub_costmaps_[i] = this->create_publisher<nav_msgs::msg::OccupancyGrid>(
-					topic_costmaps_pub_ + mrpt::format("_%zu", i), mapQoS);
-			}
-			const auto& cm = local_planner.costEvaluators_.at(i);
-			auto grid = cm->get_visualization_as_grid();
-			nav_msgs::msg::OccupancyGrid costMapMsg;
-			mrpt::ros2bridge::toROS(*grid, costMapMsg, true /*as costmap*/);
-			costMapMsg.header.frame_id = frame_id_map_;
-			costMapMsg.header.stamp = this->now();
-
-			pub_costmaps_[i]->publish(costMapMsg);
-		}
-	}
-#endif
+	publish_costmaps(local_planner.costEvaluators_);
 
 	// backtrack:
 	auto [plannedPath, pathEdges] = plan.motionTree.backtrack_path(*plan.bestNodeId);

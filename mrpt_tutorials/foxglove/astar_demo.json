@@ -36,6 +36,7 @@
       "topics": {
         "/mrpt_map/map_gridmap": { "visible": true, "colorMode": "map", "alpha": 0.7 },
         "/costmap_0": { "visible": true, "colorMode": "costmap", "alpha": 0.2 },
+        "/costmap_1": { "visible": true, "colorMode": "costmap", "alpha": 0.2 },
         "/particlecloud": { "visible": true, "type": "arrow", "arrowSize": [0.3, 0.1, 0.1], "color": "#ff1900" },
         "/chassis_markers": { "visible": true },
         "/laser1": { "visible": true, "colorMode": "flat", "flatColor": "#ffffff", "pointSize": 3, "pointShape": "square" },
