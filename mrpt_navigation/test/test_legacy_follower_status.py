@@ -38,6 +38,11 @@ GOAL_TIMEOUT = 150.0  # [s]
 GOAL = (9.20, 17.95, -165.0)  # x [m], y [m], yaw [deg]; the robot starts at (30, 30)
 
 
+# Ground truth distance [m] to the goal accepted as reached. The follower stops
+# using the localized pose, whose error (up to MAX_LOC_ERROR in the battery) is
+# not part of what these tests check, so this must not be tighter than that.
+GOAL_GT_TOLERANCE = 1.0
+
 @pytest.mark.launch_test
 @launch_testing.markers.keep_alive
 def generate_test_description():
@@ -134,5 +139,7 @@ class TestLegacyFollowerStatus(unittest.TestCase):
         self.assertEqual(res.status, GoalStatus.STATUS_SUCCEEDED)
         self.assertEqual(res.result.state.navigation_status,
                          NavigationFinalStatus.STATUS_SUCCESS)
-        self.assertLess(math.hypot(self.gt[0] - GOAL[0], self.gt[1] - GOAL[1]), 0.5)
+        self.assertLess(
+            math.hypot(self.gt[0] - GOAL[0], self.gt[1] - GOAL[1]),
+            GOAL_GT_TOLERANCE)
         self.assertEqual(self.collisions, 0)
