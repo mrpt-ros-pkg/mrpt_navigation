@@ -79,6 +79,8 @@ def launch_setup(context, *args, **kwargs):
             'topic_wp_seq_pub': '/waypoints',
             'ptg_ini': ptg_ini_file,
             'max_computation_time': LaunchConfiguration('max_computation_time'),
+            'anytime_first_path_time': LaunchConfiguration('anytime_first_path_time'),
+            'planner_parameters': LaunchConfiguration('planner_parameters'),
         }.items()
     )
 
@@ -196,6 +198,16 @@ def generate_launch_description():
         DeclareLaunchArgument(
             'speed_limit', default_value='0.0',
             description='Initial follower speed limit [m/s] (<=0: platform max)'),
+        DeclareLaunchArgument(
+            'planner_parameters',
+            default_value=os.path.join(
+                get_package_share_directory('mrpt_tps_astar_planner'), 'configs', 'params',
+                'planner-params.yaml'),
+            description='A* planner parameters file'),
+        DeclareLaunchArgument(
+            'anytime_first_path_time', default_value='2.5',
+            description='Planner: publish the best partial path after this time [s] (<=0: '
+            'only full paths)'),
         DeclareLaunchArgument(
             'planner_extra_obstacles_topic', default_value='',
             description='Additional obstacle points topic for the planner only (e.g. for tests)'),

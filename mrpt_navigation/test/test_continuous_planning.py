@@ -3,7 +3,9 @@
 #
 # Launches demo_astar_trajectory_follower_gridmap.launch.py and, through the
 # planner NavigateGoal action and the goal topic, checks that:
-#  - The robot starts moving soon after a distant goal is given.
+#  - The robot starts moving soon after a distant goal is given, following the
+#    best partial path (anytime planning, forced with a short
+#    anytime_first_path_time) that is then extended by later updates.
 #  - An obstacle that appears on the path ahead of the robot, seen by the
 #    planner only (the follower and its safety layers never see it), is
 #    avoided in advance by replanning: the robot keeps clear of it, is never
@@ -31,7 +33,7 @@ from geometry_msgs.msg import PolygonStamped, PoseStamped
 from launch.actions import IncludeLaunchDescription
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from mrpt_nav_interfaces.action import NavigateGoal
-from mrpt_nav_interfaces.msg import NavigationFinalStatus
+from mrpt_nav_interfaces.msg import NavigationFinalStatus, ReferencePath
 from nav_msgs.msg import Odometry, Path
 from rclpy.action import ActionClient
 from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
@@ -44,6 +46,13 @@ REF_PATH_TOPIC = '/mrpt_trajectory_follower/reference_path'
 ROBOT_SHAPE_TOPIC = '/mrpt_tps_astar_planner_node/robot_shape'
 ACTION_NAME = '/mrpt_tps_astar_planner_node/navigate_goal'
 VIRTUAL_OBSTACLES_TOPIC = '/test_virtual_obstacles'
+REFERENCE_PATH_TOPIC = '/waypoints_reference'
+
+# Short, and with exact (slower) A*, so partial paths are published before the
+# search reaches the goal:
+ANYTIME_FIRST_PATH_TIME = 0.01  # [s]
+PLANNER_PARAMETERS = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), 'planner-test-exact-astar.yaml')
 
 STARTUP_TIMEOUT = 300.0     # [s] nodes ready (PTG collision grids may be built)
 GOAL_TIMEOUT = 150.0        # [s] per goal
@@ -77,6 +86,8 @@ def generate_test_description():
                 'speed_limit': '1.0',
                 'use_rviz': 'False',
                 'planner_extra_obstacles_topic': VIRTUAL_OBSTACLES_TOPIC,
+                'anytime_first_path_time': str(ANYTIME_FIRST_PATH_TIME),
+                'planner_parameters': PLANNER_PARAMETERS,
                 'pf_params_overrides_file': os.path.join(
                     os.path.dirname(os.path.abspath(__file__)), 'pf-test-overrides.yaml'),
             }.items()),
@@ -114,6 +125,7 @@ class TestContinuousPlanning(unittest.TestCase):
         cls.collisions = 0
         cls.ref_path = None
         cls.robot_shape = None
+        cls.references = []
 
         def on_gt(m):
             p = m.pose.pose
@@ -135,11 +147,15 @@ class TestContinuousPlanning(unittest.TestCase):
         def on_shape(m):
             cls.robot_shape = [(p.x, p.y) for p in m.polygon.points]
 
+        def on_reference(m):
+            cls.references.append((m.goal_id, m.revision, m.is_partial, len(m.path.poses)))
+
         n.create_subscription(Odometry, '/base_pose_ground_truth', on_gt, 10)
         n.create_subscription(String, STATUS_TOPIC, on_status, latched)
         n.create_subscription(Bool, '/collision', on_collision, 100)
         n.create_subscription(Path, REF_PATH_TOPIC, on_ref_path, latched)
         n.create_subscription(PolygonStamped, ROBOT_SHAPE_TOPIC, on_shape, latched)
+        n.create_subscription(ReferencePath, REFERENCE_PATH_TOPIC, on_reference, 10)
         cls.pub_goal = n.create_publisher(PoseStamped, '/goal_pose', 10)
         cls.pub_obstacles = n.create_publisher(PointCloud2, VIRTUAL_OBSTACLES_TOPIC, 10)
         cls.action = ActionClient(n, NavigateGoal, ACTION_NAME)
@@ -230,6 +246,7 @@ class TestContinuousPlanning(unittest.TestCase):
         # 1) A distant goal: the robot starts moving soon. Then, an obstacle
         # appears ahead, seen by the planner only:
         self.statuses.clear()
+        self.references.clear()
         t_sent = time.time()
         handle = self.send_action_goal(FAR_GOAL)
         moving = self.spin_until(lambda: self.gt[3] > 0.1, MAX_TIME_TO_MOVE + 5.0)
@@ -267,6 +284,14 @@ class TestContinuousPlanning(unittest.TestCase):
         self.assertNotIn('Blocked', self.statuses)
         self.assertEqual(self.collisions, 0)
         self.assertLess(math.hypot(self.gt[0] - FAR_GOAL[0], self.gt[1] - FAR_GOAL[1]), 0.5)
+
+        # Anytime planning: partial paths first, then a full one, all for the
+        # same goal:
+        print(f'Reference paths (goal, revision, partial, poses): {self.references}', flush=True)
+        goal_ids = {r[0] for r in self.references}
+        self.assertEqual(len(goal_ids), 1)
+        self.assertTrue(self.references[0][2], 'the first path was not partial')
+        self.assertTrue(any(not r[2] for r in self.references), 'no full path')
 
         # 2) Cancel while driving: the robot stops.
         handle = self.send_action_goal(OTHER_GOAL)

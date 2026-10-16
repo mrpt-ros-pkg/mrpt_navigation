@@ -26,6 +26,7 @@ if(BUILD_TESTING)
       # Ideal mvsim twist controllers: test the navigation stack, not the
       # simulated vehicle dynamics:
       ENV MRPT_NAV_TEST_ROBOT=${ROBOT}
+          MRPT_TUTORIALS_DYNAMIC_OBSTACLES=false
           MRPT_TUTORIALS_DIFFDRIVE_CONTROLLER=twist_ideal
           MRPT_TUTORIALS_ACKERMANN_CONTROLLER=twist_ideal
     )
@@ -36,6 +37,7 @@ if(BUILD_TESTING)
     test/test_continuous_planning.py
     TIMEOUT 900
     ENV MRPT_TUTORIALS_DIFFDRIVE_CONTROLLER=twist_ideal
+        MRPT_TUTORIALS_DYNAMIC_OBSTACLES=false
   )
 endif()
 
