@@ -92,7 +92,8 @@ class PlannerGoalFrameTest : public ::testing::Test
 
 		client_ = client_node_->create_client<MakePlanTo>(
 			std::string(planner_->get_fully_qualified_name()) + "/make_plan_to");
-		ASSERT_TRUE(client_->wait_for_service(10s));
+		// The service is only offered once the PTG lookup tables are built
+		ASSERT_TRUE(client_->wait_for_service(120s));
 	}
 
 	void TearDown() override
