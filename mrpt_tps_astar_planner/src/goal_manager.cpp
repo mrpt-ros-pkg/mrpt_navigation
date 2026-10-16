@@ -1064,14 +1064,17 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 					bool restartedNow = false;
 					if (out.success && out.goalNodeId)
 					{
-						// max_planning_restarts limits consecutive failures:
-						restarts = 0;
 						if ((!publishedFull || publishedTarget != out.goalNodeId) &&
 							!publishPath(out, *out.goalNodeId, false))
 						{
 							// (some edge hits the latest obstacles)
 							restartSearch(true, "the new path is blocked");
 							restartedNow = true;
+						}
+						else
+						{
+							// max_planning_restarts limits consecutive failures:
+							restarts = 0;
 						}
 					}
 					else if (
