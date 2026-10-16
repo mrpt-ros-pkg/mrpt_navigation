@@ -282,8 +282,9 @@ class TestGoalManagerRobustness(unittest.TestCase):
         self.wait_ready()
         # Back to a known place first (the previous test ended at FAR_GOAL):
         self.send_action_goal(HOME_GOAL)
-        self.spin_until(lambda: self.status == 'ReachedGoal' and math.hypot(
-            self.gt[0] - HOME_GOAL[0], self.gt[1] - HOME_GOAL[1]) < 0.5, GOAL_TIMEOUT)
+        self.assertTrue(self.spin_until(lambda: self.status == 'ReachedGoal' and math.hypot(
+            self.gt[0] - HOME_GOAL[0], self.gt[1] - HOME_GOAL[1]) < 0.5, GOAL_TIMEOUT),
+            'robot did not return home')
         self.spin(2.0)
         self.__class__.collisions = 0
         self.__class__.ref_path = None

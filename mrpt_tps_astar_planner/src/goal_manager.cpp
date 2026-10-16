@@ -452,6 +452,7 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 	auto restartSearch = [&](bool fromRobot, const char* why,
 							 size_t limitIdx = std::numeric_limits<size_t>::max()) -> bool
 	{
+		followerWaitingSince.reset();
 		restarts++;
 		RCLCPP_WARN(
 			get_logger(), "Goal #%u: restarting the search from the %s (%d/%d): %s", goal->id,
