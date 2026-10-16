@@ -128,6 +128,10 @@ def generate_launch_description():
             description='The search goes on from this far ahead [s] of the robot along its '
             'path (at max speed): the path up to there does not change anymore'),
         DeclareLaunchArgument(
+            'start_lookahead_time', default_value='3.0',
+            description='New searches from the robot (new goals, restarts) start this far ahead '
+            '[s] (at the current speed) along the path being followed (<=0: from the robot pose)'),
+        DeclareLaunchArgument(
             'max_planning_restarts', default_value='5',
             description='Searches restarted from scratch for a goal before giving up'),
         DeclareLaunchArgument(
@@ -188,6 +192,8 @@ def generate_launch_description():
             'replan_period'), value_type=float)},
         {'stitch_lookahead_time': ParameterValue(LaunchConfiguration(
             'stitch_lookahead_time'), value_type=float)},
+        {'start_lookahead_time': ParameterValue(LaunchConfiguration(
+            'start_lookahead_time'), value_type=float)},
         {'max_planning_restarts': ParameterValue(LaunchConfiguration(
             'max_planning_restarts'), value_type=int)},
         {'topic_follower_status_sub': LaunchConfiguration('topic_follower_status_sub')},

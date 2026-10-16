@@ -840,8 +840,12 @@ bool TrajectoryFollowerNode::handle_new_path(
 		return false;
 	}
 
-	// An update of the path being followed, for the same goal:
+	// An update of the path being followed, for the same goal, or a planner
+	// path for a new goal while driving (which continues the current one,
+	// see the planner start_lookahead_time): keep the motion state.
 	const bool sameGoal = managedGoalId && managed_goal_id_ == managedGoalId && have_trajectory_;
+	const bool keepMotion =
+		sameGoal || (managedGoalId && managed_goal_id_ && have_trajectory_ && actively_driving_);
 
 	// Ignore a re-published identical path (e.g. from a transient_local/latched
 	// publisher): resetting the follower would restart its speed profile from
@@ -877,9 +881,9 @@ bool TrajectoryFollowerNode::handle_new_path(
 	managed_goal_id_ = managedGoalId;
 	path_is_partial_ = partial;
 
-	set_reference_path(tr, sameGoal);
+	set_reference_path(tr, keepMotion);
 	RCLCPP_INFO(
-		get_logger(), "%s reference path with %zu poses%s.", sameGoal ? "Updated" : "New",
+		get_logger(), "%s reference path with %zu poses%s.", keepMotion ? "Updated" : "New",
 		tr.size(), partial ? " (partial)" : "");
 	return true;
 }

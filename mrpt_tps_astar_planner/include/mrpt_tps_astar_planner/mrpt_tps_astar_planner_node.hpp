@@ -273,6 +273,11 @@ class TPS_Astar_Planner_Node : public rclcpp::Node
 	/// The search restarts this far ahead [s] (at max PTG speed) of the
 	/// robot along the path: the path up to there is not changed anymore.
 	double stitch_lookahead_time_ = 3.0;
+	/// New searches from the robot (new goals, restarts) start this far
+	/// ahead [s] (at the current speed) along the path being followed, so a
+	/// fast robot does not get past the start of the new path before it is
+	/// published (<=0: from the robot pose).
+	double start_lookahead_time_ = 3.0;
 	/// Searches started from scratch for a goal (path blocked, follower
 	/// failure, no path found) before giving up
 	int max_planning_restarts_ = 5;

@@ -431,14 +431,16 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 
 	double maxLinSpeed = 0;
 	bool searchJustStarted = false;	 // the search has the latest obstacles
+	bool searchPublished = false;  // the current search published a path
 
 	// Starts a search from `from` (the robot pose, or the root, keeping the
 	// committed part of the path before it):
-	auto startSearch = [&](const TPose2D& from)
+	auto startSearch = [&](const TPose2D& from, double speed)
 	{
 		mpp::PlannerInput pi;
 		pi.ptgs = get_thread_ptgs();
 		pi.stateStart.pose = from;
+		pi.stateStart.vel = {speed * std::cos(from.phi), speed * std::sin(from.phi), 0.0};
 		pi.stateGoal.state = goal->pose;
 
 		planner.costEvaluators_.clear();
@@ -464,15 +466,88 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 
 		planner.start(pi);
 		searchJustStarted = true;
+		searchPublished = false;
 		tSearchStart = now_seconds();
 		publishedTarget.reset();
 		pathNodes.clear();
 	};
 
-	// Restarts the search from scratch, from the robot pose (dropping the
-	// path) or from the root (keeping the committed part). Returns false if
-	// there were too many restarts.
-	auto restartSearch = [&](bool fromRobot, const char* why) -> bool
+	// Robot speed [m/s] (absolute), from its TF poses over the last fraction
+	// of a second (0 if unknown):
+	auto robotSpeed = [&]() -> double
+	{
+		try
+		{
+			const auto latest =
+				tf_buffer_->lookupTransform(frame_id_map_, frame_id_robot_, tf2::TimePointZero);
+			const auto t1 = tf2_ros::fromMsg(latest.header.stamp);
+			const auto t0 = t1 - tf2::durationFromSec(0.3);
+			const auto before = tf_buffer_->lookupTransform(frame_id_map_, frame_id_robot_, t0);
+			const double dt = tf2::durationToSec(t1 - t0);
+			const auto& a = before.transform.translation;
+			const auto& b = latest.transform.translation;
+			return dt > 0 ? std::hypot(b.x - a.x, b.y - a.y) / dt : 0.0;
+		}
+		catch (const tf2::TransformException&)
+		{
+			return 0.0;
+		}
+	};
+
+	// Where a new search should start from, for a robot that keeps following
+	// the current path meanwhile: the pose it will reach on that path after
+	// start_lookahead_time (not beyond pose index `limitIdx`). The current
+	// path up to there is kept as the committed part of the new one. If the
+	// robot is not moving along the path, it is the robot pose (and the path
+	// is dropped). Returns the pose and the robot speed.
+	auto predictedStart = [&](size_t limitIdx) -> std::optional<std::pair<TPose2D, double>>
+	{
+		const auto rp = robotPose();
+		if (!rp)
+		{
+			return std::nullopt;
+		}
+		const double speed = robotSpeed();
+		constexpr double kMinSpeed = 0.1;  // [m/s]
+		constexpr double kMaxDistToPath = 0.5;	// [m]
+		if (start_lookahead_time_ > 0 && speed > kMinSpeed && pathPoses.size() > 1)
+		{
+			robotIdx = nearest_pose(pathPoses, rp->translation(), robotIdx);
+			const bool onPath =
+				(pathPoses[robotIdx].translation() - rp->translation()).norm() < kMaxDistToPath;
+			const double sTarget = pathS[robotIdx] + speed * start_lookahead_time_;
+			size_t idx = robotIdx;
+			while (idx + 1 < pathPoses.size() && idx < limitIdx && pathS[idx] < sTarget)
+			{
+				idx++;
+			}
+			idx = std::min(idx, limitIdx);
+			if (onPath && idx > robotIdx)
+			{
+				pathPoses.resize(idx + 1);
+				pathS.resize(idx + 1);
+				rootIdx = idx;
+				RCLCPP_INFO(
+					get_logger(),
+					"Goal #%u: robot moving at %.2f m/s: the search starts %.1f m ahead on its "
+					"path, at (%.2f, %.2f).",
+					goal->id, speed, pathS[idx] - pathS[robotIdx], pathPoses[idx].x,
+					pathPoses[idx].y);
+				return std::make_pair(pathPoses[idx], speed);
+			}
+		}
+		pathPoses.clear();
+		pathS.clear();
+		rootIdx = 0;
+		robotIdx = 0;
+		return std::make_pair(*rp, speed);
+	};
+
+	// Restarts the search from scratch, from the robot (its predicted pose,
+	// see predictedStart(), not beyond `limitIdx`) or from the root (keeping
+	// the committed part). Returns false if there were too many restarts.
+	auto restartSearch = [&](bool fromRobot, const char* why,
+							 size_t limitIdx = std::numeric_limits<size_t>::max()) -> bool
 	{
 		restarts++;
 		RCLCPP_WARN(
@@ -484,18 +559,16 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 			endGoal(NavStatus::STATUS_ERROR, "too many planning restarts");
 			return false;
 		}
-		std::optional<TPose2D> from;
+		// The current path will be replaced:
+		publishedFull = false;
+		std::optional<std::pair<TPose2D, double>> from;
 		if (fromRobot || pathPoses.empty() || rootIdx <= robotIdx)
 		{
-			from = robotPose();
-			pathPoses.clear();
-			pathS.clear();
-			rootIdx = 0;
-			robotIdx = 0;
+			from = predictedStart(limitIdx);
 		}
 		else
 		{
-			from = pathPoses.at(rootIdx);
+			from = std::make_pair(pathPoses.at(rootIdx), robotSpeed());
 		}
 		if (!from)
 		{
@@ -503,25 +576,69 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 			endGoal(NavStatus::STATUS_ERROR, "no robot pose");
 			return false;
 		}
-		startSearch(*from);
+		startSearch(from->first, from->second);
 		return true;
 	};
 
 	// Publishes the path to `target` in the search output, after the
 	// committed part:
+	mrpt::math::TPolygon2D footprintPoly;
+	double footprintRadius = 0;
+	// Obstacles closer than this to the footprint block the path [m]:
+	constexpr double kValidationMargin = 0.0;
+
+	// The current obstacles, indexed for footprint checks:
+	auto obstacleIndex = [&](const std::vector<mrpt::maps::CPointsMap::Ptr>& points)
+	{
+		ObstacleIndex index(0.5);
+		for (const auto& pts : points)
+		{
+			index.add(*pts);
+		}
+		return index;
+	};
+
 	auto publishPath = [&](mpp::PlannerOutput& out, mrpt::graphs::TNodeID target, bool partial)
 	{
 		auto [nodes, edgeList] = out.motionTree.backtrack_path(target);
-		if (!astar_skip_refine_)
-		{
-			mpp::refine_trajectory(nodes, edgeList, out.originalInput.ptgs);
-		}
 		std::vector<mpp::MoveEdgeSE2_TPS*> edges;
 		for (auto* e : edgeList)
 		{
 			if (e != nullptr)
 			{
 				edges.push_back(e);
+			}
+		}
+		// The refinement does not check obstacles: use it only if the refined
+		// path is still clear (the search edges are).
+		if (!astar_skip_refine_)
+		{
+			std::vector<mpp::MoveEdgeSE2_TPS> certified;
+			for (const auto* e : edges)
+			{
+				certified.push_back(*e);
+			}
+			mpp::refine_trajectory(nodes, edgeList, out.originalInput.ptgs);
+
+			std::vector<TPose2D> refinedPoses = {out.originalInput.stateStart.pose};
+			std::vector<size_t> unusedEnds;
+			sample_edges(edges, out.originalInput.ptgs, refinedPoses, unusedEnds);
+			std::vector<mpp::ObstacleSource::Ptr> unusedSources;
+			std::vector<mrpt::maps::CPointsMap::Ptr> points;
+			auto unusedBbox = mrpt::math::TBoundingBoxf::PlusMinusInfinity();
+			build_obstacles(
+				out.originalInput.stateStart.pose, unusedSources, &points, nullptr, unusedBbox);
+			if (first_colliding_pose(
+					refinedPoses, 0, obstacleIndex(points), footprintPoly, footprintRadius,
+					kValidationMargin))
+			{
+				RCLCPP_INFO(
+					get_logger(), "Goal #%u: the refined path is not clear: using the search one.",
+					goal->id);
+				for (size_t i = 0; i < edges.size(); i++)
+				{
+					*edges[i] = certified[i];
+				}
 			}
 		}
 
@@ -564,6 +681,7 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 		pathS = arc_lengths(pathPoses);
 		publishedTarget = target;
 		published = true;
+		searchPublished = true;
 		publishedFull = !partial;
 		followerEngaged = false;
 		revision++;
@@ -618,11 +736,6 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 		publishedFull = false;
 	};
 
-	mrpt::math::TPolygon2D footprintPoly;
-	double footprintRadius = 0;
-	// Obstacles closer than this to the footprint block the path [m]:
-	constexpr double kValidationMargin = 0.02;
-
 	while (true)
 	{
 		const double tCycleStart = now_seconds();
@@ -663,6 +776,7 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 
 		if (newGoal)
 		{
+			const bool wasNavigating = goal.has_value();
 			if (goal)
 			{
 				endGoal(NavStatus::STATUS_CANCELLED, "replaced by a new goal");
@@ -674,17 +788,21 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 			published = false;
 			publishedFull = false;
 			followerEngaged = false;
-			pathPoses.clear();
-			pathS.clear();
-			rootIdx = 0;
-			robotIdx = 0;
+			if (!wasNavigating)
+			{
+				// (the path of a goal being followed may be continued instead)
+				pathPoses.clear();
+				pathS.clear();
+				rootIdx = 0;
+				robotIdx = 0;
+			}
 			if (!plannerReady)
 			{
 				endGoal(NavStatus::STATUS_ERROR, "PTGs not ready");
 			}
-			else if (const auto rp = robotPose(); rp)
+			else if (const auto from = predictedStart(std::numeric_limits<size_t>::max()); from)
 			{
-				startSearch(*rp);
+				startSearch(from->first, from->second);
 			}
 			else
 			{
@@ -747,17 +865,11 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 				}
 
 				// Is the rest of the published path still clear?
-				if (goal && continuous_planning_ && published && rp &&
-					robotIdx + 1 < pathPoses.size())
+				if (goal && continuous_planning_ && rp && robotIdx + 1 < pathPoses.size())
 				{
-					ObstacleIndex index(0.5);
-					for (const auto& pts : obsPoints)
-					{
-						index.add(*pts);
-					}
 					const auto hitInfo = first_colliding_pose(
-						pathPoses, robotIdx + 1, index, footprintPoly, footprintRadius,
-						kValidationMargin);
+						pathPoses, robotIdx + 1, obstacleIndex(obsPoints), footprintPoly,
+						footprintRadius, kValidationMargin);
 					if (hitInfo)
 					{
 						const std::optional<size_t> hit = hitInfo->first;
@@ -777,13 +889,14 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 						publishTruncated(stopIdx + 1);
 						// Only the part before the obstacle remains (and the
 						// committed part, if it is clear, to go on from its end):
-						const size_t keep = std::max(stopIdx, rootIdx) + 1;
+						const bool fromRobot = *hit <= rootIdx || rootIdx <= robotIdx;
+						const size_t keep = (fromRobot ? stopIdx : std::max(stopIdx, rootIdx)) + 1;
 						if (keep < pathPoses.size())
 						{
 							pathPoses.resize(keep);
 							pathS.resize(keep);
 						}
-						restartSearch(*hit <= rootIdx || rootIdx <= robotIdx, "path blocked");
+						restartSearch(fromRobot, "path blocked", stopIdx);
 					}
 				}
 
@@ -817,17 +930,17 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 						planner.set_obstacles(obsSources);
 					}
 					searchJustStarted = false;
-					const double sinceGoal = now_seconds() - tGoalStart;
+					const double sinceSearch = now_seconds() - tSearchStart;
 					double budget =
 						std::max(0.05, replan_period_ - (now_seconds() - tCycleStart) - 0.05);
-					if (!published && anytime_first_path_time_ > 0)
+					if (!searchPublished && anytime_first_path_time_ > 0)
 					{
-						// Until a first path is out, search in short slices to
-						// check for a partial path in time:
+						// Until this search publishes a first path, search in
+						// short slices to check for a partial path in time:
 						constexpr double kAnytimeSlice = 0.1;  // [s]
 						budget = std::min(
-							budget, sinceGoal < anytime_first_path_time_
-										? std::max(0.01, anytime_first_path_time_ - sinceGoal)
+							budget, sinceSearch < anytime_first_path_time_
+										? std::max(0.01, anytime_first_path_time_ - sinceSearch)
 										: kAnytimeSlice);
 					}
 
@@ -851,8 +964,8 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 					}
 					else if (
 						!publishedFull && anytime_first_path_time_ > 0 &&
-						now_seconds() - tGoalStart >= anytime_first_path_time_ && out.bestNodeId &&
-						publishedTarget != out.bestNodeId)
+						now_seconds() - tSearchStart >= anytime_first_path_time_ &&
+						out.bestNodeId && publishedTarget != out.bestNodeId)
 					{
 						// Best partial path, if it gets closer enough to the goal.
 						// A full path is never replaced by a partial one: the
@@ -918,7 +1031,7 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 			std::unique_lock lck(goal_cs_);
 			const double elapsed = now_seconds() - tCycleStart;
 			// (no wait while searching for a first path)
-			const bool searchingFirst = goal && !published && planner.search_can_continue();
+			const bool searchingFirst = goal && !searchPublished && planner.search_can_continue();
 			const double waitTime =
 				!goal ? 1.0 : (searchingFirst ? 0.0 : std::max(0.0, replan_period_ - elapsed));
 			goal_cv_.wait_for(
