@@ -97,6 +97,13 @@ sequence) never ends them. The launch file therefore disables both by default
 (one-shot plans), and the trajectory follower demos enable them. Paths cut short
 because of an obstacle are published on every path topic.
 
+Deployments with a path follower that publishes only the legacy status topic
+(not `status_ex`) must set `topic_follower_status_ex_sub` to an empty string, so
+the planner uses `topic_follower_status_sub` instead; otherwise goals never
+receive their completion status (this also applies to `NavigateGoal` actions).
+Both topics are not used at once, since that would defeat the goal id and
+revision filtering.
+
 Paths are published as `mrpt_nav_interfaces/ReferencePath` (for
 `mrpt_trajectory_follower`), and also as before (`WaypointSequence`, `Path`).
 With `continuous_planning: false` and `anytime_first_path_time: 0`, topic goals

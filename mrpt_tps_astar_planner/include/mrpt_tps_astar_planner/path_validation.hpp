@@ -178,7 +178,8 @@ inline std::optional<std::pair<size_t, mrpt::math::TPoint2D>> first_colliding_po
 		for (int k = 1; k <= n; k++)
 		{
 			const double t = static_cast<double>(k) / n;
-			const mrpt::math::TPose2D q(a.x + t * (b.x - a.x), a.y + t * (b.y - a.y), a.phi + t * dphi);
+			const mrpt::math::TPose2D q(
+				a.x + t * (b.x - a.x), a.y + t * (b.y - a.y), a.phi + t * dphi);
 			if (const auto p = obs.collides(q, footprint, footprintRadius, margin); p)
 			{
 				return std::make_pair(i, *p);
