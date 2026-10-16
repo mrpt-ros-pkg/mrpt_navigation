@@ -587,9 +587,10 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 	mrpt::math::TPolygon2D footprintPoly;
 	double footprintRadius = 0;
 	// Obstacles block the path if this close to the footprint border [m]. It
-	// is negative (into the footprint) to tolerate the noise of sensed
-	// obstacles and the localization, since paths may run at zero clearance:
-	constexpr double kValidationMargin = -0.05;
+	// is negative (into the footprint: half its inner radius) to tolerate the
+	// noise of sensed obstacles and the localization, since paths may run at
+	// zero clearance. Obstacles really on the path get much deeper.
+	double validationMargin = 0;
 
 	// The current obstacles, indexed for footprint checks:
 	auto obstacleIndex = [&](const std::vector<mrpt::maps::CPointsMap::Ptr>& points)
@@ -634,7 +635,7 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 				out.originalInput.stateStart.pose, unusedSources, &points, nullptr, unusedBbox);
 			if (first_colliding_pose(
 					refinedPoses, 0, obstacleIndex(points), footprintPoly, footprintRadius,
-					kValidationMargin))
+					validationMargin))
 			{
 				RCLCPP_INFO(
 					get_logger(), "Goal #%u: the refined path is not clear: using the search one.",
@@ -771,6 +772,7 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 			{
 				footprintRadius = std::max(footprintRadius, p.norm());
 			}
+			validationMargin = 0.5 * distance_to_footprint(footprintPoly, {0, 0});
 			for (const auto& ptg : ptgs_.ptgs)
 			{
 				maxLinSpeed = std::max(maxLinSpeed, ptg->getMaxLinVel());
@@ -873,7 +875,7 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 				{
 					const auto hitInfo = first_colliding_pose(
 						pathPoses, robotIdx + 1, obstacleIndex(obsPoints), footprintPoly,
-						footprintRadius, kValidationMargin);
+						footprintRadius, validationMargin);
 					if (hitInfo)
 					{
 						const std::optional<size_t> hit = hitInfo->first;

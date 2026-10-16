@@ -46,7 +46,7 @@ CRUISE_SPEED = 1.3          # [m/s] "full speed" (platform max: 1.5 m/s)
 
 # Goals (x [m], y [m], yaw [deg]), map frame. The robot starts at (30, 30).
 FIRST_GOAL = (9.20, 17.95, -165.0)  # far, to the south-west
-NEW_GOAL = (12.0, 32.0, 180.0)      # to the west-north-west, given while driving
+NEW_GOAL = (22.0, 38.0, 90.0)       # to the north, given while driving
 LAST_GOAL = (40.0, 20.0, 0.0)       # far, to the east
 
 # Minimum robot speed [m/s] in the seconds after a new goal, while driving at
