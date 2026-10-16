@@ -13,6 +13,8 @@
 #    Can be changed at run time, e.g.:
 #      ros2 param set /mrpt_trajectory_follower speed_limit 2.0
 #  - max_computation_time: max A* computation time per plan request [s]
+#  - anytime_first_path_time, continuous_planning, replan_period, ...: planner
+#    goal manager settings (see PLANNER_GOAL_MANAGER_ARGS below)
 #    (<=0: value of the planner parameters file).
 #  - use_rviz: False for headless runs.
 #  - use_sim_time: True (default) to run all nodes on the simulation clock
@@ -50,6 +52,26 @@ ROBOTS = {
 }
 
 
+# Planner goal manager settings (see mrpt_tps_astar_planner/README.md), with the
+# planner defaults: (name, default, description)
+PLANNER_GOAL_MANAGER_ARGS = [
+    ('anytime_first_path_time', '2.5',
+     'Planner: publish the best partial path after this time [s] (<=0: only full paths)'),
+    ('anytime_min_progress', '1.0',
+     'Planner: minimum progress toward the goal [m] of a partial path'),
+    ('continuous_planning', 'true',
+     'Planner: keep replanning while the robot drives'),
+    ('replan_period', '1.0',
+     'Planner: period of the replanning cycles [s]'),
+    ('stitch_lookahead_time', '3.0',
+     'Planner: the search goes on from this far ahead [s] of the robot on its path'),
+    ('start_lookahead_time', '3.0',
+     'Planner: new searches from a moving robot start this far ahead [s] on its path'),
+    ('max_planning_restarts', '5',
+     'Planner: searches restarted in a row for a goal, without reaching it, before giving up'),
+]
+
+
 def launch_setup(context, *args, **kwargs):
     tutsDir = get_package_share_directory("mrpt_tutorials")
     astarDir = get_package_share_directory("mrpt_tps_astar_planner")
@@ -72,10 +94,15 @@ def launch_setup(context, *args, **kwargs):
             'topic_obstacles_gridmap_sub': '/mrpt_map/map_gridmap',
             'topic_static_maps': '/mrpt_map/map_gridmap',
             # Also sensed obstacles, so replans avoid unmapped ones:
-            'topic_obstacles_sub': '/local_map_pointcloud',
+            'topic_obstacles_sub': ', '.join(
+                t for t in ['/local_map_pointcloud',
+                            LaunchConfiguration('planner_extra_obstacles_topic').perform(context)]
+                if t),
             'topic_wp_seq_pub': '/waypoints',
             'ptg_ini': ptg_ini_file,
             'max_computation_time': LaunchConfiguration('max_computation_time'),
+            **{name: LaunchConfiguration(name) for name, _, _ in PLANNER_GOAL_MANAGER_ARGS},
+            'planner_parameters': LaunchConfiguration('planner_parameters'),
         }.items()
     )
 
@@ -194,6 +221,15 @@ def generate_launch_description():
             'speed_limit', default_value='0.0',
             description='Initial follower speed limit [m/s] (<=0: platform max)'),
         DeclareLaunchArgument(
+            'planner_parameters',
+            default_value=os.path.join(
+                get_package_share_directory('mrpt_tps_astar_planner'), 'configs', 'params',
+                'planner-params.yaml'),
+            description='A* planner parameters file'),
+        DeclareLaunchArgument(
+            'planner_extra_obstacles_topic', default_value='',
+            description='Additional obstacle points topic for the planner only (e.g. for tests)'),
+        DeclareLaunchArgument(
             'use_rviz', default_value='True',
             description='Whether to launch RViz2 (False for headless runs)'),
         DeclareLaunchArgument(
@@ -206,5 +242,7 @@ def generate_launch_description():
                 'pf-initial-pose-demo_world2.yaml'),
             description='mrpt_pf_localization parameter overrides (the initial pose must '
             'match the robot pose in the mvsim world)'),
+        *[DeclareLaunchArgument(name, default_value=default, description=desc)
+          for name, default, desc in PLANNER_GOAL_MANAGER_ARGS],
         OpaqueFunction(function=launch_setup),
     ])

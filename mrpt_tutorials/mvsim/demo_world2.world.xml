@@ -40,4 +40,37 @@
 		<include file="${DEFS_DIR}/lidar2d.sensor.xml" sensor_x="-0.5" sensor_z="1.01" sensor_yaw="180" max_range="70.0" sensor_name="laser2" />
 	</vehicle>
 
+	<!-- ========================
+		   Dynamic obstacle
+	     ======================== -->
+	<!-- A box that shuttles back and forth across the open area west of the
+	     robot start pose, so paths toward the west cross its lane. It is not
+	     in the gridmap: navigation only knows about it from the lidar.
+	     Disable it with MRPT_TUTORIALS_DYNAMIC_OBSTACLES=false. -->
+	<variable name="DYNAMIC_OBSTACLES" value="$env{MRPT_TUTORIALS_DYNAMIC_OBSTACLES|true}"/>
+	<if condition="${DYNAMIC_OBSTACLES}">
+		<block name="moving_box">
+			<mass>50</mass>
+			<color>#e01b24</color>
+			<zmin>0.0</zmin>
+			<zmax>1.5</zmax>
+			<shape>
+				<pt>-0.5 -0.5</pt>
+				<pt>-0.5  0.5</pt>
+				<pt> 0.5  0.5</pt>
+				<pt> 0.5 -0.5</pt>
+			</shape>
+			<init_pose>22 21 0</init_pose>
+			<!-- (time [s], x, y, yaw [deg]) relative to init_pose, repeated in a
+			     loop: 8 m north and back, at 0.5 m/s -->
+			<animation type="keyframes">
+				<time_pose>0.0   0 0 0</time_pose>
+				<time_pose>3.0   0 0 0</time_pose>
+				<time_pose>19.0  0 8 0</time_pose>
+				<time_pose>22.0  0 8 0</time_pose>
+				<time_pose>38.0  0 0 0</time_pose>
+			</animation>
+		</block>
+	</if>
+
 </mvsim_world>

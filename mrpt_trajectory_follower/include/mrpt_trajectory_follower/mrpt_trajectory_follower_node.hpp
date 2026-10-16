@@ -47,6 +47,7 @@
 #include <geometry_msgs/msg/twist.hpp>
 #include <geometry_msgs/msg/twist_stamped.hpp>
 #include <memory>
+#include <mrpt_nav_interfaces/msg/reference_path.hpp>
 #include <mrpt_nav_interfaces/srv/make_plan_to.hpp>
 #include <mutex>
 #include <nav_msgs/msg/odometry.hpp>
@@ -115,6 +116,7 @@ class TrajectoryFollowerNode : public rclcpp::Node, public mpp::TrajectoryVehicl
 
 	// Subs / pubs:
 	rclcpp::Subscription<nav_msgs::msg::Path>::SharedPtr sub_path_;
+	rclcpp::Subscription<mrpt_nav_interfaces::msg::ReferencePath>::SharedPtr sub_reference_path_;
 	rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr sub_obstacles_;
 	/// Obstacle clouds are processed in their own callback group, so they
 	/// never delay the control loop or odometry (with a multithreaded executor).
@@ -158,6 +160,8 @@ class TrajectoryFollowerNode : public rclcpp::Node, public mpp::TrajectoryVehicl
 	std::string frame_id_map_ = "map";
 	std::string frame_id_robot_ = "base_link";
 	std::string topic_path_sub_ = "/waypoints_path";
+	/// Paths from a planner that keeps updating them (see ReferencePath.msg)
+	std::string topic_reference_path_sub_ = "/waypoints_reference";
 	std::string topic_obstacles_sub_ = "";
 	std::string topic_odom_sub_ = "/odom";
 	std::string topic_cmd_vel_pub_ = "/cmd_vel";
@@ -208,6 +212,12 @@ class TrajectoryFollowerNode : public rclcpp::Node, public mpp::TrajectoryVehicl
 
 	mpp::TrajectoriesAndRobotShape ptgs_;
 
+	/// Goal of the current path, if it comes from a planner that keeps
+	/// updating it (ReferencePath): that planner then handles failures.
+	std::optional<uint32_t> managed_goal_id_;
+	/// The current path does not reach the goal yet (more updates follow)
+	bool path_is_partial_ = false;
+
 	mpp::Trajectory last_trajectory_;  //!< to ignore identical re-published paths
 	bool have_trajectory_ = false;
 
@@ -217,11 +227,18 @@ class TrajectoryFollowerNode : public rclcpp::Node, public mpp::TrajectoryVehicl
 	void read_parameters();
 	void control_tick();
 	void callback_path(const nav_msgs::msg::Path& msg);
+	void callback_reference_path(const mrpt_nav_interfaces::msg::ReferencePath& msg);
+
+	/// Common handling of a new path. Returns false if it is not followed.
+	bool handle_new_path(
+		const nav_msgs::msg::Path& msg, std::optional<uint32_t> managedGoalId, bool partial);
 	void callback_obstacles(const sensor_msgs::msg::PointCloud2::SharedPtr& pc);
 	void callback_odom(const nav_msgs::msg::Odometry::SharedPtr& msg);
 
-	/// Starts following a new reference path (caller must hold follower_cs_)
-	void set_reference_path(const mpp::Trajectory& tr);
+	/// Starts following a new reference path (caller must hold follower_cs_).
+	/// With `keepMotion`, it continues the current one (see
+	/// mpp::TrajectoryFollower::updateTrajectory()).
+	void set_reference_path(const mpp::Trajectory& tr, bool keepMotion = false);
 
 	/// Stops the robot and drops the current path (caller must hold
 	/// follower_cs_)

@@ -57,6 +57,8 @@ std::string to_string(const mrpt::math::TPolygon2D& poly)
 const char* STATUS_CANCELED = "Canceled";
 const char* STATUS_REPLANNING = "Replanning";
 const char* STATUS_FAILED = "Failed";
+// Stopped at the end of a partial path, until the planner extends it:
+const char* STATUS_WAITING = "WaitingForPath";
 }  // namespace
 
 TrajectoryFollowerNode::TrajectoryFollowerNode(const rclcpp::NodeOptions& options)
@@ -182,6 +184,14 @@ TrajectoryFollowerNode::TrajectoryFollowerNode(const rclcpp::NodeOptions& option
 	sub_path_ = this->create_subscription<nav_msgs::msg::Path>(
 		topic_path_sub_, qos, [this](const nav_msgs::msg::Path& msg) { this->callback_path(msg); });
 
+	if (!topic_reference_path_sub_.empty())
+	{
+		sub_reference_path_ = this->create_subscription<mrpt_nav_interfaces::msg::ReferencePath>(
+			topic_reference_path_sub_, qos,
+			[this](const mrpt_nav_interfaces::msg::ReferencePath& msg)
+			{ this->callback_reference_path(msg); });
+	}
+
 	sub_odom_ = this->create_subscription<nav_msgs::msg::Odometry>(
 		topic_odom_sub_, qos,
 		[this](const nav_msgs::msg::Odometry::SharedPtr msg) { this->callback_odom(msg); });
@@ -278,6 +288,7 @@ void TrajectoryFollowerNode::read_parameters()
 	p("frame_id_map", frame_id_map_);
 	p("frame_id_robot", frame_id_robot_);
 	p("topic_path_sub", topic_path_sub_);
+	p("topic_reference_path_sub", topic_reference_path_sub_);
 	p("topic_obstacles_sub", topic_obstacles_sub_);
 	p("topic_odom_sub", topic_odom_sub_);
 	p("topic_cmd_vel_pub", topic_cmd_vel_pub_);
@@ -645,9 +656,21 @@ void TrajectoryFollowerNode::publish_status(const std::string& s)
 	pub_status_->publish(sm);
 }
 
-void TrajectoryFollowerNode::set_reference_path(const mpp::Trajectory& tr)
+void TrajectoryFollowerNode::set_reference_path(const mpp::Trajectory& tr, bool keepMotion)
 {
+#if defined(MPP_HAS_FOLLOWER_UPDATE_TRAJECTORY)
+	if (keepMotion)
+	{
+		follower_.updateTrajectory(tr);
+	}
+	else
+	{
+		follower_.setTrajectory(tr);
+	}
+#else
+	(void)keepMotion;
 	follower_.setTrajectory(tr);
+#endif
 	last_trajectory_ = tr;
 	have_trajectory_ = true;
 	guard_stopped_since_.reset();
@@ -687,7 +710,9 @@ void TrajectoryFollowerNode::on_navigation_failure(const std::string& reason)
 	abort_navigation(mpp::StopKind::EMERGENCY);
 	publish_status(reason);
 
-	if (!replan_on_failure_ || !haveGoal)
+	// Paths from a planner that keeps updating them: it replans by itself
+	// (it watches this node status).
+	if (managed_goal_id_ || !replan_on_failure_ || !haveGoal)
 	{
 		return;
 	}
@@ -749,6 +774,27 @@ void TrajectoryFollowerNode::on_navigation_failure(const std::string& reason)
 // -------------------------------- callbacks ---------------------------------
 void TrajectoryFollowerNode::callback_path(const nav_msgs::msg::Path& msg)
 {
+	{
+		auto lck = std::lock_guard(follower_cs_);
+		// The current path comes from a planner that keeps updating it (as
+		// ReferencePath): ignore it also published as a plain Path.
+		if (managed_goal_id_ && have_trajectory_ && msg.poses.size() >= 2)
+		{
+			return;
+		}
+	}
+	handle_new_path(msg, std::nullopt, false);
+}
+
+void TrajectoryFollowerNode::callback_reference_path(
+	const mrpt_nav_interfaces::msg::ReferencePath& msg)
+{
+	handle_new_path(msg.path, msg.goal_id, msg.is_partial);
+}
+
+bool TrajectoryFollowerNode::handle_new_path(
+	const nav_msgs::msg::Path& msg, std::optional<uint32_t> managedGoalId, bool partial)
+{
 	if (!msg.header.frame_id.empty() && msg.header.frame_id != frame_id_map_)
 	{
 		RCLCPP_WARN_THROTTLE(
@@ -775,7 +821,7 @@ void TrajectoryFollowerNode::callback_path(const nav_msgs::msg::Path& msg)
 			"(see '%s').",
 			topic_robot_shape_sub_.c_str());
 		publish_status(STATUS_FAILED);
-		return;
+		return false;
 	}
 
 	if (tr.size() < 2)
@@ -788,9 +834,18 @@ void TrajectoryFollowerNode::callback_path(const nav_msgs::msg::Path& msg)
 		abort_navigation(mpp::StopKind::REGULAR);
 		replan_pending_ = false;
 		last_trajectory_.clear();
+		managed_goal_id_.reset();
+		path_is_partial_ = false;
 		publish_status(STATUS_CANCELED);
-		return;
+		return false;
 	}
+
+	// An update of the path being followed, for the same goal, or a planner
+	// path for a new goal while driving (which continues the current one,
+	// see the planner start_lookahead_time): keep the motion state.
+	const bool sameGoal = managedGoalId && managed_goal_id_ == managedGoalId && have_trajectory_;
+	const bool keepMotion =
+		sameGoal || (managedGoalId && managed_goal_id_ && have_trajectory_ && actively_driving_);
 
 	// Ignore a re-published identical path (e.g. from a transient_local/latched
 	// publisher): resetting the follower would restart its speed profile from
@@ -811,16 +866,26 @@ void TrajectoryFollowerNode::callback_path(const nav_msgs::msg::Path& msg)
 		}
 		if (same)
 		{
-			return;
+			if (managedGoalId)
+			{
+				managed_goal_id_ = managedGoalId;
+			}
+			path_is_partial_ = partial;
+			return true;
 		}
 	}
 
 	// A new path from outside: reset the replanning state.
 	replan_attempts_ = 0;
 	replan_pending_ = false;
+	managed_goal_id_ = managedGoalId;
+	path_is_partial_ = partial;
 
-	set_reference_path(tr);
-	RCLCPP_INFO(get_logger(), "New reference path with %zu poses.", tr.size());
+	set_reference_path(tr, keepMotion);
+	RCLCPP_INFO(
+		get_logger(), "%s reference path with %zu poses%s.", keepMotion ? "Updated" : "New",
+		tr.size(), partial ? " (partial)" : "");
+	return true;
 }
 
 void TrajectoryFollowerNode::callback_obstacles(
@@ -967,6 +1032,16 @@ void TrajectoryFollowerNode::control_tick()
 	switch (out.status)
 	{
 		case mpp::FollowerStatus::ReachedGoal:
+			if (path_is_partial_)
+			{
+				// End of a partial path: wait for its extension.
+				if (actively_driving_.exchange(false))
+				{
+					stop(mpp::StopKind::REGULAR);
+				}
+				publish_status(STATUS_WAITING);
+				break;
+			}
 			// Publish one clean zero on the transition to stopped, then stay
 			// silent (don't re-publish every tick) so a downstream mux can time
 			// this input out.
@@ -978,6 +1053,7 @@ void TrajectoryFollowerNode::control_tick()
 					mrpt::RAD2DEG(out.heading_err));
 			}
 			publish_status(to_string(out.status));
+			managed_goal_id_.reset();
 			break;
 
 		case mpp::FollowerStatus::Blocked:
@@ -987,7 +1063,7 @@ void TrajectoryFollowerNode::control_tick()
 				"(s=%.2f/%.2f m)",
 				out.contact_dist_forecast, out.contact_dist_reference, out.arc_length_s,
 				follower_.totalLength());
-			if (replan_on_failure_)
+			if (replan_on_failure_ && !managed_goal_id_)
 			{
 				on_navigation_failure(to_string(out.status));
 			}
@@ -1012,6 +1088,15 @@ void TrajectoryFollowerNode::control_tick()
 			break;
 
 		case mpp::FollowerStatus::MissedGoal:
+			if (path_is_partial_)
+			{
+				if (actively_driving_.exchange(false))
+				{
+					stop(mpp::StopKind::REGULAR);
+				}
+				publish_status(STATUS_WAITING);
+				break;
+			}
 			// Stopped next to the goal, but too far from its heading: a new
 			// plan from here can include the needed maneuver.
 			RCLCPP_WARN(
@@ -1045,7 +1130,7 @@ void TrajectoryFollowerNode::control_tick()
 					guardBlocked ? "Blocked by the collision guard."
 								 : "Blocked: commanded to move, but the robot doesn't move.");
 			}
-			if (replan_on_failure_)
+			if (replan_on_failure_ && !managed_goal_id_)
 			{
 				on_navigation_failure(blocked);
 			}

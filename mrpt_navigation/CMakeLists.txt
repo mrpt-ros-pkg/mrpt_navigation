@@ -26,10 +26,27 @@ if(BUILD_TESTING)
       # Ideal mvsim twist controllers: test the navigation stack, not the
       # simulated vehicle dynamics:
       ENV MRPT_NAV_TEST_ROBOT=${ROBOT}
+          MRPT_TUTORIALS_DYNAMIC_OBSTACLES=false
           MRPT_TUTORIALS_DIFFDRIVE_CONTROLLER=twist_ideal
           MRPT_TUTORIALS_ACKERMANN_CONTROLLER=twist_ideal
     )
   endforeach()
+
+  # Anytime and continuous planning (planner goal manager and action):
+  ament_add_ros_isolated_pytest_test(test_continuous_planning
+    test/test_continuous_planning.py
+    TIMEOUT 900
+    ENV MRPT_TUTORIALS_DIFFDRIVE_CONTROLLER=twist_ideal
+        MRPT_TUTORIALS_DYNAMIC_OBSTACLES=false
+  )
+
+  # Replanning for a fast robot (searches start ahead of it on its path):
+  ament_add_ros_isolated_pytest_test(test_fast_robot_replanning
+    test/test_fast_robot_replanning.py
+    TIMEOUT 900
+    ENV MRPT_TUTORIALS_DIFFDRIVE_CONTROLLER=twist_ideal
+        MRPT_TUTORIALS_DYNAMIC_OBSTACLES=false
+  )
 endif()
 
 # The following is needed for ROS 2's ament to generate the setup hooks

@@ -45,6 +45,7 @@
 
 #include <atomic>
 #include <chrono>
+#include <condition_variable>
 #include <geometry_msgs/msg/polygon_stamped.hpp>
 #include <geometry_msgs/msg/pose_array.hpp>
 #include <geometry_msgs/msg/pose_stamped.hpp>
@@ -54,6 +55,8 @@
 #include <memory>
 #include <mrpt_msgs/msg/waypoint.hpp>
 #include <mrpt_msgs/msg/waypoint_sequence.hpp>
+#include <mrpt_nav_interfaces/action/navigate_goal.hpp>
+#include <mrpt_nav_interfaces/msg/reference_path.hpp>
 #include <mrpt_nav_interfaces/srv/make_plan_from_to.hpp>
 #include <mrpt_nav_interfaces/srv/make_plan_to.hpp>
 #include <mutex>
@@ -62,9 +65,11 @@
 #include <nav_msgs/msg/path.hpp>
 #include <optional>
 #include <rclcpp/rclcpp.hpp>
+#include <rclcpp_action/rclcpp_action.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
 #include <set>
 #include <std_msgs/msg/bool.hpp>
+#include <std_msgs/msg/string.hpp>
 #include <string>
 #include <tf2/LinearMath/Matrix3x3.hpp>
 #include <tf2/LinearMath/Quaternion.hpp>
@@ -72,6 +77,14 @@
 #include <thread>
 #include <type_traits>
 #include <utility>
+
+// Anytime and continuous planning need the resumable search of newer
+// mrpt_path_planning versions:
+#if defined(MPP_HAS_RESUMABLE_ASTAR)
+#define HAVE_MPP_CONTINUOUS_PLANNING 1
+#else
+#define HAVE_MPP_CONTINUOUS_PLANNING 0
+#endif
 
 namespace mrpt_tps_astar_planner
 {
@@ -84,6 +97,15 @@ class TPS_Astar_Planner_Node : public rclcpp::Node
 	explicit TPS_Astar_Planner_Node(const rclcpp::NodeOptions& options = rclcpp::NodeOptions());
 	virtual ~TPS_Astar_Planner_Node()
 	{
+		{
+			auto lck = std::lock_guard(goal_cs_);
+			shutting_down_ = true;
+		}
+		goal_cv_.notify_all();
+		if (goal_manager_thread_.joinable())
+		{
+			goal_manager_thread_.join();
+		}
 		if (ptgs_init_thread_.joinable())
 		{
 			ptgs_init_thread_.join();
@@ -225,6 +247,96 @@ class TPS_Astar_Planner_Node : public rclcpp::Node
 	/// Reentrant callback group so service calls can run concurrently
 	rclcpp::CallbackGroup::SharedPtr srv_cbg_;
 
+	/// PTGs for the calling thread: each thread plans with its own copy of
+	/// ptgs_, if supported by mpp (otherwise, all of them share ptgs_ and
+	/// planning is serialized with planning_cs_).
+	const mpp::TrajectoriesAndRobotShape& get_thread_ptgs();
+
+	// ---------------------------------------------------------------------
+	// Goal manager: navigation goals from the goal topic or the action are
+	// planned in a background thread, publishing the best partial path soon
+	// (anytime) and replanning while the robot drives (continuous).
+	// ---------------------------------------------------------------------
+	using NavigateGoal = mrpt_nav_interfaces::action::NavigateGoal;
+	using HandleNavigateGoal = rclcpp_action::ServerGoalHandle<NavigateGoal>;
+
+	/// Publish the best partial path after this time [s] if the goal is not
+	/// reached yet by the search (<=0: only publish full paths).
+	double anytime_first_path_time_ = 2.5;
+	/// Minimum progress toward the goal [m] for a partial path to be used
+	double anytime_min_progress_ = 1.0;
+	/// Keep replanning (validating the path and moving the search root) while
+	/// the robot drives. Otherwise, a goal is planned once.
+	bool continuous_planning_ = true;
+	/// Period of the replanning cycles [s]
+	double replan_period_ = 1.0;
+	/// The search restarts this far ahead [s] (at max PTG speed) of the
+	/// robot along the path: the path up to there is not changed anymore.
+	double stitch_lookahead_time_ = 3.0;
+	/// New searches from the robot (new goals, restarts) start this far
+	/// ahead [s] (at the current speed) along the path being followed, so a
+	/// fast robot does not get past the start of the new path before it is
+	/// published (<=0: from the robot pose).
+	double start_lookahead_time_ = 3.0;
+	/// Searches started from scratch in a row for a goal (path blocked,
+	/// follower failure, no path found) without reaching it, before giving up
+	int max_planning_restarts_ = 5;
+	/// The follower status topic (to know when goals are reached or fail)
+	std::string topic_follower_status_sub_ = "/mrpt_trajectory_follower/status";
+
+	/// Whether goals use the goal manager (anytime or continuous planning)
+	[[nodiscard]] bool goal_manager_enabled() const;
+
+	rclcpp::Publisher<mrpt_nav_interfaces::msg::ReferencePath>::SharedPtr pub_reference_path_;
+	rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr pub_committed_path_;
+	rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr pub_tentative_path_;
+	rclcpp::Subscription<std_msgs::msg::String>::SharedPtr sub_follower_status_;
+	rclcpp_action::Server<NavigateGoal>::SharedPtr action_server_;
+
+	/// A navigation goal handled by the goal manager:
+	struct ActiveGoal
+	{
+		uint32_t id = 0;
+		mrpt::math::TPose2D pose;  //!< map frame
+		std::shared_ptr<HandleNavigateGoal> action;	 //!< null for topic goals
+	};
+
+	std::mutex goal_cs_;  //!< guards the fields below, until goal_cv_
+	std::optional<ActiveGoal> pending_goal_;  //!< new goal, not taken yet
+	bool cancel_requested_ = false;
+	std::string last_follower_status_;
+	bool follower_status_changed_ = false;
+	bool follower_active_seen_ = false;	 //!< Running/WaitingForPath since last cycle
+	bool shutting_down_ = false;
+	uint32_t next_goal_id_ = 1;
+	std::condition_variable goal_cv_;
+
+	std::thread goal_manager_thread_;
+
+	/// Queues a new goal (preempting the current one)
+	void submit_goal(const mrpt::math::TPose2D& goalInMap, std::shared_ptr<HandleNavigateGoal> h);
+
+	void goal_manager_loop();
+
+	void callback_follower_status(const std_msgs::msg::String& msg);
+
+	rclcpp_action::GoalResponse action_handle_goal(
+		const rclcpp_action::GoalUUID& uuid, std::shared_ptr<const NavigateGoal::Goal> goal);
+	rclcpp_action::CancelResponse action_handle_cancel(
+		const std::shared_ptr<HandleNavigateGoal> goal_handle);
+	void action_handle_accepted(const std::shared_ptr<HandleNavigateGoal> goal_handle);
+
+	/// Obstacle sources (map frame) and cost evaluators for a plan from
+	/// `start`, as used by do_path_plan(). Returns the number of sources.
+	size_t build_obstacles(
+		const mrpt::math::TPose2D& start, std::vector<mpp::ObstacleSource::Ptr>& sources,
+		std::vector<mrpt::maps::CPointsMap::Ptr>* points,
+		std::vector<mpp::CostEvaluator::Ptr>* costEvaluators, mrpt::math::TBoundingBoxf& bbox,
+		const std::vector<mrpt::math::TPolygon2D>& ignore_regions = {});
+
+	/// Publishes an empty path on all path topics (cancels the follower)
+	void publish_empty_paths();
+
    private:
 	/**
 	 * @brief wait for transform between map frame and the robot frame
@@ -278,12 +390,6 @@ class TPS_Astar_Planner_Node : public rclcpp::Node
 	 */
 	void callback_obstacles(
 		const sensor_msgs::msg::PointCloud2::SharedPtr& pc, InfoPerPointMapSource& e);
-
-	/**
-	 * @brief Callback function to prompt for a replan
-	 * @param _pose current localization location of the robot on the map
-	 */
-	void callback_replan(const geometry_msgs::msg::PoseWithCovarianceStamped::SharedPtr& _pose);
 
 	/**
 	 * @brief Mutex locked method to update the map when new one is received

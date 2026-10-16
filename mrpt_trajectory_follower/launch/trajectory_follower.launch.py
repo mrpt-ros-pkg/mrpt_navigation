@@ -26,6 +26,9 @@ def generate_launch_description():
         DeclareLaunchArgument('frame_id_map', default_value='map'),
         DeclareLaunchArgument('frame_id_robot', default_value='base_link'),
         DeclareLaunchArgument('topic_path_sub', default_value='/waypoints_path'),
+        DeclareLaunchArgument(
+            'topic_reference_path_sub', default_value='/waypoints_reference',
+            description='Paths from a planner that keeps updating them (empty: disabled)'),
         DeclareLaunchArgument('topic_obstacles_sub', default_value=''),
         DeclareLaunchArgument('topic_odom_sub', default_value='/odom'),
         DeclareLaunchArgument('topic_cmd_vel_pub', default_value='/cmd_vel'),
@@ -62,6 +65,7 @@ def generate_launch_description():
         'frame_id_map': LaunchConfiguration('frame_id_map'),
         'frame_id_robot': LaunchConfiguration('frame_id_robot'),
         'topic_path_sub': LaunchConfiguration('topic_path_sub'),
+        'topic_reference_path_sub': LaunchConfiguration('topic_reference_path_sub'),
         'topic_obstacles_sub': LaunchConfiguration('topic_obstacles_sub'),
         'topic_odom_sub': LaunchConfiguration('topic_odom_sub'),
         'topic_cmd_vel_pub': LaunchConfiguration('topic_cmd_vel_pub'),

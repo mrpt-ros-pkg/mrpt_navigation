@@ -60,6 +60,44 @@ The A\* implementation is an anytime algorithm: it improves the solution while
 time allows, then returns the best found. An optional refinement pass
 (`astar_skip_refine: false`) further smooths the result.
 
+### Navigation goals: anytime and continuous planning
+
+Goals from `<topic_goal_sub>` (e.g. clicked in RViz/Foxglove) or the
+`~/navigate_goal` action are handled by a goal manager running in a background
+thread, so the robot starts moving soon and reacts to obstacles in advance:
+
+1. **Anytime:** if the search has not reached the goal after
+   `anytime_first_path_time`, the best partial path so far (the tree node
+   closest to the goal, if it gets at least `anytime_min_progress` closer) is
+   published, and the robot starts following it while the search goes on.
+2. **Continuous:** every `replan_period`, the search root moves to a node
+   `stitch_lookahead_time` ahead of the robot along its path. The path up to
+   it is *committed* (it never changes), and the search grows the same tree from
+   there with the latest obstacles until it reaches the goal. Path updates keep
+   the committed part, so the follower switches to them without slowing down.
+3. Each cycle, the rest of the path is checked against the current obstacles
+   (robot footprint). If it is blocked, the path is cut short before the
+   obstacle (the follower stops there if needed) and a new search starts from
+   scratch: from the end of the committed part, or from the robot if the
+   obstacle is before it. Follower failures (`Blocked`, `OffPathExceeded`,
+   `MissedGoal`) restart it from the robot pose, up to `max_planning_restarts`
+   times in a row without reaching the goal.
+4. New searches from the robot (a new goal while driving, or a restart) start
+   from where it will be after `start_lookahead_time` on the path it is
+   following (at its current speed, from TF), and keep that path up to there,
+   so a fast robot is not already past the start of the new path when it is
+   published, and the follower switches to it without stopping.
+5. The goal ends when the follower (`topic_follower_status_sub`) reaches it
+   after following a full path. A new goal preempts the current one.
+
+Paths are published as `mrpt_nav_interfaces/ReferencePath` (for
+`mrpt_trajectory_follower`), and also as before (`WaypointSequence`, `Path`).
+With `continuous_planning: false` and `anytime_first_path_time: 0`, topic goals
+are planned once, as one-shot plans. The services are always one-shot.
+
+Each planning thread uses its own copy of the PTGs, so services and the goal
+manager plan concurrently.
+
 ### ROS 2 parameters
 
 | Parameter | Default | Description |
@@ -88,12 +126,21 @@ time allows, then returns the best found. An optional refinement pass
 | `final_waypoint_allow_skip` | `false` | Whether the final waypoint may be skipped |
 | `mid_waypoints_ignore_heading` | `false` | Whether heading is ignored at intermediate waypoints |
 | `final_waypoint_ignore_heading` | `false` | Whether heading is ignored at the final waypoint |
+| `anytime_first_path_time` | `2.5` | Publish the best partial path after this time [s] if the goal is not reached yet (<=0: only full paths) |
+| `anytime_min_progress` | `1.0` | Minimum progress toward the goal [m] of a partial path |
+| `continuous_planning` | `true` | Keep replanning while driving (see above) |
+| `replan_period` | `1.0` | Period of the replanning cycles [s] |
+| `stitch_lookahead_time` | `3.0` | The search goes on from this far ahead [s] of the robot (at max PTG speed) |
+| `start_lookahead_time` | `3.0` | New searches from the robot (new goals, restarts) start this far ahead [s], at its current speed, on the path it is following (<=0: from the robot pose) |
+| `max_planning_restarts` | `5` | Searches restarted from scratch in a row for a goal, without reaching it, before giving up |
+| `topic_follower_status_sub` | `/mrpt_trajectory_follower/status` | Path follower status (goal reached or failed) |
 
 ### Subscribed topics
 
 | Topic | Type | Description |
 |---|---|---|
-| `<topic_goal_sub>` | `geometry_msgs/PoseStamped` | Goal pose; triggers a plan from current TF robot pose |
+| `<topic_goal_sub>` | `geometry_msgs/PoseStamped` | Goal pose (preempts the current goal); planned from the current TF robot pose |
+| `<topic_follower_status_sub>` | `std_msgs/String` | Path follower status |
 | `<topic_obstacles_gridmap_sub>` (one per entry) | `nav_msgs/OccupancyGrid` | Occupancy grid(s) used as static obstacles |
 | `<topic_obstacles_sub>` (one per entry) | `sensor_msgs/PointCloud2` | Point cloud(s) used as dynamic obstacles |
 
@@ -103,8 +150,16 @@ time allows, then returns the best found. An optional refinement pass
 |---|---|---|
 | `<topic_wp_seq_pub>` (default `/waypoints`) | `mrpt_msgs/WaypointSequence` | Full waypoint sequence with per-waypoint tolerances and flags |
 | `<topic_wp_seq_pub>_path` (default `/waypoints_path`) | `nav_msgs/Path` | Same path as `nav_msgs/Path` (empty if no path was found for a goal topic request, which cancels path followers) |
+| `<topic_wp_seq_pub>_reference` (default `/waypoints_reference`) | `mrpt_nav_interfaces/ReferencePath` | Goal manager paths, with goal id, revision and whether they are partial (empty: navigation canceled) |
+| `~/committed_path`, `~/tentative_path` | `nav_msgs/Path` | Goal manager path, split into its committed part and the rest (latched; shown in different colors in the tutorial RViz/Foxglove layouts) |
 | `~/robot_shape` | `geometry_msgs/PolygonStamped` | Robot footprint used for planning (latched), so other nodes can check they use the same robot description |
 | `<topic_costmaps_pub>_0`, `_1`, … | `nav_msgs/OccupancyGrid` | Inflated costmaps (one per obstacle source), published after each plan |
+
+### Actions
+
+| Action | Type | Description |
+|---|---|---|
+| `~/navigate_goal` | `mrpt_nav_interfaces/NavigateGoal` | Navigate to a goal (as the goal topic), with feedback (distance to goal, status) and a result once the follower reaches it or navigation fails. Can be canceled |
 
 ### Services
 

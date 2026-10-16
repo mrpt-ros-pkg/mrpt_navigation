@@ -1,0 +1,44 @@
+# Planner parameters for tests: exact A* (slower), so the search does not
+# reach far goals within the first anytime time slice.
+
+# It is safe to use coarse lattice values, since a post-processing path
+# refining stage will normally improve the result, with a very reduced overall
+# time cost. Coarse lattices also plan long paths through maze-like maps much
+# faster:
+grid_resolution_xy: 0.30    # [meters]
+grid_resolution_yaw: 15.0   # [deg]
+
+# find_feasible_paths_to_neighbors() params:
+# Note: path refining will always use *all* PTG trajectories, despite this value.
+# Fewer trajectories and longer time steps mean fewer expansions on long paths:
+max_ptg_trajectories_to_explore: 20
+max_ptg_speeds_to_explore: 1
+ptg_sample_timestamps: [1.0, 3.0, 5.0]  # seconds
+
+# Weight of heading towards the target: 
+# the larger, the most favorable to move "looking at" the target direction.
+heuristic_heading_weight: 0.25
+
+# Weighted A*: the path cost is within this factor of the optimum of the
+# lattice abstraction (1.0 = exact A*, slower):
+heuristic_epsilon: 1.0
+
+# Full-pose goals (all of these need forward and reverse DiffDrive_C PTGs):
+# - admissible Reeds-Shepp heuristic, which accounts for the maneuvers a goal
+#   heading may require. It also keeps the search fast with the extra cost of
+#   reverse motion (see the node 'reverse_motion_cost_factor' parameter):
+use_reeds_shepp_heuristic: true
+# - certified Reeds-Shepp shots from expanded nodes within this distance of the
+#   goal, executed exactly as PTG trajectories, so that the path ends at the goal
+#   pose itself (also needs the same, odd number of trajectories in both
+#   PTGs; see ptgs_jackal.ini):
+use_reeds_shepp_expansion: true
+reeds_shepp_expansion_max_length: 5.0  # [m]
+
+SE2_metricAngleWeight: 2.0
+pathInterpolatedSegments: 3
+
+maximumComputationTime: 30.0  # [seconds]
+
+#saveDebugVisualizationDecimation: 1
+debugVisualizationShowEdgeCosts: true

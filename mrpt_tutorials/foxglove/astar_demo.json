@@ -42,6 +42,8 @@
         "/laser2": { "visible": true, "colorMode": "flat", "flatColor": "#f9f06b", "pointSize": 3, "pointShape": "square" },
         "/local_map_pointcloud": { "visible": true, "colorMode": "flat", "flatColor": "#f8e45c", "pointSize": 5, "pointShape": "square" },
         "/waypoints_path": { "visible": true, "lineWidth": 0.06, "gradient": ["#19ff00", "#19ff00"] },
+        "/mrpt_tps_astar_planner_node/committed_path": { "visible": true, "lineWidth": 0.1, "gradient": ["#0078ff", "#0078ff"] },
+        "/mrpt_tps_astar_planner_node/tentative_path": { "visible": true, "lineWidth": 0.1, "gradient": ["#ffa000", "#ffa000"] },
         "/goal_pose": { "visible": true, "type": "arrow", "arrowSize": [1.0, 0.3, 0.3], "color": "#ff1900" }
       },
       "publish": {
