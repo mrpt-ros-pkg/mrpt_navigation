@@ -1,0 +1,74 @@
+# mp2p_icp filter pipeline for mrpt_pointcloud_pipeline, used by
+# demo_astar_trajectory_follower_mvsim_3d.launch.py: the live obstacles around
+# the robot, for the A* planner and the trajectory follower, from 3D LiDARs
+# (and any other point cloud or 2D scan).
+#
+# Points arrive in base_link (at ground level in mvsim). This file is specific
+# to one robot: only the robot body box differs between robots.
+#
+# Output layer "local_obstacles": sparse 2D cloud of the points within a height
+# band (the same band as the static map, see maps/generate_mvsim_obstacle_maps.sh),
+# finer close to the robot.
+
+generators:
+  - class_name: mp2p_icp_filters::Generator
+    params:
+      target_layer: "accumulated"
+      process_class_names_regex: "" # filled by the per-observation filters
+      metric_map_definition:
+        class: mrpt::maps::CSimplePointsMap
+
+  - class_name: mp2p_icp_filters::Generator
+    params:
+      target_layer: "raw"
+      throw_on_unhandled_observation_class: true
+      process_class_names_regex: ".*"
+      process_sensor_labels_regex: ".*"
+
+per_observation:
+  # Robot body: the mvsim "agricobiot2" robot (see ptgs_mvsim_agricobiot2.ini; origin at
+  # the rear axle), up to its sensor mast:
+  - class_name: mp2p_icp_filters::FilterBoundingBox
+    params:
+      input_pointcloud_layer: "raw"
+      outside_pointcloud_layer: "no_body"
+      bounding_box_min: [-0.50, -0.40, -0.50]
+      bounding_box_max: [1.05, 0.40, 2.00]
+
+  - class_name: mp2p_icp_filters::FilterMerge
+    params:
+      input_pointcloud_layer: "no_body"
+      target_layer: "accumulated"
+
+final:
+  # Height band (above the ground, below the ceilings) and window around the robot:
+  - class_name: mp2p_icp_filters::FilterBoundingBox
+    params:
+      input_pointcloud_layer: "accumulated"
+      inside_pointcloud_layer: "band"
+      bounding_box_min: [-10.0, -10.0, 0.10]
+      bounding_box_max: [10.0, 10.0, 1.80]
+
+  - class_name: mp2p_icp_filters::FilterBoundingBox
+    params:
+      input_pointcloud_layer: "band"
+      inside_pointcloud_layer: "close"
+      outside_pointcloud_layer: "far"
+      bounding_box_min: [-4.0, -4.0, -10.0]
+      bounding_box_max: [4.0, 4.0, 10.0]
+
+  - class_name: mp2p_icp_filters::FilterDecimateVoxels
+    params:
+      input_pointcloud_layer: "close"
+      output_pointcloud_layer: "local_obstacles"
+      voxel_filter_resolution: 0.10 # [m]
+      decimate_method: DecimateMethod::FirstPoint
+      flatten_to: 0.3 # [m] 2D, above base_link
+
+  - class_name: mp2p_icp_filters::FilterDecimateVoxels
+    params:
+      input_pointcloud_layer: "far"
+      output_pointcloud_layer: "local_obstacles"
+      voxel_filter_resolution: 0.20 # [m]
+      decimate_method: DecimateMethod::FirstPoint
+      flatten_to: 0.3 # [m]
