@@ -176,6 +176,16 @@ TPS_Astar_Planner_Node::TPS_Astar_Planner_Node(const rclcpp::NodeOptions& option
 	pub_wp_path_seq_ =
 		this->create_publisher<nav_msgs::msg::Path>(topic_wp_seq_pub_ + "_path"s, qos);
 
+	// Costmaps are converted only once someone subscribes (see
+	// publish_costmaps()): this sends the latest ones to late subscribers.
+	timer_costmaps_ = this->create_wall_timer(
+		std::chrono::seconds(1),
+		[this]()
+		{
+			auto lck = mrpt::lockHelper(pub_costmaps_cs_);
+			send_pending_costmaps();
+		});
+
 	// Services and the NavigateGoal action are created once the PTGs are
 	// ready, so clients see them as unavailable (not failing) until then.
 	srv_cbg_ = this->create_callback_group(rclcpp::CallbackGroupType::Reentrant);
@@ -709,26 +719,39 @@ void TPS_Astar_Planner_Node::publish_costmaps(
 		{
 			continue;
 		}
-		if (!pub_costmaps_[i])
+		auto& cp = pub_costmaps_[i];
+		if (!cp.pub)
 		{
 			// See: REP-2003: https://ros.org/reps/rep-2003.html
 			const auto mapQoS = rclcpp::QoS(rclcpp::KeepLast(1)).transient_local().reliable();
-			pub_costmaps_[i] = this->create_publisher<nav_msgs::msg::OccupancyGrid>(
+			cp.pub = this->create_publisher<nav_msgs::msg::OccupancyGrid>(
 				topic_costmaps_pub_ + mrpt::format("_%zu", i), mapQoS);
 		}
-		// Converting the grid is not free, and the goal manager calls this
-		// while replanning: skip it when nobody is listening.
-		if (pub_costmaps_[i]->get_subscription_count() == 0)
+		cp.latest = costEvaluators.at(i);
+		cp.latest_sent = false;
+	}
+	send_pending_costmaps();
+}
+
+void TPS_Astar_Planner_Node::send_pending_costmaps()
+{
+	for (auto& cp : pub_costmaps_)
+	{
+		// Converting the grid is not free, and the goal manager publishes
+		// while replanning: only do it once someone is listening. Later
+		// subscribers get it from the transient local publisher.
+		if (!cp.pub || !cp.latest || cp.latest_sent || cp.pub->get_subscription_count() == 0)
 		{
 			continue;
 		}
-		auto grid = costEvaluators.at(i)->get_visualization_as_grid();
+		auto grid = cp.latest->get_visualization_as_grid();
 		nav_msgs::msg::OccupancyGrid costMapMsg;
 		mrpt::ros2bridge::toROS(*grid, costMapMsg, true /*as costmap*/);
 		costMapMsg.header.frame_id = frame_id_map_;
 		costMapMsg.header.stamp = this->now();
 
-		pub_costmaps_[i]->publish(costMapMsg);
+		cp.pub->publish(costMapMsg);
+		cp.latest_sent = true;
 	}
 }
 
