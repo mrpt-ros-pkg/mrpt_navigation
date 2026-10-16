@@ -59,6 +59,8 @@ PLANNER_GOAL_MANAGER_ARGS = [
      'Planner: publish the best partial path after this time [s] (<=0: only full paths)'),
     ('anytime_min_progress', '1.0',
      'Planner: minimum progress toward the goal [m] of a partial path'),
+    ('anytime_max_partial_length', '10.0',
+     'Planner: partial paths are cut to this length [m] (<=0: no limit)'),
     ('continuous_planning', 'true',
      'Planner: keep replanning while the robot drives'),
     ('replan_period', '1.0',

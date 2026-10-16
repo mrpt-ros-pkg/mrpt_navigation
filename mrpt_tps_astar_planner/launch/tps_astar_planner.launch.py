@@ -118,6 +118,10 @@ def generate_launch_description():
             'anytime_min_progress', default_value='1.0',
             description='Minimum progress toward the goal [m] of a partial path'),
         DeclareLaunchArgument(
+            'anytime_max_partial_length', default_value='10.0',
+            description='Partial paths are cut to this length [m], so a dead end does not '
+            'take the robot far (<=0: no limit)'),
+        DeclareLaunchArgument(
             'continuous_planning', default_value='false',
             description='Keep replanning while the robot drives: check the path against new '
             'obstacles, and go on with the search from ahead of the robot. If both this and '
@@ -193,6 +197,8 @@ def generate_launch_description():
             'anytime_first_path_time'), value_type=float)},
         {'anytime_min_progress': ParameterValue(LaunchConfiguration(
             'anytime_min_progress'), value_type=float)},
+        {'anytime_max_partial_length': ParameterValue(LaunchConfiguration(
+            'anytime_max_partial_length'), value_type=float)},
         {'continuous_planning': ParameterValue(LaunchConfiguration(
             'continuous_planning'), value_type=bool)},
         {'replan_period': ParameterValue(LaunchConfiguration(

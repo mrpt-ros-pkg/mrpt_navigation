@@ -465,6 +465,8 @@ void TPS_Astar_Planner_Node::read_parameters()
 	this->get_parameter("anytime_first_path_time", anytime_first_path_time_);
 	this->declare_parameter<double>("anytime_min_progress", anytime_min_progress_);
 	this->get_parameter("anytime_min_progress", anytime_min_progress_);
+	this->declare_parameter<double>("anytime_max_partial_length", anytime_max_partial_length_);
+	this->get_parameter("anytime_max_partial_length", anytime_max_partial_length_);
 	this->declare_parameter<bool>("continuous_planning", continuous_planning_);
 	this->get_parameter("continuous_planning", continuous_planning_);
 	this->declare_parameter<double>("replan_period", replan_period_);

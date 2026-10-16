@@ -278,6 +278,9 @@ class TPS_Astar_Planner_Node : public rclcpp::Node
 	double anytime_first_path_time_ = 2.5;
 	/// Minimum progress toward the goal [m] for a partial path to be used
 	double anytime_min_progress_ = 1.0;
+	/// Partial paths are cut to this length [m], so a wrong guess (a dead end)
+	/// does not take the robot far (<=0: no limit)
+	double anytime_max_partial_length_ = 10.0;
 	/// Keep replanning (validating the path and moving the search root) while
 	/// the robot drives. Otherwise, a goal is planned once.
 	bool continuous_planning_ = true;

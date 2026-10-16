@@ -142,6 +142,7 @@ manager plan concurrently.
 | `final_waypoint_ignore_heading` | `false` | Whether heading is ignored at the final waypoint |
 | `anytime_first_path_time` | `0.0` (launch file) | Publish the best partial path after this time [s] if the goal is not reached yet (<=0: only full paths) |
 | `anytime_min_progress` | `1.0` | Minimum progress toward the goal [m] of a partial path |
+| `anytime_max_partial_length` | `10.0` | Partial paths are cut to this length [m], so a dead end (the node closest to the goal may be one) does not take the robot far before the search finds the way around (`<=0`: no limit) |
 | `continuous_planning` | `false` (launch file) | Keep replanning while driving (see above) |
 | `replan_period` | `1.0` | Period of the replanning cycles [s] |
 | `stitch_lookahead_time` | `3.0` | The search goes on from this far ahead [s] of the robot (at max PTG speed) |

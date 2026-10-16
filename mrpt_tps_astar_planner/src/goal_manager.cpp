@@ -263,6 +263,9 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 	bool publishedFull = false;	 // ...reaching the goal
 	bool followerEngaged = false;  // follower acknowledged the current path
 	std::optional<mrpt::graphs::TNodeID> publishedTarget;
+	// The node a partial path was asked for (publishedTarget is the one at
+	// the end of the published prefix, if it was cut short):
+	std::optional<mrpt::graphs::TNodeID> requestedTarget;
 
 	// The published path, global frame. Its first `rootIdx+1` poses are the
 	// committed part, up to the search root:
@@ -372,6 +375,7 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 		searchPublished = false;
 		tSearchStart = now_seconds();
 		publishedTarget.reset();
+		requestedTarget.reset();
 		pathNodes.clear();
 	};
 
@@ -570,6 +574,7 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 						   bool partial) -> bool
 	{
 		auto [nodes, edgeList] = out.motionTree.backtrack_path(target);
+		const auto requested = target;
 
 		// The current obstacles, to check the new path:
 		std::vector<mpp::ObstacleSource::Ptr> unusedSources;
@@ -589,6 +594,31 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 				edges.push_back(e);
 			}
 		}
+		// A partial path leads toward the node closest to the goal, which may
+		// be a dead end: publish only a prefix of limited length, so the robot
+		// is not taken far along a wrong guess before the search finds out.
+		if (partial && anytime_max_partial_length_ > 0 && edges.size() > 1)
+		{
+			double length = 0;
+			size_t keep = 0;
+			for (const auto* e : edges)
+			{
+				if (keep > 0 && length + e->ptgDist > anytime_max_partial_length_)
+				{
+					break;
+				}
+				length += e->ptgDist;
+				keep++;
+			}
+			if (keep < edges.size())
+			{
+				edges.resize(keep);
+				edgeList.resize(keep);
+				nodes.resize(keep + 1);
+				target = nodes.back().nodeID_;
+			}
+		}
+
 		// The refinement does not check obstacles: use it only if the refined
 		// path is still clear (the search edges are).
 		if (!astar_skip_refine_)
@@ -687,6 +717,7 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 		pathPoses = std::move(newPoses);
 		pathS = arc_lengths(pathPoses);
 		publishedTarget = target;
+		requestedTarget = requested;
 		published = true;
 		searchPublished = true;
 		publishedFull = !partial;
@@ -1044,7 +1075,7 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 					else if (
 						!publishedFull && anytime_first_path_time_ > 0 &&
 						now_seconds() - tSearchStart >= anytime_first_path_time_ &&
-						out.bestNodeId && publishedTarget != out.bestNodeId)
+						out.bestNodeId && requestedTarget != out.bestNodeId)
 					{
 						// Best partial path, if it gets closer enough to the goal.
 						// A full path is never replaced by a partial one: the
