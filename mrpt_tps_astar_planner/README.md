@@ -53,8 +53,11 @@ sample maps.
    `WaypointSequence`.
 
 At startup the PTG lookup tables are built in the background, which can take
-tens of seconds. Goals and service requests received meanwhile are rejected
-with a warning in the log (`PTGs initialized` marks when the node is ready).
+tens of seconds. The planning services and the `navigate_goal` action are only
+offered once they are ready, so clients see them as unavailable (and can wait
+for them) instead of getting a failed plan. Topic goals received meanwhile are
+rejected with a warning in the log (`PTGs initialized` marks when the node is
+ready).
 
 The A\* implementation is an anytime algorithm: it improves the solution while
 time allows, then returns the best found. An optional refinement pass

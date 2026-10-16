@@ -177,27 +177,9 @@ TPS_Astar_Planner_Node::TPS_Astar_Planner_Node(const rclcpp::NodeOptions& option
 	pub_wp_path_seq_ =
 		this->create_publisher<nav_msgs::msg::Path>(topic_wp_seq_pub_ + "_path"s, qos);
 
-	// Init services:
-	// --------------------------
-	// Reentrant group: allows multiple service calls to execute in parallel
-	// when combined with MultiThreadedExecutor.
+	// Services and the NavigateGoal action are created once the PTGs are
+	// ready, so clients see them as unavailable (not failing) until then.
 	srv_cbg_ = this->create_callback_group(rclcpp::CallbackGroupType::Reentrant);
-
-	srvMakePlanTo_ = this->create_service<mrpt_nav_interfaces::srv::MakePlanTo>(
-		this->get_fully_qualified_name() + "/make_plan_to"s,
-		[this](
-			const mrpt_nav_interfaces::srv::MakePlanTo::Request::SharedPtr req,
-			mrpt_nav_interfaces::srv::MakePlanTo::Response::SharedPtr res)
-		{ srv_make_plan_to(req, res); },
-		MRPT_ROS2_SRV_QOS, srv_cbg_);
-
-	srvMakePlanFromTo_ = this->create_service<mrpt_nav_interfaces::srv::MakePlanFromTo>(
-		this->get_fully_qualified_name() + "/make_plan_from_to"s,
-		[this](
-			const mrpt_nav_interfaces::srv::MakePlanFromTo::Request::SharedPtr req,
-			mrpt_nav_interfaces::srv::MakePlanFromTo::Response::SharedPtr res)
-		{ srv_make_plan_from_to(req, res); },
-		MRPT_ROS2_SRV_QOS, srv_cbg_);
 
 	// Init planner:
 	// --------------------------
@@ -229,17 +211,42 @@ TPS_Astar_Planner_Node::TPS_Astar_Planner_Node(const rclcpp::NodeOptions& option
 			[this](const std_msgs::msg::String& msg) { this->callback_follower_status(msg); });
 	}
 
+	goal_manager_thread_ = std::thread([this]() { goal_manager_loop(); });
+#endif
+
+	ptgs_init_thread_ = std::thread([this]() { initialize_ptgs_and_publish_shape(); });
+}
+
+void TPS_Astar_Planner_Node::create_planning_interfaces()
+{
+	using namespace std::string_literals;
+
+	// Reentrant group: allows multiple service calls to execute in parallel
+	// when combined with MultiThreadedExecutor.
+	srvMakePlanTo_ = this->create_service<mrpt_nav_interfaces::srv::MakePlanTo>(
+		this->get_fully_qualified_name() + "/make_plan_to"s,
+		[this](
+			const mrpt_nav_interfaces::srv::MakePlanTo::Request::SharedPtr req,
+			mrpt_nav_interfaces::srv::MakePlanTo::Response::SharedPtr res)
+		{ srv_make_plan_to(req, res); },
+		MRPT_ROS2_SRV_QOS, srv_cbg_);
+
+	srvMakePlanFromTo_ = this->create_service<mrpt_nav_interfaces::srv::MakePlanFromTo>(
+		this->get_fully_qualified_name() + "/make_plan_from_to"s,
+		[this](
+			const mrpt_nav_interfaces::srv::MakePlanFromTo::Request::SharedPtr req,
+			mrpt_nav_interfaces::srv::MakePlanFromTo::Response::SharedPtr res)
+		{ srv_make_plan_from_to(req, res); },
+		MRPT_ROS2_SRV_QOS, srv_cbg_);
+
+#if HAVE_MPP_CONTINUOUS_PLANNING
 	action_server_ = rclcpp_action::create_server<NavigateGoal>(
 		this, "~/navigate_goal",
 		[this](const rclcpp_action::GoalUUID& uuid, std::shared_ptr<const NavigateGoal::Goal> g)
 		{ return action_handle_goal(uuid, g); },
 		[this](const std::shared_ptr<HandleNavigateGoal> h) { return action_handle_cancel(h); },
 		[this](const std::shared_ptr<HandleNavigateGoal> h) { action_handle_accepted(h); });
-
-	goal_manager_thread_ = std::thread([this]() { goal_manager_loop(); });
 #endif
-
-	ptgs_init_thread_ = std::thread([this]() { initialize_ptgs_and_publish_shape(); });
 }
 
 void TPS_Astar_Planner_Node::initialize_ptgs_and_publish_shape()
@@ -249,8 +256,9 @@ void TPS_Astar_Planner_Node::initialize_ptgs_and_publish_shape()
 		mrpt::config::CConfigFile cfg(ptg_ini_file_);
 		RCLCPP_INFO_STREAM(
 			this->get_logger(),
-			"Building PTG lookup tables in the background, this may take a while. Navigation "
-			"goals received until then will be rejected...");
+			"Building PTG lookup tables in the background, this may take a while. The planning "
+			"services and action are offered once done; topic goals received until then are "
+			"rejected...");
 
 		const auto t0 = std::chrono::steady_clock::now();
 		ptgs_.initFromConfigFile(cfg, "SelfDriving");
@@ -269,6 +277,7 @@ void TPS_Astar_Planner_Node::initialize_ptgs_and_publish_shape()
 		pub_robot_shape_->publish(msg);
 
 		ptgs_ready_ = true;
+		create_planning_interfaces();
 
 		RCLCPP_INFO(
 			this->get_logger(), "PTGs initialized in %.1f s. Ready to accept navigation goals.",

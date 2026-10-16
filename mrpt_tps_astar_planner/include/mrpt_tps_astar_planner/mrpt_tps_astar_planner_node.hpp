@@ -393,6 +393,9 @@ class TPS_Astar_Planner_Node : public rclcpp::Node
 	/// Builds the PTGs (slow), then publishes the robot footprint. Run in a background thread.
 	void initialize_ptgs_and_publish_shape();
 
+	/// Creates the planning services and the NavigateGoal action (once PTGs are ready).
+	void create_planning_interfaces();
+
 	/// Warns that a request cannot be served yet. Returns true if PTGs are ready.
 	[[nodiscard]] bool check_ptgs_ready(const char* requestKind);
 
