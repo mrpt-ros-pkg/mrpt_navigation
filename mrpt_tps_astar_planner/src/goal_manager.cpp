@@ -155,8 +155,8 @@ class ObstacleIndex
 		}
 	}
 
-	// Whether any obstacle is within `margin` of the footprint at `pose`.
-	bool collides(
+	// An obstacle within `margin` of the footprint at `pose`, if any.
+	std::optional<TPoint2D> collides(
 		const TPose2D& pose, const mrpt::math::TPolygon2D& footprint, double footprintRadius,
 		double margin) const
 	{
@@ -188,12 +188,12 @@ class ObstacleIndex
 					const TPoint2D q(c * dx + s * dy, -s * dx + c * dy);
 					if (distance_to_footprint(footprint, q) <= margin)
 					{
-						return true;
+						return p;
 					}
 				}
 			}
 		}
-		return false;
+		return std::nullopt;
 	}
 
    private:
@@ -204,9 +204,9 @@ class ObstacleIndex
 	static int64_t key(int64_t ix, int64_t iy) { return (ix << 32) ^ (iy & 0xffffffff); }
 };
 
-// Index of the first pose from `from` on whose footprint collides, checking
-// also between samples (every `step` meters).
-std::optional<size_t> first_colliding_pose(
+// The first pose index from `from` whose footprint collides, and the obstacle
+// point, checking also between samples (every `step` meters).
+std::optional<std::pair<size_t, TPoint2D>> first_colliding_pose(
 	const std::vector<TPose2D>& poses, size_t from, const ObstacleIndex& obs,
 	const mrpt::math::TPolygon2D& footprint, double footprintRadius, double margin)
 {
@@ -215,9 +215,9 @@ std::optional<size_t> first_colliding_pose(
 	{
 		if (i == from)
 		{
-			if (obs.collides(poses[i], footprint, footprintRadius, margin))
+			if (const auto p = obs.collides(poses[i], footprint, footprintRadius, margin); p)
 			{
-				return i;
+				return std::make_pair(i, *p);
 			}
 			continue;
 		}
@@ -229,10 +229,10 @@ std::optional<size_t> first_colliding_pose(
 		for (int k = 1; k <= n; k++)
 		{
 			const double t = static_cast<double>(k) / n;
-			const TPose2D p(a.x + t * (b.x - a.x), a.y + t * (b.y - a.y), a.phi + t * dphi);
-			if (obs.collides(p, footprint, footprintRadius, margin))
+			const TPose2D q(a.x + t * (b.x - a.x), a.y + t * (b.y - a.y), a.phi + t * dphi);
+			if (const auto p = obs.collides(q, footprint, footprintRadius, margin); p)
 			{
-				return i;
+				return std::make_pair(i, *p);
 			}
 		}
 	}
@@ -755,11 +755,12 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 					{
 						index.add(*pts);
 					}
-					const auto hit = first_colliding_pose(
+					const auto hitInfo = first_colliding_pose(
 						pathPoses, robotIdx + 1, index, footprintPoly, footprintRadius,
 						kValidationMargin);
-					if (hit)
+					if (hitInfo)
 					{
+						const std::optional<size_t> hit = hitInfo->first;
 						// Stop well before it while searching a new path:
 						constexpr double kStopBefore = 1.0;	 // [m]
 						size_t stopIdx = *hit;
@@ -768,8 +769,11 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 							stopIdx--;
 						}
 						RCLCPP_WARN(
-							get_logger(), "Goal #%u: the path is blocked %.1f m ahead.", goal->id,
-							pathS[*hit] - pathS[robotIdx]);
+							get_logger(),
+							"Goal #%u: the path is blocked %.1f m ahead, at (%.2f, %.2f), by an "
+							"obstacle at (%.2f, %.2f).",
+							goal->id, pathS[*hit] - pathS[robotIdx], pathPoses[*hit].x,
+							pathPoses[*hit].y, hitInfo->second.x, hitInfo->second.y);
 						publishTruncated(stopIdx + 1);
 						// Only the part before the obstacle remains (and the
 						// committed part, if it is clear, to go on from its end):
@@ -816,11 +820,15 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 					const double sinceGoal = now_seconds() - tGoalStart;
 					double budget =
 						std::max(0.05, replan_period_ - (now_seconds() - tCycleStart) - 0.05);
-					if (!published && anytime_first_path_time_ > 0 &&
-						sinceGoal < anytime_first_path_time_)
+					if (!published && anytime_first_path_time_ > 0)
 					{
-						budget =
-							std::min(budget, std::max(0.05, anytime_first_path_time_ - sinceGoal));
+						// Until a first path is out, search in short slices to
+						// check for a partial path in time:
+						constexpr double kAnytimeSlice = 0.1;  // [s]
+						budget = std::min(
+							budget, sinceGoal < anytime_first_path_time_
+										? std::max(0.01, anytime_first_path_time_ - sinceGoal)
+										: kAnytimeSlice);
 					}
 
 					mpp::PlannerOutput out;
@@ -842,11 +850,13 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 						}
 					}
 					else if (
-						anytime_first_path_time_ > 0 &&
+						!publishedFull && anytime_first_path_time_ > 0 &&
 						now_seconds() - tGoalStart >= anytime_first_path_time_ && out.bestNodeId &&
 						publishedTarget != out.bestNodeId)
 					{
-						// Best partial path, if it gets closer enough to the goal:
+						// Best partial path, if it gets closer enough to the goal.
+						// A full path is never replaced by a partial one: the
+						// search may still be improving a solution it found.
 						const auto& best = out.motionTree.nodes().at(*out.bestNodeId).pose;
 						const auto& root = out.originalInput.stateStart.pose;
 						const double dBest = (best.translation() - goal->pose.translation()).norm();
@@ -907,7 +917,10 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 		{
 			std::unique_lock lck(goal_cs_);
 			const double elapsed = now_seconds() - tCycleStart;
-			const double waitTime = goal ? std::max(0.0, replan_period_ - elapsed) : 1.0;
+			// (no wait while searching for a first path)
+			const bool searchingFirst = goal && !published && planner.search_can_continue();
+			const double waitTime =
+				!goal ? 1.0 : (searchingFirst ? 0.0 : std::max(0.0, replan_period_ - elapsed));
 			goal_cv_.wait_for(
 				lck, std::chrono::duration<double>(waitTime),
 				[this]()
