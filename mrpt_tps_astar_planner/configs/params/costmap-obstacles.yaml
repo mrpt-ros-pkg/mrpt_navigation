@@ -4,7 +4,7 @@ resolution: 0.10
 # than D to obstacles. Large values make paths detour and weave in search of
 # clearance, and slow down the search (its heuristic only accounts for time).
 preferredClearanceDistance: 1.0
-maxCost: 5.0
+maxCost: 10.0
 
 useAverageOfPath: false
 
