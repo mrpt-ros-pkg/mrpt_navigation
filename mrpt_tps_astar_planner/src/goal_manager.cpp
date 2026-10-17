@@ -841,9 +841,31 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 				rootIdx = 0;
 				robotIdx = 0;
 			}
+			std::optional<mrpt::math::TPoint2D> goalHit;
+			if (plannerReady)
+			{
+				// A goal pose in collision can not be reached: reject it now
+				// instead of driving toward it with partial paths.
+				std::vector<mpp::ObstacleSource::Ptr> unusedSources;
+				std::vector<mrpt::maps::CPointsMap::Ptr> points;
+				auto unusedBbox = mrpt::math::TBoundingBoxf::PlusMinusInfinity();
+				build_obstacles(goal->pose, unusedSources, &points, nullptr, unusedBbox);
+				goalHit =
+					obstacleIndex(points).collides(goal->pose, footprintPoly, footprintRadius, 0.0);
+			}
 			if (!plannerReady)
 			{
 				endGoal(NavStatus::STATUS_ERROR, "PTGs not ready");
+			}
+			else if (goalHit)
+			{
+				RCLCPP_WARN(
+					get_logger(),
+					"Goal #%u: the robot footprint at the goal hits an obstacle at (%.2f, %.2f): "
+					"rejected.",
+					goal->id, goalHit->x, goalHit->y);
+				publish_empty_paths();
+				endGoal(NavStatus::STATUS_ERROR, "goal in collision");
 			}
 			else if (const auto from = predictedStart(std::numeric_limits<size_t>::max()); from)
 			{
