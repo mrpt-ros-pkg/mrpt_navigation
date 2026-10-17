@@ -1151,6 +1151,15 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 					}
 					lastOut = std::move(out);
 				}
+				else if (
+					goal && published && !publishedFull && !planner.search_reached_goal() &&
+					!startBlockedRetryAt)
+				{
+					// The search ended outside run(): re-rooting keeps only the
+					// subtree of the new root, which may have no open nodes left.
+					// Go on with a new search from the end of the committed path.
+					restartSearch(false, "no open nodes after re-rooting");
+				}
 
 				// Feedback:
 				if (goal && goal->action)
