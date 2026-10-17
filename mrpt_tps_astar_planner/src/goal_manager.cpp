@@ -992,10 +992,13 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 							"obstacle at (%.2f, %.2f).",
 							goal->id, pathS[*hit] - pathS[robotIdx], pathPoses[*hit].x,
 							pathPoses[*hit].y, hitInfo->second.x, hitInfo->second.y);
-						publishTruncated(stopIdx + 1);
 						// Only the part before the obstacle remains (and the
 						// committed part, if it is clear, to go on from its end):
 						const bool fromRobot = *hit <= rootIdx || rootIdx <= robotIdx;
+						// A search from the committed path end: the robot must not
+						// drive past it meanwhile, or the new path would start
+						// behind the robot.
+						publishTruncated((fromRobot ? stopIdx : std::min(stopIdx, rootIdx)) + 1);
 						const size_t keep = (fromRobot ? stopIdx : std::max(stopIdx, rootIdx)) + 1;
 						if (keep < pathPoses.size())
 						{
@@ -1173,7 +1176,12 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 				{
 					// The search ended outside run(): re-rooting keeps only the
 					// subtree of the new root, which may have no open nodes left.
-					// Go on with a new search from the end of the committed path.
+					// Go on with a new search from the end of the committed path
+					// (not driving past it meanwhile).
+					if (rootIdx > robotIdx)
+					{
+						publishTruncated(rootIdx + 1);
+					}
 					restartSearch(false, "no open nodes after re-rooting");
 				}
 
