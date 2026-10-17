@@ -40,8 +40,9 @@ GOAL = (9.20, 17.95, -165.0)  # x [m], y [m], yaw [deg]; the robot starts at (30
 
 # Ground truth distance [m] to the goal accepted as reached. The follower stops
 # using the localized pose, whose error (up to MAX_LOC_ERROR in the battery) is
-# not part of what these tests check, so this must not be tighter than that.
-GOAL_GT_TOLERANCE = 1.0
+# not part of what these tests check: the battery tolerates 1 m of it, plus the
+# arrival radius of the follower.
+GOAL_GT_TOLERANCE = 1.5
 
 @pytest.mark.launch_test
 @launch_testing.markers.keep_alive
