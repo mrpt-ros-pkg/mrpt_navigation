@@ -1036,13 +1036,17 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 							goal->id, pathS[*hit] - pathS[robotIdx], pathPoses[*hit].x,
 							pathPoses[*hit].y, hitInfo->second.x, hitInfo->second.y);
 						// Only the part before the obstacle remains (and the
-						// committed part, if it is clear, to go on from its end):
-						const bool fromRobot = *hit <= rootIdx || rootIdx <= robotIdx;
+						// committed part, if it ends well before it, to go on from
+						// its end). A committed end closer to it may already touch
+						// it (the validation margin tolerates some overlap), and a
+						// search from there would keep the robot that close.
+						const bool fromRobot =
+							*hit <= rootIdx || rootIdx <= robotIdx || rootIdx > stopIdx;
 						// A search from the committed path end: the robot must not
 						// drive past it meanwhile, or the new path would start
 						// behind the robot.
-						publishTruncated((fromRobot ? stopIdx : std::min(stopIdx, rootIdx)) + 1);
-						const size_t keep = (fromRobot ? stopIdx : std::max(stopIdx, rootIdx)) + 1;
+						publishTruncated((fromRobot ? stopIdx : rootIdx) + 1);
+						const size_t keep = stopIdx + 1;
 						if (keep < pathPoses.size())
 						{
 							pathPoses.resize(keep);
