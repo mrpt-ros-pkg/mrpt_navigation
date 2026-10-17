@@ -61,6 +61,12 @@ OBSTACLE_AHEAD = 4.5
 MIN_CLEARANCE = 0.25  # [m] robot center to the obstacle square
 
 
+# Ground truth distance [m] to the goal accepted as reached. The follower stops
+# using the localized pose, whose error (up to MAX_LOC_ERROR in the battery) is
+# not part of what these tests check: the battery tolerates 1 m of it, plus the
+# arrival radius of the follower.
+GOAL_GT_TOLERANCE = 1.5
+
 @pytest.mark.launch_test
 @launch_testing.markers.keep_alive
 def generate_test_description():
@@ -193,7 +199,7 @@ class TestFastRobotReplanning(unittest.TestCase):
     def wait_reached(self, g):
         def reached():
             return self.status == 'ReachedGoal' and math.hypot(
-                self.gt[0] - g[0], self.gt[1] - g[1]) < 0.5
+                self.gt[0] - g[0], self.gt[1] - g[1]) < GOAL_GT_TOLERANCE
         return self.spin_until(reached, GOAL_TIMEOUT)
 
     def test_fast_robot_replanning(self):
@@ -244,7 +250,7 @@ class TestFastRobotReplanning(unittest.TestCase):
             nonlocal min_clearance
             min_clearance = min(min_clearance, self.clearance_to_obstacle())
             return self.status == 'ReachedGoal' and math.hypot(
-                self.gt[0] - LAST_GOAL[0], self.gt[1] - LAST_GOAL[1]) < 0.5
+                self.gt[0] - LAST_GOAL[0], self.gt[1] - LAST_GOAL[1]) < GOAL_GT_TOLERANCE
         ok = self.spin_until(reached, GOAL_TIMEOUT)
         self.__class__.obstacle = None
         print(f'Min clearance to the obstacle: {min_clearance:.2f} m, statuses: {self.statuses}',
