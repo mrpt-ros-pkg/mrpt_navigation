@@ -289,6 +289,10 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 	std::vector<std::pair<const void*, size_t>> costmapSignature;
 	// Since when the follower waits at the end of a partial path:
 	std::optional<double> followerWaitingSince;
+	// Since when the follower is blocked, and replans for that in a row
+	// (publishing a path resets `restarts`, so they are counted apart):
+	std::optional<double> followerBlockedSince;
+	int blockedRestarts = 0;
 	// A search that can not leave its start pose (obstacles too close, which
 	// may be transient: people, remembered obstacles) is retried a few times,
 	// a while apart, before giving up:
@@ -823,6 +827,7 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 			restarts = 0;
 			startBlockedRetries = 0;
 			startBlockedRetryAt.reset();
+			blockedRestarts = 0;
 			revision = 0;
 			published = false;
 			publishedFull = false;
@@ -937,6 +942,44 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 				else
 				{
 					followerWaitingSince.reset();
+				}
+
+				// A follower blocked for long, while the path is still clear for
+				// the search (e.g. it can not track a tight maneuver close to
+				// obstacles): plan again from the robot, eventually giving up
+				// (max_planning_restarts) instead of waiting forever. Its status
+				// may not change again, so it is not required to be current.
+				constexpr double kMaxBlocked = 10.0;  // [s]
+				const bool followerBlocked =
+					goal && followerStatus == "Blocked" && published &&
+					(!statusHasIds || (followerHasId && followerGoalId == goal->id));
+				if (followerBlocked)
+				{
+					if (!followerBlockedSince)
+					{
+						followerBlockedSince = now_seconds();
+					}
+					else if (now_seconds() - *followerBlockedSince > kMaxBlocked)
+					{
+						followerBlockedSince.reset();
+						if (++blockedRestarts > max_planning_restarts_)
+						{
+							publish_empty_paths();
+							endGoal(NavStatus::STATUS_ERROR, "the path follower stays blocked");
+						}
+						else
+						{
+							restartSearch(true, "the follower stays blocked");
+						}
+					}
+				}
+				else
+				{
+					followerBlockedSince.reset();
+					if (goal && followerStatus == FOLLOWER_RUNNING)
+					{
+						blockedRestarts = 0;
+					}
 				}
 
 				// Progress log, to diagnose searches that do not finish:
