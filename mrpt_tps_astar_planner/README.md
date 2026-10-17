@@ -136,6 +136,7 @@ manager plan concurrently.
 | `problem_world_bbox_ignore_obstacles` | `false` | If true, obstacle extents are excluded from the bounding box |
 | `astar_skip_refine` | `false` | If true, skip the post-A\* trajectory refinement pass |
 | `reverse_motion_cost_factor` | `1.0` | Extra cost per second driven in reverse, so paths only back up when it pays off (0: same cost as forward) |
+| `turning_cost_factor` | `1.0` | Extra cost per radian of heading change, so paths drive straight instead of weaving, unless turning pays off (0: no penalty; needs a `mrpt_path_planning` with `MPP_HAS_TURNING_COST`) |
 | `max_computation_time` | `0.0` | Maximum A\* computation time per plan request [s]; `<=0` uses `maximumComputationTime` from `planner_parameters` |
 | `mid_waypoints_allowed_distance` | `0.5` | Acceptance radius [m] for intermediate waypoints |
 | `final_waypoint_allowed_distance` | `0.4` | Acceptance radius [m] for the goal waypoint |

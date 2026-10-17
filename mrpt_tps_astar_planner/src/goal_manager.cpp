@@ -358,13 +358,7 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 			costmapSignature.emplace_back(p.get(), p->size());
 		}
 		searchStartPose = from;
-		if (reverse_motion_cost_factor_ > 0)
-		{
-			auto ev = mpp::CostEvaluatorReverseMotion::Create();
-			ev->params_.reverseTimeCostFactor = reverse_motion_cost_factor_;
-			ev->setPTGs(pi.ptgs);
-			planner.costEvaluators_.push_back(ev);
-		}
+		add_motion_cost_evaluators(planner.costEvaluators_, pi.ptgs);
 		const auto margin =
 			mrpt::math::TPoint3Df(problem_world_bbox_margin_, problem_world_bbox_margin_, .0f);
 		for (const auto& p : {from.translation(), goal->pose.translation()})
@@ -566,7 +560,7 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 		std::vector<mpp::ObstacleSource::Ptr> unusedSources;
 		auto bbox = mrpt::math::TBoundingBoxf::PlusMinusInfinity();
 		build_obstacles(searchStartPose, unusedSources, nullptr, &evaluators, bbox);
-		// Keep the other evaluators (reverse motion cost):
+		// Keep the other evaluators (reverse motion, turning):
 		for (const auto& ev : planner.costEvaluators_)
 		{
 			if (!std::dynamic_pointer_cast<mpp::CostEvaluatorCostMap>(ev))
