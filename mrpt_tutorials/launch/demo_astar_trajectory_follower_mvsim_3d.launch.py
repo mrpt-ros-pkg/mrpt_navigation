@@ -70,7 +70,7 @@ WORLDS = {
     },
     'warehouse': {
         'world': 'demo_warehouse.world.xml',
-        'ptg_ini': ('mrpt_tps_astar_planner', 'configs', 'ini', 'ptgs_jackal.ini'),
+        'ptg_ini': ('mrpt_tutorials', 'params', 'ptgs_mvsim_jackal.ini'),
         'follower_overrides': 'follower-overrides-diffdrive.yaml',
         'pipeline_yaml': 'point-cloud-pipeline-3d-obstacles-jackal.yaml',
         'points_topics': '/lidar1_points',
