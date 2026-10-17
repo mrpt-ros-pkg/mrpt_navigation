@@ -1,0 +1,7 @@
+# Robot-specific overrides of mrpt_trajectory_follower parameters for the
+# mvsim "agricobiot2" vehicle (Ackermann). Only platform properties go here;
+# everything else comes from the shared follower-params.yaml, and the footprint
+# and min turning radius from the robot description (PTG .ini file).
+max_speed: 1.0        # [m/s] platform max (see the 'speed_limit' node param)
+max_accel: 0.5        # [m/s^2]
+max_decel: 0.8        # [m/s^2]

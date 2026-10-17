@@ -1,0 +1,269 @@
+# ROS 2 launch file for example in mrpt_tutorials
+#
+# A* planning (mrpt_tps_astar_planner) + path following
+# (mrpt_trajectory_follower) in mvsim demo worlds with robots carrying 3D
+# LiDARs, using the world files shipped with mvsim (mvsim_tutorial/):
+#
+#  - world:=greenhouse: Ackermann "agricobiot2" robot with a Velodyne VLP-16 on
+#    a mast, between rows of tomato plants. Try goals in the corridors between
+#    rows, e.g. (5.6, 20.0, 90 deg) or (9.6, 6.0, -90 deg).
+#  - world:=warehouse: Jackal robot with a 3D LiDAR and a rear 2D LiDAR, among
+#    racks, pallets, a moving pallet jack and a walking person. Try goals e.g.
+#    (-8.0, -8.0, 180 deg) in an aisle, (-10.0, 6.2, 180 deg) on the walkway
+#    or (16.0, 10.5, 0 deg) in the office.
+#
+# Obstacles:
+#  - Live: mrpt_pointcloud_pipeline turns the latest LiDAR scans into a sparse
+#    2D cloud of the points within a height band (/local_map_pointcloud), for
+#    the planner and the follower.
+#  - Static (use_static_map:=True): the world obstacles in the same height band,
+#    from maps/mvsim_<world>_obstacles.mm (built with
+#    maps/generate_mvsim_obstacle_maps.sh), served by mrpt_map_server on
+#    /mrpt_map/raw_points, so the planner knows about obstacles out of
+#    sight.
+#
+# Localization: mvsim ground truth ("fake localization", map -> odom).
+#
+# Set goals with RViz "2D Goal Pose", or "Publish pose" in Foxglove (layout:
+# mrpt_tutorials/foxglove/mvsim_3d_nav.json, with foxglove_bridge running).
+#
+# Launch arguments:
+#  - world: 'greenhouse' (default) or 'warehouse'.
+#  - use_static_map: also plan with the static obstacle map (default: True).
+#  - speed_limit: initial follower speed limit [m/s] (<=0: platform max).
+#  - max_computation_time: max A* computation time per plan request [s]
+#    (<=0: value of the planner parameters file).
+#  - anytime_first_path_time, continuous_planning, replan_period, ...: planner
+#    goal manager settings (see PLANNER_GOAL_MANAGER_ARGS below).
+#  - headless: run mvsim without its GUI (default: True).
+#  - use_rviz: False for headless runs.
+#  - use_sim_time: True (default) to run all nodes on the simulation clock
+#    published by mvsim.
+#
+# See repo online: https://github.com/mrpt-ros-pkg/mrpt_navigation
+#
+
+from launch import LaunchDescription
+from launch_ros.actions import Node
+from launch.actions import (IncludeLaunchDescription, DeclareLaunchArgument,
+                            GroupAction, OpaqueFunction)
+from launch_ros.actions import SetParameter
+from launch.conditions import IfCondition
+from launch.substitutions import LaunchConfiguration
+from ament_index_python import get_package_share_directory
+from launch.launch_description_sources import PythonLaunchDescriptionSource
+import os
+
+# Per-world settings:
+WORLDS = {
+    'greenhouse': {
+        'world': 'demo_greenhouse.world.xml',
+        'ptg_ini': ('mrpt_tutorials', 'params', 'ptgs_mvsim_agricobiot2.ini'),
+        'follower_overrides': 'follower-overrides-agricobiot2.yaml',
+        'pipeline_yaml': 'point-cloud-pipeline-3d-obstacles-agricobiot2.yaml',
+        'points_topics': '/lidar1_points',
+        'scan_topics': '',
+        # The LiDAR is high on a mast, blind to low obstacles close to the
+        # robot: keep reporting those seen before, around the robot footprint.
+        'memory_region': '-3.0, -3.0, 3.0, 3.0',
+        'memory_self_box': '-0.45, -0.35, 1.00, 0.35',
+    },
+    'warehouse': {
+        'world': 'demo_warehouse.world.xml',
+        'ptg_ini': ('mrpt_tutorials', 'params', 'ptgs_mvsim_jackal.ini'),
+        'follower_overrides': 'follower-overrides-diffdrive.yaml',
+        'pipeline_yaml': 'point-cloud-pipeline-3d-obstacles-jackal.yaml',
+        'points_topics': '/lidar1_points',
+        'scan_topics': '/scanner1',
+        'memory_region': '',
+        'memory_self_box': '',
+    },
+}
+
+STATIC_OBSTACLES_TOPIC = '/mrpt_map/raw_points'
+LOCAL_OBSTACLES_TOPIC = '/local_map_pointcloud'
+
+# Planner goal manager settings (see mrpt_tps_astar_planner/README.md), with the
+# planner defaults: (name, default, description)
+PLANNER_GOAL_MANAGER_ARGS = [
+    ('anytime_first_path_time', '2.5',
+     'Planner: publish the best partial path after this time [s] (<=0: only full paths)'),
+    ('anytime_min_progress', '1.0',
+     'Planner: minimum progress toward the goal [m] of a partial path'),
+    ('anytime_max_partial_length', '10.0',
+     'Planner: partial paths are cut to this length [m] (<=0: no limit)'),
+    ('continuous_planning', 'true',
+     'Planner: keep replanning while the robot drives'),
+    ('replan_period', '1.0',
+     'Planner: period of the replanning cycles [s]'),
+    ('stitch_lookahead_time', '3.0',
+     'Planner: the search goes on from this far ahead [s] of the robot on its path'),
+    ('start_lookahead_time', '3.0',
+     'Planner: new searches from a moving robot start this far ahead [s] on its path'),
+    ('max_planning_restarts', '5',
+     'Planner: searches restarted in a row for a goal, without reaching it, before giving up'),
+]
+
+
+def launch_setup(context, *args, **kwargs):
+    tutsDir = get_package_share_directory("mrpt_tutorials")
+
+    world = LaunchConfiguration('world').perform(context)
+    if world not in WORLDS:
+        raise ValueError(
+            f"Unknown world '{world}', valid values: {list(WORLDS.keys())}")
+    cfg = WORLDS[world]
+
+    ptg_ini_file = os.path.join(get_package_share_directory(
+        cfg['ptg_ini'][0]), *cfg['ptg_ini'][1:])
+
+    use_static_map = LaunchConfiguration(
+        'use_static_map').perform(context).lower() in ('true', '1')
+    actions = []
+
+    if use_static_map:
+        mm_file = os.path.join(tutsDir, 'maps', f'mvsim_{world}_obstacles.mm')
+        if not os.path.isfile(mm_file):
+            raise RuntimeError(
+                f'Missing static obstacle map {mm_file}: build it with '
+                'mrpt_tutorials/maps/generate_mvsim_obstacle_maps.sh, or use '
+                'use_static_map:=False')
+        actions.append(IncludeLaunchDescription(
+            PythonLaunchDescriptionSource([os.path.join(
+                get_package_share_directory('mrpt_map_server'), 'launch',
+                'mrpt_map_server.launch.py')]),
+            launch_arguments={'mm_file': mm_file}.items()
+        ))
+
+    obstacle_topics = [LOCAL_OBSTACLES_TOPIC]
+    if use_static_map:
+        obstacle_topics.append(STATIC_OBSTACLES_TOPIC)
+
+    mrpt_astar_planner_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource([os.path.join(
+            get_package_share_directory('mrpt_tps_astar_planner'), 'launch',
+            'tps_astar_planner.launch.py')]),
+        launch_arguments={
+            'topic_goal_sub': '/goal_pose',
+            'show_gui': 'False',
+            'topic_obstacles_gridmap_sub': '',
+            'topic_obstacles_sub': ', '.join(obstacle_topics),
+            'topic_static_maps': STATIC_OBSTACLES_TOPIC if use_static_map else '',
+            'topic_wp_seq_pub': '/waypoints',
+            'ptg_ini': ptg_ini_file,
+            'max_computation_time': LaunchConfiguration('max_computation_time'),
+            **{name: LaunchConfiguration(name) for name, _, _ in PLANNER_GOAL_MANAGER_ARGS},
+        }.items()
+    )
+
+    mvsim_node = Node(
+        package='mvsim',
+        executable='mvsim_node',
+        name='mvsim',
+        output='screen',
+        parameters=[
+            {
+                "world_file": os.path.join(
+                    get_package_share_directory('mvsim'), 'mvsim_tutorial', cfg['world']),
+                # map -> odom from the ground truth:
+                "do_fake_localization": True,
+                "headless": LaunchConfiguration('headless'),
+            }]
+    )
+
+    # Launch for mrpt_pointcloud_pipeline (latest LiDAR scans, odom frame):
+    pointcloud_pipeline_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource([os.path.join(
+            get_package_share_directory('mrpt_pointcloud_pipeline'), 'launch',
+            'pointcloud_pipeline.launch.py')]),
+        launch_arguments={
+            'use_composable': 'false',
+            'log_level': 'INFO',
+            'pipeline_yaml_file': os.path.join(tutsDir, 'params', cfg['pipeline_yaml']),
+            'points_topic_name': cfg['points_topics'],
+            'scan_topic_name': cfg['scan_topics'],
+            'filter_output_layer_name': 'local_obstacles',
+            'filter_output_topic_name': LOCAL_OBSTACLES_TOPIC,
+            # Only the latest scan of each sensor:
+            'time_window': '0.20',
+            'one_observation_per_topic': 'True',
+            'memory_layers': 'local_obstacles' if cfg['memory_region'] else '',
+            'memory_region': cfg['memory_region'],
+            'memory_self_box': cfg['memory_self_box'],
+            'show_gui': 'False',
+            'frameid_robot': 'base_link',
+            'frameid_reference': 'odom',
+        }.items()
+    )
+
+    # Launch for mrpt_trajectory_follower:
+    trajectory_follower_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource([os.path.join(
+            get_package_share_directory('mrpt_trajectory_follower'), 'launch',
+            'trajectory_follower.launch.py')]),
+        launch_arguments={
+            'frame_id_map': 'map',
+            'frame_id_robot': 'base_link',
+            'topic_path_sub': '/waypoints_path',  # published by mrpt_tps_astar_planner
+            'topic_obstacles_sub': LOCAL_OBSTACLES_TOPIC,
+            'topic_odom_sub': '/odom',
+            'topic_cmd_vel_pub': '/cmd_vel',
+            'ptg_ini': ptg_ini_file,
+            'follower_parameters_overrides': os.path.join(
+                tutsDir, 'params', cfg['follower_overrides']),
+            'speed_limit': LaunchConfiguration('speed_limit'),
+            'replan_on_failure': 'True',
+            'log_level': 'INFO',
+        }.items()
+    )
+
+    rviz2_node = Node(
+        package='rviz2',
+        executable='rviz2',
+        name='rviz2',
+        condition=IfCondition(LaunchConfiguration('use_rviz')),
+        arguments=[
+                '-d', [os.path.join(tutsDir, 'rviz2', 'mvsim_3d_nav.rviz')]]
+    )
+    # mvsim is the clock source; all other nodes may use its clock:
+    return [
+        mvsim_node,
+        GroupAction([
+            SetParameter(name='use_sim_time',
+                         value=LaunchConfiguration('use_sim_time')),
+            *actions,
+            mrpt_astar_planner_launch,
+            pointcloud_pipeline_launch,
+            trajectory_follower_launch,
+            rviz2_node,
+        ]),
+    ]
+
+
+def generate_launch_description():
+    return LaunchDescription([
+        DeclareLaunchArgument(
+            'world', default_value='greenhouse',
+            description='mvsim world: ' + ', '.join(WORLDS.keys())),
+        DeclareLaunchArgument(
+            'use_static_map', default_value='True',
+            description='Also plan with the static obstacle map of the world'),
+        DeclareLaunchArgument(
+            'max_computation_time', default_value='0.0',
+            description='Max A* computation time per plan request [s] (<=0: planner file value)'),
+        DeclareLaunchArgument(
+            'speed_limit', default_value='0.0',
+            description='Initial follower speed limit [m/s] (<=0: platform max)'),
+        DeclareLaunchArgument(
+            'headless', default_value='True',
+            description='Run mvsim without its GUI'),
+        DeclareLaunchArgument(
+            'use_rviz', default_value='True',
+            description='Whether to launch RViz2 (False for headless runs)'),
+        DeclareLaunchArgument(
+            'use_sim_time', default_value='True',
+            description='Run the nodes on the simulation clock from mvsim'),
+        *[DeclareLaunchArgument(name, default_value=default, description=desc)
+          for name, default, desc in PLANNER_GOAL_MANAGER_ARGS],
+        OpaqueFunction(function=launch_setup),
+    ])

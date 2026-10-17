@@ -99,7 +99,14 @@ menu, with `foxglove_bridge` running).
 
 `demo_astar_trajectory_follower_street.launch.py` is the same demo (ackermann
 robot) in a street with parking bays at different angles, to try the planner on
-parking maneuvers. `demo_astar_rnav_gridmap.launch.py` uses the older, deprecated
+parking maneuvers. `demo_astar_trajectory_follower_mvsim_3d.launch.py` runs it in
+the mvsim greenhouse (Ackermann robot, `world:=greenhouse`) and warehouse
+(Jackal, `world:=warehouse`) worlds, with live obstacles from 3D LiDARs
+(`mrpt_pointcloud_pipeline`), a static obstacle map built from the world itself
+(`mrpt_tutorials/maps/generate_mvsim_obstacle_maps.sh`, with `mvsim slice`),
+ground-truth localization, and its own Foxglove layout
+(`mrpt_tutorials/foxglove/mvsim_3d_nav.json`).
+`demo_astar_rnav_gridmap.launch.py` uses the older, deprecated
 `mrpt_reactivenav2d` navigator instead of the trajectory follower.
 
 End-to-end tests (headless, both robots, a battery of A->B navigations checking

@@ -1,0 +1,84 @@
+{
+  "configById": {
+    "3D!mvsim_3d_nav": {
+      "layers": {
+        "grid": {
+          "layerId": "foxglove.Grid",
+          "visible": true,
+          "frameId": "map",
+          "size": 60,
+          "divisions": 60,
+          "lineWidth": 1,
+          "color": "#a0a0a4",
+          "position": [0, 0, 0],
+          "rotation": [0, 0, 0]
+        }
+      },
+      "cameraState": {
+        "perspective": true,
+        "distance": 20,
+        "phi": 50,
+        "thetaOffset": 90,
+        "targetOffset": [0, 0, 0],
+        "target": [0, 0, 0],
+        "targetOrientation": [0, 0, 0, 1],
+        "fovy": 45,
+        "near": 0.5,
+        "far": 5000
+      },
+      "followMode": "follow-position",
+      "followTf": "base_link",
+      "scene": {
+        "backgroundColor": "#303030",
+        "transforms": { "showLabel": false, "editable": false, "axisScale": 0.6 }
+      },
+      "transforms": {},
+      "topics": {
+        "/mrpt_map/raw_points": { "visible": true, "colorMode": "flat", "flatColor": "#7878ff", "pointSize": 4, "pointShape": "square" },
+        "/lidar1_points": { "visible": true, "colorMode": "colormap", "colorField": "z", "colorMap": "turbo", "pointSize": 2 },
+        "/scanner1": { "visible": true, "colorMode": "flat", "flatColor": "#ffffff", "pointSize": 3, "pointShape": "square" },
+        "/cam1_points": { "visible": false, "colorMode": "rgb", "pointSize": 2 },
+        "/local_map_pointcloud": { "visible": true, "colorMode": "flat", "flatColor": "#f8e45c", "pointSize": 5, "pointShape": "square" },
+        "/costmap_0": { "visible": true, "colorMode": "costmap", "alpha": 0.2 },
+        "/costmap_1": { "visible": true, "colorMode": "costmap", "alpha": 0.2 },
+        "/chassis_markers": { "visible": true },
+        "/waypoints_path": { "visible": true, "lineWidth": 0.06, "gradient": ["#19ff00", "#19ff00"] },
+        "/mrpt_tps_astar_planner_node/committed_path": { "visible": true, "lineWidth": 0.1, "gradient": ["#0078ff", "#0078ff"] },
+        "/mrpt_tps_astar_planner_node/tentative_path": { "visible": true, "lineWidth": 0.1, "gradient": ["#ffa000", "#ffa000"] },
+        "/goal_pose": { "visible": true, "type": "arrow", "arrowSize": [1.0, 0.3, 0.3], "color": "#ff1900" }
+      },
+      "publish": {
+        "type": "pose",
+        "poseTopic": "/goal_pose",
+        "pointTopic": "/clicked_point",
+        "poseEstimateTopic": "/initialpose",
+        "poseEstimateXDeviation": 0.5,
+        "poseEstimateYDeviation": 0.5,
+        "poseEstimateThetaDeviation": 0.26
+      },
+      "imageMode": {}
+    },
+    "Image!camera": {
+      "imageMode": { "imageTopic": "/cam1_rgb/image_raw" }
+    },
+    "RosOut!log": {
+      "searchTerms": [],
+      "minLogLevel": 2,
+      "nameFilter": {}
+    }
+  },
+  "globalVariables": {},
+  "userNodes": {},
+  "playbackConfig": { "speed": 1 },
+  "layout": {
+    "direction": "row",
+    "first": "3D!mvsim_3d_nav",
+    "second": {
+      "direction": "column",
+      "first": "Image!camera",
+      "second": "RosOut!log",
+      "splitPercentage": 50
+    },
+    "splitPercentage": 70
+  }
+}
