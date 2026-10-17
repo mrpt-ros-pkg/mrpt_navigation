@@ -82,16 +82,20 @@ thread, so the robot starts moving soon and reacts to obstacles in advance:
    (robot footprint). If it is blocked, the path is cut short before the
    obstacle (the follower stops there if needed) and a new search starts from
    scratch: from the end of the committed part, or from the robot if the
-   obstacle is before it. Follower failures (`Blocked`, `OffPathExceeded`,
-   `MissedGoal`) restart it from the robot pose, up to `max_planning_restarts`
-   times in a row without reaching the goal.
+   obstacle is before it (cutting the path there, so the robot does not drive
+   past it meanwhile). Follower failures (`Blocked`, `OffPathExceeded`,
+   `MissedGoal`, or staying `Blocked` for 10 s) restart it from the robot pose,
+   up to `max_planning_restarts` times in a row without reaching the goal. A
+   search that can not even leave the robot pose (obstacles too close, maybe
+   transient) is retried every 2 s, as many times.
 4. New searches from the robot (a new goal while driving, or a restart) start
    from where it will be after `start_lookahead_time` on the path it is
    following (at its current speed, from TF), and keep that path up to there,
    so a fast robot is not already past the start of the new path when it is
    published, and the follower switches to it without stopping.
 5. The goal ends when the follower (`topic_follower_status_sub`) reaches it
-   after following a full path. A new goal preempts the current one.
+   after following a full path. A new goal preempts the current one. Goals
+   whose footprint hits the current obstacles are rejected at once.
 
 The goal manager's anytime and continuous planning require
 `mrpt_trajectory_follower`: goals end with its status, and a path follower
@@ -136,6 +140,7 @@ manager plan concurrently.
 | `problem_world_bbox_ignore_obstacles` | `false` | If true, obstacle extents are excluded from the bounding box |
 | `astar_skip_refine` | `false` | If true, skip the post-A\* trajectory refinement pass |
 | `reverse_motion_cost_factor` | `1.0` | Extra cost per second driven in reverse, so paths only back up when it pays off (0: same cost as forward) |
+| `turning_cost_factor` | `1.0` | Extra cost per radian of heading change, so paths drive straight instead of weaving, unless turning pays off (0: no penalty; needs a `mrpt_path_planning` with `MPP_HAS_TURNING_COST`) |
 | `max_computation_time` | `0.0` | Maximum A\* computation time per plan request [s]; `<=0` uses `maximumComputationTime` from `planner_parameters` |
 | `mid_waypoints_allowed_distance` | `0.5` | Acceptance radius [m] for intermediate waypoints |
 | `final_waypoint_allowed_distance` | `0.4` | Acceptance radius [m] for the goal waypoint |

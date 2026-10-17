@@ -441,6 +441,18 @@ void TPS_Astar_Planner_Node::read_parameters()
 	RCLCPP_INFO(
 		this->get_logger(), "reverse_motion_cost_factor: %.03f", reverse_motion_cost_factor_);
 
+	this->declare_parameter<double>("turning_cost_factor", turning_cost_factor_);
+	this->get_parameter("turning_cost_factor", turning_cost_factor_);
+	RCLCPP_INFO(this->get_logger(), "turning_cost_factor: %.03f", turning_cost_factor_);
+#if !defined(MPP_HAS_TURNING_COST)
+	if (turning_cost_factor_ > 0)
+	{
+		RCLCPP_WARN(
+			this->get_logger(),
+			"turning_cost_factor is ignored: it needs a newer mrpt_path_planning version.");
+	}
+#endif
+
 	this->declare_parameter<double>("max_computation_time", max_computation_time_);
 	this->get_parameter("max_computation_time", max_computation_time_);
 	RCLCPP_INFO(
@@ -799,6 +811,28 @@ void TPS_Astar_Planner_Node::update_map(
 		xs.size(), corners.size());
 }
 
+void TPS_Astar_Planner_Node::add_motion_cost_evaluators(
+	std::vector<mpp::CostEvaluator::Ptr>& evaluators,
+	const mpp::TrajectoriesAndRobotShape& ptgs) const
+{
+	if (reverse_motion_cost_factor_ > 0)
+	{
+		auto ev = mpp::CostEvaluatorReverseMotion::Create();
+		ev->params_.reverseTimeCostFactor = reverse_motion_cost_factor_;
+		ev->setPTGs(ptgs);
+		evaluators.push_back(ev);
+	}
+#if defined(MPP_HAS_TURNING_COST)
+	if (turning_cost_factor_ > 0)
+	{
+		auto ev = mpp::CostEvaluatorTurning::Create();
+		ev->params_.turnCostFactor = turning_cost_factor_;
+		ev->setPTGs(ptgs);
+		evaluators.push_back(ev);
+	}
+#endif
+}
+
 size_t TPS_Astar_Planner_Node::build_obstacles(
 	const mrpt::math::TPose2D& start, std::vector<mpp::ObstacleSource::Ptr>& sources,
 	std::vector<mrpt::maps::CPointsMap::Ptr>* points,
@@ -908,13 +942,7 @@ TPS_Astar_Planner_Node::PlanResult TPS_Astar_Planner_Node::do_path_plan(
 		pi.stateStart.pose, pi.obstacles, nullptr, &local_planner.costEvaluators_, bbox,
 		ignore_regions);
 
-	if (reverse_motion_cost_factor_ > 0)
-	{
-		auto ev = mpp::CostEvaluatorReverseMotion::Create();
-		ev->params_.reverseTimeCostFactor = reverse_motion_cost_factor_;
-		ev->setPTGs(ptgs_);
-		local_planner.costEvaluators_.push_back(ev);
-	}
+	add_motion_cost_evaluators(local_planner.costEvaluators_, ptgs_);
 
 	{
 		const auto bboxMargin =

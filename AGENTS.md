@@ -35,8 +35,8 @@ list and responsibilities:
   thread (`goal_manager.cpp`): anytime partial paths, then continuous
   replanning re-rooting the search ahead of the robot, published as
   `ReferencePath` (committed part never changes); searches from a moving
-  robot start ahead of it on its path (`start_lookahead_time`). Services
-  stay one-shot.
+  robot start ahead of it on its path (`start_lookahead_time`); goals in
+  collision are rejected. Services stay one-shot.
 - **mrpt_trajectory_follower**: node that accurately follows a reference
   pose+speed path (pure pursuit) with predictive safety, a last-resort
   collision guard on every command, run-time speed limit, and optional

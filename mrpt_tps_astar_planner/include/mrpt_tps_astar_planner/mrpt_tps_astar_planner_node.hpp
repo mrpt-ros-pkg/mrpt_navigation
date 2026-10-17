@@ -11,6 +11,9 @@
 #include <mpp/algos/CostEvaluatorCostMap.h>
 #include <mpp/algos/CostEvaluatorPreferredWaypoint.h>
 #include <mpp/algos/CostEvaluatorReverseMotion.h>
+#if __has_include(<mpp/algos/CostEvaluatorTurning.h>)
+#include <mpp/algos/CostEvaluatorTurning.h>
+#endif
 #include <mpp/algos/TPS_Astar.h>
 #include <mpp/algos/edge_interpolated_path.h>
 #include <mpp/algos/refine_trajectory.h>
@@ -217,6 +220,9 @@ class TPS_Astar_Planner_Node : public rclcpp::Node
 	/// Extra cost per second of reverse motion (0: reversing costs the same as
 	/// driving forward)
 	double reverse_motion_cost_factor_ = 1.0;
+	/// Extra cost per radian of heading change, so paths drive straight
+	/// unless turning pays off (0: no penalty). Needs MPP_HAS_TURNING_COST.
+	double turning_cost_factor_ = 1.0;
 	/// Overrides maximumComputationTime of the planner parameters file if > 0 [s]
 	double max_computation_time_ = 0.0;
 
@@ -362,6 +368,12 @@ class TPS_Astar_Planner_Node : public rclcpp::Node
 
 	/// Obstacle sources (map frame) and cost evaluators for a plan from
 	/// `start`, as used by do_path_plan(). Returns the number of sources.
+	/// Appends the cost evaluators of the motion itself (reverse motion,
+	/// turning), as configured, to `evaluators`.
+	void add_motion_cost_evaluators(
+		std::vector<mpp::CostEvaluator::Ptr>& evaluators,
+		const mpp::TrajectoriesAndRobotShape& ptgs) const;
+
 	size_t build_obstacles(
 		const mrpt::math::TPose2D& start, std::vector<mpp::ObstacleSource::Ptr>& sources,
 		std::vector<mrpt::maps::CPointsMap::Ptr>* points,

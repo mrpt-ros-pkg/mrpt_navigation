@@ -289,6 +289,16 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 	std::vector<std::pair<const void*, size_t>> costmapSignature;
 	// Since when the follower waits at the end of a partial path:
 	std::optional<double> followerWaitingSince;
+	// Since when the follower is blocked, and replans for that in a row
+	// (publishing a path resets `restarts`, so they are counted apart):
+	std::optional<double> followerBlockedSince;
+	int blockedRestarts = 0;
+	// A search that can not leave its start pose (obstacles too close, which
+	// may be transient: people, remembered obstacles) is retried a few times,
+	// a while apart, before giving up:
+	constexpr double kStartBlockedRetryPeriod = 2.0;  // [s]
+	int startBlockedRetries = 0;
+	std::optional<double> startBlockedRetryAt;
 	double tLastHeartbeat = 0;
 
 	auto endGoal = [&](int8_t status, const char* why)
@@ -352,13 +362,7 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 			costmapSignature.emplace_back(p.get(), p->size());
 		}
 		searchStartPose = from;
-		if (reverse_motion_cost_factor_ > 0)
-		{
-			auto ev = mpp::CostEvaluatorReverseMotion::Create();
-			ev->params_.reverseTimeCostFactor = reverse_motion_cost_factor_;
-			ev->setPTGs(pi.ptgs);
-			planner.costEvaluators_.push_back(ev);
-		}
+		add_motion_cost_evaluators(planner.costEvaluators_, pi.ptgs);
 		const auto margin =
 			mrpt::math::TPoint3Df(problem_world_bbox_margin_, problem_world_bbox_margin_, .0f);
 		for (const auto& p : {from.translation(), goal->pose.translation()})
@@ -560,7 +564,7 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 		std::vector<mpp::ObstacleSource::Ptr> unusedSources;
 		auto bbox = mrpt::math::TBoundingBoxf::PlusMinusInfinity();
 		build_obstacles(searchStartPose, unusedSources, nullptr, &evaluators, bbox);
-		// Keep the other evaluators (reverse motion cost):
+		// Keep the other evaluators (reverse motion, turning):
 		for (const auto& ev : planner.costEvaluators_)
 		{
 			if (!std::dynamic_pointer_cast<mpp::CostEvaluatorCostMap>(ev))
@@ -722,6 +726,7 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 		requestedTarget = requested;
 		published = true;
 		searchPublished = true;
+		startBlockedRetries = 0;
 		publishedFull = !partial;
 		followerEngaged = false;
 		revision++;
@@ -820,6 +825,9 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 			goal = std::move(newGoal);
 			tGoalStart = now_seconds();
 			restarts = 0;
+			startBlockedRetries = 0;
+			startBlockedRetryAt.reset();
+			blockedRestarts = 0;
 			revision = 0;
 			published = false;
 			publishedFull = false;
@@ -832,9 +840,31 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 				rootIdx = 0;
 				robotIdx = 0;
 			}
+			std::optional<mrpt::math::TPoint2D> goalHit;
+			if (plannerReady)
+			{
+				// A goal pose in collision can not be reached: reject it now
+				// instead of driving toward it with partial paths.
+				std::vector<mpp::ObstacleSource::Ptr> unusedSources;
+				std::vector<mrpt::maps::CPointsMap::Ptr> points;
+				auto unusedBbox = mrpt::math::TBoundingBoxf::PlusMinusInfinity();
+				build_obstacles(goal->pose, unusedSources, &points, nullptr, unusedBbox);
+				goalHit =
+					obstacleIndex(points).collides(goal->pose, footprintPoly, footprintRadius, 0.0);
+			}
 			if (!plannerReady)
 			{
 				endGoal(NavStatus::STATUS_ERROR, "PTGs not ready");
+			}
+			else if (goalHit)
+			{
+				RCLCPP_WARN(
+					get_logger(),
+					"Goal #%u: the robot footprint at the goal hits an obstacle at (%.2f, %.2f): "
+					"rejected.",
+					goal->id, goalHit->x, goalHit->y);
+				publish_empty_paths();
+				endGoal(NavStatus::STATUS_ERROR, "goal in collision");
 			}
 			else if (const auto from = predictedStart(std::numeric_limits<size_t>::max()); from)
 			{
@@ -914,6 +944,44 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 					followerWaitingSince.reset();
 				}
 
+				// A follower blocked for long, while the path is still clear for
+				// the search (e.g. it can not track a tight maneuver close to
+				// obstacles): plan again from the robot, eventually giving up
+				// (max_planning_restarts) instead of waiting forever. Its status
+				// may not change again, so it is not required to be current.
+				constexpr double kMaxBlocked = 10.0;  // [s]
+				const bool followerBlocked =
+					goal && followerStatus == "Blocked" && published &&
+					(!statusHasIds || (followerHasId && followerGoalId == goal->id));
+				if (followerBlocked)
+				{
+					if (!followerBlockedSince)
+					{
+						followerBlockedSince = now_seconds();
+					}
+					else if (now_seconds() - *followerBlockedSince > kMaxBlocked)
+					{
+						followerBlockedSince.reset();
+						if (++blockedRestarts > max_planning_restarts_)
+						{
+							publish_empty_paths();
+							endGoal(NavStatus::STATUS_ERROR, "the path follower stays blocked");
+						}
+						else
+						{
+							restartSearch(true, "the follower stays blocked");
+						}
+					}
+				}
+				else
+				{
+					followerBlockedSince.reset();
+					if (goal && followerStatus == FOLLOWER_RUNNING)
+					{
+						blockedRestarts = 0;
+					}
+				}
+
 				// Progress log, to diagnose searches that do not finish:
 				if (goal && now_seconds() - tLastHeartbeat > 10.0)
 				{
@@ -967,11 +1035,18 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 							"obstacle at (%.2f, %.2f).",
 							goal->id, pathS[*hit] - pathS[robotIdx], pathPoses[*hit].x,
 							pathPoses[*hit].y, hitInfo->second.x, hitInfo->second.y);
-						publishTruncated(stopIdx + 1);
 						// Only the part before the obstacle remains (and the
-						// committed part, if it is clear, to go on from its end):
-						const bool fromRobot = *hit <= rootIdx || rootIdx <= robotIdx;
-						const size_t keep = (fromRobot ? stopIdx : std::max(stopIdx, rootIdx)) + 1;
+						// committed part, if it ends well before it, to go on from
+						// its end). A committed end closer to it may already touch
+						// it (the validation margin tolerates some overlap), and a
+						// search from there would keep the robot that close.
+						const bool fromRobot =
+							*hit <= rootIdx || rootIdx <= robotIdx || rootIdx > stopIdx;
+						// A search from the committed path end: the robot must not
+						// drive past it meanwhile, or the new path would start
+						// behind the robot.
+						publishTruncated((fromRobot ? stopIdx : rootIdx) + 1);
+						const size_t keep = stopIdx + 1;
 						if (keep < pathPoses.size())
 						{
 							pathPoses.resize(keep);
@@ -1024,6 +1099,16 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 							restarts = 0;
 						}
 						break;
+					}
+				}
+
+				// Retry a search that could not leave its start pose:
+				if (goal && startBlockedRetryAt && now_seconds() >= *startBlockedRetryAt)
+				{
+					startBlockedRetryAt.reset();
+					if (const auto from = predictedStart(std::numeric_limits<size_t>::max()); from)
+					{
+						startSearch(from->first, from->second);
 					}
 				}
 
@@ -1102,10 +1187,26 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 						const char* why = planner.search_can_continue()
 											  ? "search timeout"
 											  : "no path in the search tree";
-						if (!published)
+						// No motion at all from the start pose:
+						const bool startBlocked =
+							!planner.search_can_continue() && out.motionTree.nodes().size() <= 1;
+						if (startBlocked && startBlockedRetries < max_planning_restarts_)
+						{
+							startBlockedRetries++;
+							RCLCPP_WARN(
+								get_logger(),
+								"Goal #%u: no motion is possible from the start pose (obstacles "
+								"too "
+								"close): retrying in %.0f s (%d/%d).",
+								goal->id, kStartBlockedRetryPeriod, startBlockedRetries,
+								max_planning_restarts_);
+							startBlockedRetryAt = now_seconds() + kStartBlockedRetryPeriod;
+						}
+						else if (!published)
 						{
 							RCLCPP_WARN(
-								get_logger(), "Goal #%u: no path found (%s).", goal->id, why);
+								get_logger(), "Goal #%u: no path found (%s).", goal->id,
+								startBlocked ? "the robot is blocked by obstacles" : why);
 							publish_empty_paths();
 							endGoal(NavStatus::STATUS_ERROR, "no path found");
 						}
@@ -1115,6 +1216,20 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 						}
 					}
 					lastOut = std::move(out);
+				}
+				else if (
+					goal && published && !publishedFull && !planner.search_reached_goal() &&
+					!startBlockedRetryAt)
+				{
+					// The search ended outside run(): re-rooting keeps only the
+					// subtree of the new root, which may have no open nodes left.
+					// Go on with a new search from the end of the committed path
+					// (not driving past it meanwhile).
+					if (rootIdx > robotIdx)
+					{
+						publishTruncated(rootIdx + 1);
+					}
+					restartSearch(false, "no open nodes after re-rooting");
 				}
 
 				// Feedback:
