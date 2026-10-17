@@ -289,6 +289,12 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 	std::vector<std::pair<const void*, size_t>> costmapSignature;
 	// Since when the follower waits at the end of a partial path:
 	std::optional<double> followerWaitingSince;
+	// A search that can not leave its start pose (obstacles too close, which
+	// may be transient: people, remembered obstacles) is retried a few times,
+	// a while apart, before giving up:
+	constexpr double kStartBlockedRetryPeriod = 2.0;  // [s]
+	int startBlockedRetries = 0;
+	std::optional<double> startBlockedRetryAt;
 	double tLastHeartbeat = 0;
 
 	auto endGoal = [&](int8_t status, const char* why)
@@ -722,6 +728,7 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 		requestedTarget = requested;
 		published = true;
 		searchPublished = true;
+		startBlockedRetries = 0;
 		publishedFull = !partial;
 		followerEngaged = false;
 		revision++;
@@ -820,6 +827,8 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 			goal = std::move(newGoal);
 			tGoalStart = now_seconds();
 			restarts = 0;
+			startBlockedRetries = 0;
+			startBlockedRetryAt.reset();
 			revision = 0;
 			published = false;
 			publishedFull = false;
@@ -1027,6 +1036,16 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 					}
 				}
 
+				// Retry a search that could not leave its start pose:
+				if (goal && startBlockedRetryAt && now_seconds() >= *startBlockedRetryAt)
+				{
+					startBlockedRetryAt.reset();
+					if (const auto from = predictedStart(std::numeric_limits<size_t>::max()); from)
+					{
+						startSearch(from->first, from->second);
+					}
+				}
+
 				// Search:
 				if (goal && planner.search_can_continue())
 				{
@@ -1102,10 +1121,26 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 						const char* why = planner.search_can_continue()
 											  ? "search timeout"
 											  : "no path in the search tree";
-						if (!published)
+						// No motion at all from the start pose:
+						const bool startBlocked =
+							!planner.search_can_continue() && out.motionTree.nodes().size() <= 1;
+						if (startBlocked && startBlockedRetries < max_planning_restarts_)
+						{
+							startBlockedRetries++;
+							RCLCPP_WARN(
+								get_logger(),
+								"Goal #%u: no motion is possible from the start pose (obstacles "
+								"too "
+								"close): retrying in %.0f s (%d/%d).",
+								goal->id, kStartBlockedRetryPeriod, startBlockedRetries,
+								max_planning_restarts_);
+							startBlockedRetryAt = now_seconds() + kStartBlockedRetryPeriod;
+						}
+						else if (!published)
 						{
 							RCLCPP_WARN(
-								get_logger(), "Goal #%u: no path found (%s).", goal->id, why);
+								get_logger(), "Goal #%u: no path found (%s).", goal->id,
+								startBlocked ? "the robot is blocked by obstacles" : why);
 							publish_empty_paths();
 							endGoal(NavStatus::STATUS_ERROR, "no path found");
 						}
