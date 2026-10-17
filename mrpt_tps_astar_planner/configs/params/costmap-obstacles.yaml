@@ -1,9 +1,11 @@
 # For CostEvaluatorCostMap
 resolution: 0.10
-preferredClearanceDistance: 1.50
-maxCost: 15.0
+# Extra cost per second of motion, maxCost*(1-d/D)^2, for footprints closer
+# than D to obstacles. Large values make paths detour and weave in search of
+# clearance, and slow down the search (its heuristic only accounts for time).
+preferredClearanceDistance: 1.0
+maxCost: 5.0
 
 useAverageOfPath: false
 
 maxRadiusFromRobot: 0.0  # [meters]
-
