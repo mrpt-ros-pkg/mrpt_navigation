@@ -226,7 +226,7 @@ class TrajectoryFollowerNode : public rclcpp::Node, public mpp::TrajectoryVehicl
 	bool path_is_partial_ = false;
 
 	mpp::Trajectory last_trajectory_;  //!< to ignore identical re-published paths
-	bool have_trajectory_ = false;
+	bool have_trajectory_ = false;	//!< a path was set (kept once its goal is reached)
 
 	std::string status_;  //!< last published status
 	rclcpp::Time last_idle_status_pub_;
