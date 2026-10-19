@@ -6,3 +6,4 @@ max_speed: 1.5        # [m/s] platform max (see the 'speed_limit' node param)
 max_accel: 0.8        # [m/s^2]
 max_decel: 1.0        # [m/s^2]
 rotate_at_goal: true  # finish by rotating in place to the goal heading
+pivot_in_place: true  # rotate in place where the path does (DiffDrive_Spin PTG)

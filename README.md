@@ -84,7 +84,9 @@ Pose":
     ros2 launch mrpt_tutorials demo_astar_trajectory_follower_gridmap.launch.py \
         robot:=ackermann speed_limit:=1.0
 
-- `robot`: `ackermann` (car-like) or `diffdrive` (Jackal-like).
+- `robot`: `ackermann` (car-like) or `diffdrive` (Jackal-like, which can also
+  rotate in place: its plans may include rotations, which the follower executes
+  by stopping there).
 - `speed_limit` [m/s]: `0` for the platform max speed. It can be changed at
   run time with `ros2 param set /mrpt_trajectory_follower speed_limit 2.0`.
 

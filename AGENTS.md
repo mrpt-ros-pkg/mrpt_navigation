@@ -75,7 +75,9 @@ node) plus a thin `<pkg>_node` executable; their launch files take
 The PTG `.ini` file is the robot description (footprint, kinematics) shared by
 the planner and the follower; pass the same file to both. Platform properties
 (speed, accel, actuation lag, rotating in place at the goal) go in follower
-parameter overrides.
+parameter overrides. Differential-drive robots add a `DiffDrive_Spin` PTG
+(rotations in place) at the follower `max_omega`, so plans assume the time
+rotations take.
 
 All packages follow REP-2003 for ROS 2 topic QoS.
 
