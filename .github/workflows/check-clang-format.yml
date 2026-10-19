@@ -5,7 +5,7 @@ on: [push, pull_request]
 jobs:
   clang-format-check:
     name: clang-format-check
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04  # (later ones have no clang-format-14)
 
     steps:
       - uses: actions/checkout@v4
