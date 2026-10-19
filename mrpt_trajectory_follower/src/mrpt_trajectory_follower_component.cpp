@@ -1086,6 +1086,10 @@ void TrajectoryFollowerNode::control_tick()
 			}
 			publish_status(to_string(out.status));
 			managed_goal_id_.reset();
+			// Done: never resume this path, whatever moves the robot from now
+			// on. (The path is kept in last_trajectory_, so a re-published
+			// copy of it is still ignored.)
+			follower_.reset();
 			break;
 
 		case mpp::FollowerStatus::Blocked:
