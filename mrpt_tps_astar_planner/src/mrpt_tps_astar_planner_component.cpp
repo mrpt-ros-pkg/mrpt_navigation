@@ -671,7 +671,7 @@ void TPS_Astar_Planner_Node::callback_map(
 void TPS_Astar_Planner_Node::callback_obstacles(
 	const sensor_msgs::msg::PointCloud2::SharedPtr& pc, InfoPerPointMapSource& e)
 {
-	RCLCPP_INFO_STREAM_THROTTLE(
+	RCLCPP_DEBUG_STREAM_THROTTLE(
 		this->get_logger(), *this->get_clock(), 5000,
 		"Received obstacle points from topic: " << e.sub->get_topic_name());
 
