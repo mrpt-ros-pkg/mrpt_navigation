@@ -554,6 +554,28 @@ void TrajectoryFollowerNode::follow(const mpp::SampledTrajectory& ref)
 
 void TrajectoryFollowerNode::stop(mpp::StopKind /*kind*/) { publish_cmd(0, 0); }
 
+void TrajectoryFollowerNode::update_guard_speed_cap(
+	[[maybe_unused]] const mpp::TrajectoryFollower::Output& out)
+{
+#if HAVE_MPP_COLLISION_GUARD && defined(MPP_HAS_GUARD_MAX_SPEED) && \
+	defined(MPP_HAS_FOLLOWER_SPEED_CAP)
+	double cap = std::numeric_limits<double>::infinity();
+	if (guard_enabled_ && out.gear != 0)
+	{
+		// The guard limit for the wanted motion at full speed (stale obstacle
+		// data are handled by the guard itself, on each command):
+		const double v = out.gear * follower_.params.max_speed;
+		auto lck = std::lock_guard(guard_cs_);
+		const auto r = guard_.filter(v, v * out.curvature, mrpt::ros2bridge::fromROS(this->now()));
+		if (!r.stale)
+		{
+			cap = r.max_speed;
+		}
+	}
+	follower_.setSpeedCap(cap);
+#endif
+}
+
 void TrajectoryFollowerNode::start_watchdog(std::chrono::milliseconds timeout)
 {
 	{
@@ -1060,6 +1082,8 @@ void TrajectoryFollowerNode::control_tick()
 		return;	 // canceled meanwhile
 	}
 	const mpp::TrajectoryFollower::Output out = follower_.step(loc, odo);
+	// (also while held stopped, e.g. Blocked, to resume when allowed)
+	update_guard_speed_cap(out);
 
 	switch (out.status)
 	{
