@@ -260,6 +260,8 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 	double tSearchStart = 0;  // when the current search started
 	int restarts = 0;
 	uint32_t revision = 0;
+	// The first path revision published by the current search:
+	uint32_t searchFirstRevision = 1;
 	bool published = false;	 // a path was published for this goal
 	bool publishedFull = false;	 // ...reaching the goal
 	bool followerEngaged = false;  // follower acknowledged the current path
@@ -390,6 +392,7 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 		searchHasEvaluators = !planner.costEvaluators_.empty();
 		searchJustStarted = true;
 		searchPublished = false;
+		searchFirstRevision = revision + 1;
 		tSearchStart = now_seconds();
 		publishedTarget.reset();
 		requestedTarget.reset();
@@ -478,8 +481,9 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 	};
 
 	// Restarts the search from scratch, from the robot (its predicted pose,
-	// see predictedStart(), not beyond `limitIdx`) or from the root (keeping
-	// the committed part). Returns false if there were too many restarts.
+	// see predictedStart(), not beyond `limitIdx`: 0 for its current pose, if
+	// it does not follow the path anymore) or from the root (keeping the
+	// committed part). Returns false if there were too many restarts.
 	auto restartSearch = [&](bool fromRobot, const char* why,
 							 size_t limitIdx = std::numeric_limits<size_t>::max()) -> bool
 	{
@@ -711,6 +715,14 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 		sample_edges(edges, out.originalInput.ptgs, newPoses, edgeEnd);
 		if (!partial)
 		{
+			if (newPoses.size() < 2)
+			{
+				// The search starts at the goal (its lattice cell): nothing
+				// to drive.
+				publish_empty_paths();
+				endGoal(NavStatus::STATUS_SUCCESS, "the robot is at the goal");
+				return true;
+			}
 			// End exactly at the goal (refinement may leave it slightly off):
 			newPoses.back() = goal->pose;
 		}
@@ -928,25 +940,32 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 				const bool statusIsCurrent =
 					!statusHasIds ||
 					(followerHasId && followerGoalId == goal->id && followerRevision == revision);
+				// Failures to follow a path of the current search also hold
+				// for its later revisions (published meanwhile: they share
+				// the committed part with it):
+				const bool failureIsCurrent =
+					!statusHasIds || (followerHasId && followerGoalId == goal->id &&
+									  followerRevision >= searchFirstRevision);
 				if (statusIsCurrent && (followerActiveSeen || followerStatus == FOLLOWER_RUNNING ||
 										followerStatus == FOLLOWER_WAITING))
 				{
 					followerEngaged = published;
 				}
 				const bool isBlocked = followerStatus == FOLLOWER_BLOCKED;
-				if (statusIsCurrent && (statusHasIds || followerEngaged) && statusChanged)
+				if ((statusHasIds || followerEngaged) && statusChanged)
 				{
-					if (followerStatus == FOLLOWER_REACHED && publishedFull)
+					if (statusIsCurrent && followerStatus == FOLLOWER_REACHED && publishedFull)
 					{
 						endGoal(NavStatus::STATUS_SUCCESS, "goal reached");
 					}
-					else if (followerStatus == FOLLOWER_FAILED)
+					else if (statusIsCurrent && followerStatus == FOLLOWER_FAILED)
 					{
 						endGoal(NavStatus::STATUS_ERROR, "the path follower failed");
 					}
 					else if (
-						(isBlocked && !blockedReplanned) || followerStatus == "OffPathExceeded" ||
-						followerStatus == "MissedGoal")
+						failureIsCurrent &&
+						((isBlocked && !blockedReplanned) || followerStatus == "OffPathExceeded" ||
+						 followerStatus == "MissedGoal"))
 					{
 						// (a follower that stays blocked on the new path is
 						// replanned for periodically, see below)
@@ -956,7 +975,9 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 							blockedReplanned = true;
 							followerBlockedSince = now_seconds();
 						}
-						restartSearch(true, followerStatus.c_str());
+						// (the follower stopped following the path: from where
+						// the robot is, not ahead on that path)
+						restartSearch(true, followerStatus.c_str(), 0);
 					}
 				}
 
@@ -1009,7 +1030,7 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 						}
 						else
 						{
-							restartSearch(true, "the follower stays blocked");
+							restartSearch(true, "the follower stays blocked", 0);
 						}
 					}
 				}
@@ -1257,9 +1278,13 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 						const auto& root = out.originalInput.stateStart.pose;
 						const double dBest = (best.translation() - goal->pose.translation()).norm();
 						const double dRoot = (root.translation() - goal->pose.translation()).norm();
-						if (dBest <= dRoot - anytime_min_progress_)
+						if (dBest <= dRoot - anytime_min_progress_ &&
+							!publishPath(out, *out.bestNodeId, true))
 						{
-							publishPath(out, *out.bestNodeId, true);
+							// (the tree has edges checked against older
+							// obstacles: search again with the current ones)
+							restartSearch(true, "the new partial path is blocked");
+							restartedNow = true;
 						}
 					}
 
