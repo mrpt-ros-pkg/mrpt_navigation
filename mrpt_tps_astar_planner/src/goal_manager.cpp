@@ -394,9 +394,16 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 	};
 
 	// The remembered points still in memory, as an obstacle source (none if
-	// empty), except those close to `start`, where the robot may be now:
+	// empty), for a search from `start`: except those close to the robot,
+	// where it may have gone meanwhile, and those that would put the start
+	// pose (ahead of the robot) in collision:
 	auto rememberedObstacles = [&](const TPose2D& start) -> mpp::ObstacleSource::Ptr
 	{
+		if (blockedMemory.empty())
+		{
+			return {};
+		}
+		const auto robot = robotPose();
 		const double t = now_seconds();
 		auto pts = mrpt::maps::CSimplePointsMap::Create();
 		for (auto it = blockedMemory.begin(); it != blockedMemory.end();)
@@ -407,7 +414,8 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 				it = blockedMemory.erase(it);
 				continue;
 			}
-			if ((p - start.translation()).norm() > footprintRadius + 0.2)
+			if ((!robot || (p - robot->translation()).norm() > footprintRadius + 0.2) &&
+				(p - start.translation()).norm() > footprintRadius)
 			{
 				pts->insertPointFast(static_cast<float>(p.x), static_cast<float>(p.y), 0);
 			}
