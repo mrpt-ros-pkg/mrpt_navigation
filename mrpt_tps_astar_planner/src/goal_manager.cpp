@@ -599,8 +599,6 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 		return true;
 	};
 
-	// Publishes the path to `target` in the search output, after the
-	// committed part:
 	// Obstacles block the path if this close to the footprint border [m]. It
 	// is negative (into the footprint: half its inner radius) to tolerate the
 	// noise of sensed obstacles and the localization, since paths may run at
@@ -641,8 +639,6 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 		publish_waypoint_sequence(wps);
 	};
 
-	// Returns false (publishing nothing) if the new path hits the current
-	// obstacles.
 	// Rebuilds the obstacle-proximity costs when the obstacles changed: new
 	// obstacles get their clearance cost and moved ones lose the old one.
 	// (Edges already in the tree keep the cost they had.) Only if the search
@@ -680,6 +676,9 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 		publish_costmaps(planner.costEvaluators_);
 	};
 
+	// Publishes the path to `target` in the search output, after the
+	// committed part. Returns false (publishing nothing) if the new path hits
+	// the current obstacles.
 	auto publishPath = [&](mpp::PlannerOutput& out, mrpt::graphs::TNodeID target,
 						   bool partial) -> bool
 	{
