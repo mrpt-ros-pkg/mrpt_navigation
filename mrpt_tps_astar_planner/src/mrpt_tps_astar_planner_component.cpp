@@ -507,6 +507,8 @@ void TPS_Astar_Planner_Node::read_parameters()
 	this->get_parameter("start_lookahead_time", start_lookahead_time_);
 	this->declare_parameter<double>("no_progress_timeout", no_progress_timeout_);
 	this->get_parameter("no_progress_timeout", no_progress_timeout_);
+	this->declare_parameter<double>("blocked_obstacles_memory", blocked_obstacles_memory_);
+	this->get_parameter("blocked_obstacles_memory", blocked_obstacles_memory_);
 	this->declare_parameter<int>("max_planning_restarts", max_planning_restarts_);
 	this->get_parameter("max_planning_restarts", max_planning_restarts_);
 	this->declare_parameter<std::string>(
@@ -518,11 +520,12 @@ void TPS_Astar_Planner_Node::read_parameters()
 		this->get_logger(),
 		"anytime_first_path_time: %.2f s (min progress: %.2f m), continuous_planning: %s "
 		"(replan_period: %.2f s, stitch_lookahead_time: %.2f s, start_lookahead_time: %.2f s, "
-		"no_progress_timeout: %.1f s, max_planning_restarts: %d), "
+		"no_progress_timeout: %.1f s, blocked_obstacles_memory: %.1f s, "
+		"max_planning_restarts: %d), "
 		"topic_follower_status_sub: '%s'",
 		anytime_first_path_time_, anytime_min_progress_, continuous_planning_ ? "true" : "false",
 		replan_period_, stitch_lookahead_time_, start_lookahead_time_, no_progress_timeout_,
-		max_planning_restarts_, topic_follower_status_sub_.c_str());
+		blocked_obstacles_memory_, max_planning_restarts_, topic_follower_status_sub_.c_str());
 #if !HAVE_MPP_CONTINUOUS_PLANNING
 	if (anytime_first_path_time_ > 0 || continuous_planning_)
 	{

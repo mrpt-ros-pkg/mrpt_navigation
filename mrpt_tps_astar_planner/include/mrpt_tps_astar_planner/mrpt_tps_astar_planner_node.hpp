@@ -313,6 +313,10 @@ class TPS_Astar_Planner_Node : public rclcpp::Node
 	/// neither closer in a straight line, nor along the path it follows. Until
 	/// then, blocked paths and failed searches are replanned (<=0: never).
 	double no_progress_timeout_ = 60.0;
+	/// Obstacle points that blocked a path of a goal are kept in its searches
+	/// for this long [s], so it does not plan through them again while they
+	/// are out of sight (<=0: not kept)
+	double blocked_obstacles_memory_ = 30.0;
 	/// If > 0, a goal also fails after this many searches started from
 	/// scratch in a row (path blocked, follower failure, no path found)
 	/// without reaching it (<=0: no limit, see no_progress_timeout_)

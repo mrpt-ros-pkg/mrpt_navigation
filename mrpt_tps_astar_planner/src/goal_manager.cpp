@@ -311,6 +311,9 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 	double bestPathDist = std::numeric_limits<double>::infinity();
 	double tLastProgress = 0;
 	double tLastHeartbeat = 0;
+	// Obstacle points that blocked a path of this goal (see
+	// blocked_obstacles_memory), by 5 cm cell: when, and where.
+	std::unordered_map<int64_t, std::pair<double, TPoint2D>> blockedMemory;
 	// Whether a limit of max_planning_restarts is exceeded by `n`:
 	auto tooManyRestarts = [this](int n)
 	{ return max_planning_restarts_ > 0 && n > max_planning_restarts_; };
@@ -355,6 +358,69 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 	bool searchJustStarted = false;	 // the search has the latest obstacles
 	bool searchPublished = false;  // the current search published a path
 
+	// The robot footprint, and the radius of its circumscribed circle:
+	mrpt::math::TPolygon2D footprintPoly;
+	double footprintRadius = 0;
+
+	// Remembers the obstacle points around `at` that blocked a path:
+	auto rememberBlocking =
+		[&](const TPoint2D& at, const std::vector<mrpt::maps::CPointsMap::Ptr>& points)
+	{
+		if (blocked_obstacles_memory_ <= 0)
+		{
+			return;
+		}
+		constexpr double kRadius = 0.6;	 // [m]
+		constexpr double kCell = 0.05;	// [m]
+		const double t = now_seconds();
+		for (const auto& pts : points)
+		{
+			const auto& xs = pts->getPointsBufferRef_x();
+			const auto& ys = pts->getPointsBufferRef_y();
+			for (size_t i = 0; i < xs.size(); i++)
+			{
+				if (std::hypot(xs[i] - at.x, ys[i] - at.y) > kRadius)
+				{
+					continue;
+				}
+				const auto ix = static_cast<int64_t>(std::floor(xs[i] / kCell));
+				const auto iy = static_cast<int64_t>(std::floor(ys[i] / kCell));
+				const int64_t key = static_cast<int64_t>(
+					(static_cast<uint64_t>(ix) << 32) ^
+					(static_cast<uint64_t>(iy) & 0xffffffffULL));
+				blockedMemory[key] = {t, TPoint2D(xs[i], ys[i])};
+			}
+		}
+	};
+
+	// The remembered points still in memory, as an obstacle source (none if
+	// empty), except those close to `start`, where the robot may be now:
+	auto rememberedObstacles = [&](const TPose2D& start) -> mpp::ObstacleSource::Ptr
+	{
+		const double t = now_seconds();
+		auto pts = mrpt::maps::CSimplePointsMap::Create();
+		for (auto it = blockedMemory.begin(); it != blockedMemory.end();)
+		{
+			const auto& [t0, p] = it->second;
+			if (t - t0 > blocked_obstacles_memory_)
+			{
+				it = blockedMemory.erase(it);
+				continue;
+			}
+			if ((p - start.translation()).norm() > footprintRadius + 0.2)
+			{
+				pts->insertPointFast(static_cast<float>(p.x), static_cast<float>(p.y), 0);
+			}
+			++it;
+		}
+		if (pts->empty())
+		{
+			return {};
+		}
+		pts->mark_as_modified();
+		return mpp::ObstacleSource::FromStaticPointcloud(pts);
+	};
+
 	// Starts a search from `from` (the robot pose, or the root, keeping the
 	// committed part of the path before it):
 	auto startSearch = [&](const TPose2D& from, double speed)
@@ -369,6 +435,10 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 		auto bbox = mrpt::math::TBoundingBoxf::PlusMinusInfinity();
 		std::vector<mrpt::maps::CPointsMap::Ptr> startPoints;
 		build_obstacles(from, pi.obstacles, &startPoints, &planner.costEvaluators_, bbox);
+		if (auto mem = rememberedObstacles(from); mem)
+		{
+			pi.obstacles.push_back(mem);
+		}
 		publish_costmaps(planner.costEvaluators_);
 		costmapSignature.clear();
 		for (const auto& p : startPoints)
@@ -523,8 +593,6 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 
 	// Publishes the path to `target` in the search output, after the
 	// committed part:
-	mrpt::math::TPolygon2D footprintPoly;
-	double footprintRadius = 0;
 	// Obstacles block the path if this close to the footprint border [m]. It
 	// is negative (into the footprint: half its inner radius) to tolerate the
 	// noise of sensed obstacles and the localization, since paths may run at
@@ -740,6 +808,7 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 				get_logger(),
 				"Goal #%u: the new %s path hits an obstacle at (%.2f, %.2f): not published.",
 				goal->id, partial ? "partial" : "full", hit->second.x, hit->second.y);
+			rememberBlocking(hit->second, points);
 			return false;
 		}
 
@@ -873,6 +942,7 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 			bestGoalDist = std::numeric_limits<double>::infinity();
 			bestPathDist = std::numeric_limits<double>::infinity();
 			tLastProgress = tGoalStart;
+			blockedMemory.clear();
 			revision = 0;
 			published = false;
 			publishedFull = false;
@@ -1113,6 +1183,12 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 					auto unusedBbox = mrpt::math::TBoundingBoxf::PlusMinusInfinity();
 					build_obstacles(
 						rp ? *rp : goal->pose, obsSources, &obsPoints, nullptr, unusedBbox);
+					// (for the search, not for validating paths: it avoids
+					// them, and they may be gone)
+					if (auto mem = rememberedObstacles(rp ? *rp : goal->pose); mem)
+					{
+						obsSources.push_back(mem);
+					}
 				}
 
 				// Is the rest of the published path still clear?
@@ -1137,6 +1213,7 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 							"obstacle at (%.2f, %.2f).",
 							goal->id, pathS[*hit] - pathS[robotIdx], pathPoses[*hit].x,
 							pathPoses[*hit].y, hitInfo->second.x, hitInfo->second.y);
+						rememberBlocking(hitInfo->second, obsPoints);
 						// Only the part before the obstacle remains (and the
 						// committed part, if it ends well before it, to go on from
 						// its end). A committed end closer to it may already touch

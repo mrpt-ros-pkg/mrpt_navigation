@@ -87,7 +87,9 @@ thread, so the robot starts moving soon and reacts to obstacles in advance:
    `MissedGoal`, or staying `Blocked` for 5 s) restart it from the robot pose.
    A search that ends with no path to follow (no motion possible from the
    robot pose, or no way with the current obstacles, maybe transient) is
-   retried every 2 s.
+   retried every 2 s. Obstacle points that blocked a path of the goal are
+   kept in its searches for `blocked_obstacles_memory`, so it does not plan
+   through them again as soon as they are out of sight.
 4. New searches from the robot (a new goal while driving, or a restart) start
    from where it will be after `start_lookahead_time` on the path it is
    following (at its current speed, from TF), and keep that path up to there,
@@ -160,6 +162,7 @@ manager plan concurrently.
 | `stitch_lookahead_time` | `3.0` | The search goes on from this far ahead [s] of the robot (at max PTG speed) |
 | `start_lookahead_time` | `3.0` | New searches from the robot (new goals, restarts) start this far ahead [s], at its current speed, on the path it is following (<=0: from the robot pose) |
 | `no_progress_timeout` | `60.0` | A goal fails if the robot does not get closer to it for this long [s], in a straight line or along the full path it follows; meanwhile, blocked paths and failed searches are replanned (`<=0`: never) |
+| `blocked_obstacles_memory` | `30.0` | Obstacle points that blocked a path of a goal are kept in its searches for this long [s], also when out of sight (`<=0`: not kept) |
 | `max_planning_restarts` | `0` | If `>0`, a goal also fails after this many searches restarted from scratch in a row without reaching it (`<=0`: no limit) |
 | `topic_follower_status_sub` | `/mrpt_trajectory_follower/status` | Path follower status (goal reached or failed), used only if the next one is empty |
 | `topic_follower_status_ex_sub` | `/mrpt_trajectory_follower/status_ex` | Path follower status with the goal id and path revision it refers to: only statuses of the latest published path are acted on |

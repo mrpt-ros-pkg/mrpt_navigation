@@ -146,6 +146,10 @@ def generate_launch_description():
             description='A goal fails if the robot does not get closer to it for this long [s] '
             '(meanwhile, blocked paths and failed searches are replanned; <=0: never)'),
         DeclareLaunchArgument(
+            'blocked_obstacles_memory', default_value='30.0',
+            description='Obstacle points that blocked a path of a goal are kept in its searches '
+            'for this long [s], also when out of sight (<=0: not kept)'),
+        DeclareLaunchArgument(
             'max_planning_restarts', default_value='0',
             description='If >0, a goal also fails after this many searches restarted from '
             'scratch in a row without reaching it (<=0: no limit)'),
@@ -219,6 +223,8 @@ def generate_launch_description():
             'start_lookahead_time'), value_type=float)},
         {'no_progress_timeout': ParameterValue(LaunchConfiguration(
             'no_progress_timeout'), value_type=float)},
+        {'blocked_obstacles_memory': ParameterValue(LaunchConfiguration(
+            'blocked_obstacles_memory'), value_type=float)},
         {'max_planning_restarts': ParameterValue(LaunchConfiguration(
             'max_planning_restarts'), value_type=int)},
         {'topic_follower_status_sub': LaunchConfiguration('topic_follower_status_sub')},

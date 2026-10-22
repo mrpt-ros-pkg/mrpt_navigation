@@ -37,7 +37,8 @@ list and responsibilities:
   `ReferencePath` (committed part never changes); searches from a moving
   robot start ahead of it on its path (`start_lookahead_time`); goals in
   collision are rejected; blocked paths and failed searches are replanned
-  until `no_progress_timeout` passes without getting closer to the goal.
+  until `no_progress_timeout` passes without getting closer to the goal
+  (obstacles that blocked a path are remembered for a while).
   Services stay one-shot.
 - **mrpt_trajectory_follower**: node that accurately follows a reference
   pose+speed path (pure pursuit) with predictive safety, a last-resort
