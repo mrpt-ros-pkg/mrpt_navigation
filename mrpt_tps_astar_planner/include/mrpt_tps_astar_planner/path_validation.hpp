@@ -39,16 +39,64 @@ inline std::vector<double> arc_lengths(const std::vector<mrpt::math::TPose2D>& p
 	return s;
 }
 
-// Index of the path pose nearest to `p`, searching around `hint`:
+// Pose indices where the driving direction changes (forward / reverse):
+// the path comes back over the same place after them. (Steps with no
+// translation, e.g. rotations in place, keep the previous direction.)
+inline std::vector<size_t> cusp_indices(const std::vector<mrpt::math::TPose2D>& poses)
+{
+	std::vector<size_t> cusps;
+	int lastDir = 0;
+	for (size_t i = 0; i + 1 < poses.size(); i++)
+	{
+		const double dx = poses[i + 1].x - poses[i].x;
+		const double dy = poses[i + 1].y - poses[i].y;
+		if (std::hypot(dx, dy) < 1e-4)
+		{
+			continue;
+		}
+		const int dir = dx * std::cos(poses[i].phi) + dy * std::sin(poses[i].phi) >= 0 ? 1 : -1;
+		if (lastDir != 0 && dir != lastDir)
+		{
+			cusps.push_back(i);
+		}
+		lastDir = dir;
+	}
+	return cusps;
+}
+
+// Index of the path pose nearest to `p`, searching around `hint`. Not beyond
+// the next cusp (see cusp_indices()), nor before the previous one, since the
+// path comes back over the same place after a cusp: once `p` is within
+// `cuspReach` of the next cusp, it is taken as reached (searching only after
+// it).
 inline size_t nearest_pose(
-	const std::vector<mrpt::math::TPose2D>& poses, const mrpt::math::TPoint2D& p, size_t hint)
+	const std::vector<mrpt::math::TPose2D>& poses, const mrpt::math::TPoint2D& p, size_t hint,
+	double cuspReach = 0.3)
 {
 	constexpr size_t kBack = 10;
 	constexpr size_t kFwd = 80;
+	size_t i0 = hint > kBack ? hint - kBack : 0;
+	size_t i1 = std::min(poses.size(), hint + kFwd);
+	const auto cusps = cusp_indices(poses);
+	for (size_t k = 0; k < cusps.size(); k++)
+	{
+		const size_t c = cusps[k];
+		if (c <= hint)
+		{
+			i0 = std::max(i0, c);
+			continue;
+		}
+		// The next cusp ahead (once close to it, up to the one after it):
+		if ((poses[c].translation() - p).norm() >= cuspReach)
+		{
+			i1 = std::min(i1, c + 1);
+			break;
+		}
+		i0 = c;
+		i1 = std::min(poses.size(), c + kFwd);
+	}
 	size_t best = hint;
 	double bestD2 = std::numeric_limits<double>::infinity();
-	const size_t i0 = hint > kBack ? hint - kBack : 0;
-	const size_t i1 = std::min(poses.size(), hint + kFwd);
 	for (size_t i = i0; i < i1; i++)
 	{
 		const double d2 = mrpt::square(poses[i].x - p.x) + mrpt::square(poses[i].y - p.y);

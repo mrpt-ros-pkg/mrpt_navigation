@@ -93,6 +93,7 @@ safety_horizon: 3.0                # [s] forecast rollout length
 reference_lookahead_dist: 2.5      # [m] reference sweep distance
 footprint_sample_resolution: 0.1   # [m]
 resume_scale: 0.2                  # hysteresis to resume after a stop
+safety_min_speed: 0.05             # [m/s] slower safety speed caps -> full stop
 block_timeout: 5.0                 # [s] stopped longer than this -> Blocked
 
 # --- Last-resort collision guard (mpp::CollisionGuard) ---

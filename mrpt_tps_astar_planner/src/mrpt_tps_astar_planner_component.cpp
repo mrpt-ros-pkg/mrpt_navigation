@@ -505,6 +505,8 @@ void TPS_Astar_Planner_Node::read_parameters()
 	this->get_parameter("stitch_lookahead_time", stitch_lookahead_time_);
 	this->declare_parameter<double>("start_lookahead_time", start_lookahead_time_);
 	this->get_parameter("start_lookahead_time", start_lookahead_time_);
+	this->declare_parameter<double>("no_progress_timeout", no_progress_timeout_);
+	this->get_parameter("no_progress_timeout", no_progress_timeout_);
 	this->declare_parameter<int>("max_planning_restarts", max_planning_restarts_);
 	this->get_parameter("max_planning_restarts", max_planning_restarts_);
 	this->declare_parameter<std::string>(
@@ -516,11 +518,11 @@ void TPS_Astar_Planner_Node::read_parameters()
 		this->get_logger(),
 		"anytime_first_path_time: %.2f s (min progress: %.2f m), continuous_planning: %s "
 		"(replan_period: %.2f s, stitch_lookahead_time: %.2f s, start_lookahead_time: %.2f s, "
-		"max_planning_restarts: %d), "
+		"no_progress_timeout: %.1f s, max_planning_restarts: %d), "
 		"topic_follower_status_sub: '%s'",
 		anytime_first_path_time_, anytime_min_progress_, continuous_planning_ ? "true" : "false",
-		replan_period_, stitch_lookahead_time_, start_lookahead_time_, max_planning_restarts_,
-		topic_follower_status_sub_.c_str());
+		replan_period_, stitch_lookahead_time_, start_lookahead_time_, no_progress_timeout_,
+		max_planning_restarts_, topic_follower_status_sub_.c_str());
 #if !HAVE_MPP_CONTINUOUS_PLANNING
 	if (anytime_first_path_time_ > 0 || continuous_planning_)
 	{
@@ -684,7 +686,9 @@ void TPS_Astar_Planner_Node::update_obstacles(
 	auto pc = mrpt::maps::CSimplePointsMap::Create();
 	if (!mrpt::ros2bridge::fromROS(*pcMsg, *pc))
 	{
+		// (keep the previous obstacles, instead of none)
 		RCLCPP_ERROR(this->get_logger(), "Failed to convert Point Cloud to MRPT Points Map");
+		return;
 	}
 
 	// Transform the cloud to its global pose in the map.

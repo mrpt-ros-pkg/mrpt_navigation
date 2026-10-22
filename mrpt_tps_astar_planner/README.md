@@ -84,10 +84,10 @@ thread, so the robot starts moving soon and reacts to obstacles in advance:
    scratch: from the end of the committed part, or from the robot if the
    obstacle is before it (cutting the path there, so the robot does not drive
    past it meanwhile). Follower failures (`Blocked`, `OffPathExceeded`,
-   `MissedGoal`, or staying `Blocked` for 10 s) restart it from the robot pose,
-   up to `max_planning_restarts` times in a row without reaching the goal. A
-   search that can not even leave the robot pose (obstacles too close, maybe
-   transient) is retried every 2 s, as many times.
+   `MissedGoal`, or staying `Blocked` for 5 s) restart it from the robot pose.
+   A search that ends with no path to follow (no motion possible from the
+   robot pose, or no way with the current obstacles, maybe transient) is
+   retried every 2 s.
 4. New searches from the robot (a new goal while driving, or a restart) start
    from where it will be after `start_lookahead_time` on the path it is
    following (at its current speed, from TF), and keep that path up to there,
@@ -95,7 +95,11 @@ thread, so the robot starts moving soon and reacts to obstacles in advance:
    published, and the follower switches to it without stopping.
 5. The goal ends when the follower (`topic_follower_status_sub`) reaches it
    after following a full path. A new goal preempts the current one. Goals
-   whose footprint hits the current obstacles are rejected at once.
+   whose footprint hits the current obstacles are rejected at once. A goal
+   fails when the robot does not get closer to it for `no_progress_timeout`
+   (in a straight line, or along the full path it follows), however many
+   times it was replanned meanwhile (`max_planning_restarts`, if set, also
+   limits the restarts in a row).
 
 The goal manager's anytime and continuous planning require
 `mrpt_trajectory_follower`: goals end with its status, and a path follower
@@ -155,7 +159,8 @@ manager plan concurrently.
 | `replan_period` | `1.0` | Period of the replanning cycles [s] |
 | `stitch_lookahead_time` | `3.0` | The search goes on from this far ahead [s] of the robot (at max PTG speed) |
 | `start_lookahead_time` | `3.0` | New searches from the robot (new goals, restarts) start this far ahead [s], at its current speed, on the path it is following (<=0: from the robot pose) |
-| `max_planning_restarts` | `5` | Searches restarted from scratch in a row for a goal, without reaching it, before giving up |
+| `no_progress_timeout` | `60.0` | A goal fails if the robot does not get closer to it for this long [s], in a straight line or along the full path it follows; meanwhile, blocked paths and failed searches are replanned (`<=0`: never) |
+| `max_planning_restarts` | `0` | If `>0`, a goal also fails after this many searches restarted from scratch in a row without reaching it (`<=0`: no limit) |
 | `topic_follower_status_sub` | `/mrpt_trajectory_follower/status` | Path follower status (goal reached or failed), used only if the next one is empty |
 | `topic_follower_status_ex_sub` | `/mrpt_trajectory_follower/status_ex` | Path follower status with the goal id and path revision it refers to: only statuses of the latest published path are acted on |
 

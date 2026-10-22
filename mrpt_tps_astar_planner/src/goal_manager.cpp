@@ -51,6 +51,7 @@ const char* FOLLOWER_RUNNING = "Running";
 const char* FOLLOWER_WAITING = "WaitingForPath";
 const char* FOLLOWER_REACHED = "ReachedGoal";
 const char* FOLLOWER_FAILED = "Failed";
+const char* FOLLOWER_BLOCKED = "Blocked";
 
 // Time between path samples [s] (as for one-shot plans):
 constexpr double PATH_SAMPLE_PERIOD = 0.25;
@@ -293,13 +294,24 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 	// (publishing a path resets `restarts`, so they are counted apart):
 	std::optional<double> followerBlockedSince;
 	int blockedRestarts = 0;
-	// A search that can not leave its start pose (obstacles too close, which
-	// may be transient: people, remembered obstacles) is retried a few times,
-	// a while apart, before giving up:
-	constexpr double kStartBlockedRetryPeriod = 2.0;  // [s]
-	int startBlockedRetries = 0;
-	std::optional<double> startBlockedRetryAt;
+	bool blockedReplanned = false;	// since the follower was last running
+	// A search that ends with no path to follow (no motion possible from its
+	// start pose, or no way with the current obstacles, which may be
+	// transient: people, remembered obstacles) is retried a while later:
+	constexpr double kRetryPeriod = 2.0;  // [s]
+	int failedSearches = 0;	 // in a row
+	std::optional<double> retryAt;
+	// Progress toward the goal (see no_progress_timeout): the closest the
+	// robot got to it in a straight line and, along the full path of the
+	// current search, the shortest remaining length; and since when.
+	constexpr double kMinProgress = 0.2;  // [m]
+	double bestGoalDist = std::numeric_limits<double>::infinity();
+	double bestPathDist = std::numeric_limits<double>::infinity();
+	double tLastProgress = 0;
 	double tLastHeartbeat = 0;
+	// Whether a limit of max_planning_restarts is exceeded by `n`:
+	auto tooManyRestarts = [this](int n)
+	{ return max_planning_restarts_ > 0 && n > max_planning_restarts_; };
 
 	auto endGoal = [&](int8_t status, const char* why)
 	{
@@ -455,6 +467,16 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 		return std::make_pair(*rp, speed);
 	};
 
+	// Whether the robot is too close to the end of the committed path (the
+	// search root) to go on from there: a fast robot would drive past it
+	// before the new path is published (closer than where a search from the
+	// robot would start, see predictedStart()).
+	auto rootTooClose = [&]()
+	{
+		return rootIdx > robotIdx && rootIdx < pathS.size() &&
+			   pathS[rootIdx] - pathS[robotIdx] < robotSpeed() * start_lookahead_time_;
+	};
+
 	// Restarts the search from scratch, from the robot (its predicted pose,
 	// see predictedStart(), not beyond `limitIdx`) or from the root (keeping
 	// the committed part). Returns false if there were too many restarts.
@@ -464,9 +486,9 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 		followerWaitingSince.reset();
 		restarts++;
 		RCLCPP_WARN(
-			get_logger(), "Goal #%u: restarting the search from the %s (%d/%d): %s", goal->id,
-			fromRobot ? "robot pose" : "committed path end", restarts, max_planning_restarts_, why);
-		if (restarts > max_planning_restarts_)
+			get_logger(), "Goal #%u: restarting the search from the %s (#%d): %s", goal->id,
+			fromRobot ? "robot pose" : "committed path end", restarts, why);
+		if (tooManyRestarts(restarts))
 		{
 			publish_empty_paths();
 			endGoal(NavStatus::STATUS_ERROR, "too many planning restarts");
@@ -725,8 +747,13 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 		publishedTarget = target;
 		requestedTarget = requested;
 		published = true;
+		if (!searchPublished)
+		{
+			// (progress along this search's paths is measured from here)
+			bestPathDist = std::numeric_limits<double>::infinity();
+		}
 		searchPublished = true;
-		startBlockedRetries = 0;
+		failedSearches = 0;
 		publishedFull = !partial;
 		followerEngaged = false;
 		revision++;
@@ -825,9 +852,13 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 			goal = std::move(newGoal);
 			tGoalStart = now_seconds();
 			restarts = 0;
-			startBlockedRetries = 0;
-			startBlockedRetryAt.reset();
+			failedSearches = 0;
+			retryAt.reset();
 			blockedRestarts = 0;
+			blockedReplanned = false;
+			bestGoalDist = std::numeric_limits<double>::infinity();
+			bestPathDist = std::numeric_limits<double>::infinity();
+			tLastProgress = tGoalStart;
 			revision = 0;
 			published = false;
 			publishedFull = false;
@@ -888,11 +919,11 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 			{
 				const auto rp = robotPose();
 
-				// Follower status: act on terminal states only once the follower
-				// is following one of our paths for this goal.
-				// With statuses carrying the path they refer to, only those for
-				// the latest path published for this goal count (the previous
-				// path may be reported late, e.g. as reached).
+				// Follower status: with statuses carrying the path they refer
+				// to, only those for the latest path published for this goal
+				// count (the previous path may be reported late, e.g. as
+				// reached). Otherwise, act on terminal states only once the
+				// follower is following one of our paths for this goal.
 				const bool statusHasIds = sub_follower_status_ex_ != nullptr;
 				const bool statusIsCurrent =
 					!statusHasIds ||
@@ -902,7 +933,8 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 				{
 					followerEngaged = published;
 				}
-				if (statusIsCurrent && followerEngaged && statusChanged)
+				const bool isBlocked = followerStatus == FOLLOWER_BLOCKED;
+				if (statusIsCurrent && (statusHasIds || followerEngaged) && statusChanged)
 				{
 					if (followerStatus == FOLLOWER_REACHED && publishedFull)
 					{
@@ -913,10 +945,17 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 						endGoal(NavStatus::STATUS_ERROR, "the path follower failed");
 					}
 					else if (
-						followerStatus == "Blocked" || followerStatus == "OffPathExceeded" ||
+						(isBlocked && !blockedReplanned) || followerStatus == "OffPathExceeded" ||
 						followerStatus == "MissedGoal")
 					{
+						// (a follower that stays blocked on the new path is
+						// replanned for periodically, see below)
 						followerEngaged = false;
+						if (isBlocked)
+						{
+							blockedReplanned = true;
+							followerBlockedSince = now_seconds();
+						}
 						restartSearch(true, followerStatus.c_str());
 					}
 				}
@@ -946,12 +985,12 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 
 				// A follower blocked for long, while the path is still clear for
 				// the search (e.g. it can not track a tight maneuver close to
-				// obstacles): plan again from the robot, eventually giving up
-				// (max_planning_restarts) instead of waiting forever. Its status
-				// may not change again, so it is not required to be current.
-				constexpr double kMaxBlocked = 10.0;  // [s]
+				// obstacles): plan again from the robot, instead of waiting
+				// forever (until no_progress_timeout). Its status may not change
+				// again, so it is not required to be current.
+				constexpr double kMaxBlocked = 5.0;	 // [s]
 				const bool followerBlocked =
-					goal && followerStatus == "Blocked" && published &&
+					goal && isBlocked && published &&
 					(!statusHasIds || (followerHasId && followerGoalId == goal->id));
 				if (followerBlocked)
 				{
@@ -962,7 +1001,8 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 					else if (now_seconds() - *followerBlockedSince > kMaxBlocked)
 					{
 						followerBlockedSince.reset();
-						if (++blockedRestarts > max_planning_restarts_)
+						blockedRestarts++;
+						if (tooManyRestarts(blockedRestarts))
 						{
 							publish_empty_paths();
 							endGoal(NavStatus::STATUS_ERROR, "the path follower stays blocked");
@@ -979,6 +1019,7 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 					if (goal && followerStatus == FOLLOWER_RUNNING)
 					{
 						blockedRestarts = 0;
+						blockedReplanned = false;
 					}
 				}
 
@@ -989,18 +1030,55 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 					RCLCPP_INFO(
 						get_logger(),
 						"Goal #%u: %.0f s after the goal, search %.0f s old, %s, follower: %s, "
-						"search %s.",
+						"search %s, last progress %.0f s ago.",
 						goal->id, now_seconds() - tGoalStart, now_seconds() - tSearchStart,
 						publishedFull ? "full path published"
 									  : (published ? "partial path published" : "no path yet"),
-						followerStatus.c_str(),
-						planner.search_can_continue() ? "running" : "ended");
+						followerStatus.c_str(), planner.search_can_continue() ? "running" : "ended",
+						now_seconds() - tLastProgress);
 				}
 
 				// Robot progress along the published path:
 				if (goal && rp && !pathPoses.empty())
 				{
 					robotIdx = nearest_pose(pathPoses, rp->translation(), robotIdx);
+				}
+
+				// Progress toward the goal: give up after no_progress_timeout
+				// without any. (Meanwhile, blocked paths and failed searches
+				// are replanned.)
+				if (goal && rp)
+				{
+					const double dGoal = (rp->translation() - goal->pose.translation()).norm();
+					if (dGoal < bestGoalDist - kMinProgress)
+					{
+						bestGoalDist = dGoal;
+						tLastProgress = now_seconds();
+					}
+					if (publishedFull && robotIdx < pathS.size())
+					{
+						const double dPath = pathS.back() - pathS[robotIdx];
+						if (dPath < bestPathDist - kMinProgress)
+						{
+							// (not the first path of the search: the robot moved)
+							if (std::isfinite(bestPathDist))
+							{
+								tLastProgress = now_seconds();
+							}
+							bestPathDist = dPath;
+						}
+					}
+					if (no_progress_timeout_ > 0 &&
+						now_seconds() - tLastProgress > no_progress_timeout_)
+					{
+						RCLCPP_WARN(
+							get_logger(),
+							"Goal #%u: no progress toward the goal for %.0f s (closest: %.2f m): "
+							"giving up.",
+							goal->id, no_progress_timeout_, bestGoalDist);
+						publish_empty_paths();
+						endGoal(NavStatus::STATUS_ERROR, "no progress toward the goal");
+					}
 				}
 
 				// Current obstacles:
@@ -1040,8 +1118,8 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 						// its end). A committed end closer to it may already touch
 						// it (the validation margin tolerates some overlap), and a
 						// search from there would keep the robot that close.
-						const bool fromRobot =
-							*hit <= rootIdx || rootIdx <= robotIdx || rootIdx > stopIdx;
+						const bool fromRobot = *hit <= rootIdx || rootIdx <= robotIdx ||
+											   rootIdx > stopIdx || rootTooClose();
 						// A search from the committed path end: the robot must not
 						// drive past it meanwhile, or the new path would start
 						// behind the robot.
@@ -1058,12 +1136,17 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 
 				// Move the search root ahead of the robot on the path: the path
 				// up to it is committed.
-				if (goal && continuous_planning_ && published && rp && !pathNodes.empty())
+				// (only when the robot gets close to it, not every cycle: it would
+				// move ahead of a stopped robot)
+				const double sStitch = goal && !pathS.empty()
+										   ? pathS[robotIdx] + stitch_lookahead_time_ * maxLinSpeed
+										   : 0.0;
+				if (goal && continuous_planning_ && published && rp && !pathNodes.empty() &&
+					pathS[rootIdx] < sStitch)
 				{
 					// The first node far enough ahead, or else the last one (the
 					// end of a short partial path, which the robot will drive
 					// anyway), so the search never goes on from behind the robot:
-					const double sStitch = pathS[robotIdx] + stitch_lookahead_time_ * maxLinSpeed;
 					for (size_t k = 0; k < pathNodes.size(); k++)
 					{
 						if (pathS[pathNodes[k].poseIdx] < sStitch && k + 1 < pathNodes.size())
@@ -1102,10 +1185,10 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 					}
 				}
 
-				// Retry a search that could not leave its start pose:
-				if (goal && startBlockedRetryAt && now_seconds() >= *startBlockedRetryAt)
+				// Retry a search that ended with no path to follow:
+				if (goal && retryAt && now_seconds() >= *retryAt)
 				{
-					startBlockedRetryAt.reset();
+					retryAt.reset();
 					if (const auto from = predictedStart(std::numeric_limits<size_t>::max()); from)
 					{
 						startSearch(from->first, from->second);
@@ -1190,25 +1273,28 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 						// No motion at all from the start pose:
 						const bool startBlocked =
 							!planner.search_can_continue() && out.motionTree.nodes().size() <= 1;
-						if (startBlocked && startBlockedRetries < max_planning_restarts_)
+						if (!planner.search_can_continue() && !searchPublished)
 						{
-							startBlockedRetries++;
-							RCLCPP_WARN(
-								get_logger(),
-								"Goal #%u: no motion is possible from the start pose (obstacles "
-								"too "
-								"close): retrying in %.0f s (%d/%d).",
-								goal->id, kStartBlockedRetryPeriod, startBlockedRetries,
-								max_planning_restarts_);
-							startBlockedRetryAt = now_seconds() + kStartBlockedRetryPeriod;
-						}
-						else if (!published)
-						{
-							RCLCPP_WARN(
-								get_logger(), "Goal #%u: no path found (%s).", goal->id,
-								startBlocked ? "the robot is blocked by obstacles" : why);
-							publish_empty_paths();
-							endGoal(NavStatus::STATUS_ERROR, "no path found");
+							// Nothing to follow from this search: the obstacles
+							// may change, so try again a while later.
+							failedSearches++;
+							const char* what = startBlocked
+												   ? "no motion is possible from the start pose "
+													 "(obstacles too close)"
+												   : "no path found";
+							if (tooManyRestarts(failedSearches))
+							{
+								RCLCPP_WARN(get_logger(), "Goal #%u: %s.", goal->id, what);
+								publish_empty_paths();
+								endGoal(NavStatus::STATUS_ERROR, "no path found");
+							}
+							else
+							{
+								RCLCPP_WARN(
+									get_logger(), "Goal #%u: %s: retrying in %.0f s (#%d).",
+									goal->id, what, kRetryPeriod, failedSearches);
+								retryAt = now_seconds() + kRetryPeriod;
+							}
 						}
 						else
 						{
@@ -1219,17 +1305,19 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 				}
 				else if (
 					goal && published && !publishedFull && !planner.search_reached_goal() &&
-					!startBlockedRetryAt)
+					!retryAt)
 				{
 					// The search ended outside run(): re-rooting keeps only the
 					// subtree of the new root, which may have no open nodes left.
 					// Go on with a new search from the end of the committed path
-					// (not driving past it meanwhile).
-					if (rootIdx > robotIdx)
+					// (not driving past it meanwhile), or from the robot if it
+					// is already close to it.
+					const bool fromRobot = rootTooClose();
+					if (!fromRobot && rootIdx > robotIdx)
 					{
 						publishTruncated(rootIdx + 1);
 					}
-					restartSearch(false, "no open nodes after re-rooting");
+					restartSearch(fromRobot, "no open nodes after re-rooting");
 				}
 
 				// Feedback:

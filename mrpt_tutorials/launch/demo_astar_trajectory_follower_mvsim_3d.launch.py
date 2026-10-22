@@ -100,8 +100,10 @@ PLANNER_GOAL_MANAGER_ARGS = [
      'Planner: the search goes on from this far ahead [s] of the robot on its path'),
     ('start_lookahead_time', '3.0',
      'Planner: new searches from a moving robot start this far ahead [s] on its path'),
-    ('max_planning_restarts', '5',
-     'Planner: searches restarted in a row for a goal, without reaching it, before giving up'),
+    ('no_progress_timeout', '60.0',
+     'Planner: a goal fails if the robot does not get closer to it for this long [s]'),
+    ('max_planning_restarts', '0',
+     'Planner: if >0, searches restarted in a row for a goal before giving up'),
 ]
 
 
