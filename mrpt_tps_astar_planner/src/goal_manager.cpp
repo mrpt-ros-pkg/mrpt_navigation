@@ -1296,10 +1296,14 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 				// Retry a search that ended with no path to follow:
 				if (goal && retryAt && now_seconds() >= *retryAt)
 				{
-					retryAt.reset();
 					if (const auto from = predictedStart(std::numeric_limits<size_t>::max()); from)
 					{
-						startSearch(from->first, from->second);
+						startSearch(from->first, from->second);	 // (clears retryAt)
+					}
+					else
+					{
+						// No robot pose yet: try again later.
+						retryAt = now_seconds() + kRetryPeriod;
 					}
 				}
 
