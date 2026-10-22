@@ -103,6 +103,19 @@ TEST(PathValidation, NearestPoseDoesNotSkipCusps)
 	EXPECT_EQ(idx, 55U);
 	// Not back onto the forward leg:
 	EXPECT_EQ(nearest_pose(path, {4.0, 0.0}, idx), 60U);
+
+	// A short reverse maneuver (cusps 0.1 m apart): not skipped at once.
+	auto path2 = straight(0, 5, 0.1);  // 0..50
+	path2.emplace_back(4.95, 0.0, 0.0);	 // 51 (in reverse)
+	path2.emplace_back(4.9, 0.0, 0.0);	// 52 (cusp)
+	for (int i = 1; i <= 10; i++)
+	{
+		path2.emplace_back(4.9 + 0.1 * i, 0.0, 0.0);  // 53..62 (forward)
+	}
+	ASSERT_EQ(cusp_indices(path2), (std::vector<size_t>{50, 52}));
+	idx = nearest_pose(path2, {4.98, 0.0}, 45);
+	EXPECT_GE(idx, 50U);
+	EXPECT_LE(idx, 52U);
 }
 
 TEST(PathValidation, ObstacleIndexMargins)

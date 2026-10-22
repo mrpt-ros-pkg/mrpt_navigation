@@ -393,6 +393,8 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 		searchJustStarted = true;
 		searchPublished = false;
 		searchFirstRevision = revision + 1;
+		// (a pending retry would replace this search)
+		retryAt.reset();
 		tSearchStart = now_seconds();
 		publishedTarget.reset();
 		requestedTarget.reset();
@@ -1008,11 +1010,12 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 				// the search (e.g. it can not track a tight maneuver close to
 				// obstacles): plan again from the robot, instead of waiting
 				// forever (until no_progress_timeout). Its status may not change
-				// again, so it is not required to be current.
+				// again, so it is not required to be for the latest revision,
+				// but for a path of the current search (not one that a search
+				// started meanwhile is replacing).
 				constexpr double kMaxBlocked = 5.0;	 // [s]
 				const bool followerBlocked =
-					goal && isBlocked && published &&
-					(!statusHasIds || (followerHasId && followerGoalId == goal->id));
+					goal && isBlocked && searchPublished && failureIsCurrent;
 				if (followerBlocked)
 				{
 					if (!followerBlockedSince)

@@ -68,7 +68,8 @@ inline std::vector<size_t> cusp_indices(const std::vector<mrpt::math::TPose2D>& 
 // the next cusp (see cusp_indices()), nor before the previous one, since the
 // path comes back over the same place after a cusp: once `p` is within
 // `cuspReach` of the next cusp, it is taken as reached (searching only after
-// it).
+// it, up to the following one: one cusp per call, since a short maneuver may
+// have the next one also within reach).
 inline size_t nearest_pose(
 	const std::vector<mrpt::math::TPose2D>& poses, const mrpt::math::TPoint2D& p, size_t hint,
 	double cuspReach = 0.3)
@@ -93,7 +94,8 @@ inline size_t nearest_pose(
 			break;
 		}
 		i0 = c;
-		i1 = std::min(poses.size(), c + kFwd);
+		i1 = std::min(poses.size(), k + 1 < cusps.size() ? cusps[k + 1] + 1 : c + kFwd);
+		break;
 	}
 	size_t best = hint;
 	double bestD2 = std::numeric_limits<double>::infinity();
