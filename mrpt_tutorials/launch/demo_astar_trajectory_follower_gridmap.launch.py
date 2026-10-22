@@ -71,8 +71,10 @@ PLANNER_GOAL_MANAGER_ARGS = [
      'Planner: new searches from a moving robot start this far ahead [s] on its path'),
     ('topic_follower_status_ex_sub', '/mrpt_trajectory_follower/status_ex',
      'Planner: follower status with path ids (empty: use the plain status topic)'),
-    ('max_planning_restarts', '5',
-     'Planner: searches restarted in a row for a goal, without reaching it, before giving up'),
+    ('no_progress_timeout', '60.0',
+     'Planner: a goal fails if the robot does not get closer to it for this long [s]'),
+    ('max_planning_restarts', '0',
+     'Planner: if >0, searches restarted in a row for a goal before giving up'),
 ]
 
 

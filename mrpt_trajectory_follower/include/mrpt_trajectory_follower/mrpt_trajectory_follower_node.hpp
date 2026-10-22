@@ -252,6 +252,12 @@ class TrajectoryFollowerNode : public rclcpp::Node, public mpp::TrajectoryVehicl
 	/// follower_cs_)
 	void abort_navigation(mpp::StopKind kind);
 
+	/// Caps the follower speed (for its next steps) to the one the collision
+	/// guard allows along the motion it wants, so it slows down smoothly
+	/// before the guard has to cut its commands. Caller must hold
+	/// follower_cs_.
+	void update_guard_speed_cap(const mpp::TrajectoryFollower::Output& out);
+
 	/// Called on unrecoverable tracking failures: stops, drops the path, and
 	/// requests a new plan if enabled. Caller must hold follower_cs_.
 	void on_navigation_failure(const std::string& reason);

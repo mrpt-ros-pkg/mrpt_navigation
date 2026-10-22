@@ -309,9 +309,18 @@ class TPS_Astar_Planner_Node : public rclcpp::Node
 	/// fast robot does not get past the start of the new path before it is
 	/// published (<=0: from the robot pose).
 	double start_lookahead_time_ = 3.0;
-	/// Searches started from scratch in a row for a goal (path blocked,
-	/// follower failure, no path found) without reaching it, before giving up
-	int max_planning_restarts_ = 5;
+	/// A goal fails if the robot does not get closer to it for this long [s]:
+	/// neither closer in a straight line, nor along the path it follows. Until
+	/// then, blocked paths and failed searches are replanned (<=0: never).
+	double no_progress_timeout_ = 60.0;
+	/// Obstacle points that blocked a path of a goal are kept in its searches
+	/// for this long [s], so it does not plan through them again while they
+	/// are out of sight (<=0: not kept)
+	double blocked_obstacles_memory_ = 30.0;
+	/// If > 0, a goal also fails after this many searches started from
+	/// scratch in a row (path blocked, follower failure, no path found)
+	/// without reaching it (<=0: no limit, see no_progress_timeout_)
+	int max_planning_restarts_ = 0;
 	/// The follower status topic (to know when goals are reached or fail)
 	std::string topic_follower_status_sub_ = "/mrpt_trajectory_follower/status";
 	/// The follower status with the id of the path it refers to (preferred:

@@ -83,6 +83,41 @@ TEST(PathValidation, NearestPoseSearchesAroundHint)
 	EXPECT_LT(nearest_pose(path, {19.0, 0}, 10), 100U);
 }
 
+TEST(PathValidation, NearestPoseDoesNotSkipCusps)
+{
+	// 5 m forward, then 3 m in reverse over the same place (same heading):
+	auto path = straight(0, 5, 0.1);  // 0..50
+	for (int i = 1; i <= 30; i++)
+	{
+		path.emplace_back(5.0 - 0.1 * i, 0.0, 0.0);	 // 51..80
+	}
+	ASSERT_EQ(cusp_indices(path), std::vector<size_t>{50});
+	// Driving forward, at x=4: the forward leg (not the reverse one, which
+	// passes there later):
+	EXPECT_EQ(nearest_pose(path, {4.0, 0.05}, 35), 40U);
+	// At the cusp, and back in reverse:
+	size_t idx = nearest_pose(path, {4.95, 0.0}, 40);
+	EXPECT_GE(idx, 49U);
+	EXPECT_LE(idx, 51U);
+	idx = nearest_pose(path, {4.5, 0.0}, idx);
+	EXPECT_EQ(idx, 55U);
+	// Not back onto the forward leg:
+	EXPECT_EQ(nearest_pose(path, {4.0, 0.0}, idx), 60U);
+
+	// A short reverse maneuver (cusps 0.1 m apart): not skipped at once.
+	auto path2 = straight(0, 5, 0.1);  // 0..50
+	path2.emplace_back(4.95, 0.0, 0.0);	 // 51 (in reverse)
+	path2.emplace_back(4.9, 0.0, 0.0);	// 52 (cusp)
+	for (int i = 1; i <= 10; i++)
+	{
+		path2.emplace_back(4.9 + 0.1 * i, 0.0, 0.0);  // 53..62 (forward)
+	}
+	ASSERT_EQ(cusp_indices(path2), (std::vector<size_t>{50, 52}));
+	idx = nearest_pose(path2, {4.98, 0.0}, 45);
+	EXPECT_GE(idx, 50U);
+	EXPECT_LE(idx, 52U);
+}
+
 TEST(PathValidation, ObstacleIndexMargins)
 {
 	const auto fp = box();
