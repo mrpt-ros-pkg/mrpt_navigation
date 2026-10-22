@@ -86,7 +86,10 @@ sample_period: 0.1         # [s] emitted chunk sampling
 emit_frame: odom
 
 # --- Predictive safety (inert unless a footprint + obstacles are available) ---
-safety_margin: 0.05                # [m] footprint inflation = "contact"
+safety_margin: 0.03                # [m] footprint inflation = "contact". Keep it
+                                   # below the planner clearance (PTG .ini): paths
+                                   # planned at that clearance must leave room for
+                                   # sensing noise and tracking errors.
 stop_distance: 0.3                 # [m] contact within -> full stop
 slow_distance: 1.5                 # [m] contact beyond -> full speed
 safety_horizon: 3.0                # [s] forecast rollout length
@@ -107,5 +110,5 @@ collision_guard:
   max_decel: 1.0           # [m/s^2] braking deceleration the robot surely achieves
   max_ang_decel: 1.5       # [rad/s^2]
   reaction_time: 0.25      # [s] >= control period + actuation latency
-  margin: 0.05             # [m] footprint inflation
+  margin: 0.03             # [m] footprint inflation
   max_obstacles_age: 0.5   # [s] older obstacle data => full stop
