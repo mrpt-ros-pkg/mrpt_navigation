@@ -356,16 +356,17 @@ void TPS_Astar_Planner_Node::initialize_ptgs_and_publish_shape()
 			auto lck = std::lock_guard(status_cs_);
 			footprint_points_ = std::move(footprint);
 		}
-		ptgs_ready_ = true;
 		create_planning_interfaces();
+		// READY is published before the goal manager can take a queued goal
+		// (it waits for ptgs_ready_), so it never overwrites the goal's state:
 		update_status(
 			[](NavigationStatus& s)
 			{
-				// (a goal queued meanwhile is taken by the goal manager next)
 				const auto timeout = s.no_progress_timeout;
 				s = nav_status::make_status(NavigationStatus::STATE_READY);
 				s.no_progress_timeout = timeout;
 			});
+		ptgs_ready_ = true;
 		goal_cv_.notify_all();
 
 		RCLCPP_INFO(
@@ -861,6 +862,18 @@ void TPS_Astar_Planner_Node::callback_goal(const geometry_msgs::msg::PoseStamped
 	catch (const std::exception& e)
 	{
 		RCLCPP_ERROR(this->get_logger(), "Exception in goal callback : %s", e.what());
+		// A one-shot plan that threw ends as failed (other states are kept):
+		update_status(
+			[&e](NavigationStatus& s)
+			{
+				if (s.state == NavigationStatus::STATE_PLANNING)
+				{
+					s.state = NavigationStatus::STATE_FAILED;
+					s.level = NavigationStatus::LEVEL_ERROR;
+					s.reason = "planning_error";
+					s.message = std::string("Planning error: ") + e.what();
+				}
+			});
 	}
 }
 
