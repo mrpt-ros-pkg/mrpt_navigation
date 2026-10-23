@@ -5,7 +5,7 @@ repositories:
   mrpt_path_planning:
     type: git
     url: https://github.com/MRPT/mrpt_path_planning.git
-    version: feature/ptg-init-progress
+    version: develop
   # The released 0.4.0 depends on MRPT 2:
   pose_cov_ops:
     type: git
