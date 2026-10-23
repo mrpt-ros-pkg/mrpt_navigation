@@ -57,6 +57,15 @@ if(BUILD_TESTING)
         MRPT_TUTORIALS_DYNAMIC_OBSTACLES=false
   )
 
+  # Navigation status, feedback and warnings published by the planner (PTG
+  # grids are built from scratch in this one):
+  ament_add_ros_isolated_pytest_test(test_navigation_status
+    test/test_navigation_status.py
+    TIMEOUT 1200
+    ENV MRPT_TUTORIALS_DIFFDRIVE_CONTROLLER=twist_ideal
+        MRPT_TUTORIALS_DYNAMIC_OBSTACLES=false
+  )
+
   # Legacy (plain string) follower status, without goal id and revision:
   ament_add_ros_isolated_pytest_test(test_legacy_follower_status
     test/test_legacy_follower_status.py

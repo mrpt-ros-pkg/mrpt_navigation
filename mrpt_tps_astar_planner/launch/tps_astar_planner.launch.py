@@ -146,6 +146,13 @@ def generate_launch_description():
             description='A goal fails if the robot does not get closer to it for this long [s] '
             '(meanwhile, blocked paths and failed searches are replanned; <=0: never)'),
         DeclareLaunchArgument(
+            'no_progress_warn_fraction', default_value='0.5',
+            description='The navigation status turns to STALLED (a warning) after this fraction '
+            'of no_progress_timeout without progress (<=0: never)'),
+        DeclareLaunchArgument(
+            'publish_markers', default_value='true',
+            description='Publish ~/navigation_markers, to show the navigation status in 3D views'),
+        DeclareLaunchArgument(
             'blocked_obstacles_memory', default_value='30.0',
             description='Obstacle points that blocked a path of a goal are kept in its searches '
             'for this long [s], also when out of sight (<=0: not kept)'),
@@ -223,6 +230,10 @@ def generate_launch_description():
             'start_lookahead_time'), value_type=float)},
         {'no_progress_timeout': ParameterValue(LaunchConfiguration(
             'no_progress_timeout'), value_type=float)},
+        {'no_progress_warn_fraction': ParameterValue(LaunchConfiguration(
+            'no_progress_warn_fraction'), value_type=float)},
+        {'publish_markers': ParameterValue(LaunchConfiguration(
+            'publish_markers'), value_type=bool)},
         {'blocked_obstacles_memory': ParameterValue(LaunchConfiguration(
             'blocked_obstacles_memory'), value_type=float)},
         {'max_planning_restarts': ParameterValue(LaunchConfiguration(

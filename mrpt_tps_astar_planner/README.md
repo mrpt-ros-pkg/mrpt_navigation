@@ -125,6 +125,31 @@ are planned once, as one-shot plans. The services are always one-shot.
 Each planning thread uses its own copy of the PTGs, so services and the goal
 manager plan concurrently.
 
+### Navigation status and feedback
+
+Whatever the source of a goal (topic or action), the planner publishes a
+`mrpt_nav_interfaces/NavigationStatus` on `~/navigation_status` (latched, on
+every change and at 2 Hz): the planner state (`INITIALIZING` with the PTG build
+progress, `INIT_FAILED`, `READY`, `PLANNING`, `FOLLOWING_PARTIAL`, `FOLLOWING`,
+`REPLANNING`, `BLOCKED`, `STALLED`, and `SUCCEEDED`, `FAILED` or `CANCELED` for
+a few seconds once a goal ends), a severity `level` to color views, a stable
+`reason` code, a one-line `message` and the measurements of the goal (distance,
+remaining path length, a rough ETA, time without progress, replans). Topic goals
+received while the PTGs are being built are queued (the latest one) instead of
+dropped. A goal that makes no progress for `no_progress_warn_fraction` of
+`no_progress_timeout` turns the state to `STALLED` with the likely cause in
+`reason`, and a warning is logged, before it is given up. The action feedback
+carries the same state name and measurements, and the action result a `reason`
+and `message` telling why it ended.
+
+`~/navigation_markers` (`visualization_msgs/MarkerArray`, latched, disabled with
+`publish_markers: false`) shows it in RViz and Foxglove 3D views: a text above
+the robot colored by severity (namespace `status_text`), the goal pose and
+footprint colored by state (`goal`), the obstacle points that blocked a path
+and where it got blocked (`blocking`), and where a partial path ends
+(`partial_end`). Each namespace can be toggled. The tutorial RViz and Foxglove
+layouts include them.
+
 ### ROS 2 parameters
 
 | Parameter | Default | Description |
@@ -162,6 +187,8 @@ manager plan concurrently.
 | `stitch_lookahead_time` | `3.0` | The search goes on from this far ahead [s] of the robot (at max PTG speed) |
 | `start_lookahead_time` | `3.0` | New searches from the robot (new goals, restarts) start this far ahead [s], at its current speed, on the path it is following (<=0: from the robot pose) |
 | `no_progress_timeout` | `60.0` | A goal fails if the robot does not get closer to it for this long [s], in a straight line or along the full path it follows; meanwhile, blocked paths and failed searches are replanned (`<=0`: never) |
+| `no_progress_warn_fraction` | `0.5` | The status turns to `STALLED` (and a warning is logged) after this fraction of `no_progress_timeout` without progress (`<=0`: never) |
+| `publish_markers` | `true` | Publish `~/navigation_markers`, to show the navigation status in 3D views |
 | `blocked_obstacles_memory` | `30.0` | Obstacle points that blocked a path of a goal are kept in its searches for this long [s], also when out of sight (`<=0`: not kept) |
 | `max_planning_restarts` | `0` | If `>0`, a goal also fails after this many searches restarted from scratch in a row without reaching it (`<=0`: no limit) |
 | `topic_follower_status_sub` | `/mrpt_trajectory_follower/status` | Path follower status (goal reached or failed), used only if the next one is empty |
@@ -184,6 +211,8 @@ manager plan concurrently.
 | `<topic_wp_seq_pub>_path` (default `/waypoints_path`) | `nav_msgs/Path` | Same path as `nav_msgs/Path` (empty if no path was found for a goal topic request, which cancels path followers) |
 | `<topic_wp_seq_pub>_reference` (default `/waypoints_reference`) | `mrpt_nav_interfaces/ReferencePath` | Goal manager paths, with goal id, revision and whether they are partial (empty: navigation canceled) |
 | `~/committed_path`, `~/tentative_path` | `nav_msgs/Path` | Goal manager path, split into its committed part and the rest (latched; shown in different colors in the tutorial RViz/Foxglove layouts) |
+| `~/navigation_status` | `mrpt_nav_interfaces/NavigationStatus` | Planner readiness and state of the current goal, with measurements and a reason code (latched; see above) |
+| `~/navigation_markers` | `visualization_msgs/MarkerArray` | The status as markers for 3D views (latched; see above) |
 | `~/robot_shape` | `geometry_msgs/PolygonStamped` | Robot footprint used for planning (latched), so other nodes can check they use the same robot description |
 | `<topic_costmaps_pub>_0`, `_1`, … | `nav_msgs/OccupancyGrid` | Inflated costmaps (one per obstacle source, latched), published after each one-shot plan and whenever the goal manager rebuilds them (converted only once subscribed; late subscribers get the latest one) |
 
@@ -191,7 +220,7 @@ manager plan concurrently.
 
 | Action | Type | Description |
 |---|---|---|
-| `~/navigate_goal` | `mrpt_nav_interfaces/NavigateGoal` | Navigate to a goal (as the goal topic), with feedback (distance to goal, status) and a result once the follower reaches it or navigation fails. Can be canceled |
+| `~/navigate_goal` | `mrpt_nav_interfaces/NavigateGoal` | Navigate to a goal (as the goal topic), with feedback (state, distance to goal, remaining path length, ETA, time without progress) and a result with a `reason` once the follower reaches it or navigation fails. Can be canceled |
 
 ### Services
 

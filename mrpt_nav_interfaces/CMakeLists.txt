@@ -32,6 +32,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   msg/NavigationFeedback.msg
   msg/FollowerStatus.msg
   msg/NavigationFinalStatus.msg
+  msg/NavigationStatus.msg
   msg/ReferencePath.msg
   srv/GetLayers.srv
   srv/GetGridmapLayer.srv

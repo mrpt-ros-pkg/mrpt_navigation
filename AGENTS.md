@@ -40,6 +40,8 @@ list and responsibilities:
   until `no_progress_timeout` passes without getting closer to the goal
   (obstacles that blocked a path are remembered for a while).
   Services stay one-shot.
+  It publishes `~/navigation_status` and `~/navigation_markers` (see its
+  README); topic goals received while the PTGs are being built are queued.
 - **mrpt_trajectory_follower**: node that accurately follows a reference
   pose+speed path (pure pursuit) with predictive safety, a last-resort
   collision guard on every command, run-time speed limit, and optional

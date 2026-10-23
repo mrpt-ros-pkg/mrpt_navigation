@@ -27,6 +27,12 @@
 # Set goals with RViz "2D Goal Pose", or "Publish pose" in Foxglove (layout:
 # mrpt_tutorials/foxglove/mvsim_3d_nav.json, with foxglove_bridge running).
 #
+# Navigation feedback: the planner publishes its status on
+# /mrpt_tps_astar_planner_node/navigation_status (state, progress, warnings)
+# and a 3D status display on /mrpt_tps_astar_planner_node/navigation_markers
+# (a text above the robot, the goal and what blocks the way), both shown by the
+# RViz and Foxglove layouts.
+#
 # Launch arguments:
 #  - world: 'greenhouse' (default) or 'warehouse'.
 #  - use_static_map: also plan with the static obstacle map (default: True).
@@ -102,6 +108,8 @@ PLANNER_GOAL_MANAGER_ARGS = [
      'Planner: new searches from a moving robot start this far ahead [s] on its path'),
     ('no_progress_timeout', '60.0',
      'Planner: a goal fails if the robot does not get closer to it for this long [s]'),
+    ('no_progress_warn_fraction', '0.5',
+     'Planner: the status turns to STALLED (a warning) after this fraction of no_progress_timeout without progress (<=0: never)'),
     ('max_planning_restarts', '0',
      'Planner: if >0, searches restarted in a row for a goal before giving up'),
 ]

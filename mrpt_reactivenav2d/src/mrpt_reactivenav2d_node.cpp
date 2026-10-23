@@ -9,6 +9,7 @@
 #include <chrono>
 #include <cstdlib>
 #include <filesystem>
+#include <limits>
 #include <mrpt_reactivenav2d/mrpt_reactivenav2d_node.hpp>
 #include <rclcpp_components/register_node_macro.hpp>
 
@@ -760,6 +761,9 @@ void ReactiveNav2DNode::execute_action_goal(const std::shared_ptr<HandleNavigate
 
 	rclcpp::Rate loop_rate(1);
 	auto feedback = std::make_shared<NavigateGoal::Feedback>();
+	// Not provided by this navigator:
+	feedback->state.remaining_path_length = std::numeric_limits<float>::quiet_NaN();
+	feedback->state.eta = std::numeric_limits<float>::quiet_NaN();
 	auto result = std::make_shared<NavigateGoal::Result>();
 
 	auto getNavState = [this]()
@@ -868,6 +872,9 @@ void ReactiveNav2DNode::execute_action_wp(
 
 	rclcpp::Rate loop_rate(1);
 	auto feedback = std::make_shared<NavigateWaypoints::Feedback>();
+	// Not provided by this navigator:
+	feedback->state.remaining_path_length = std::numeric_limits<float>::quiet_NaN();
+	feedback->state.eta = std::numeric_limits<float>::quiet_NaN();
 	auto result = std::make_shared<NavigateWaypoints::Result>();
 
 	auto getNavState = [this]()

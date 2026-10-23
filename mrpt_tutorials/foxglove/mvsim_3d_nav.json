@@ -45,7 +45,8 @@
         "/waypoints_path": { "visible": true, "lineWidth": 0.06, "gradient": ["#19ff00", "#19ff00"] },
         "/mrpt_tps_astar_planner_node/committed_path": { "visible": true, "lineWidth": 0.1, "gradient": ["#0078ff", "#0078ff"] },
         "/mrpt_tps_astar_planner_node/tentative_path": { "visible": true, "lineWidth": 0.1, "gradient": ["#ffa000", "#ffa000"] },
-        "/goal_pose": { "visible": true, "type": "arrow", "arrowSize": [1.0, 0.3, 0.3], "color": "#ff1900" }
+        "/goal_pose": { "visible": true, "type": "arrow", "arrowSize": [1.0, 0.3, 0.3], "color": "#ff1900" },
+        "/mrpt_tps_astar_planner_node/navigation_markers": { "visible": true }
       },
       "publish": {
         "type": "pose",
@@ -65,6 +66,39 @@
       "searchTerms": [],
       "minLogLevel": 2,
       "nameFilter": {}
+    },
+    "Indicator!nav_level": {
+      "path": "/mrpt_tps_astar_planner_node/navigation_status.level",
+      "style": "background",
+      "fontSize": 28,
+      "fallbackColor": "#a0a0a0",
+      "fallbackLabel": "No navigation status",
+      "rules": [
+        { "operator": "=", "rawValue": "0", "color": "#68e24a", "label": "OK" },
+        { "operator": "=", "rawValue": "1", "color": "#f8e45c", "label": "WARNING" },
+        { "operator": "=", "rawValue": "2", "color": "#ff5d5d", "label": "ERROR" }
+      ]
+    },
+    "StateTransitions!nav_state": {
+      "paths": [
+        { "value": "/mrpt_tps_astar_planner_node/navigation_status.state_name", "label": "Navigation state", "timestampMethod": "receiveTime" }
+      ],
+      "isSynced": true
+    },
+    "Plot!nav_progress": {
+      "paths": [
+        { "value": "/mrpt_tps_astar_planner_node/navigation_status.remaining_path_length", "enabled": true, "timestampMethod": "receiveTime" },
+        { "value": "/mrpt_tps_astar_planner_node/navigation_status.distance_to_goal", "enabled": true, "timestampMethod": "receiveTime" },
+        { "value": "/mrpt_tps_astar_planner_node/navigation_status.time_since_progress", "enabled": true, "timestampMethod": "receiveTime" }
+      ],
+      "showXAxisLabels": true,
+      "showYAxisLabels": true,
+      "showLegend": true,
+      "legendDisplay": "floating",
+      "showPlotValuesInLegend": false,
+      "isSynced": true,
+      "xAxisVal": "timestamp",
+      "sidebarDimension": 240
     }
   },
   "globalVariables": {},
@@ -75,9 +109,24 @@
     "first": "3D!mvsim_3d_nav",
     "second": {
       "direction": "column",
-      "first": "Image!camera",
-      "second": "RosOut!log",
-      "splitPercentage": 50
+      "first": "Indicator!nav_level",
+      "second": {
+        "direction": "column",
+        "first": "StateTransitions!nav_state",
+        "second": {
+          "direction": "column",
+          "first": "Plot!nav_progress",
+          "second": {
+            "direction": "column",
+            "first": "Image!camera",
+            "second": "RosOut!log",
+            "splitPercentage": 50
+          },
+          "splitPercentage": 35
+        },
+        "splitPercentage": 20
+      },
+      "splitPercentage": 8
     },
     "splitPercentage": 70
   }
