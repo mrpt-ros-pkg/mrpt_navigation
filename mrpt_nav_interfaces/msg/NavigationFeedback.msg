@@ -6,3 +6,9 @@ int16 reached_waypoints
 float32 distance_to_goal
 # Current navigator state, e.g. "Planning", "Running", "Replanning":
 string status
+# Remaining length of the path being followed [m] (NaN if not provided):
+float32 remaining_path_length
+# Rough estimate of the time to reach the goal [s] (NaN if not provided):
+float32 eta
+# Time without getting closer to the goal [s] (0 if not provided):
+float32 time_since_progress

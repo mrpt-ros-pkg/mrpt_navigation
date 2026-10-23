@@ -73,6 +73,8 @@ PLANNER_GOAL_MANAGER_ARGS = [
      'Planner: follower status with path ids (empty: use the plain status topic)'),
     ('no_progress_timeout', '60.0',
      'Planner: a goal fails if the robot does not get closer to it for this long [s]'),
+    ('no_progress_warn_fraction', '0.5',
+     'Planner: the status turns to STALLED (a warning) after this fraction of no_progress_timeout without progress (<=0: never)'),
     ('max_planning_restarts', '0',
      'Planner: if >0, searches restarted in a row for a goal before giving up'),
 ]

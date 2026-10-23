@@ -69,6 +69,7 @@ add_library(${PROJECT_NAME}_component SHARED
   src/${PROJECT_NAME}_component.cpp
   src/goal_frame.cpp
   src/goal_manager.cpp
+  src/navigation_status.cpp
   src/obstacle_regions.cpp
 )
 
@@ -166,6 +167,15 @@ if(BUILD_TESTING)
   target_include_directories(test_path_validation PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/include)
   target_link_libraries(test_path_validation mrpt::mrpt_maps mrpt::mrpt_math)
+
+  ament_add_gtest(test_navigation_status
+    test/test_navigation_status.cpp
+    src/navigation_status.cpp)
+  target_include_directories(test_navigation_status PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/include)
+  target_link_libraries(test_navigation_status
+    mrpt::mrpt_math rclcpp::rclcpp
+    ${mrpt_nav_interfaces_TARGETS} ${visualization_msgs_TARGETS} ${geometry_msgs_TARGETS})
 
   # Goal frame handling: the helper alone, then the whole node with TF.
   ament_add_gtest(test_goal_frame

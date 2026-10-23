@@ -45,7 +45,8 @@
         "/waypoints_path": { "visible": true, "lineWidth": 0.06, "gradient": ["#19ff00", "#19ff00"] },
         "/mrpt_tps_astar_planner_node/committed_path": { "visible": true, "lineWidth": 0.1, "gradient": ["#0078ff", "#0078ff"] },
         "/mrpt_tps_astar_planner_node/tentative_path": { "visible": true, "lineWidth": 0.1, "gradient": ["#ffa000", "#ffa000"] },
-        "/goal_pose": { "visible": true, "type": "arrow", "arrowSize": [1.0, 0.3, 0.3], "color": "#ff1900" }
+        "/goal_pose": { "visible": true, "type": "arrow", "arrowSize": [1.0, 0.3, 0.3], "color": "#ff1900" },
+        "/mrpt_tps_astar_planner_node/navigation_markers": { "visible": true }
       },
       "publish": {
         "type": "pose",

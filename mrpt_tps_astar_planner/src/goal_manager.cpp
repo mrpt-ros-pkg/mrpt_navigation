@@ -15,9 +15,11 @@
 // restarting the search if it is blocked.
 
 #include <mpp/ptgs/SpeedTrimmablePTG.h>
+#include <mrpt/core/format.h>
 #include <mrpt/math/wrap2pi.h>
 
 #include <cmath>
+#include <limits>
 #include <mrpt_tps_astar_planner/goal_frame.hpp>
 #include <mrpt_tps_astar_planner/mrpt_tps_astar_planner_node.hpp>
 #include <mrpt_tps_astar_planner/path_validation.hpp>
@@ -119,10 +121,13 @@ void TPS_Astar_Planner_Node::submit_goal(
 	// A goal replaced before being started (aborted after releasing the lock:
 	// rclcpp_action takes its own locks and may call back into this node):
 	std::shared_ptr<HandleNavigateGoal> replaced;
+	const bool fromAction = h != nullptr;
+	uint32_t id = 0;
 	{
 		auto lck = std::lock_guard(goal_cs_);
 		ActiveGoal g;
 		g.id = next_goal_id_++;
+		id = g.id;
 		g.pose = goalInMap;
 		g.action = std::move(h);
 		if (pending_goal_ && pending_goal_->action)
@@ -139,7 +144,29 @@ void TPS_Astar_Planner_Node::submit_goal(
 		auto result = std::make_shared<NavigateGoal::Result>();
 		result->state.navigation_status =
 			mrpt_nav_interfaces::msg::NavigationFinalStatus::STATUS_CANCELLED;
+		result->state.reason = "replaced";
+		result->state.message = "Replaced by a new goal";
 		replaced->abort(result);
+	}
+	if (!ptgs_ready_ && !ptgs_failed_)
+	{
+		// The goal manager takes it once the PTGs are ready:
+		RCLCPP_INFO(
+			get_logger(), "Goal #%u queued until the planner is ready (PTGs are being built).", id);
+		update_status(
+			[&](NavigationStatus& s)
+			{
+				if (s.state != NavigationStatus::STATE_INITIALIZING)
+				{
+					// (the planner got ready meanwhile: the goal manager takes the goal)
+					return;
+				}
+				nav_status::set_goal(s, id, fromAction, goalInMap, frame_id_map_);
+				s.state = NavigationStatus::STATE_INITIALIZING;
+				s.level = NavigationStatus::LEVEL_WARN;
+				s.reason = "goal_queued";
+				s.message = "Goal #" + std::to_string(id) + " queued until the planner is ready";
+			});
 	}
 	goal_cv_.notify_all();
 }
@@ -223,6 +250,8 @@ void TPS_Astar_Planner_Node::action_handle_accepted(
 		auto result = std::make_shared<NavigateGoal::Result>();
 		result->state.navigation_status =
 			mrpt_nav_interfaces::msg::NavigationFinalStatus::STATUS_ERROR;
+		result->state.reason = "invalid_goal";
+		result->state.message = "The goal cannot be expressed in the map frame: " + error;
 		goal_handle->abort(result);
 		return;
 	}
@@ -259,6 +288,7 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 	double tGoalStart = 0;	// when the goal was received [steady s]
 	double tSearchStart = 0;  // when the current search started
 	int restarts = 0;
+	uint32_t replans = 0;  // search restarts for this goal, for the status
 	uint32_t revision = 0;
 	// The first path revision published by the current search:
 	uint32_t searchFirstRevision = 1;
@@ -311,6 +341,12 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 	double bestPathDist = std::numeric_limits<double>::infinity();
 	double tLastProgress = 0;
 	double tLastHeartbeat = 0;
+	// Status, and extra details for the 3D views:
+	bool stalled = false;
+	std::optional<uint8_t> lastState;
+	std::string lastReason;
+	std::optional<TPose2D> blockedPose;
+
 	// Obstacle points that blocked a path of this goal (see
 	// blocked_obstacles_memory), by 5 cm cell: when, and where.
 	std::unordered_map<int64_t, std::pair<double, TPoint2D>> blockedMemory;
@@ -318,15 +354,34 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 	auto tooManyRestarts = [this](int n)
 	{ return max_planning_restarts_ > 0 && n > max_planning_restarts_; };
 
-	auto endGoal = [&](int8_t status, const char* why)
+	// Ends the goal, with a stable `reason` code and a human-readable message:
+	auto endGoal = [&](int8_t status, const char* reason, const std::string& message)
 	{
 		if (goal)
 		{
-			RCLCPP_INFO(get_logger(), "Navigation goal #%u ended: %s", goal->id, why);
+			RCLCPP_INFO(
+				get_logger(), "Navigation goal #%u ended: %s (%s)", goal->id, message.c_str(),
+				reason);
+			update_status(
+				[&](NavigationStatus& st)
+				{
+					st.state = status == NavStatus::STATUS_SUCCESS
+								   ? NavigationStatus::STATE_SUCCEEDED
+								   : (status == NavStatus::STATUS_CANCELLED
+										  ? NavigationStatus::STATE_CANCELED
+										  : NavigationStatus::STATE_FAILED);
+					st.level = status == NavStatus::STATUS_ERROR ? NavigationStatus::LEVEL_ERROR
+																 : NavigationStatus::LEVEL_OK;
+					st.reason = reason;
+					st.message = message;
+					st.elapsed = static_cast<float>(now_seconds() - tGoalStart);
+				});
 			if (goal->action)
 			{
 				auto result = std::make_shared<NavigateGoal::Result>();
 				result->state.navigation_status = status;
+				result->state.reason = reason;
+				result->state.message = message;
 				if (status == NavStatus::STATUS_SUCCESS)
 				{
 					goal->action->succeed(result);
@@ -569,13 +624,14 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 	{
 		followerWaitingSince.reset();
 		restarts++;
+		replans++;
 		RCLCPP_WARN(
 			get_logger(), "Goal #%u: restarting the search from the %s (#%d): %s", goal->id,
 			fromRobot ? "robot pose" : "committed path end", restarts, why);
 		if (tooManyRestarts(restarts))
 		{
 			publish_empty_paths();
-			endGoal(NavStatus::STATUS_ERROR, "too many planning restarts");
+			endGoal(NavStatus::STATUS_ERROR, "too_many_restarts", "Too many planning restarts");
 			return false;
 		}
 		// The current path will be replaced:
@@ -592,7 +648,7 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 		if (!from)
 		{
 			publish_empty_paths();
-			endGoal(NavStatus::STATUS_ERROR, "no robot pose");
+			endGoal(NavStatus::STATUS_ERROR, "no_robot_pose", "The robot pose is unknown");
 			return false;
 		}
 		startSearch(from->first, from->second);
@@ -797,7 +853,7 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 				// The search starts at the goal (its lattice cell): nothing
 				// to drive.
 				publish_empty_paths();
-				endGoal(NavStatus::STATUS_SUCCESS, "the robot is at the goal");
+				endGoal(NavStatus::STATUS_SUCCESS, "reached", "The robot is at the goal");
 				return true;
 			}
 			// End exactly at the goal (refinement may leave it slightly off):
@@ -843,6 +899,7 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 			bestPathDist = std::numeric_limits<double>::infinity();
 		}
 		searchPublished = true;
+		blockedPose.reset();
 		failedSearches = 0;
 		publishedFull = !partial;
 		followerEngaged = false;
@@ -887,6 +944,132 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 		publishedFull = false;
 	};
 
+	// Updates the status (published on changes, else by the timer) and the details
+	// shown in 3D views, from the state of the current goal:
+	auto updateStatus = [&](const std::string& followerStatus, bool followerBlockedNow,
+							const std::optional<TPose2D>& rp)
+	{
+		if (!goal)
+		{
+			return;
+		}
+		const double t = now_seconds();
+		const double sinceProgress = t - tLastProgress;
+		const bool stalledNow = no_progress_timeout_ > 0 && no_progress_warn_fraction_ > 0 &&
+								sinceProgress > no_progress_warn_fraction_ * no_progress_timeout_;
+
+		uint8_t state = NavigationStatus::STATE_PLANNING;
+		std::string reason;
+		std::string message = "Searching for a first path";
+		if (stalledNow)
+		{
+			state = NavigationStatus::STATE_STALLED;
+			const char* cause = nullptr;
+			if (followerBlockedNow)
+			{
+				reason = "follower_blocked";
+				cause = "the robot is blocked by an obstacle";
+			}
+			else if (followerWaitingSince)
+			{
+				reason = "waiting_partial_path";
+				cause = "waiting for a longer path";
+			}
+			else if (!publishedFull && planner.search_can_continue())
+			{
+				reason = "searching";
+				cause = "still searching for a full path";
+			}
+			else
+			{
+				reason = "no_progress";
+			}
+			message = mrpt::format(
+				"No progress for %.0f s (gives up at %.0f s)", sinceProgress, no_progress_timeout_);
+			if (cause != nullptr)
+			{
+				message += std::string(": ") + cause;
+			}
+		}
+		else if (followerBlockedNow)
+		{
+			state = NavigationStatus::STATE_BLOCKED;
+			reason = "follower_blocked";
+			message = "The robot is blocked by an obstacle";
+		}
+		else if (searchPublished)
+		{
+			state = publishedFull ? NavigationStatus::STATE_FOLLOWING
+								  : NavigationStatus::STATE_FOLLOWING_PARTIAL;
+			message = publishedFull ? "" : "Following a partial path";
+		}
+		else if (published || replans > 0)
+		{
+			state = NavigationStatus::STATE_REPLANNING;
+			message = "Searching for a new path";
+		}
+
+		const bool changed = !lastState || *lastState != state || lastReason != reason;
+		lastState = state;
+		lastReason = reason;
+		if (stalledNow && !stalled)
+		{
+			RCLCPP_WARN(get_logger(), "Goal #%u: %s", goal->id, message.c_str());
+		}
+		else if (!stalledNow && stalled)
+		{
+			RCLCPP_INFO(
+				get_logger(), "Goal #%u: progress again (%s).", goal->id,
+				nav_status::state_name(state));
+		}
+		stalled = stalledNow;
+
+		constexpr float kNaN = std::numeric_limits<float>::quiet_NaN();
+		const bool onPath = published && robotIdx < pathPoses.size() && robotIdx < pathS.size();
+		update_status(
+			[&](NavigationStatus& st)
+			{
+				st.state = state;
+				st.level = state == NavigationStatus::STATE_PLANNING ||
+								   state == NavigationStatus::STATE_FOLLOWING ||
+								   state == NavigationStatus::STATE_FOLLOWING_PARTIAL
+							   ? NavigationStatus::LEVEL_OK
+							   : NavigationStatus::LEVEL_WARN;
+				st.reason = reason;
+				st.message = message;
+				st.elapsed = static_cast<float>(t - tGoalStart);
+				st.distance_to_goal =
+					rp ? static_cast<float>((rp->translation() - goal->pose.translation()).norm())
+					   : kNaN;
+				st.remaining_path_length =
+					onPath ? static_cast<float>(pathS.back() - pathS[robotIdx]) : kNaN;
+				st.path_is_partial = published && !publishedFull;
+				st.eta = onPath && publishedFull
+							 ? static_cast<float>(
+								   static_cast<double>(pathPoses.size() - 1 - robotIdx) *
+								   PATH_SAMPLE_PERIOD)
+							 : kNaN;
+				st.time_since_progress = static_cast<float>(sinceProgress);
+				st.no_progress_timeout = static_cast<float>(no_progress_timeout_);
+				st.replans = static_cast<uint16_t>(std::min<uint32_t>(replans, 65535));
+				st.follower_status = followerStatus;
+			},
+			changed);
+		update_hud(
+			[&](nav_status::HudExtras& h)
+			{
+				h.blockedPose = blockedPose;
+				h.partialEnd = searchPublished && !publishedFull && !pathPoses.empty()
+								   ? std::optional<TPose2D>(pathPoses.back())
+								   : std::nullopt;
+				h.blockingPoints.clear();
+				for (const auto& [key, entry] : blockedMemory)
+				{
+					h.blockingPoints.push_back(entry.second);
+				}
+			});
+	};
+
 	while (true)
 	{
 		const double tCycleStart = now_seconds();
@@ -906,7 +1089,11 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 			{
 				break;
 			}
-			newGoal = std::exchange(pending_goal_, std::nullopt);
+			if (ptgs_ready_ || ptgs_failed_)
+			{
+				// (until then, a goal waits: it is taken once the PTGs are ready)
+				newGoal = std::exchange(pending_goal_, std::nullopt);
+			}
 			cancel = std::exchange(cancel_requested_, false);
 			followerStatus = last_follower_status_;
 			statusChanged = std::exchange(follower_status_changed_, false);
@@ -932,16 +1119,38 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 			plannerReady = true;
 		}
 
+		if (newGoal && !ptgs_ready_)
+		{
+			RCLCPP_ERROR(
+				get_logger(), "Goal #%u rejected: the PTGs failed to initialize.", newGoal->id);
+			newGoal.reset();
+		}
+
+		bool goalStartedNow = false;
 		if (newGoal)
 		{
+			goalStartedNow = true;
 			const bool wasNavigating = goal.has_value();
 			if (goal)
 			{
-				endGoal(NavStatus::STATUS_CANCELLED, "replaced by a new goal");
+				endGoal(NavStatus::STATUS_CANCELLED, "replaced", "Replaced by a new goal");
 			}
 			goal = std::move(newGoal);
+			lastState.reset();
+			update_status(
+				[&](NavigationStatus& st)
+				{
+					st = nav_status::make_status(NavigationStatus::STATE_PLANNING);
+					nav_status::set_goal(
+						st, goal->id, goal->action != nullptr, goal->pose, frame_id_map_);
+					st.no_progress_timeout = static_cast<float>(no_progress_timeout_);
+					st.message = "Searching for a first path";
+				});
 			tGoalStart = now_seconds();
 			restarts = 0;
+			replans = 0;
+			stalled = false;
+			blockedPose.reset();
 			failedSearches = 0;
 			retryAt.reset();
 			blockedRestarts = 0;
@@ -974,11 +1183,7 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 				goalHit =
 					obstacleIndex(points).collides(goal->pose, footprintPoly, footprintRadius, 0.0);
 			}
-			if (!plannerReady)
-			{
-				endGoal(NavStatus::STATUS_ERROR, "PTGs not ready");
-			}
-			else if (goalHit)
+			if (goalHit)
 			{
 				RCLCPP_WARN(
 					get_logger(),
@@ -986,7 +1191,9 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 					"rejected.",
 					goal->id, goalHit->x, goalHit->y);
 				publish_empty_paths();
-				endGoal(NavStatus::STATUS_ERROR, "goal in collision");
+				endGoal(
+					NavStatus::STATUS_ERROR, "goal_in_collision",
+					"The robot footprint at the goal hits an obstacle");
 			}
 			else if (const auto from = predictedStart(std::numeric_limits<size_t>::max()); from)
 			{
@@ -995,13 +1202,17 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 			else
 			{
 				publish_empty_paths();
-				endGoal(NavStatus::STATUS_ERROR, "no robot pose");
+				endGoal(NavStatus::STATUS_ERROR, "no_robot_pose", "The robot pose is unknown");
 			}
+		}
+		if (goalStartedNow)
+		{
+			updateStatus(followerStatus, false, robotPose());
 		}
 		if (cancel && goal && goal->action && goal->action->is_canceling())
 		{
 			publish_empty_paths();
-			endGoal(NavStatus::STATUS_CANCELLED, "canceled");
+			endGoal(NavStatus::STATUS_CANCELLED, "canceled", "Canceled by the client");
 		}
 
 		if (goal && plannerReady)
@@ -1035,11 +1246,12 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 				{
 					if (statusIsCurrent && followerStatus == FOLLOWER_REACHED && publishedFull)
 					{
-						endGoal(NavStatus::STATUS_SUCCESS, "goal reached");
+						endGoal(NavStatus::STATUS_SUCCESS, "reached", "Goal reached");
 					}
 					else if (statusIsCurrent && followerStatus == FOLLOWER_FAILED)
 					{
-						endGoal(NavStatus::STATUS_ERROR, "the path follower failed");
+						endGoal(
+							NavStatus::STATUS_ERROR, "follower_failed", "The path follower failed");
 					}
 					else if (
 						failureIsCurrent &&
@@ -1106,7 +1318,9 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 						if (tooManyRestarts(blockedRestarts))
 						{
 							publish_empty_paths();
-							endGoal(NavStatus::STATUS_ERROR, "the path follower stays blocked");
+							endGoal(
+								NavStatus::STATUS_ERROR, "follower_blocked",
+								"The path follower stays blocked");
 						}
 						else
 						{
@@ -1178,7 +1392,10 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 							"giving up.",
 							goal->id, no_progress_timeout_, bestGoalDist);
 						publish_empty_paths();
-						endGoal(NavStatus::STATUS_ERROR, "no progress toward the goal");
+						endGoal(
+							NavStatus::STATUS_ERROR, "no_progress",
+							mrpt::format(
+								"No progress toward the goal for %.0f s", no_progress_timeout_));
 					}
 				}
 
@@ -1221,6 +1438,7 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 							goal->id, pathS[*hit] - pathS[robotIdx], pathPoses[*hit].x,
 							pathPoses[*hit].y, hitInfo->second.x, hitInfo->second.y);
 						rememberBlocking(hitInfo->second, obsPoints);
+						blockedPose = pathPoses[*hit];
 						// Only the part before the obstacle remains (and the
 						// committed part, if it ends well before it, to go on from
 						// its end). A committed end closer to it may already touch
@@ -1402,13 +1620,14 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 							{
 								RCLCPP_WARN(get_logger(), "Goal #%u: %s.", goal->id, what);
 								publish_empty_paths();
-								endGoal(NavStatus::STATUS_ERROR, "no path found");
+								endGoal(NavStatus::STATUS_ERROR, "no_path", "No path found");
 							}
 							else
 							{
 								RCLCPP_WARN(
 									get_logger(), "Goal #%u: %s: retrying in %.0f s (#%d).",
 									goal->id, what, kRetryPeriod, failedSearches);
+								replans++;
 								retryAt = now_seconds() + kRetryPeriod;
 							}
 						}
@@ -1436,10 +1655,15 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 					restartSearch(fromRobot, "no open nodes after re-rooting");
 				}
 
-				// Feedback:
+				// Status, and feedback from it:
+				updateStatus(followerStatus, isBlocked && failureIsCurrent, rp);
 				if (goal && goal->action)
 				{
+					const auto snap = status_snapshot();
 					auto fb = std::make_shared<NavigateGoal::Feedback>();
+					fb->state.remaining_path_length = snap.remaining_path_length;
+					fb->state.eta = snap.eta;
+					fb->state.time_since_progress = snap.time_since_progress;
 					fb->state.total_waypoints = 1;
 					fb->state.reached_waypoints = 0;
 					if (rp)
@@ -1447,9 +1671,7 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 						fb->state.distance_to_goal = static_cast<float>(
 							(rp->translation() - goal->pose.translation()).norm());
 					}
-					fb->state.status = !published
-										   ? "Planning"
-										   : (publishedFull ? "Following" : "FollowingPartialPath");
+					fb->state.status = snap.state_name;
 					goal->action->publish_feedback(fb);
 				}
 			}
@@ -1457,7 +1679,9 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 			{
 				RCLCPP_ERROR(get_logger(), "Goal manager: %s", e.what());
 				publish_empty_paths();
-				endGoal(NavStatus::STATUS_ERROR, "planning error");
+				endGoal(
+					NavStatus::STATUS_ERROR, "planning_error",
+					std::string("Planning error: ") + e.what());
 			}
 		}
 
@@ -1473,8 +1697,9 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 				lck, std::chrono::duration<double>(waitTime),
 				[this]()
 				{
-					return shutting_down_ || pending_goal_.has_value() || cancel_requested_ ||
-						   follower_status_changed_;
+					return shutting_down_ ||
+						   (pending_goal_.has_value() && (ptgs_ready_ || ptgs_failed_)) ||
+						   cancel_requested_ || follower_status_changed_;
 				});
 		}
 	}
