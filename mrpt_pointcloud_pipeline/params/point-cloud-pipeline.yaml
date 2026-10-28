@@ -49,6 +49,12 @@ per_observation:
       input_pointcloud_layer: 'filtered'
       target_layer: 'accumulated_points'
 
+  # All observations share one map: remove the per-observation layers, or the
+  # next observation would merge these points again.
+  - class_name: mp2p_icp_filters::FilterDeleteLayer
+    params:
+      pointcloud_layer_to_remove: ['raw', 'filtered']
+
 # ---------------------------------------------------------------
 # 3) Pipeline to apply to the merged data
 # ---------------------------------------------------------------

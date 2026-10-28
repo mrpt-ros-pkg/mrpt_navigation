@@ -323,6 +323,10 @@ class TestNavigationStatus(unittest.TestCase):
         self.assertEqual(res.result.state.reason, 'reached')
         self.assertTrue(res.result.state.message)
 
+        # The final status message may arrive after the action result:
+        self.spin_until(
+            lambda: self.states_since(start) and
+            self.states_since(start)[-1][0] == S('SUCCEEDED'), 5.0)
         states = self.states_since(start)
         print(f'States for a normal goal: {states}', flush=True)
         names = [s for s, _ in states]

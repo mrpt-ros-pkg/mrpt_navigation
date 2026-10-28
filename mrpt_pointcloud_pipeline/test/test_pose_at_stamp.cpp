@@ -323,6 +323,67 @@ TEST(PointCloudPipeline, KeepsPlacedObservationWhileNewerOnesWait)
 	EXPECT_NEAR(x, 3.0, 0.05);
 }
 
+// Each observation is merged into the accumulated layer exactly once, also
+// when several of them build the same local map.
+TEST(PointCloudPipeline, MergesEachObservationOnce)
+{
+	rclcpp::NodeOptions opts;
+	opts.parameter_overrides({
+		{"pipeline_yaml_file", std::string(TEST_PIPELINE_YAML)},
+		{"source_topics_2d_scans", std::string("")},
+		{"source_topics_pointclouds", kCloudTopic},
+		// The layer before any decimation, which would hide duplicated points:
+		{"filter_output_layer_name", std::string("accumulated_points")},
+		{"topic_local_map_pointcloud", kOutputTopic},
+		{"time_window", 5.0},
+		{"publish_period", 0.05},
+	});
+	auto pipeline = std::make_shared<LocalObstaclesNode>(opts);
+	auto helper = std::make_shared<rclcpp::Node>("test_merge_once_helper");
+
+	std::optional<size_t> outputSize;
+	auto sub = helper->create_subscription<sensor_msgs::msg::PointCloud2>(
+		kOutputTopic, 10,
+		[&outputSize](const sensor_msgs::msg::PointCloud2::SharedPtr msg)
+		{
+			mrpt::maps::CSimplePointsMap m;
+			if (mrpt::ros2bridge::fromROS(*msg, m))
+			{
+				outputSize = m.size();
+			}
+		});
+	auto pub = helper->create_publisher<sensor_msgs::msg::PointCloud2>(kCloudTopic, 10);
+	tf2_ros::TransformBroadcaster tf_pub(*helper);
+
+	rclcpp::executors::SingleThreadedExecutor ex;
+	ex.add_node(pipeline);
+	ex.add_node(helper);
+
+	const rclcpp::Time t1 = helper->now();
+	const rclcpp::Time t0 = t1 - rclcpp::Duration::from_seconds(0.5);
+	tf_pub.sendTransform({odom_to_robot(t0, 0, 0, 0), odom_to_robot(t1, 0, 0, 0)});
+	spin_for(ex, std::chrono::milliseconds(300));
+
+	// One point per observation, outside the robot body box:
+	for (const auto& [t, x] : {std::make_pair(t0, 3.0f), std::make_pair(t1, 4.0f)})
+	{
+		mrpt::maps::CSimplePointsMap pts;
+		pts.insertPoint(x, 0.0f, 0.5f);
+		std_msgs::msg::Header h;
+		h.stamp = t;
+		h.frame_id = "base_link";
+		sensor_msgs::msg::PointCloud2 msg;
+		ASSERT_TRUE(mrpt::ros2bridge::toROS(pts, h, msg));
+		pub->publish(msg);
+		spin_for(ex, std::chrono::milliseconds(100));
+	}
+
+	outputSize.reset();
+	spin_for(ex, std::chrono::milliseconds(300));
+	ASSERT_TRUE(outputSize.has_value());
+	EXPECT_EQ(*outputSize, 2u);
+}
+
 int main(int argc, char** argv)
 {
 	testing::InitGoogleTest(&argc, argv);
