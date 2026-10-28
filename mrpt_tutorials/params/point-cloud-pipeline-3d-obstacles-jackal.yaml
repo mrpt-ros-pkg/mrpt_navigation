@@ -40,6 +40,12 @@ per_observation:
       input_pointcloud_layer: "no_body"
       target_layer: "accumulated"
 
+  # All observations share one map: remove the per-observation layers, or the
+  # next observation would merge these points again.
+  - class_name: mp2p_icp_filters::FilterDeleteLayer
+    params:
+      pointcloud_layer_to_remove: ["raw", "no_body"]
+
 final:
   # Height band (above the ground, below the ceilings) and window around the robot:
   - class_name: mp2p_icp_filters::FilterBoundingBox
