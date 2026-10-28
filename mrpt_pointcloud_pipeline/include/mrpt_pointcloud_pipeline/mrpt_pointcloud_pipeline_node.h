@@ -102,11 +102,14 @@ class LocalObstaclesNode : public rclcpp::Node
 		}
 		for (const auto& source : lstSources)
 		{
+			// Sensor data QoS (REP-2003): best effort subscriptions also
+			// match reliable publishers, while reliable ones would get
+			// nothing from best effort drivers.
 			const auto sub = this->create_subscription<MessageT>(
-				source, 1,
+				source, rclcpp::SensorDataQoS().keep_last(1),
 				[source, callback, this](const typename MessageT::SharedPtr msg)
 				{ callback(msg, source); });
-			subscriptions.push_back(sub);  // 1 is the queue size
+			subscriptions.push_back(sub);
 			num_subscriptions++;
 		}
 
