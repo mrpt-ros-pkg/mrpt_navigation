@@ -2,6 +2,18 @@
 Changelog for package mrpt_tps_astar_planner_node
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Adapt to mrpt_path_planning 2.x (NavEngine removed); nodes are now composable.
+* Anytime and continuous planning of navigation goals with a goal manager: re-rooting, path validation against new obstacles, replanning on follower failures or blocked paths until no progress (no_progress_timeout), memory of blocking obstacles, starting from the predicted pose of moving robots.
+* Navigation status stream, HUD markers and richer action feedback/results.
+* PTG lookup tables built in background; services and action offered once ready, topic goals queued meanwhile.
+* New parameters: turning_cost_factor, max_computation_time, anytime_max_partial_length, reverse motion cost; plan requests can ignore obstacles inside polygons.
+* Reject goals whose footprint hits an obstacle; transform PoseStamped goals into the map frame.
+* Costmap publishing: from the goal manager, latched for late subscribers, skipped without subscribers.
+* Differential-drive demos with rotations in place (DiffDrive_Spin PTG); robot footprint topic.
+* Contributors: Jose Luis Blanco-Claraco
+
 2.6.1 (2026-10-02)
 ------------------
 

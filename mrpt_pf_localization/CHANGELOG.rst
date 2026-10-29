@@ -2,6 +2,12 @@
 Changelog for package mrpt_pf_localization
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* pf_localization: remove MRPT 2.x compatibility code
+* mrpt_pf_localization: compute map->odom with the odometry at the estimate time
+* Contributors: Jose Luis Blanco-Claraco
+
 2.6.1 (2026-10-02)
 ------------------
 * demo_astar* launches: start with the PF localized at the simulated robot initial pose

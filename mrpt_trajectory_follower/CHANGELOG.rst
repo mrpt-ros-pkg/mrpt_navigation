@@ -2,6 +2,16 @@
 Changelog for package mrpt_trajectory_follower
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Stop when off path, collision guard (slowing down to its limit in advance), speed limit, replanning support.
+* Follow ReferencePath updates from the planner; never resume a path once its goal is reached.
+* Report and hold Blocked when the robot does not move although commanded to.
+* Fresh robot pose, ROS-clock control loop, parallel obstacle processing.
+* Optional geometry_msgs/TwistStamped output (cmd_vel_stamped); composable node.
+* Integration tests for aisle maneuvers and blocked robots in mvsim.
+* Contributors: Jose Luis Blanco-Claraco
+
 2.6.1 (2026-10-02)
 ------------------
 

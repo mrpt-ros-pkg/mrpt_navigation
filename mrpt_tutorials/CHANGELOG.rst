@@ -2,6 +2,14 @@
 Changelog for package mrpt_tutorials
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* A* + trajectory follower demos in mvsim greenhouse, warehouse and street (parking bays) worlds; Foxglove layout.
+* Differential-drive demos with rotations in place (DiffDrive_Spin PTG); moving obstacle in demo_world2.
+* Planner goal manager, anytime planning and max_computation_time exposed as launch arguments.
+* RViz/Foxglove layouts show the navigation status; consistent robot descriptions and simulation clock.
+* Contributors: Jose Luis Blanco-Claraco
+
 2.6.1 (2026-10-02)
 ------------------
 * Localization demos: start with the PF localized at the simulated robot initial pose
