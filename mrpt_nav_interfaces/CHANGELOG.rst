@@ -2,8 +2,8 @@
 Changelog for package mrpt_nav_interfaces
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+2.7.0 (2026-10-29)
+------------------
 * Planner: navigation status stream, HUD markers and richer action feedback
 * Goal manager follow-ups: status with goal id, stricter new-path checks, rewiring guard, costmap refresh
 * mrpt_nav_interfaces: ReferencePath message; optional details in NavigationFeedback

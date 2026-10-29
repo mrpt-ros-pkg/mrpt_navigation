@@ -2,8 +2,8 @@
 Changelog for package mrpt_pf_localization
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+2.7.0 (2026-10-29)
+------------------
 * pf_localization: remove MRPT 2.x compatibility code
 * mrpt_pf_localization: compute map->odom with the odometry at the estimate time
 * Contributors: Jose Luis Blanco-Claraco

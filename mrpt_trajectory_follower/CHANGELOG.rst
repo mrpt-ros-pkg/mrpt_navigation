@@ -2,8 +2,8 @@
 Changelog for package mrpt_trajectory_follower
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+2.7.0 (2026-10-29)
+------------------
 * Stop when off path, collision guard (slowing down to its limit in advance), speed limit, replanning support.
 * Follow ReferencePath updates from the planner; never resume a path once its goal is reached.
 * Report and hold Blocked when the robot does not move although commanded to.

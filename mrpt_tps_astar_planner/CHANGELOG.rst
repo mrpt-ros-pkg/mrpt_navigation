@@ -2,8 +2,8 @@
 Changelog for package mrpt_tps_astar_planner_node
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+2.7.0 (2026-10-29)
+------------------
 * Adapt to mrpt_path_planning 2.x (NavEngine removed); nodes are now composable.
 * Anytime and continuous planning of navigation goals with a goal manager: re-rooting, path validation against new obstacles, replanning on follower failures or blocked paths until no progress (no_progress_timeout), memory of blocking obstacles, starting from the predicted pose of moving robots.
 * Navigation status stream, HUD markers and richer action feedback/results.

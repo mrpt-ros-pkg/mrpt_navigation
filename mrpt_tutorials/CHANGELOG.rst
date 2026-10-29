@@ -2,8 +2,8 @@
 Changelog for package mrpt_tutorials
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+2.7.0 (2026-10-29)
+------------------
 * A* + trajectory follower demos in mvsim greenhouse, warehouse and street (parking bays) worlds; Foxglove layout.
 * Differential-drive demos with rotations in place (DiffDrive_Spin PTG); moving obstacle in demo_world2.
 * Planner goal manager, anytime planning and max_computation_time exposed as launch arguments.

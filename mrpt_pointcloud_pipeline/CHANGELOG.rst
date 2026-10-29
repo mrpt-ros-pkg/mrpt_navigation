@@ -2,8 +2,8 @@
 Changelog for package mrpt_pointcloud_pipeline
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+2.7.0 (2026-10-29)
+------------------
 * Place each observation with the robot pose at its timestamp (tf_max_wait), dropping those whose pose never arrives; merge each observation once.
 * Optional memory of obstacles in the sensors blind zone (only those seen in several scans, never the robot itself).
 * Subscribe to sensors with SensorDataQoS.

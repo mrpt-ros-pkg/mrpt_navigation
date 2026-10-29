@@ -2,8 +2,8 @@
 Changelog for package mrpt_reactivenav2d
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+2.7.0 (2026-10-29)
+------------------
 * Deprecate mrpt_reactivenav2d; add goal manager robustness integration tests
 * mrpt_reactivenav2d: store PTG cache files in the user cache directory instead of the working directory
 * Do not shut down the ROS context on PTG init failure; log readiness after it is set
