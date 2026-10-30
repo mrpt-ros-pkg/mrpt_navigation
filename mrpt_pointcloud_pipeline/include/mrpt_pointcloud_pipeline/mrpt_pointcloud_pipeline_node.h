@@ -28,6 +28,7 @@
 #include <mrpt/viz/CPointCloud.h>
 #include <mrpt/viz/Scene.h>
 #include <mrpt/viz/stock_objects.h>
+#include <mrpt_pointcloud_pipeline/ObstacleConfirmation.h>
 #include <mrpt_pointcloud_pipeline/ObstacleMemory.h>
 
 /* ros2 deps */
@@ -43,6 +44,7 @@
 #include <sensor_msgs/msg/laser_scan.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
+#include <vector>
 
 using namespace mrpt::system;
 using namespace mrpt::config;
@@ -177,6 +179,15 @@ class LocalObstaclesNode : public rclcpp::Node
 
 	/// Optional memory of obstacles in the sensors blind zone, per layer
 	std::map<std::string, mrpt_pointcloud_pipeline::ObstacleMemory> m_memory;
+
+	/// Optional confirmation of output points by independent observations,
+	/// per output layer
+	std::map<std::string, mrpt_pointcloud_pipeline::ObstacleConfirmation> m_confirm;
+
+	/// Observations the last local map was built from (it is not rebuilt
+	/// from the same ones), and its messages, per output layer
+	mrpt_pointcloud_pipeline::ObstacleConfirmation::ObservationIds m_last_obs_ids;
+	std::vector<std::optional<sensor_msgs::msg::PointCloud2>> m_last_msgs;
 
 	/**
 	 * @name ROS2 pubs/subs

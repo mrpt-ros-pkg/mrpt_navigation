@@ -164,6 +164,29 @@ void LocalObstaclesNode::on_do_publish()
 
 	if (obs.empty()) return;
 
+	// The same observations would give the same local map: publish it again
+	// without rebuilding it, until a new one arrives (when processing is
+	// slower than publish_period, sensor subscriptions keep only their latest
+	// message anyway).
+	mrpt_pointcloud_pipeline::ObstacleConfirmation::ObservationIds obsIds;
+	for (const auto& [timestamp, ipt] : obs)
+	{
+		obsIds.emplace(ipt.sourceTopic, timestamp);
+	}
+	if (obsIds == m_last_obs_ids)
+	{
+		for (size_t i = 0; i < layer2topic_.size(); i++)
+		{
+			if (m_last_msgs.at(i) && layer2topic_[i].pub->get_subscription_count() > 0)
+			{
+				layer2topic_[i].pub->publish(*m_last_msgs[i]);
+			}
+		}
+		return;
+	}
+	m_last_obs_ids = obsIds;
+	m_last_msgs.assign(layer2topic_.size(), std::nullopt);
+
 	// Build local map(s):
 	// -----------------------------------------------
 	mp2p_icp::metric_map_t mm;
@@ -209,6 +232,19 @@ void LocalObstaclesNode::on_do_publish()
 
 	tleFilter.stop();
 
+	// Keep only the points confirmed by independent observations, if enabled
+	// (before the obstacle memory, so it only stores confirmed obstacles):
+	for (auto& [layer, confirmation] : m_confirm)
+	{
+		CTimeLoggerEntry tleConfirm(m_profiler, "on_do_publish.confirmation");
+		auto pts = mm.point_layer(layer);
+		ASSERT_(pts);
+		CSimplePointsMap confirmed;
+		confirmation.update(*pts, curRobotPose, obs.rbegin()->first, obsIds, confirmed);
+		pts->clear();
+		pts->insertAnotherMap(&confirmed, mrpt::poses::CPose3D::Identity());
+	}
+
 	// Add the remembered obstacles in the blind zone, if enabled:
 	for (auto& [layer, memory] : m_memory)
 	{
@@ -221,8 +257,9 @@ void LocalObstaclesNode::on_do_publish()
 	}
 
 	// Publish them:
-	for (auto& e : layer2topic_)
+	for (size_t i = 0; i < layer2topic_.size(); i++)
 	{
+		auto& e = layer2topic_[i];
 		if (e.pub->get_subscription_count() == 0) continue;
 
 		sensor_msgs::msg::PointCloud2 msg_pts;
@@ -243,6 +280,7 @@ void LocalObstaclesNode::on_do_publish()
 
 		mrpt::ros2bridge::toROS(*simplPts, msg_pts.header, msg_pts);
 		e.pub->publish(msg_pts);
+		m_last_msgs[i] = std::move(msg_pts);
 	}
 
 	// Show gui:
@@ -657,6 +695,24 @@ void LocalObstaclesNode::read_parameters()
 	for (const auto& layer : lstMemLayers)
 	{
 		m_memory[layer].params = mp;
+	}
+
+	// Optional confirmation of the output points by independent observations:
+	mrpt_pointcloud_pipeline::ObstacleConfirmation::Parameters cp;
+	double confirm_radius = 0;
+	this->declare_parameter<double>("confirm_radius", confirm_radius);
+	this->get_parameter("confirm_radius", confirm_radius);
+	this->declare_parameter<double>("confirm_max_age", cp.max_age);
+	this->get_parameter("confirm_max_age", cp.max_age);
+	RCLCPP_INFO(
+		get_logger(), "confirm_radius: %.2f m confirm_max_age: %.2f s", confirm_radius, cp.max_age);
+	if (confirm_radius > 0)
+	{
+		cp.radius = static_cast<float>(confirm_radius);
+		for (const auto& e : layer2topic_)
+		{
+			m_confirm[e.layer].params = cp;
+		}
 	}
 }
 

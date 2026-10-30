@@ -52,6 +52,7 @@ find_package(mp2p_icp_filters REQUIRED)
 add_executable(${PROJECT_NAME}_node
               src/main.cpp
               src/ObstacleMemory.cpp
+              src/ObstacleConfirmation.cpp
               include/${PROJECT_NAME}/mrpt_pointcloud_pipeline_node.h)
 
 target_include_directories(${PROJECT_NAME}_node
@@ -82,6 +83,7 @@ target_link_libraries(
 add_library(${PROJECT_NAME}_component SHARED
               src/${PROJECT_NAME}_component.cpp
               src/ObstacleMemory.cpp
+              src/ObstacleConfirmation.cpp
               include/${PROJECT_NAME}/${PROJECT_NAME}_node.h)
 
 target_include_directories(${PROJECT_NAME}_component
@@ -149,10 +151,18 @@ if(BUILD_TESTING)
     ${CMAKE_CURRENT_SOURCE_DIR}/include)
   target_link_libraries(test_obstacle_memory mrpt::mrpt_maps)
 
+  ament_add_gtest(test_obstacle_confirmation
+    test/test_obstacle_confirmation.cpp
+    src/ObstacleConfirmation.cpp)
+  target_include_directories(test_obstacle_confirmation PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/include)
+  target_link_libraries(test_obstacle_confirmation mrpt::mrpt_maps)
+
   ament_add_gtest(test_pose_at_stamp
     test/test_pose_at_stamp.cpp
     src/${PROJECT_NAME}_component.cpp
-    src/ObstacleMemory.cpp)
+    src/ObstacleMemory.cpp
+    src/ObstacleConfirmation.cpp)
   target_include_directories(test_pose_at_stamp PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/include)
   target_compile_definitions(test_pose_at_stamp PRIVATE
