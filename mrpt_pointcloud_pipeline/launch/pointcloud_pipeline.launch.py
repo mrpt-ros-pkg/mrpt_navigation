@@ -72,6 +72,16 @@ def generate_launch_description():
         default_value='10.0',
         description='Remembered obstacles are forgotten after this long without being observed [s]'
     )
+    confirm_radius_arg = DeclareLaunchArgument(
+        'confirm_radius',
+        default_value='0.0',
+        description='If >0, output points are only published if the previous candidate points built from other observations had a point this close (in the reference frame), so one-off artifacts of a single scan are dropped [m]'
+    )
+    confirm_max_age_arg = DeclareLaunchArgument(
+        'confirm_max_age',
+        default_value='0.5',
+        description='Past candidate points older than this are not used to confirm points [s]. Must be larger than time_window, unless one_observation_per_topic'
+    )
     tf_max_wait_arg = DeclareLaunchArgument(
         'tf_max_wait',
         default_value='0.5',
@@ -141,6 +151,8 @@ def generate_launch_description():
             {'memory_region': LaunchConfiguration('memory_region')},
             {'memory_self_box': LaunchConfiguration('memory_self_box')},
             {'memory_max_age': LaunchConfiguration('memory_max_age')},
+            {'confirm_radius': LaunchConfiguration('confirm_radius')},
+            {'confirm_max_age': LaunchConfiguration('confirm_max_age')},
             {'tf_max_wait': LaunchConfiguration('tf_max_wait')},
         ],
         arguments=['--ros-args', '--log-level',
@@ -171,6 +183,8 @@ def generate_launch_description():
                     {'memory_region': LaunchConfiguration('memory_region')},
                     {'memory_self_box': LaunchConfiguration('memory_self_box')},
                     {'memory_max_age': LaunchConfiguration('memory_max_age')},
+                    {'confirm_radius': LaunchConfiguration('confirm_radius')},
+                    {'confirm_max_age': LaunchConfiguration('confirm_max_age')},
                     {'tf_max_wait': LaunchConfiguration('tf_max_wait')},
                 ],
             )
@@ -195,6 +209,8 @@ def generate_launch_description():
         memory_region_arg,
         memory_self_box_arg,
         memory_max_age_arg,
+        confirm_radius_arg,
+        confirm_max_age_arg,
         tf_max_wait_arg,
         mrpt_pointcloud_pipeline_node,
         composable_mrpt_pointcloud_pipeline,
