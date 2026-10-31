@@ -171,9 +171,19 @@ void LocalObstaclesNode::on_do_publish()
 	mrpt_pointcloud_pipeline::ObstacleConfirmation::ObservationIds obsIds;
 	for (const auto& [timestamp, ipt] : obs)
 	{
-		obsIds.emplace(ipt.sourceTopic, timestamp);
+		obsIds.emplace(ipt.sourceTopic, ipt.seq);
 	}
-	if (obsIds == m_last_obs_ids)
+	// A layer that got its first subscriber since the last build has no message to repeat:
+	bool cacheComplete = true;
+	for (size_t i = 0; i < layer2topic_.size(); i++)
+	{
+		const bool cached = i < m_last_msgs.size() && m_last_msgs[i].has_value();
+		if (!cached && layer2topic_[i].pub->get_subscription_count() > 0)
+		{
+			cacheComplete = false;
+		}
+	}
+	if (obsIds == m_last_obs_ids && cacheComplete)
 	{
 		for (size_t i = 0; i < layer2topic_.size(); i++)
 		{
@@ -437,6 +447,7 @@ void LocalObstaclesNode::on_new_sensor_laser_2d(
 
 	{
 		std::lock_guard<std::mutex> lck(m_hist_obs_mtx);
+		ipt.seq = ++m_obs_seq;
 		m_hist_obs.insert(m_hist_obs.end(), obs_list_t::value_type(timestamp, ipt));
 	}
 
@@ -496,6 +507,7 @@ void LocalObstaclesNode::on_new_sensor_pointcloud(
 
 	{
 		std::lock_guard<std::mutex> lck(m_hist_obs_mtx);
+		ipt.seq = ++m_obs_seq;
 		m_hist_obs.insert(m_hist_obs.end(), obs_list_t::value_type(timestamp, ipt));
 	}
 }  // end on_new_sensor_pointcloud
@@ -708,6 +720,16 @@ void LocalObstaclesNode::read_parameters()
 		get_logger(), "confirm_radius: %.2f m confirm_max_age: %.2f s", confirm_radius, cp.max_age);
 	if (confirm_radius > 0)
 	{
+		// Points are confirmed by builds from other observations, at most
+		// confirm_max_age old: with every observation in time_window used,
+		// those builds are at least time_window old.
+		if (!m_one_observation_per_topic && m_time_window >= cp.max_age)
+		{
+			THROW_EXCEPTION_FMT(
+				"confirm_max_age (%.2f s) must be larger than time_window (%.2f s), unless "
+				"one_observation_per_topic is true: no output point could ever be confirmed.",
+				cp.max_age, m_time_window);
+		}
 		cp.radius = static_cast<float>(confirm_radius);
 		for (const auto& e : layer2topic_)
 		{

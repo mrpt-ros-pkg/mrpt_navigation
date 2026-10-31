@@ -21,8 +21,9 @@ list and responsibilities:
   (`memory_layers`, `memory_region`) it keeps reporting obstacles that moved
   into a region the sensors can't see (e.g. close to a high-mounted lidar).
   With `confirm_radius`, output points are only published if the previous
-  output built from other observations had one that close (one-off
-  artifacts are dropped). The local map is only rebuilt when the
+  candidate points built from other observations had one that close (one-off
+  artifacts are dropped; `confirm_max_age` must exceed `time_window` unless
+  `one_observation_per_topic`). The local map is only rebuilt when the
   observations change (otherwise the last one is republished).
   Each observation is placed with the robot pose at its timestamp (waiting
   up to `tf_max_wait` for it, then dropping the observation), and the local

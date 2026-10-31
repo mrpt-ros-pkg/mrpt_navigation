@@ -31,7 +31,7 @@ CSimplePointsMap points(std::initializer_list<std::array<float, 2>> xy)
 }
 
 // One sensor at 10 Hz: each update uses only its latest scan.
-Ids scan(int i) { return {{"lidar", 0.1 * i}}; }
+Ids scan(int i) { return {{"lidar", i}}; }
 }  // namespace
 
 TEST(ObstacleConfirmation, OneOffArtifactIsNeverReported)
@@ -70,10 +70,10 @@ TEST(ObstacleConfirmation, SharedObservationDoesNotConfirmItself)
 	ObstacleConfirmation c;
 	// Two sensors; updates alternate the newest scan of one of them, and
 	// an artifact of scan "B@0.05" is in the two updates that use it:
-	const Ids u0 = {{"A", 0.00}, {"B", -0.05}};
-	const Ids u1 = {{"A", 0.00}, {"B", 0.05}};
-	const Ids u2 = {{"A", 0.10}, {"B", 0.05}};
-	const Ids u3 = {{"A", 0.10}, {"B", 0.15}};
+	const Ids u0 = {{"A", 0}, {"B", -1}};
+	const Ids u1 = {{"A", 0}, {"B", 1}};
+	const Ids u2 = {{"A", 2}, {"B", 1}};
+	const Ids u3 = {{"A", 2}, {"B", 3}};
 	const auto empty = points({});
 	const auto artifact = points({{1.5f, 0.5f}});
 	CSimplePointsMap out;
@@ -84,8 +84,8 @@ TEST(ObstacleConfirmation, SharedObservationDoesNotConfirmItself)
 	// A real obstacle, seen in disjoint observations, is confirmed:
 	c.update(points({{3.0f, 0.0f}}), CPose3D(), 0.15, u3, out);
 	EXPECT_EQ(out.size(), 0u);
-	const Ids u4 = {{"A", 0.20}, {"B", 0.15}};
-	const Ids u5 = {{"A", 0.20}, {"B", 0.25}};
+	const Ids u4 = {{"A", 4}, {"B", 3}};
+	const Ids u5 = {{"A", 4}, {"B", 5}};
 	c.update(points({{3.0f, 0.0f}}), CPose3D(), 0.20, u4, out);
 	EXPECT_EQ(out.size(), 0u);	// u3 is not disjoint, u2 had no point there
 	c.update(points({{3.0f, 0.0f}}), CPose3D(), 0.25, u5, out);

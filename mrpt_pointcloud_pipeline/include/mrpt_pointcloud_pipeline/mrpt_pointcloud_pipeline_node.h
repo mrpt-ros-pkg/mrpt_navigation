@@ -148,6 +148,8 @@ class LocalObstaclesNode : public rclcpp::Node
 	struct InfoPerTimeStep
 	{
 		std::string sourceTopic;
+		/// Unique per received message (see ObstacleConfirmation::ObservationIds)
+		int64_t seq = 0;
 		CObservation::Ptr observation;
 		/// Exact observation time, to look up the robot pose
 		builtin_interfaces::msg::Time stamp;
@@ -159,6 +161,7 @@ class LocalObstaclesNode : public rclcpp::Node
 	/// The history of past observations duringthe interest time window.
 	obs_list_t m_hist_obs;
 	std::mutex m_hist_obs_mtx;	//!< mutex
+	int64_t m_obs_seq = 0;	//!< Sequence number of the last received message (m_hist_obs_mtx)
 
 	mrpt::gui::CDisplayWindow3D::Ptr m_gui_win;
 	bool m_visible_raw = true, m_visible_output = true;

@@ -75,12 +75,12 @@ def generate_launch_description():
     confirm_radius_arg = DeclareLaunchArgument(
         'confirm_radius',
         default_value='0.0',
-        description='If >0, output points are only published if the previous output built from other observations had a point this close (in the reference frame), so one-off artifacts of a single scan are dropped [m]'
+        description='If >0, output points are only published if the previous candidate points built from other observations had a point this close (in the reference frame), so one-off artifacts of a single scan are dropped [m]'
     )
     confirm_max_age_arg = DeclareLaunchArgument(
         'confirm_max_age',
         default_value='0.5',
-        description='Past outputs older than this are not used to confirm points [s]'
+        description='Past candidate points older than this are not used to confirm points [s]. Must be larger than time_window, unless one_observation_per_topic'
     )
     tf_max_wait_arg = DeclareLaunchArgument(
         'tf_max_wait',

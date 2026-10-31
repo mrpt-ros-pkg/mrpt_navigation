@@ -46,8 +46,10 @@ class ObstacleConfirmation
 
 	Parameters params;
 
-	/// Observations an update was built from: (source, timestamp) pairs.
-	using ObservationIds = std::set<std::pair<std::string, double>>;
+	/// Observations an update was built from: (source, sequence number)
+	/// pairs. A sequence number per received message, not its timestamp, so
+	/// two messages with the same stamp are still different observations.
+	using ObservationIds = std::set<std::pair<std::string, int64_t>>;
 
 	/** Takes the candidate points (robot frame) built at time `t` [s] from the
 	 *  observations `ids`, with the robot at `robotPose` in the reference frame,
