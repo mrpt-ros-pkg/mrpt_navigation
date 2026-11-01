@@ -2,6 +2,9 @@
 Changelog for package mrpt_tutorials
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+
 2.7.0 (2026-10-29)
 ------------------
 * A* + trajectory follower demos in mvsim greenhouse, warehouse and street (parking bays) worlds; Foxglove layout.

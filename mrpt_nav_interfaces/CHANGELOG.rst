@@ -2,6 +2,9 @@
 Changelog for package mrpt_nav_interfaces
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+
 2.7.0 (2026-10-29)
 ------------------
 * Planner: navigation status stream, HUD markers and richer action feedback

@@ -2,6 +2,11 @@
 Changelog for package mrpt_pointcloud_pipeline
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Optional confirmation of output points by independent observations (confirm_radius), and no rebuild of the local map from unchanged observations (`#212 <https://github.com/mrpt-ros-pkg/mrpt_navigation/issues/212>`_)
+* Contributors: Jose Luis Blanco-Claraco
+
 2.7.0 (2026-10-29)
 ------------------
 * Place each observation with the robot pose at its timestamp (tf_max_wait), dropping those whose pose never arrives; merge each observation once.

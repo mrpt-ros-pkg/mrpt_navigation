@@ -2,6 +2,9 @@
 Changelog for package mrpt_navigation
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+
 2.7.0 (2026-10-29)
 ------------------
 * End-to-end navigation tests in mvsim: anytime/continuous planning, goal manager robustness, fast robots, navigation status, legacy follower status.

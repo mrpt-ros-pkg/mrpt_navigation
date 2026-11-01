@@ -2,6 +2,9 @@
 Changelog for package mrpt_pf_localization
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+
 2.7.0 (2026-10-29)
 ------------------
 * pf_localization: remove MRPT 2.x compatibility code

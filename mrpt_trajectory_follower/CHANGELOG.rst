@@ -2,6 +2,11 @@
 Changelog for package mrpt_trajectory_follower
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Aisle maneuvers test: relax the cross-track bound to 0.25 m for loaded CI runners (`#213 <https://github.com/mrpt-ros-pkg/mrpt_navigation/issues/213>`_)
+* Contributors: Jose Luis Blanco-Claraco
+
 2.7.0 (2026-10-29)
 ------------------
 * Stop when off path, collision guard (slowing down to its limit in advance), speed limit, replanning support.
