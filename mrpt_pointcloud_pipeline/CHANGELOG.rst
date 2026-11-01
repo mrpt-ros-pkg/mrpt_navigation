@@ -2,8 +2,8 @@
 Changelog for package mrpt_pointcloud_pipeline
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+2.8.0 (2026-11-01)
+------------------
 * Optional confirmation of output points by independent observations (confirm_radius), and no rebuild of the local map from unchanged observations (`#212 <https://github.com/mrpt-ros-pkg/mrpt_navigation/issues/212>`_)
 * Contributors: Jose Luis Blanco-Claraco
 
