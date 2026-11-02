@@ -191,8 +191,8 @@ layouts include them.
 | `publish_markers` | `true` | Publish `~/navigation_markers`, to show the navigation status in 3D views |
 | `blocked_obstacles_memory` | `30.0` | Obstacle points that blocked a path of a goal are kept in its searches for this long [s], also when out of sight (`<=0`: not kept) |
 | `max_planning_restarts` | `0` | If `>0`, a goal also fails after this many searches restarted from scratch in a row without reaching it (`<=0`: no limit) |
-| `topic_follower_status_sub` | `/mrpt_trajectory_follower/status` | Path follower status (goal reached or failed), used only if the next one is empty |
-| `topic_follower_status_ex_sub` | `/mrpt_trajectory_follower/status_ex` | Path follower status with the goal id and path revision it refers to: only statuses of the latest published path are acted on |
+| `topic_follower_status_sub` | `mrpt_trajectory_follower/status` | Path follower status (goal reached or failed), used only if the next one is empty |
+| `topic_follower_status_ex_sub` | `mrpt_trajectory_follower/status_ex` | Path follower status with the goal id and path revision it refers to: only statuses of the latest published path are acted on. Both default names are relative, so they resolve in the planner namespace, as the follower ones. If none arrives, a warning names the topic |
 
 ### Subscribed topics
 

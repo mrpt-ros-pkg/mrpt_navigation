@@ -332,10 +332,10 @@ class TPS_Astar_Planner_Node : public rclcpp::Node
 	/// without reaching it (<=0: no limit, see no_progress_timeout_)
 	int max_planning_restarts_ = 0;
 	/// The follower status topic (to know when goals are reached or fail)
-	std::string topic_follower_status_sub_ = "/mrpt_trajectory_follower/status";
+	std::string topic_follower_status_sub_ = "mrpt_trajectory_follower/status";
 	/// The follower status with the id of the path it refers to (preferred:
 	/// the plain string one is only used if this is empty)
-	std::string topic_follower_status_ex_sub_ = "/mrpt_trajectory_follower/status_ex";
+	std::string topic_follower_status_ex_sub_ = "mrpt_trajectory_follower/status_ex";
 
 	/// Whether goals use the goal manager (anytime or continuous planning)
 	[[nodiscard]] bool goal_manager_enabled() const;

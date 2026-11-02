@@ -341,6 +341,7 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 	double bestPathDist = std::numeric_limits<double>::infinity();
 	double tLastProgress = 0;
 	double tLastHeartbeat = 0;
+	bool warnedNoFollowerStatus = false;
 	// Status, and extra details for the 3D views:
 	bool stalled = false;
 	std::optional<uint8_t> lastState;
@@ -1351,6 +1352,26 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 									  : (published ? "partial path published" : "no path yet"),
 						followerStatus.c_str(), planner.search_can_continue() ? "running" : "ended",
 						now_seconds() - tLastProgress);
+				}
+
+				// Without the follower status, reached goals never end as succeeded
+				// (e.g. a topic name outside the follower namespace): say so once.
+				// Any status received, even an old one, proves the topic is right:
+				// the follower publishes a latched one at startup.
+				if (goal && published && followerStatus.empty() && !warnedNoFollowerStatus &&
+					now_seconds() - tGoalStart > 10.0)
+				{
+					warnedNoFollowerStatus = true;
+					const bool ex = sub_follower_status_ex_ != nullptr;
+					const char* topic = ex ? sub_follower_status_ex_->get_topic_name()
+										: sub_follower_status_
+											? sub_follower_status_->get_topic_name()
+											: "(none)";
+					RCLCPP_WARN(
+						get_logger(),
+						"No path follower status received on '%s' since startup: reached goals "
+						"cannot end as succeeded. Check %s (namespace?).",
+						topic, ex ? "topic_follower_status_ex_sub" : "topic_follower_status_sub");
 				}
 
 				// Robot progress along the published path:
