@@ -1356,19 +1356,22 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 
 				// Without the follower status, reached goals never end as succeeded
 				// (e.g. a topic name outside the follower namespace): say so once.
+				// Any status received, even an old one, proves the topic is right:
+				// the follower publishes a latched one at startup.
 				if (goal && published && followerStatus.empty() && !warnedNoFollowerStatus &&
 					now_seconds() - tGoalStart > 10.0)
 				{
 					warnedNoFollowerStatus = true;
-					const char* topic =
-						sub_follower_status_ex_ ? sub_follower_status_ex_->get_topic_name()
-						: sub_follower_status_	? sub_follower_status_->get_topic_name()
-												: "(none)";
+					const bool ex = sub_follower_status_ex_ != nullptr;
+					const char* topic = ex ? sub_follower_status_ex_->get_topic_name()
+										: sub_follower_status_
+											? sub_follower_status_->get_topic_name()
+											: "(none)";
 					RCLCPP_WARN(
 						get_logger(),
-						"No path follower status received on '%s' since the goal: reached goals "
-						"cannot end as succeeded. Check topic_follower_status_ex_sub (namespace?).",
-						topic);
+						"No path follower status received on '%s' since startup: reached goals "
+						"cannot end as succeeded. Check %s (namespace?).",
+						topic, ex ? "topic_follower_status_ex_sub" : "topic_follower_status_sub");
 				}
 
 				// Robot progress along the published path:
