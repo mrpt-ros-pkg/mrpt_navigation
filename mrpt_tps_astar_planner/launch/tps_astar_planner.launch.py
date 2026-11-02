@@ -161,10 +161,10 @@ def generate_launch_description():
             description='If >0, a goal also fails after this many searches restarted from '
             'scratch in a row without reaching it (<=0: no limit)'),
         DeclareLaunchArgument(
-            'topic_follower_status_sub', default_value='/mrpt_trajectory_follower/status',
+            'topic_follower_status_sub', default_value='mrpt_trajectory_follower/status',
             description='Path follower status topic (to know when a goal is reached or fails)'),
         DeclareLaunchArgument(
-            'topic_follower_status_ex_sub', default_value='/mrpt_trajectory_follower/status_ex',
+            'topic_follower_status_ex_sub', default_value='mrpt_trajectory_follower/status_ex',
             description='Path follower status with the id of the path it refers to (used '
             'instead of the plain status topic if not empty)'),
     ]
