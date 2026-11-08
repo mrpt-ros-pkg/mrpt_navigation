@@ -6,6 +6,7 @@
    | All rights reserved. Released under BSD 3-Clause license. See LICENSE  |
    +------------------------------------------------------------------------+ */
 
+#include <algorithm>
 #include <cmath>
 #include <cstdio>
 #include <limits>
@@ -239,6 +240,12 @@ std::string hud_text(const NavigationStatus& s)
 		default:
 		{
 			line1 = "#" + std::to_string(s.goal_id) + " " + s.state_name;
+			if (s.total_waypoints > 0)
+			{
+				line1 += " (waypoint " +
+						 std::to_string(std::min(s.reached_waypoints + 1, +s.total_waypoints)) +
+						 "/" + std::to_string(s.total_waypoints) + ")";
+			}
 			if (is_active_goal(s.state) && std::isfinite(s.remaining_path_length))
 			{
 				line1 += "  " + format_distance(s.remaining_path_length);

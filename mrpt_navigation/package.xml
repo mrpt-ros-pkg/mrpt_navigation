@@ -41,6 +41,7 @@
   <test_depend>sensor_msgs_py</test_depend>
   <test_depend>action_msgs</test_depend>
   <test_depend>mrpt_nav_interfaces</test_depend>
+  <test_depend>mrpt_msgs</test_depend>
 
   <depend>ament_cmake_lint_cmake</depend>
   <depend>ament_cmake_xmllint</depend>

@@ -103,6 +103,20 @@ thread, so the robot starts moving soon and reacts to obstacles in advance:
    times it was replanned meanwhile (`max_planning_restarts`, if set, also
    limits the restarts in a row).
 
+6. **Waypoint sequences** (`~/navigate_waypoints` action) are one goal (one
+   goal id) driven through without stopping: the goal manager plans to the
+   current waypoint, and goes on to the next one when the robot gets within its
+   `allowed_distance` (`mid_waypoints_allowed_distance` /
+   `final_waypoint_allowed_distance` if not set), or `start_lookahead_time`
+   (at its current speed) before the end of the full path to it. The new
+   search then starts at that waypoint, keeping the path up to it, and paths to
+   intermediate waypoints are published as partial, so the follower waits at
+   their end (instead of finishing) if the next path is late. Waypoints with
+   `ignore_heading` face the next one, so the search from them starts
+   straight (the last one, the direction it is reached from). Intermediate waypoints with `allow_skip` whose footprint hits
+   an obstacle when they become the target are skipped; otherwise the goal
+   fails. `no_progress_timeout` applies to each waypoint.
+
 The goal manager's anytime and continuous planning require
 `mrpt_trajectory_follower`: goals end with its status, and a path follower
 that does not report one (e.g. the deprecated `mrpt_reactivenav2d` fed with the waypoint
@@ -134,7 +148,9 @@ progress, `INIT_FAILED`, `READY`, `PLANNING`, `FOLLOWING_PARTIAL`, `FOLLOWING`,
 `REPLANNING`, `BLOCKED`, `STALLED`, and `SUCCEEDED`, `FAILED` or `CANCELED` for
 a few seconds once a goal ends), a severity `level` to color views, a stable
 `reason` code, a one-line `message` and the measurements of the goal (distance,
-remaining path length, a rough ETA, time without progress, replans). Topic goals
+remaining path length, a rough ETA, time without progress, replans; for
+waypoint sequences, the current waypoint is the goal, and `total_waypoints`
+and `reached_waypoints` tell the progress along the sequence). Topic goals
 received while the PTGs are being built are queued (the latest one) instead of
 dropped. A goal that makes no progress for `no_progress_warn_fraction` of
 `no_progress_timeout` turns the state to `STALLED` with the likely cause in
@@ -214,13 +230,14 @@ layouts include them.
 | `~/navigation_status` | `mrpt_nav_interfaces/NavigationStatus` | Planner readiness and state of the current goal, with measurements and a reason code (latched; see above) |
 | `~/navigation_markers` | `visualization_msgs/MarkerArray` | The status as markers for 3D views (latched; see above) |
 | `~/robot_shape` | `geometry_msgs/PolygonStamped` | Robot footprint used for planning (latched), so other nodes can check they use the same robot description |
-| `<topic_costmaps_pub>_0`, `_1`, … | `nav_msgs/OccupancyGrid` | Inflated costmaps (one per obstacle source, latched), published after each one-shot plan and whenever the goal manager rebuilds them (converted only once subscribed; late subscribers get the latest one) |
+| `<topic_costmaps_pub>_0`, `_1`, … | `nav_msgs/OccupancyGrid` | Inflated costmaps (one per obstacle source, latched; empty sources have none, and the next ones take their index), published after each one-shot plan and whenever the goal manager rebuilds them (converted only once subscribed; late subscribers get the latest one) |
 
 ### Actions
 
 | Action | Type | Description |
 |---|---|---|
 | `~/navigate_goal` | `mrpt_nav_interfaces/NavigateGoal` | Navigate to a goal (as the goal topic), with feedback (state, distance to goal, remaining path length, ETA, time without progress) and a result with a `reason` once the follower reaches it or navigation fails. Can be canceled |
+| `~/navigate_waypoints` | `mrpt_nav_interfaces/NavigateWaypoints` | Drive through a sequence of waypoints (`mrpt_msgs/WaypointSequence`, any TF frame) without stopping at the intermediate ones (see above), with the same feedback (plus waypoints reached) and result. A new goal from any source preempts it. Can be canceled |
 
 ### Services
 

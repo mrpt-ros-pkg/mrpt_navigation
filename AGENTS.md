@@ -39,8 +39,10 @@ list and responsibilities:
   ignored (`ignore_obstacles_in`). `PoseStamped` goals (topic, `make_plan_to`)
   are transformed into `frame_id_map` with TF (`goal_frame.hpp`; empty
   `frame_id` = map frame, unknown frame = rejected).
-  Goals from the topic or the `NavigateGoal` action go to a goal manager
-  thread (`goal_manager.cpp`): anytime partial paths, then continuous
+  Goals from the topic or the `NavigateGoal` action, and waypoint sequences
+  from `NavigateWaypoints` (one goal id, the target switches to the next
+  waypoint before reaching the current one, without stopping), go to a goal
+  manager thread (`goal_manager.cpp`): anytime partial paths, then continuous
   replanning re-rooting the search ahead of the robot, published as
   `ReferencePath` (committed part never changes); searches from a moving
   robot start ahead of it on its path (`start_lookahead_time`); goals in

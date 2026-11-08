@@ -61,6 +61,7 @@
 #include <mrpt_msgs/msg/waypoint.hpp>
 #include <mrpt_msgs/msg/waypoint_sequence.hpp>
 #include <mrpt_nav_interfaces/action/navigate_goal.hpp>
+#include <mrpt_nav_interfaces/action/navigate_waypoints.hpp>
 #include <mrpt_nav_interfaces/msg/follower_status.hpp>
 #include <mrpt_nav_interfaces/msg/navigation_status.hpp>
 #include <mrpt_nav_interfaces/msg/reference_path.hpp>
@@ -294,6 +295,8 @@ class TPS_Astar_Planner_Node : public rclcpp::Node
 	// ---------------------------------------------------------------------
 	using NavigateGoal = mrpt_nav_interfaces::action::NavigateGoal;
 	using HandleNavigateGoal = rclcpp_action::ServerGoalHandle<NavigateGoal>;
+	using NavigateWaypoints = mrpt_nav_interfaces::action::NavigateWaypoints;
+	using HandleNavigateWaypoints = rclcpp_action::ServerGoalHandle<NavigateWaypoints>;
 
 	/// Publish the best partial path after this time [s] if the goal is not
 	/// reached yet by the search (<=0: only publish full paths).
@@ -347,13 +350,31 @@ class TPS_Astar_Planner_Node : public rclcpp::Node
 	rclcpp::Subscription<mrpt_nav_interfaces::msg::FollowerStatus>::SharedPtr
 		sub_follower_status_ex_;
 	rclcpp_action::Server<NavigateGoal>::SharedPtr action_server_;
+	rclcpp_action::Server<NavigateWaypoints>::SharedPtr action_server_waypoints_;
 
-	/// A navigation goal handled by the goal manager:
+	/// One waypoint of a sequence (map frame):
+	struct Waypoint
+	{
+		mrpt::math::TPose2D pose;
+		/// Reached when the robot is this close [m]
+		double allowedDistance = 0;
+		/// Skipped (instead of failing) if the robot footprint there hits an obstacle
+		bool allowSkip = false;
+	};
+
+	/// A navigation goal handled by the goal manager: a single pose, or a
+	/// sequence of waypoints driven through without stopping.
 	struct ActiveGoal
 	{
 		uint32_t id = 0;
-		mrpt::math::TPose2D pose;  //!< map frame
+		mrpt::math::TPose2D pose;  //!< map frame: the goal, or the current waypoint
 		std::shared_ptr<HandleNavigateGoal> action;	 //!< null for topic goals
+		std::shared_ptr<HandleNavigateWaypoints> waypointsAction;
+		std::vector<Waypoint> waypoints;  //!< empty for single goals
+		size_t current = 0;	 //!< index in `waypoints` of `pose`
+
+		[[nodiscard]] bool from_action() const { return action || waypointsAction; }
+		[[nodiscard]] bool has_next_waypoint() const { return current + 1 < waypoints.size(); }
 	};
 
 	std::mutex goal_cs_;  //!< guards the fields below, until goal_cv_
@@ -407,8 +428,8 @@ class TPS_Astar_Planner_Node : public rclcpp::Node
 	/// Shows the progress of the PTG initialization (INITIALIZING state)
 	void set_init_progress(float progress, const std::string& detail);
 
-	/// Queues a new goal (preempting the current one)
-	void submit_goal(const mrpt::math::TPose2D& goalInMap, std::shared_ptr<HandleNavigateGoal> h);
+	/// Queues a new goal (preempting the current one). Its id is assigned here.
+	void submit_goal(ActiveGoal g);
 
 	void goal_manager_loop();
 
@@ -417,9 +438,14 @@ class TPS_Astar_Planner_Node : public rclcpp::Node
 
 	rclcpp_action::GoalResponse action_handle_goal(
 		const rclcpp_action::GoalUUID& uuid, std::shared_ptr<const NavigateGoal::Goal> goal);
-	rclcpp_action::CancelResponse action_handle_cancel(
-		const std::shared_ptr<HandleNavigateGoal> goal_handle);
+	/// Cancel requests of either action (there is one goal at a time)
+	rclcpp_action::CancelResponse action_handle_cancel();
 	void action_handle_accepted(const std::shared_ptr<HandleNavigateGoal> goal_handle);
+
+	rclcpp_action::GoalResponse action_waypoints_handle_goal(
+		const rclcpp_action::GoalUUID& uuid, std::shared_ptr<const NavigateWaypoints::Goal> goal);
+	void action_waypoints_handle_accepted(
+		const std::shared_ptr<HandleNavigateWaypoints> goal_handle);
 
 	/// Obstacle sources (map frame) and cost evaluators for a plan from
 	/// `start`, as used by do_path_plan(). Returns the number of sources.

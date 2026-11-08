@@ -113,40 +113,102 @@ nav_msgs::msg::Path to_path_msg(
 	return p;
 }
 
+// Ends an action goal (NavigateGoal and NavigateWaypoints have the same result):
+template <class ActionT>
+void finish_action(
+	const std::shared_ptr<rclcpp_action::ServerGoalHandle<ActionT>>& h, int8_t status,
+	const std::string& reason, const std::string& message)
+{
+	using NavStatus = mrpt_nav_interfaces::msg::NavigationFinalStatus;
+	if (!h)
+	{
+		return;
+	}
+	auto result = std::make_shared<typename ActionT::Result>();
+	result->state.navigation_status = status;
+	result->state.reason = reason;
+	result->state.message = message;
+	// (the action server may have dropped the goal already, e.g. at shutdown:
+	// there is nobody to tell then)
+	try
+	{
+		if (status == NavStatus::STATUS_SUCCESS)
+		{
+			h->succeed(result);
+		}
+		else if (status == NavStatus::STATUS_CANCELLED && h->is_canceling())
+		{
+			h->canceled(result);
+		}
+		else
+		{
+			h->abort(result);
+		}
+	}
+	catch (const std::runtime_error&)
+	{
+	}
+}
+
+template <class ActionT>
+void send_feedback(
+	const std::shared_ptr<rclcpp_action::ServerGoalHandle<ActionT>>& h,
+	const mrpt_nav_interfaces::msg::NavigationFeedback& state)
+{
+	if (!h)
+	{
+		return;
+	}
+	auto fb = std::make_shared<typename ActionT::Feedback>();
+	fb->state = state;
+	try
+	{
+		h->publish_feedback(fb);
+	}
+	catch (const std::runtime_error&)
+	{
+		// (see finish_action())
+	}
+}
+
 }  // namespace
 
-void TPS_Astar_Planner_Node::submit_goal(
-	const mrpt::math::TPose2D& goalInMap, std::shared_ptr<HandleNavigateGoal> h)
+void TPS_Astar_Planner_Node::submit_goal(ActiveGoal g)
 {
 	// A goal replaced before being started (aborted after releasing the lock:
 	// rclcpp_action takes its own locks and may call back into this node):
-	std::shared_ptr<HandleNavigateGoal> replaced;
-	const bool fromAction = h != nullptr;
+	std::optional<ActiveGoal> replaced;
+	const bool fromAction = g.from_action();
+	const auto goalInMap = g.pose;
+	const auto totalWaypoints = static_cast<uint16_t>(g.waypoints.size());
 	uint32_t id = 0;
 	{
 		auto lck = std::lock_guard(goal_cs_);
-		ActiveGoal g;
 		g.id = next_goal_id_++;
 		id = g.id;
-		g.pose = goalInMap;
-		g.action = std::move(h);
-		if (pending_goal_ && pending_goal_->action)
+		replaced = std::exchange(pending_goal_, std::move(g));
+		if (totalWaypoints > 0)
 		{
-			replaced = std::move(pending_goal_->action);
+			RCLCPP_INFO(
+				get_logger(),
+				"New navigation goal #%u: %u waypoints, the first one at (%.2f, %.2f, %.1f deg)",
+				id, totalWaypoints, goalInMap.x, goalInMap.y, mrpt::RAD2DEG(goalInMap.phi));
 		}
-		pending_goal_ = std::move(g);
-		RCLCPP_INFO(
-			get_logger(), "New navigation goal #%u: (%.2f, %.2f, %.1f deg)", pending_goal_->id,
-			goalInMap.x, goalInMap.y, mrpt::RAD2DEG(goalInMap.phi));
+		else
+		{
+			RCLCPP_INFO(
+				get_logger(), "New navigation goal #%u: (%.2f, %.2f, %.1f deg)", id, goalInMap.x,
+				goalInMap.y, mrpt::RAD2DEG(goalInMap.phi));
+		}
 	}
 	if (replaced)
 	{
-		auto result = std::make_shared<NavigateGoal::Result>();
-		result->state.navigation_status =
-			mrpt_nav_interfaces::msg::NavigationFinalStatus::STATUS_CANCELLED;
-		result->state.reason = "replaced";
-		result->state.message = "Replaced by a new goal";
-		replaced->abort(result);
+		using NavStatus = mrpt_nav_interfaces::msg::NavigationFinalStatus;
+		finish_action(
+			replaced->action, NavStatus::STATUS_CANCELLED, "replaced", "Replaced by a new goal");
+		finish_action(
+			replaced->waypointsAction, NavStatus::STATUS_CANCELLED, "replaced",
+			"Replaced by a new goal");
 	}
 	if (!ptgs_ready_ && !ptgs_failed_)
 	{
@@ -162,6 +224,8 @@ void TPS_Astar_Planner_Node::submit_goal(
 					return;
 				}
 				nav_status::set_goal(s, id, fromAction, goalInMap, frame_id_map_);
+				s.total_waypoints = totalWaypoints;
+				s.reached_waypoints = 0;
 				s.state = NavigationStatus::STATE_INITIALIZING;
 				s.level = NavigationStatus::LEVEL_WARN;
 				s.reason = "goal_queued";
@@ -228,8 +292,7 @@ rclcpp_action::GoalResponse TPS_Astar_Planner_Node::action_handle_goal(
 	return rclcpp_action::GoalResponse::ACCEPT_AND_EXECUTE;
 }
 
-rclcpp_action::CancelResponse TPS_Astar_Planner_Node::action_handle_cancel(
-	[[maybe_unused]] const std::shared_ptr<HandleNavigateGoal> goal_handle)
+rclcpp_action::CancelResponse TPS_Astar_Planner_Node::action_handle_cancel()
 {
 	{
 		auto lck = std::lock_guard(goal_cs_);
@@ -255,7 +318,103 @@ void TPS_Astar_Planner_Node::action_handle_accepted(
 		goal_handle->abort(result);
 		return;
 	}
-	submit_goal(*g, goal_handle);
+	ActiveGoal ag;
+	ag.pose = *g;
+	ag.action = goal_handle;
+	submit_goal(std::move(ag));
+}
+
+rclcpp_action::GoalResponse TPS_Astar_Planner_Node::action_waypoints_handle_goal(
+	[[maybe_unused]] const rclcpp_action::GoalUUID& uuid,
+	std::shared_ptr<const NavigateWaypoints::Goal> goal)
+{
+	if (!check_ptgs_ready("NavigateWaypoints action request"))
+	{
+		return rclcpp_action::GoalResponse::REJECT;
+	}
+	const auto& seq = goal->waypoints;
+	if (seq.waypoints.empty())
+	{
+		RCLCPP_ERROR(get_logger(), "NavigateWaypoints: empty waypoint sequence, rejecting it.");
+		return rclcpp_action::GoalResponse::REJECT;
+	}
+	geometry_msgs::msg::PoseStamped ps;
+	ps.header = seq.header;
+	ps.pose = seq.waypoints.front().target;
+	std::string error;
+	if (!goal_in_map_frame(ps, frame_id_map_, *tf_buffer_, &error))
+	{
+		RCLCPP_ERROR(
+			get_logger(),
+			"NavigateWaypoints: cannot express the waypoints in '%s', rejecting them: %s",
+			frame_id_map_.c_str(), error.c_str());
+		return rclcpp_action::GoalResponse::REJECT;
+	}
+	return rclcpp_action::GoalResponse::ACCEPT_AND_EXECUTE;
+}
+
+void TPS_Astar_Planner_Node::action_waypoints_handle_accepted(
+	const std::shared_ptr<HandleNavigateWaypoints> goal_handle)
+{
+	using NavStatus = mrpt_nav_interfaces::msg::NavigationFinalStatus;
+
+	const auto& seq = goal_handle->get_goal()->waypoints;
+	const size_t n = seq.waypoints.size();
+	ActiveGoal ag;
+	ag.waypointsAction = goal_handle;
+	std::vector<bool> ignoreHeading;
+	for (size_t i = 0; i < n; i++)
+	{
+		const auto& in = seq.waypoints[i];
+		geometry_msgs::msg::PoseStamped ps;
+		ps.header = seq.header;
+		ps.pose = in.target;
+		std::string error;
+		const auto pose = goal_in_map_frame(ps, frame_id_map_, *tf_buffer_, &error);
+		if (!pose)
+		{
+			finish_action(
+				goal_handle, NavStatus::STATUS_ERROR, "invalid_goal",
+				"The waypoints cannot be expressed in the map frame: " + error);
+			return;
+		}
+		const bool last = i + 1 == n;
+		auto& wp = ag.waypoints.emplace_back();
+		wp.pose = *pose;
+		wp.allowedDistance = in.allowed_distance > 0 ? in.allowed_distance
+													 : (last ? final_waypoint_allowed_distance_
+															 : mid_waypoints_allowed_distance_);
+		wp.allowSkip = in.allow_skip && !last;
+		ignoreHeading.push_back(in.ignore_heading);
+	}
+	// Free headings: toward the next waypoint, so the search to it starts
+	// straight and the robot drives through without stopping; the last one keeps
+	// the direction it is reached from (from the previous waypoint, or the robot).
+	for (size_t i = 0; i < n; i++)
+	{
+		if (!ignoreHeading[i])
+		{
+			continue;
+		}
+		auto& p = ag.waypoints[i].pose;
+		if (i + 1 < n)
+		{
+			const auto& next = ag.waypoints[i + 1].pose;
+			p.phi = std::atan2(next.y - p.y, next.x - p.x);
+		}
+		else if (i > 0)
+		{
+			const auto& prev = ag.waypoints[i - 1].pose;
+			p.phi = std::atan2(p.y - prev.y, p.x - prev.x);
+		}
+		else if (mrpt::poses::CPose3D robot;
+				 wait_for_transform(robot, frame_id_robot_, frame_id_map_))
+		{
+			p.phi = std::atan2(p.y - robot.y(), p.x - robot.x());
+		}
+	}
+	ag.pose = ag.waypoints.front().pose;
+	submit_goal(std::move(ag));
 }
 
 void TPS_Astar_Planner_Node::publish_empty_paths()
@@ -377,28 +536,24 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 					st.message = message;
 					st.elapsed = static_cast<float>(now_seconds() - tGoalStart);
 				});
-			if (goal->action)
-			{
-				auto result = std::make_shared<NavigateGoal::Result>();
-				result->state.navigation_status = status;
-				result->state.reason = reason;
-				result->state.message = message;
-				if (status == NavStatus::STATUS_SUCCESS)
-				{
-					goal->action->succeed(result);
-				}
-				else if (status == NavStatus::STATUS_CANCELLED && goal->action->is_canceling())
-				{
-					goal->action->canceled(result);
-				}
-				else
-				{
-					goal->action->abort(result);
-				}
-			}
+			finish_action(goal->action, status, reason, message);
+			finish_action(goal->waypointsAction, status, reason, message);
 		}
 		goal.reset();
 	};
+
+	// The goal fields of the status, for the current goal (or waypoint):
+	auto setGoalStatus = [&](NavigationStatus& st)
+	{
+		nav_status::set_goal(st, goal->id, goal->from_action(), goal->pose, frame_id_map_);
+		st.total_waypoints = static_cast<uint16_t>(goal->waypoints.size());
+		st.reached_waypoints = static_cast<uint16_t>(goal->current);
+		st.no_progress_timeout = static_cast<float>(no_progress_timeout_);
+	};
+
+	// Waypoint sequences: the search reached the current waypoint (a path to
+	// it would be empty), so it is time for the next one:
+	bool waypointAtGoal = false;
 
 	auto robotPose = [&]() -> std::optional<TPose2D>
 	{
@@ -549,7 +704,17 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 			const double dt = tf2::durationToSec(t1 - t0);
 			const auto& a = before.transform.translation;
 			const auto& b = latest.transform.translation;
-			return dt > 0 ? std::hypot(b.x - a.x, b.y - a.y) / dt : 0.0;
+			if (dt <= 0)
+			{
+				return 0.0;
+			}
+			const double v = std::hypot(b.x - a.x, b.y - a.y) / dt;
+			// Faster than the robot can move: a localization jump, not motion.
+			if (maxLinSpeed > 0 && v > 1.5 * maxLinSpeed)
+			{
+				return 0.0;
+			}
+			return maxLinSpeed > 0 ? std::min(v, maxLinSpeed) : v;
 		}
 		catch (const tf2::TransformException&)
 		{
@@ -849,6 +1014,12 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 		sample_edges(edges, out.originalInput.ptgs, newPoses, edgeEnd);
 		if (!partial)
 		{
+			if (newPoses.size() < 2 && goal->has_next_waypoint())
+			{
+				// The search starts at the waypoint: on to the next one.
+				waypointAtGoal = true;
+				return true;
+			}
 			if (newPoses.size() < 2)
 			{
 				// The search starts at the goal (its lattice cell): nothing
@@ -911,7 +1082,9 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 		rp.path = to_path_msg(pathPoses, 0, pathPoses.size(), frame_id_map_, stamp);
 		rp.goal_id = goal->id;
 		rp.revision = revision;
-		rp.is_partial = partial;
+		// (paths to an intermediate waypoint are partial for the follower: it
+		// waits at their end for the path to the next one, without finishing)
+		rp.is_partial = partial || goal->has_next_waypoint();
 		pub_reference_path_->publish(rp);
 
 		// Also as a waypoint sequence (other path followers, visualization):
@@ -1071,6 +1244,101 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 			});
 	};
 
+	// The obstacle point hit by the robot footprint at `pose`, if any:
+	auto footprintHit = [&](const TPose2D& pose) -> std::optional<TPoint2D>
+	{
+		if (!plannerReady)
+		{
+			return std::nullopt;
+		}
+		std::vector<mpp::ObstacleSource::Ptr> unusedSources;
+		std::vector<mrpt::maps::CPointsMap::Ptr> points;
+		auto unusedBbox = mrpt::math::TBoundingBoxf::PlusMinusInfinity();
+		build_obstacles(pose, unusedSources, &points, nullptr, unusedBbox);
+		return obstacleIndex(points).collides(pose, footprintPoly, footprintRadius, 0.0);
+	};
+
+	// Makes goal->pose the current waypoint (if a sequence), skipping those in
+	// collision that allow it. A goal (or waypoint) in collision can not be
+	// reached: the goal fails now instead of driving toward it with partial
+	// paths. Returns false if the goal ended.
+	auto selectWaypoint = [&]() -> bool
+	{
+		while (true)
+		{
+			if (!goal->waypoints.empty())
+			{
+				goal->pose = goal->waypoints.at(goal->current).pose;
+			}
+			const auto hit = footprintHit(goal->pose);
+			if (!hit)
+			{
+				break;
+			}
+			const bool isWaypoint = !goal->waypoints.empty();
+			if (isWaypoint && goal->has_next_waypoint() && goal->waypoints[goal->current].allowSkip)
+			{
+				RCLCPP_WARN(
+					get_logger(),
+					"Goal #%u: the robot footprint at waypoint %zu/%zu hits an obstacle at (%.2f, "
+					"%.2f): skipped.",
+					goal->id, goal->current + 1, goal->waypoints.size(), hit->x, hit->y);
+				goal->current++;
+				continue;
+			}
+			RCLCPP_WARN(
+				get_logger(),
+				"Goal #%u: the robot footprint at the %s hits an obstacle at (%.2f, %.2f): "
+				"rejected.",
+				goal->id, isWaypoint ? "waypoint" : "goal", hit->x, hit->y);
+			publish_empty_paths();
+			endGoal(
+				NavStatus::STATUS_ERROR, "goal_in_collision",
+				isWaypoint
+					? mrpt::format(
+						  "The robot footprint at waypoint %zu hits an obstacle", goal->current + 1)
+					: std::string("The robot footprint at the goal hits an obstacle"));
+			return false;
+		}
+		update_status([&](NavigationStatus& st) { setGoalStatus(st); }, false);
+		return true;
+	};
+
+	// Waypoint sequences: goes on to the next waypoint. The search starts
+	// from the end of the current path (the waypoint) if the robot is about to
+	// get there (see predictedStart()), so it keeps driving meanwhile.
+	auto nextWaypoint = [&]()
+	{
+		waypointAtGoal = false;
+		RCLCPP_INFO(
+			get_logger(), "Goal #%u: waypoint %zu/%zu at (%.2f, %.2f) reached.", goal->id,
+			goal->current + 1, goal->waypoints.size(), goal->pose.x, goal->pose.y);
+		goal->current++;
+		if (!selectWaypoint())
+		{
+			return;
+		}
+		// Progress is measured toward the new target:
+		restarts = 0;
+		failedSearches = 0;
+		retryAt.reset();
+		stalled = false;
+		bestGoalDist = std::numeric_limits<double>::infinity();
+		bestPathDist = std::numeric_limits<double>::infinity();
+		tLastProgress = now_seconds();
+		publishedFull = false;
+		followerWaitingSince.reset();
+		lastState.reset();
+		const auto from = predictedStart(std::numeric_limits<size_t>::max());
+		if (!from)
+		{
+			publish_empty_paths();
+			endGoal(NavStatus::STATUS_ERROR, "no_robot_pose", "The robot pose is unknown");
+			return;
+		}
+		startSearch(from->first, from->second);
+	};
+
 	while (true)
 	{
 		const double tCycleStart = now_seconds();
@@ -1142,11 +1410,10 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 				[&](NavigationStatus& st)
 				{
 					st = nav_status::make_status(NavigationStatus::STATE_PLANNING);
-					nav_status::set_goal(
-						st, goal->id, goal->action != nullptr, goal->pose, frame_id_map_);
-					st.no_progress_timeout = static_cast<float>(no_progress_timeout_);
+					setGoalStatus(st);
 					st.message = "Searching for a first path";
-				});
+				},
+				false /* published once its first waypoint is selected */);
 			tGoalStart = now_seconds();
 			restarts = 0;
 			replans = 0;
@@ -1164,6 +1431,7 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 			published = false;
 			publishedFull = false;
 			followerEngaged = false;
+			waypointAtGoal = false;
 			if (!wasNavigating)
 			{
 				// (the path of a goal being followed may be continued instead)
@@ -1172,45 +1440,38 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 				rootIdx = 0;
 				robotIdx = 0;
 			}
-			std::optional<mrpt::math::TPoint2D> goalHit;
-			if (plannerReady)
+			try
 			{
-				// A goal pose in collision can not be reached: reject it now
-				// instead of driving toward it with partial paths.
-				std::vector<mpp::ObstacleSource::Ptr> unusedSources;
-				std::vector<mrpt::maps::CPointsMap::Ptr> points;
-				auto unusedBbox = mrpt::math::TBoundingBoxf::PlusMinusInfinity();
-				build_obstacles(goal->pose, unusedSources, &points, nullptr, unusedBbox);
-				goalHit =
-					obstacleIndex(points).collides(goal->pose, footprintPoly, footprintRadius, 0.0);
+				if (!selectWaypoint())
+				{
+					// (ended: in collision)
+				}
+				else if (const auto from = predictedStart(std::numeric_limits<size_t>::max()); from)
+				{
+					startSearch(from->first, from->second);
+				}
+				else
+				{
+					publish_empty_paths();
+					endGoal(NavStatus::STATUS_ERROR, "no_robot_pose", "The robot pose is unknown");
+				}
 			}
-			if (goalHit)
+			catch (const std::exception& e)
 			{
-				RCLCPP_WARN(
-					get_logger(),
-					"Goal #%u: the robot footprint at the goal hits an obstacle at (%.2f, %.2f): "
-					"rejected.",
-					goal->id, goalHit->x, goalHit->y);
+				RCLCPP_ERROR(get_logger(), "Goal manager: %s", e.what());
 				publish_empty_paths();
 				endGoal(
-					NavStatus::STATUS_ERROR, "goal_in_collision",
-					"The robot footprint at the goal hits an obstacle");
-			}
-			else if (const auto from = predictedStart(std::numeric_limits<size_t>::max()); from)
-			{
-				startSearch(from->first, from->second);
-			}
-			else
-			{
-				publish_empty_paths();
-				endGoal(NavStatus::STATUS_ERROR, "no_robot_pose", "The robot pose is unknown");
+					NavStatus::STATUS_ERROR, "planning_error",
+					std::string("Planning error: ") + e.what());
 			}
 		}
 		if (goalStartedNow)
 		{
 			updateStatus(followerStatus, false, robotPose());
 		}
-		if (cancel && goal && goal->action && goal->action->is_canceling())
+		if (cancel && goal &&
+			((goal->action && goal->action->is_canceling()) ||
+			 (goal->waypointsAction && goal->waypointsAction->is_canceling())))
 		{
 			publish_empty_paths();
 			endGoal(NavStatus::STATUS_CANCELLED, "canceled", "Canceled by the client");
@@ -1378,6 +1639,27 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 				if (goal && rp && !pathPoses.empty())
 				{
 					robotIdx = nearest_pose(pathPoses, rp->translation(), robotIdx);
+				}
+
+				// Waypoint sequences: on to the next waypoint once within its
+				// allowed distance, or a bit before the end of the full path to
+				// it (the path to the next one is then published before the
+				// robot stops there), or if the robot waits at that end anyway.
+				if (goal && rp && goal->has_next_waypoint())
+				{
+					const auto& wp = goal->waypoints[goal->current];
+					const double remaining = publishedFull && robotIdx < pathS.size()
+												 ? pathS.back() - pathS[robotIdx]
+												 : std::numeric_limits<double>::infinity();
+					const double switchDist =
+						std::max(wp.allowedDistance, robotSpeed() * start_lookahead_time_);
+					const bool waitingAtEnd =
+						publishedFull && statusIsCurrent && followerStatus == FOLLOWER_WAITING;
+					if (waypointAtGoal || waitingAtEnd || remaining <= switchDist ||
+						(rp->translation() - wp.pose.translation()).norm() <= wp.allowedDistance)
+					{
+						nextWaypoint();
+					}
 				}
 
 				// Progress toward the goal: give up after no_progress_timeout
@@ -1678,22 +1960,24 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 
 				// Status, and feedback from it:
 				updateStatus(followerStatus, isBlocked && failureIsCurrent, rp);
-				if (goal && goal->action)
+				if (goal && goal->from_action())
 				{
 					const auto snap = status_snapshot();
-					auto fb = std::make_shared<NavigateGoal::Feedback>();
-					fb->state.remaining_path_length = snap.remaining_path_length;
-					fb->state.eta = snap.eta;
-					fb->state.time_since_progress = snap.time_since_progress;
-					fb->state.total_waypoints = 1;
-					fb->state.reached_waypoints = 0;
+					mrpt_nav_interfaces::msg::NavigationFeedback fb;
+					fb.remaining_path_length = snap.remaining_path_length;
+					fb.eta = snap.eta;
+					fb.time_since_progress = snap.time_since_progress;
+					fb.total_waypoints =
+						static_cast<int16_t>(std::max<size_t>(1, goal->waypoints.size()));
+					fb.reached_waypoints = static_cast<int16_t>(goal->current);
 					if (rp)
 					{
-						fb->state.distance_to_goal = static_cast<float>(
+						fb.distance_to_goal = static_cast<float>(
 							(rp->translation() - goal->pose.translation()).norm());
 					}
-					fb->state.status = snap.state_name;
-					goal->action->publish_feedback(fb);
+					fb.status = snap.state_name;
+					send_feedback(goal->action, fb);
+					send_feedback(goal->waypointsAction, fb);
 				}
 			}
 			catch (const std::exception& e)
@@ -1728,11 +2012,7 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 
 #else  // HAVE_MPP_CONTINUOUS_PLANNING
 
-void TPS_Astar_Planner_Node::submit_goal(
-	[[maybe_unused]] const mrpt::math::TPose2D& goalInMap,
-	[[maybe_unused]] std::shared_ptr<HandleNavigateGoal> h)
-{
-}
+void TPS_Astar_Planner_Node::submit_goal([[maybe_unused]] ActiveGoal g) {}
 
 #endif	// HAVE_MPP_CONTINUOUS_PLANNING
 
