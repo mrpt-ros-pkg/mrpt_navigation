@@ -299,8 +299,17 @@ void TPS_Astar_Planner_Node::create_planning_interfaces()
 		this, "~/navigate_goal",
 		[this](const rclcpp_action::GoalUUID& uuid, std::shared_ptr<const NavigateGoal::Goal> g)
 		{ return action_handle_goal(uuid, g); },
-		[this](const std::shared_ptr<HandleNavigateGoal> h) { return action_handle_cancel(h); },
+		[this](const std::shared_ptr<HandleNavigateGoal>) { return action_handle_cancel(); },
 		[this](const std::shared_ptr<HandleNavigateGoal> h) { action_handle_accepted(h); });
+
+	action_server_waypoints_ = rclcpp_action::create_server<NavigateWaypoints>(
+		this, "~/navigate_waypoints",
+		[this](
+			const rclcpp_action::GoalUUID& uuid, std::shared_ptr<const NavigateWaypoints::Goal> g)
+		{ return action_waypoints_handle_goal(uuid, g); },
+		[this](const std::shared_ptr<HandleNavigateWaypoints>) { return action_handle_cancel(); },
+		[this](const std::shared_ptr<HandleNavigateWaypoints> h)
+		{ action_waypoints_handle_accepted(h); });
 #endif
 }
 
@@ -793,7 +802,9 @@ void TPS_Astar_Planner_Node::callback_goal(const geometry_msgs::msg::PoseStamped
 
 		if (goal_manager_enabled())
 		{
-			submit_goal(*nav_goal, nullptr);
+			ActiveGoal g;
+			g.pose = *nav_goal;
+			submit_goal(std::move(g));
 			return;
 		}
 

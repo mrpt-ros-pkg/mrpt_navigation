@@ -52,5 +52,10 @@ float32 time_since_progress     # [s]
 float32 no_progress_timeout     # [s] (<=0: disabled)
 uint16 replans                  # search restarts for this goal
 
+# Waypoint sequences (total_waypoints == 0: a single goal). `goal` is then the
+# waypoint being driven to, and the measurements above refer to it:
+uint16 total_waypoints
+uint16 reached_waypoints        # also skipped ones
+
 # Follower (as last reported):
 string follower_status

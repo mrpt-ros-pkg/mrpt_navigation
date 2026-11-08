@@ -66,6 +66,14 @@ if(BUILD_TESTING)
         MRPT_TUTORIALS_DYNAMIC_OBSTACLES=false
   )
 
+  # Waypoint sequences (planner navigate_waypoints action):
+  ament_add_ros_isolated_pytest_test(test_waypoints
+    test/test_waypoints.py
+    TIMEOUT 900
+    ENV MRPT_TUTORIALS_DIFFDRIVE_CONTROLLER=twist_ideal
+        MRPT_TUTORIALS_DYNAMIC_OBSTACLES=false
+  )
+
   # Legacy (plain string) follower status, without goal id and revision:
   ament_add_ros_isolated_pytest_test(test_legacy_follower_status
     test/test_legacy_follower_status.py
