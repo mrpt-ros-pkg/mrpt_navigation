@@ -704,7 +704,17 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 			const double dt = tf2::durationToSec(t1 - t0);
 			const auto& a = before.transform.translation;
 			const auto& b = latest.transform.translation;
-			return dt > 0 ? std::hypot(b.x - a.x, b.y - a.y) / dt : 0.0;
+			if (dt <= 0)
+			{
+				return 0.0;
+			}
+			const double v = std::hypot(b.x - a.x, b.y - a.y) / dt;
+			// Faster than the robot can move: a localization jump, not motion.
+			if (maxLinSpeed > 0 && v > 1.5 * maxLinSpeed)
+			{
+				return 0.0;
+			}
+			return maxLinSpeed > 0 ? std::min(v, maxLinSpeed) : v;
 		}
 		catch (const tf2::TransformException&)
 		{
