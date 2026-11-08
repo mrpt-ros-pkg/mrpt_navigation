@@ -1082,7 +1082,8 @@ size_t TPS_Astar_Planner_Node::build_obstacles(
 			points->push_back(pts);
 		}
 		totalObstaclePoints += pts->size();
-		if (costEvaluators)
+		// (an empty source, e.g. no live obstacles in sight, adds no cost)
+		if (costEvaluators && !pts->empty())
 		{
 			costEvaluators->push_back(
 				makeCostmapEvaluator(*pts, costMapParams_, start, ptgs_.robotShape));
