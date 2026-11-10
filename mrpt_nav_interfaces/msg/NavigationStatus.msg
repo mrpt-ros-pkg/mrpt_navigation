@@ -30,7 +30,8 @@ uint8 level
 #   waiting), goal_in_collision, invalid_goal, no_robot_pose, no_path,
 #   path_published (one-shot planning only), no_progress, follower_blocked,
 #   follower_failed, too_many_restarts, planning_error, replaced, canceled,
-#   reached, waiting_partial_path, searching, robot_not_moving
+#   reached, waiting_partial_path, searching, robot_not_moving,
+#   waiting_obstacle (BLOCKED, a goal that waits instead of detouring)
 string reason
 string message           # human-readable, one line
 

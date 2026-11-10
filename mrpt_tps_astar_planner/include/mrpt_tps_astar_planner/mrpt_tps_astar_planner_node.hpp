@@ -372,6 +372,8 @@ class TPS_Astar_Planner_Node : public rclcpp::Node
 		std::shared_ptr<HandleNavigateWaypoints> waypointsAction;
 		std::vector<Waypoint> waypoints;  //!< empty for single goals
 		size_t current = 0;	 //!< index in `waypoints` of `pose`
+		//! Stop and wait for obstacles on the path to go away, never detour
+		bool waitIfBlocked = false;
 
 		[[nodiscard]] bool from_action() const { return action || waypointsAction; }
 		[[nodiscard]] bool has_next_waypoint() const { return current + 1 < waypoints.size(); }
