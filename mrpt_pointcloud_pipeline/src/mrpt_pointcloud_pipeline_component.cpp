@@ -186,9 +186,9 @@ void LocalObstaclesNode::on_do_publish()
 	if (obs.empty()) return;
 
 	// The same observations would give the same local map: publish it again
-	// without rebuilding it, until a new one arrives (when processing is
-	// slower than publish_period, sensor subscriptions keep only their latest
-	// message anyway).
+	// without rebuilding it (if republish_unchanged), until a new one arrives
+	// (when processing is slower than the sensors, their subscriptions keep
+	// only the latest message anyway).
 	mrpt_pointcloud_pipeline::ObstacleConfirmation::ObservationIds obsIds;
 	for (const auto& [timestamp, ipt] : obs)
 	{
@@ -206,7 +206,7 @@ void LocalObstaclesNode::on_do_publish()
 	}
 	if (obsIds == m_last_obs_ids && cacheComplete)
 	{
-		for (size_t i = 0; i < layer2topic_.size(); i++)
+		for (size_t i = 0; m_republish_unchanged && i < layer2topic_.size(); i++)
 		{
 			if (m_last_msgs.at(i) && layer2topic_[i].pub->get_subscription_count() > 0)
 			{
@@ -472,6 +472,12 @@ void LocalObstaclesNode::on_new_sensor_laser_2d(
 		m_hist_obs.insert(m_hist_obs.end(), obs_list_t::value_type(timestamp, ipt));
 		note_input_stamp(topicName, timestamp);
 	}
+	// Publish it right away, instead of waiting for the timer (which still
+	// handles observations still waiting for their robot pose):
+	if (ipt.robot_pose)
+	{
+		on_do_publish();
+	}
 
 }  // end on_new_sensor_laser_2d
 
@@ -532,6 +538,12 @@ void LocalObstaclesNode::on_new_sensor_pointcloud(
 		ipt.seq = ++m_obs_seq;
 		m_hist_obs.insert(m_hist_obs.end(), obs_list_t::value_type(timestamp, ipt));
 		note_input_stamp(topicName, timestamp);
+	}
+	// Publish it right away, instead of waiting for the timer (which still
+	// handles observations still waiting for their robot pose):
+	if (ipt.robot_pose)
+	{
+		on_do_publish();
 	}
 }  // end on_new_sensor_pointcloud
 
@@ -611,6 +623,10 @@ void LocalObstaclesNode::read_parameters()
 	this->declare_parameter<double>("max_input_age", m_max_input_age);
 	this->get_parameter("max_input_age", m_max_input_age);
 	RCLCPP_INFO(get_logger(), "max_input_age: %f", m_max_input_age);
+
+	this->declare_parameter<bool>("republish_unchanged", m_republish_unchanged);
+	this->get_parameter("republish_unchanged", m_republish_unchanged);
+	RCLCPP_INFO(get_logger(), "republish_unchanged: %s", m_republish_unchanged ? "true" : "false");
 
 	this->declare_parameter<double>("publish_period", 0.05);
 	this->get_parameter("publish_period", m_publish_period);
