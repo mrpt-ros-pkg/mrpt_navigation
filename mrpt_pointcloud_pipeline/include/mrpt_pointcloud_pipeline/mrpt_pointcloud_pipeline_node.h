@@ -131,8 +131,14 @@ class LocalObstaclesNode : public rclcpp::Node
 	//!< In secs (default: 0.2). Can't be smaller than m_publish_period
 	double m_time_window = 0.20;
 
-	//!< In secs (default: 0.05). Can't be larger than m_time_window
+	//!< In secs (default: 0.05). Can't be larger than m_time_window. New
+	//!< observations are published right away; this timer places those still
+	//!< waiting for their robot pose, and republishes the last output.
 	double m_publish_period = 0.05;
+
+	//!< Publish the last output again on each timer period while there are no
+	//!< new observations (default: true)
+	bool m_republish_unchanged = true;
 
 	//!< How long an observation waits for the robot pose at its time before
 	//!< being dropped [s]

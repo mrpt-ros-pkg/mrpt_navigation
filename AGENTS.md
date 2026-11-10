@@ -24,7 +24,10 @@ list and responsibilities:
   candidate points built from other observations had one that close (one-off
   artifacts are dropped; `confirm_max_age` must exceed `time_window` unless
   `one_observation_per_topic`). The local map is only rebuilt when the
-  observations change (otherwise the last one is republished).
+  observations change: a new one with its robot pose already known is built
+  and published right away from its own callback; the `publish_period` timer
+  places those waiting for their pose and, unless `republish_unchanged` is
+  false, republishes the last output.
   Each observation is placed with the robot pose at its timestamp (waiting
   up to `tf_max_wait` for it, then dropping the observation), and the local
   map is built relative to the pose of the latest observation (the published

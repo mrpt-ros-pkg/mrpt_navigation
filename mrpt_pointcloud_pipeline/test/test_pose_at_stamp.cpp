@@ -468,3 +468,63 @@ TEST(PointCloudPipeline, StopsPublishingOnStalledInput)
 	run(true, std::chrono::milliseconds(800));
 	EXPECT_GT(numOutputs, 0);
 }
+
+// A new observation is published right away, not on the next timer period,
+// and with republish_unchanged=false the same output is never sent again.
+TEST(PointCloudPipeline, PublishesNewObservationsRightAway)
+{
+	rclcpp::NodeOptions opts;
+	opts.parameter_overrides({
+		{"pipeline_yaml_file", std::string(TEST_PIPELINE_YAML)},
+		{"source_topics_2d_scans", std::string("")},
+		{"source_topics_pointclouds", kCloudTopic},
+		{"filter_output_layer_name", std::string("output")},
+		{"topic_local_map_pointcloud", kOutputTopic},
+		{"time_window", 5.0},
+		// Much longer than the expected latency:
+		{"publish_period", 2.0},
+		{"one_observation_per_topic", true},
+		{"republish_unchanged", false},
+	});
+	auto pipeline = std::make_shared<LocalObstaclesNode>(opts);
+	auto helper = std::make_shared<rclcpp::Node>("test_right_away_helper");
+
+	std::vector<std::chrono::steady_clock::time_point> outputs;
+	auto sub = helper->create_subscription<sensor_msgs::msg::PointCloud2>(
+		kOutputTopic, 10,
+		[&outputs](const sensor_msgs::msg::PointCloud2::SharedPtr)
+		{ outputs.push_back(std::chrono::steady_clock::now()); });
+	auto pub = helper->create_publisher<sensor_msgs::msg::PointCloud2>(kCloudTopic, 10);
+	tf2_ros::TransformBroadcaster tf_pub(*helper);
+
+	rclcpp::executors::SingleThreadedExecutor ex;
+	ex.add_node(pipeline);
+	ex.add_node(helper);
+
+	const auto publish_cloud = [&]()
+	{
+		const rclcpp::Time t = helper->now();
+		tf_pub.sendTransform(odom_to_robot(t, 0, 0, 0));
+		spin_for(ex, std::chrono::milliseconds(50));
+		mrpt::maps::CSimplePointsMap pts;
+		pts.insertPoint(3.0f, 0.0f, 0.5f);
+		std_msgs::msg::Header h;
+		h.stamp = t;
+		h.frame_id = "base_link";
+		sensor_msgs::msg::PointCloud2 msg;
+		mrpt::ros2bridge::toROS(pts, h, msg);
+		pub->publish(msg);
+		return std::chrono::steady_clock::now();
+	};
+
+	for (int i = 0; i < 2; i++)
+	{
+		outputs.clear();
+		const auto sent = publish_cloud();
+		// Over a whole timer period: one output only, right after the input.
+		spin_for(ex, std::chrono::milliseconds(2500));
+		ASSERT_EQ(outputs.size(), 1u) << "iteration " << i;
+		EXPECT_LT(std::chrono::duration<double>(outputs.front() - sent).count(), 0.3)
+			<< "iteration " << i;
+	}
+}
