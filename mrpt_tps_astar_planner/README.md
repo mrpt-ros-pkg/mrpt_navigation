@@ -116,6 +116,15 @@ thread, so the robot starts moving soon and reacts to obstacles in advance:
    straight (the last one, the direction it is reached from). Intermediate waypoints with `allow_skip` whose footprint hits
    an obstacle when they become the target are skipped; otherwise the goal
    fails. `no_progress_timeout` applies to each waypoint.
+   With `wait_if_blocked` in the action goal, obstacles found while driving
+   never trigger a detour: if one blocks the published path, it is cut about
+   1 m before it (the follower stops there) and the search is paused until the
+   path is clear again, when it is published in full and the robot goes on.
+   A waypoint in collision is waited for instead of skipped or failed. The
+   follower being `Blocked` is not replanned for either, and waiting does not
+   count toward `no_progress_timeout`: only clearing the way, canceling or
+   replacing the goal ends the wait (status `BLOCKED`, reason
+   `waiting_obstacle`).
 
 The goal manager's anytime and continuous planning require
 `mrpt_trajectory_follower`: goals end with its status, and a path follower

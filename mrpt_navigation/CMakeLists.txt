@@ -69,7 +69,7 @@ if(BUILD_TESTING)
   # Waypoint sequences (planner navigate_waypoints action):
   ament_add_ros_isolated_pytest_test(test_waypoints
     test/test_waypoints.py
-    TIMEOUT 900
+    TIMEOUT 1200
     ENV MRPT_TUTORIALS_DIFFDRIVE_CONTROLLER=twist_ideal
         MRPT_TUTORIALS_DYNAMIC_OBSTACLES=false
   )

@@ -181,6 +181,7 @@ void TPS_Astar_Planner_Node::submit_goal(ActiveGoal g)
 	const bool fromAction = g.from_action();
 	const auto goalInMap = g.pose;
 	const auto totalWaypoints = static_cast<uint16_t>(g.waypoints.size());
+	const bool waitIfBlocked = g.waitIfBlocked;
 	uint32_t id = 0;
 	{
 		auto lck = std::lock_guard(goal_cs_);
@@ -191,8 +192,10 @@ void TPS_Astar_Planner_Node::submit_goal(ActiveGoal g)
 		{
 			RCLCPP_INFO(
 				get_logger(),
-				"New navigation goal #%u: %u waypoints, the first one at (%.2f, %.2f, %.1f deg)",
-				id, totalWaypoints, goalInMap.x, goalInMap.y, mrpt::RAD2DEG(goalInMap.phi));
+				"New navigation goal #%u: %u waypoints, the first one at (%.2f, %.2f, %.1f "
+				"deg)%s",
+				id, totalWaypoints, goalInMap.x, goalInMap.y, mrpt::RAD2DEG(goalInMap.phi),
+				waitIfBlocked ? ", waiting at obstacles (no detours)" : "");
 		}
 		else
 		{
@@ -362,6 +365,7 @@ void TPS_Astar_Planner_Node::action_waypoints_handle_accepted(
 	const size_t n = seq.waypoints.size();
 	ActiveGoal ag;
 	ag.waypointsAction = goal_handle;
+	ag.waitIfBlocked = goal_handle->get_goal()->wait_if_blocked;
 	std::vector<bool> ignoreHeading;
 	for (size_t i = 0; i < n; i++)
 	{
@@ -384,7 +388,7 @@ void TPS_Astar_Planner_Node::action_waypoints_handle_accepted(
 		wp.allowedDistance = in.allowed_distance > 0 ? in.allowed_distance
 													 : (last ? final_waypoint_allowed_distance_
 															 : mid_waypoints_allowed_distance_);
-		wp.allowSkip = in.allow_skip && !last;
+		wp.allowSkip = in.allow_skip && !last && !ag.waitIfBlocked;
 		ignoreHeading.push_back(in.ignore_heading);
 	}
 	// Free headings: toward the next waypoint, so the search to it starts
@@ -506,6 +510,15 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 	std::optional<uint8_t> lastState;
 	std::string lastReason;
 	std::optional<TPose2D> blockedPose;
+	// Goals that wait for obstacles instead of detouring (waitIfBlocked): the
+	// published path ends at `waitCutIdx`, before the obstacle that blocks it
+	// (pathPoses keeps all of it, published again once it is clear), or the
+	// current waypoint is in collision (no search until it is clear).
+	std::optional<size_t> waitCutIdx;
+	bool waitCutFromFull = false;  // publishedFull before the cut
+	double tWaitStart = 0;	// when the cut was published
+	bool waitingWaypoint = false;
+	auto waiting = [&]() { return waitCutIdx.has_value() || waitingWaypoint; };
 
 	// Obstacle points that blocked a path of this goal (see
 	// blocked_obstacles_memory), by 5 cm cell: when, and where.
@@ -678,6 +691,7 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 		pi.worldBboxMin = {bbox.min.x, bbox.min.y, -M_PI};
 
 		planner.start(pi);
+		waitCutIdx.reset();
 		searchHasEvaluators = !planner.costEvaluators_.empty();
 		searchJustStarted = true;
 		searchPublished = false;
@@ -1118,6 +1132,23 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 		publishedFull = false;
 	};
 
+	// Publishes again all of the current path (cut by publishTruncated()):
+	auto publishWhole = [&](bool full)
+	{
+		const auto stamp = this->now();
+		mrpt_nav_interfaces::msg::ReferencePath rp;
+		rp.path = to_path_msg(pathPoses, 0, pathPoses.size(), frame_id_map_, stamp);
+		rp.goal_id = goal->id;
+		rp.revision = ++revision;
+		rp.is_partial = !full || goal->has_next_waypoint();
+		pub_reference_path_->publish(rp);
+		publishWaypoints(pathPoses.size(), stamp);
+		pub_committed_path_->publish(to_path_msg(pathPoses, 0, rootIdx + 1, frame_id_map_, stamp));
+		pub_tentative_path_->publish(
+			to_path_msg(pathPoses, rootIdx, pathPoses.size(), frame_id_map_, stamp));
+		publishedFull = full;
+	};
+
 	// Updates the status (published on changes, else by the timer) and the details
 	// shown in 3D views, from the state of the current goal:
 	auto updateStatus = [&](const std::string& followerStatus, bool followerBlockedNow,
@@ -1135,7 +1166,17 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 		uint8_t state = NavigationStatus::STATE_PLANNING;
 		std::string reason;
 		std::string message = "Searching for a first path";
-		if (stalledNow)
+		if (waiting())
+		{
+			state = NavigationStatus::STATE_BLOCKED;
+			reason = "waiting_obstacle";
+			message =
+				waitingWaypoint
+					? mrpt::format(
+						  "Waiting for waypoint %zu to be clear of obstacles", goal->current + 1)
+					: std::string("Waiting for the obstacle ahead to clear the path");
+		}
+		else if (stalledNow)
 		{
 			state = NavigationStatus::STATE_STALLED;
 			const char* cause = nullptr;
@@ -1273,9 +1314,23 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 			const auto hit = footprintHit(goal->pose);
 			if (!hit)
 			{
+				waitingWaypoint = false;
 				break;
 			}
 			const bool isWaypoint = !goal->waypoints.empty();
+			if (goal->waitIfBlocked)
+			{
+				if (!waitingWaypoint)
+				{
+					RCLCPP_WARN(
+						get_logger(),
+						"Goal #%u: the robot footprint at waypoint %zu/%zu hits an obstacle at "
+						"(%.2f, %.2f): waiting for it to clear.",
+						goal->id, goal->current + 1, goal->waypoints.size(), hit->x, hit->y);
+				}
+				waitingWaypoint = true;
+				break;
+			}
 			if (isWaypoint && goal->has_next_waypoint() && goal->waypoints[goal->current].allowSkip)
 			{
 				RCLCPP_WARN(
@@ -1329,6 +1384,11 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 		publishedFull = false;
 		followerWaitingSince.reset();
 		lastState.reset();
+		if (waitingWaypoint)
+		{
+			// (the follower stops at the end of the path to the previous one)
+			return;
+		}
 		const auto from = predictedStart(std::numeric_limits<size_t>::max());
 		if (!from)
 		{
@@ -1432,6 +1492,15 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 			publishedFull = false;
 			followerEngaged = false;
 			waypointAtGoal = false;
+			if (waitCutIdx && *waitCutIdx < pathPoses.size())
+			{
+				// (beyond the cut, the old path is blocked)
+				pathPoses.resize(*waitCutIdx);
+				pathS.resize(*waitCutIdx);
+				rootIdx = std::min(rootIdx, pathPoses.size() - 1);
+			}
+			waitCutIdx.reset();
+			waitingWaypoint = false;
 			if (!wasNavigating)
 			{
 				// (the path of a goal being followed may be continued instead)
@@ -1445,6 +1514,15 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 				if (!selectWaypoint())
 				{
 					// (ended: in collision)
+				}
+				else if (waitingWaypoint)
+				{
+					// (the robot stops until the first waypoint is clear)
+					publish_empty_paths();
+					pathPoses.clear();
+					pathS.clear();
+					rootIdx = 0;
+					robotIdx = 0;
 				}
 				else if (const auto from = predictedStart(std::numeric_limits<size_t>::max()); from)
 				{
@@ -1517,8 +1595,8 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 					}
 					else if (
 						failureIsCurrent &&
-						((isBlocked && !blockedReplanned) || followerStatus == "OffPathExceeded" ||
-						 followerStatus == "MissedGoal"))
+						((isBlocked && !blockedReplanned && !goal->waitIfBlocked) ||
+						 followerStatus == "OffPathExceeded" || followerStatus == "MissedGoal"))
 					{
 						// (a follower that stays blocked on the new path is
 						// replanned for periodically, see below)
@@ -1540,7 +1618,8 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 				// (a backstop: the search timeout normally restarts it first)
 				const double kMaxWaitForPath =
 					1.5 * planner.params_.maximumComputationTime + 5.0;	 // [s]
-				if (goal && statusIsCurrent && followerStatus == FOLLOWER_WAITING && published)
+				if (goal && !waiting() && statusIsCurrent && followerStatus == FOLLOWER_WAITING &&
+					published)
 				{
 					if (!followerWaitingSince)
 					{
@@ -1565,8 +1644,9 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 				// but for a path of the current search (not one that a search
 				// started meanwhile is replacing).
 				constexpr double kMaxBlocked = 5.0;	 // [s]
-				const bool followerBlocked =
-					goal && isBlocked && searchPublished && failureIsCurrent;
+				// (goals that wait for obstacles just wait)
+				const bool followerBlocked = goal && !goal->waitIfBlocked && isBlocked &&
+											 searchPublished && failureIsCurrent;
 				if (followerBlocked)
 				{
 					if (!followerBlockedSince)
@@ -1641,11 +1721,30 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 					robotIdx = nearest_pose(pathPoses, rp->translation(), robotIdx);
 				}
 
+				// Waiting for the current waypoint to be clear of obstacles:
+				if (goal && waitingWaypoint && selectWaypoint() && !waitingWaypoint)
+				{
+					RCLCPP_INFO(
+						get_logger(), "Goal #%u: waypoint %zu/%zu is clear: going on.", goal->id,
+						goal->current + 1, goal->waypoints.size());
+					lastState.reset();
+					if (const auto from = predictedStart(std::numeric_limits<size_t>::max()); from)
+					{
+						startSearch(from->first, from->second);
+					}
+					else
+					{
+						publish_empty_paths();
+						endGoal(
+							NavStatus::STATUS_ERROR, "no_robot_pose", "The robot pose is unknown");
+					}
+				}
+
 				// Waypoint sequences: on to the next waypoint once within its
 				// allowed distance, or a bit before the end of the full path to
 				// it (the path to the next one is then published before the
 				// robot stops there), or if the robot waits at that end anyway.
-				if (goal && rp && goal->has_next_waypoint())
+				if (goal && rp && goal->has_next_waypoint() && !waiting())
 				{
 					const auto& wp = goal->waypoints[goal->current];
 					const double remaining = publishedFull && robotIdx < pathS.size()
@@ -1665,6 +1764,10 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 				// Progress toward the goal: give up after no_progress_timeout
 				// without any. (Meanwhile, blocked paths and failed searches
 				// are replanned.)
+				if (goal && goal->waitIfBlocked && (waiting() || (isBlocked && failureIsCurrent)))
+				{
+					tLastProgress = now_seconds();
+				}
 				if (goal && rp)
 				{
 					const double dGoal = (rp->translation() - goal->pose.translation()).norm();
@@ -1724,7 +1827,48 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 					const auto hitInfo = first_colliding_pose(
 						pathPoses, robotIdx + 1, obstacleIndex(obsPoints), footprintPoly,
 						footprintRadius, validationMargin);
-					if (hitInfo)
+					if (!hitInfo && waitCutIdx)
+					{
+						RCLCPP_INFO(
+							get_logger(), "Goal #%u: the path is clear again: going on.", goal->id);
+						waitCutIdx.reset();
+						blockedPose.reset();
+						lastState.reset();
+						publishWhole(waitCutFromFull);
+						// (the search was paused: its time limit counts without the wait)
+						tSearchStart += now_seconds() - tWaitStart;
+					}
+					else if (hitInfo && goal->waitIfBlocked)
+					{
+						// Stop well before it, and wait (the follower stops at
+						// the end of the cut path):
+						constexpr double kStopBefore = 1.0;	 // [m]
+						const size_t hit = hitInfo->first;
+						size_t stopIdx = hit;
+						while (stopIdx > robotIdx + 1 && pathS[hit] - pathS[stopIdx] < kStopBefore)
+						{
+							stopIdx--;
+						}
+						// (cut again only if the obstacle got closer)
+						if (!waitCutIdx || stopIdx + 1 < *waitCutIdx)
+						{
+							RCLCPP_WARN(
+								get_logger(),
+								"Goal #%u: the path is blocked %.1f m ahead, at (%.2f, %.2f), "
+								"by an obstacle at (%.2f, %.2f): waiting for it to clear.",
+								goal->id, pathS[hit] - pathS[robotIdx], pathPoses[hit].x,
+								pathPoses[hit].y, hitInfo->second.x, hitInfo->second.y);
+							if (!waitCutIdx)
+							{
+								waitCutFromFull = publishedFull;
+								tWaitStart = now_seconds();
+							}
+							waitCutIdx = stopIdx + 1;
+							blockedPose = pathPoses[hit];
+							publishTruncated(*waitCutIdx);
+						}
+					}
+					else if (hitInfo)
 					{
 						const std::optional<size_t> hit = hitInfo->first;
 						// Stop well before it while searching a new path:
@@ -1770,8 +1914,8 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 				const double sStitch = goal && !pathS.empty()
 										   ? pathS[robotIdx] + stitch_lookahead_time_ * maxLinSpeed
 										   : 0.0;
-				if (goal && continuous_planning_ && published && rp && !pathNodes.empty() &&
-					pathS[rootIdx] < sStitch)
+				if (goal && !waiting() && continuous_planning_ && published && rp &&
+					!pathNodes.empty() && pathS[rootIdx] < sStitch)
 				{
 					// The first node far enough ahead, or else the last one (the
 					// end of a short partial path, which the robot will drive
@@ -1828,8 +1972,8 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 					}
 				}
 
-				// Search:
-				if (goal && planner.search_can_continue())
+				// Search (paused while waiting for obstacles):
+				if (goal && !waiting() && planner.search_can_continue())
 				{
 					if (!obsSources.empty() && !searchJustStarted)
 					{
@@ -1942,8 +2086,8 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 					lastOut = std::move(out);
 				}
 				else if (
-					goal && published && !publishedFull && !planner.search_reached_goal() &&
-					!retryAt)
+					goal && !waiting() && published && !publishedFull &&
+					!planner.search_reached_goal() && !retryAt)
 				{
 					// The search ended outside run(): re-rooting keeps only the
 					// subtree of the new root, which may have no open nodes left.

@@ -1,5 +1,11 @@
 # Goal
 mrpt_msgs/WaypointSequence waypoints
+# If true, the planner never searches for a detour around obstacles found
+# while driving: when one blocks the planned path (or the footprint at the
+# next waypoint), the robot stops before it and waits until it is gone, or the
+# goal is canceled or replaced. Meanwhile, no_progress_timeout does not run
+# and no waypoint is skipped (allow_skip is ignored). Needs continuous planning.
+bool wait_if_blocked false
 ---
 # Result
 mrpt_nav_interfaces/NavigationFinalStatus state

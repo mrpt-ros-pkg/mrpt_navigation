@@ -51,7 +51,9 @@ list and responsibilities:
   robot start ahead of it on its path (`start_lookahead_time`); goals in
   collision are rejected; blocked paths and failed searches are replanned
   until `no_progress_timeout` passes without getting closer to the goal
-  (obstacles that blocked a path are remembered for a while).
+  (obstacles that blocked a path are remembered for a while). Waypoint
+  goals with `wait_if_blocked` never replan around obstacles: the path is cut
+  before them, the search paused, and the full path given back once clear.
   Services stay one-shot.
   It publishes `~/navigation_status` and `~/navigation_markers` (see its
   README); topic goals received while the PTGs are being built are queued.
