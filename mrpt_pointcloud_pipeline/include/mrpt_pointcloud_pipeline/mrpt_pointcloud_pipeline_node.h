@@ -145,6 +145,9 @@ class LocalObstaclesNode : public rclcpp::Node
 	/// Stamp of the latest observation of each input topic (m_hist_obs_mtx)
 	std::map<std::string, double> m_last_obs_stamp_per_topic;
 
+	/// Updates m_last_obs_stamp_per_topic (call with m_hist_obs_mtx locked)
+	void note_input_stamp(const std::string& topic, double stamp);
+
 	/// Longest wait for a robot pose since the last report [s]
 	double m_max_pose_wait = 0;
 	double m_last_pose_wait_report = 0;

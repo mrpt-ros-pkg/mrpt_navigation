@@ -138,8 +138,10 @@ void LocalObstaclesNode::on_do_publish()
 		// it, instead of a fresh output missing that sensor:
 		if (m_max_input_age > 0)
 		{
-			for (const auto& [topic, stamp] : m_last_obs_stamp_per_topic)
+			for (auto& [topic, stamp] : m_last_obs_stamp_per_topic)
 			{
+				// The clock went back (e.g. a restarted simulation): age from now.
+				stamp = std::min(stamp, now);
 				if (now - stamp > m_max_input_age)
 				{
 					RCLCPP_WARN_THROTTLE(
@@ -468,7 +470,7 @@ void LocalObstaclesNode::on_new_sensor_laser_2d(
 		std::lock_guard<std::mutex> lck(m_hist_obs_mtx);
 		ipt.seq = ++m_obs_seq;
 		m_hist_obs.insert(m_hist_obs.end(), obs_list_t::value_type(timestamp, ipt));
-		m_last_obs_stamp_per_topic[topicName] = timestamp;
+		note_input_stamp(topicName, timestamp);
 	}
 
 }  // end on_new_sensor_laser_2d
@@ -529,9 +531,21 @@ void LocalObstaclesNode::on_new_sensor_pointcloud(
 		std::lock_guard<std::mutex> lck(m_hist_obs_mtx);
 		ipt.seq = ++m_obs_seq;
 		m_hist_obs.insert(m_hist_obs.end(), obs_list_t::value_type(timestamp, ipt));
-		m_last_obs_stamp_per_topic[topicName] = timestamp;
+		note_input_stamp(topicName, timestamp);
 	}
 }  // end on_new_sensor_pointcloud
+
+void LocalObstaclesNode::note_input_stamp(const std::string& topic, double stamp)
+{
+	// Future stamps count as received now, so they cannot keep a stalled input
+	// fresh; older (out of order) messages do not replace newer ones:
+	const double now = this->get_clock()->now().seconds();
+	auto [it, isNew] = m_last_obs_stamp_per_topic.try_emplace(topic, std::min(stamp, now));
+	if (!isNew)
+	{
+		it->second = std::max(it->second, std::min(stamp, now));
+	}
+}
 
 std::optional<mrpt::poses::CPose3D> LocalObstaclesNode::robot_pose_at(
 	const builtin_interfaces::msg::Time& stamp)

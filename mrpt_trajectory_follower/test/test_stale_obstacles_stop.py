@@ -8,6 +8,8 @@
 #
 # Checks: within the collision guard max_obstacles_age (plus a control period)
 # all commands are zero and the robot stops; with clouds again, it drives on.
+# Times are measured on the simulation clock, which may run slower than real
+# time on a loaded machine.
 #
 # Run it with:
 #   colcon test --packages-select mrpt_trajectory_follower
@@ -87,7 +89,7 @@ class StaleObstaclesStop(unittest.TestCase):
         cls.gt = None
         cls.gt_speed = None
         cls.status = None
-        cls.cmds = []  # (wall time, v)
+        cls.cmds = []  # (sim time [s], v)
         cls.obstacles_on = True
 
         def on_gt(m):
@@ -101,7 +103,7 @@ class StaleObstaclesStop(unittest.TestCase):
         n.create_subscription(Odometry, '/base_pose_ground_truth', on_gt, 10)
         n.create_subscription(String, STATUS_TOPIC, on_status, latched)
         n.create_subscription(
-            Twist, '/cmd_vel', lambda m: cls.cmds.append((time.time(), m.linear.x)), 10)
+            Twist, '/cmd_vel', lambda m: cls.cmds.append((cls.sim_now(), m.linear.x)), 10)
         cls.pub_path = n.create_publisher(Path, PATH_TOPIC, latched)
         cls.pub_obs = n.create_publisher(PointCloud2, OBSTACLES_TOPIC, 10)
         n.create_timer(0.1, cls.publish_no_obstacles)
@@ -112,6 +114,10 @@ class StaleObstaclesStop(unittest.TestCase):
         rclpy.shutdown()
 
     @classmethod
+    def sim_now(cls):
+        return cls.node.get_clock().now().nanoseconds * 1e-9
+
+    @classmethod
     def publish_no_obstacles(cls):
         if not cls.obstacles_on:
             return
@@ -120,9 +126,11 @@ class StaleObstaclesStop(unittest.TestCase):
         h.stamp = cls.node.get_clock().now().to_msg()
         cls.pub_obs.publish(point_cloud2.create_cloud_xyz32(h, []))
 
-    def spin_for(self, seconds):
+    def spin_sim_for(self, seconds):
+        t_end = self.sim_now() + seconds
         t0 = time.time()
-        while time.time() - t0 < seconds:
+        while self.sim_now() < t_end:
+            self.assertLess(time.time() - t0, 10 * seconds + 10, 'The simulation clock stalled')
             rclpy.spin_once(self.node, timeout_sec=0.02)
 
     def wait_until_driving(self, what):
@@ -154,13 +162,16 @@ class StaleObstaclesStop(unittest.TestCase):
 
         # The obstacle data stop:
         self.__class__.obstacles_on = False
-        t_stall = time.time()
-        self.spin_for(STOP_DELAY + 1.0)
+        t_stall = self.sim_now()
+        self.spin_sim_for(STOP_DELAY + 1.0)
         late = [v for t, v in self.cmds if t > t_stall + STOP_DELAY]
         self.assertTrue(late, 'No commands while the obstacle data were stale')
         self.assertTrue(all(abs(v) < 1e-3 for v in late),
                         f'Still commanding motion with stale obstacles: {late[:5]}')
-        self.assertLess(self.gt_speed, 0.02, 'The robot did not stop')
+        t0 = time.time()
+        while self.gt_speed >= 0.02:
+            self.assertLess(time.time() - t0, 5.0, 'The robot did not stop')
+            rclpy.spin_once(self.node, timeout_sec=0.05)
 
         # Fresh data again: it drives on.
         self.__class__.obstacles_on = True

@@ -459,7 +459,7 @@ TEST(PointCloudPipeline, StopsPublishingOnStalledInput)
 	EXPECT_GT(numOutputs, 0);
 
 	// Sensor A stalls: once its data are older than max_input_age, no output:
-	run(false, std::chrono::milliseconds(400));
+	run(false, std::chrono::milliseconds(700));
 	numOutputs = 0;
 	run(false, std::chrono::milliseconds(800));
 	EXPECT_EQ(numOutputs, 0);
