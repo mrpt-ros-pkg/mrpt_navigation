@@ -392,3 +392,79 @@ int main(int argc, char** argv)
 	rclcpp::shutdown();
 	return ret;
 }
+
+// When one of several sensors stops publishing, nothing must be published,
+// so consumers checking the age of the output see the stall.
+TEST(PointCloudPipeline, StopsPublishingOnStalledInput)
+{
+	const std::string topicA = kCloudTopic + "_a";
+	const std::string topicB = kCloudTopic + "_b";
+	rclcpp::NodeOptions opts;
+	opts.parameter_overrides({
+		{"pipeline_yaml_file", std::string(TEST_PIPELINE_YAML)},
+		{"source_topics_2d_scans", std::string("")},
+		{"source_topics_pointclouds", topicA + ", " + topicB},
+		{"filter_output_layer_name", std::string("output")},
+		{"topic_local_map_pointcloud", kOutputTopic},
+		{"time_window", 0.2},
+		{"publish_period", 0.05},
+		{"one_observation_per_topic", true},
+		{"max_input_age", 0.3},
+	});
+	auto pipeline = std::make_shared<LocalObstaclesNode>(opts);
+	auto helper = std::make_shared<rclcpp::Node>("test_stalled_input_helper");
+
+	int numOutputs = 0;
+	auto sub = helper->create_subscription<sensor_msgs::msg::PointCloud2>(
+		kOutputTopic, 10,
+		[&numOutputs](const sensor_msgs::msg::PointCloud2::SharedPtr) { numOutputs++; });
+	auto pubA = helper->create_publisher<sensor_msgs::msg::PointCloud2>(topicA, 10);
+	auto pubB = helper->create_publisher<sensor_msgs::msg::PointCloud2>(topicB, 10);
+	tf2_ros::TransformBroadcaster tf_pub(*helper);
+
+	rclcpp::executors::SingleThreadedExecutor ex;
+	ex.add_node(pipeline);
+	ex.add_node(helper);
+
+	const auto cloud_at = [](const rclcpp::Time& t)
+	{
+		mrpt::maps::CSimplePointsMap pts;
+		pts.insertPoint(3.0f, 0.0f, 0.5f);
+		std_msgs::msg::Header h;
+		h.stamp = t;
+		h.frame_id = "base_link";
+		sensor_msgs::msg::PointCloud2 msg;
+		mrpt::ros2bridge::toROS(pts, h, msg);
+		return msg;
+	};
+	// Both sensors at 10 Hz, or only B, for the given time:
+	const auto run = [&](bool withA, std::chrono::milliseconds d)
+	{
+		const auto end = std::chrono::steady_clock::now() + d;
+		while (std::chrono::steady_clock::now() < end)
+		{
+			const rclcpp::Time t = helper->now();
+			tf_pub.sendTransform(odom_to_robot(t, 0, 0, 0));
+			spin_for(ex, std::chrono::milliseconds(10));
+			if (withA)
+			{
+				pubA->publish(cloud_at(t));
+			}
+			pubB->publish(cloud_at(t));
+			spin_for(ex, std::chrono::milliseconds(90));
+		}
+	};
+
+	run(true, std::chrono::milliseconds(800));
+	EXPECT_GT(numOutputs, 0);
+
+	// Sensor A stalls: once its data are older than max_input_age, no output:
+	run(false, std::chrono::milliseconds(400));
+	numOutputs = 0;
+	run(false, std::chrono::milliseconds(800));
+	EXPECT_EQ(numOutputs, 0);
+
+	// Back to normal:
+	run(true, std::chrono::milliseconds(800));
+	EXPECT_GT(numOutputs, 0);
+}

@@ -29,6 +29,9 @@ list and responsibilities:
   up to `tf_max_wait` for it, then dropping the observation), and the local
   map is built relative to the pose of the latest observation (the published
   stamp).
+  With `max_input_age`, nothing is published while some input topic that has
+  published before has no observation that recent (a stalled sensor is not
+  masked by fresh data from the others).
   All observations go through one map: `per_observation` pipelines must end
   with a `FilterDeleteLayer` of their own layers, or later observations merge
   their points again.
