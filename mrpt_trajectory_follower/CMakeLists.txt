@@ -127,6 +127,12 @@ if(BUILD_TESTING)
     test/test_stall_blocked.py
     TIMEOUT 300
   )
+
+  # Obstacle data that stop arriving: full stop, then resume.
+  ament_add_ros_isolated_pytest_test(test_stale_obstacles_stop
+    test/test_stale_obstacles_stop.py
+    TIMEOUT 300
+  )
 endif()
 
 ament_package()

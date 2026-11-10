@@ -1,0 +1,4 @@
+# Overrides of follower_params.yaml for test_stale_obstacles_stop.py (keep
+# MAX_OBSTACLES_AGE there in sync).
+collision_guard:
+  max_obstacles_age: 0.3  # [s]

@@ -87,6 +87,11 @@ def generate_launch_description():
         default_value='0.5',
         description='How long an observation waits for the robot pose at its time before being dropped [s]'
     )
+    max_input_age_arg = DeclareLaunchArgument(
+        'max_input_age',
+        default_value='0.0',
+        description='If >0, nothing is published while the latest observation of some input topic (one that has published before) is older than this, so consumers checking the age of the output (e.g. the trajectory follower collision guard) stop when any sensor stalls [s]'
+    )
     pipeline_yaml_file_arg = DeclareLaunchArgument(
         'pipeline_yaml_file',
         default_value=os.path.join(
@@ -154,6 +159,7 @@ def generate_launch_description():
             {'confirm_radius': LaunchConfiguration('confirm_radius')},
             {'confirm_max_age': LaunchConfiguration('confirm_max_age')},
             {'tf_max_wait': LaunchConfiguration('tf_max_wait')},
+            {'max_input_age': LaunchConfiguration('max_input_age')},
         ],
         arguments=['--ros-args', '--log-level',
                    LaunchConfiguration('log_level')],
@@ -186,6 +192,7 @@ def generate_launch_description():
                     {'confirm_radius': LaunchConfiguration('confirm_radius')},
                     {'confirm_max_age': LaunchConfiguration('confirm_max_age')},
                     {'tf_max_wait': LaunchConfiguration('tf_max_wait')},
+                    {'max_input_age': LaunchConfiguration('max_input_age')},
                 ],
             )
         ]
@@ -212,6 +219,7 @@ def generate_launch_description():
         confirm_radius_arg,
         confirm_max_age_arg,
         tf_max_wait_arg,
+        max_input_age_arg,
         mrpt_pointcloud_pipeline_node,
         composable_mrpt_pointcloud_pipeline,
     ])

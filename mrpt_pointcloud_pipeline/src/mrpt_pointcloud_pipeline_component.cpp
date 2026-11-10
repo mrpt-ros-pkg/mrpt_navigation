@@ -133,6 +133,27 @@ void LocalObstaclesNode::on_do_publish()
 			}
 		}
 
+		// A sensor that stopped publishing: publish nothing (not even the
+		// last output again), so consumers checking the age of the data see
+		// it, instead of a fresh output missing that sensor:
+		if (m_max_input_age > 0)
+		{
+			for (auto& [topic, stamp] : m_last_obs_stamp_per_topic)
+			{
+				// The clock went back (e.g. a restarted simulation): age from now.
+				stamp = std::min(stamp, now);
+				if (now - stamp > m_max_input_age)
+				{
+					RCLCPP_WARN_THROTTLE(
+						get_logger(), *get_clock(), 1000,
+						"No new data from '%s' for %.2f s (max_input_age=%.2f s): not "
+						"publishing",
+						topic.c_str(), now - stamp, m_max_input_age);
+					return;
+				}
+			}
+		}
+
 		// Local copy in this thread:
 		for (const auto& entry : m_hist_obs)
 		{
@@ -449,6 +470,7 @@ void LocalObstaclesNode::on_new_sensor_laser_2d(
 		std::lock_guard<std::mutex> lck(m_hist_obs_mtx);
 		ipt.seq = ++m_obs_seq;
 		m_hist_obs.insert(m_hist_obs.end(), obs_list_t::value_type(timestamp, ipt));
+		note_input_stamp(topicName, timestamp);
 	}
 
 }  // end on_new_sensor_laser_2d
@@ -509,8 +531,21 @@ void LocalObstaclesNode::on_new_sensor_pointcloud(
 		std::lock_guard<std::mutex> lck(m_hist_obs_mtx);
 		ipt.seq = ++m_obs_seq;
 		m_hist_obs.insert(m_hist_obs.end(), obs_list_t::value_type(timestamp, ipt));
+		note_input_stamp(topicName, timestamp);
 	}
 }  // end on_new_sensor_pointcloud
+
+void LocalObstaclesNode::note_input_stamp(const std::string& topic, double stamp)
+{
+	// Future stamps count as received now, so they cannot keep a stalled input
+	// fresh; older (out of order) messages do not replace newer ones:
+	const double now = this->get_clock()->now().seconds();
+	auto [it, isNew] = m_last_obs_stamp_per_topic.try_emplace(topic, std::min(stamp, now));
+	if (!isNew)
+	{
+		it->second = std::max(it->second, std::min(stamp, now));
+	}
+}
 
 std::optional<mrpt::poses::CPose3D> LocalObstaclesNode::robot_pose_at(
 	const builtin_interfaces::msg::Time& stamp)
@@ -572,6 +607,10 @@ void LocalObstaclesNode::read_parameters()
 	this->declare_parameter<double>("tf_max_wait", m_tf_max_wait);
 	this->get_parameter("tf_max_wait", m_tf_max_wait);
 	RCLCPP_INFO(get_logger(), "tf_max_wait: %f", m_tf_max_wait);
+
+	this->declare_parameter<double>("max_input_age", m_max_input_age);
+	this->get_parameter("max_input_age", m_max_input_age);
+	RCLCPP_INFO(get_logger(), "max_input_age: %f", m_max_input_age);
 
 	this->declare_parameter<double>("publish_period", 0.05);
 	this->get_parameter("publish_period", m_publish_period);
