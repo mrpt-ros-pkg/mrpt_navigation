@@ -2,6 +2,11 @@
 Changelog for package mrpt_trajectory_follower
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Integration test: stale obstacle data stop the robot, which drives on once the data are back.
+* Contributors: Jose Luis Blanco-Claraco
+
 2.8.0 (2026-11-01)
 ------------------
 * Aisle maneuvers test: relax the cross-track bound to 0.25 m for loaded CI runners (`#213 <https://github.com/mrpt-ros-pkg/mrpt_navigation/issues/213>`_)

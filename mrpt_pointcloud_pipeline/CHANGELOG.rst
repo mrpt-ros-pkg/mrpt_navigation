@@ -2,6 +2,12 @@
 Changelog for package mrpt_pointcloud_pipeline
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* New observations are processed and published from their own callback, instead of waiting for the next publish_period timer; new republish_unchanged parameter (default true, as before).
+* New max_input_age parameter: publish nothing while some input topic stalls, so a sensor that stopped is not hidden by fresh data from the others. Robust to out-of-order stamps and clock resets.
+* Contributors: Jose Luis Blanco-Claraco
+
 2.8.0 (2026-11-01)
 ------------------
 * Optional confirmation of output points by independent observations (confirm_radius), and no rebuild of the local map from unchanged observations (`#212 <https://github.com/mrpt-ros-pkg/mrpt_navigation/issues/212>`_)

@@ -2,6 +2,12 @@
 Changelog for package mrpt_nav_interfaces
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* New NavigateWaypoints action, with wait_if_blocked to stop and wait at obstacles instead of detouring.
+* NavigationStatus: new total_waypoints and reached_waypoints fields.
+* Contributors: Jose Luis Blanco-Claraco
+
 2.8.0 (2026-11-01)
 ------------------
 

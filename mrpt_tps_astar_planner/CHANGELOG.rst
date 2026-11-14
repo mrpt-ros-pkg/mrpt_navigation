@@ -2,6 +2,16 @@
 Changelog for package mrpt_tps_astar_planner_node
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* New NavigateWaypoints action (~/navigate_waypoints): a waypoint sequence handled as a single goal, switching to the next waypoint shortly before reaching the current one, so the robot does not stop on the way.
+* NavigateWaypoints wait_if_blocked: stop and wait at obstacles blocking the path (or at a waypoint in collision) instead of detouring.
+* Ignore robot speed estimates above the PTG max speed (e.g. localization jumps).
+* Fix: an empty obstacle source no longer terminates the planner node.
+* Relative default follower status topics (resolved in the planner namespace), and warn once if no follower status arrives.
+* README: how to cite the TPS-A* planner paper.
+* Contributors: Jose Luis Blanco-Claraco
+
 2.8.0 (2026-11-01)
 ------------------
 
