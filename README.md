@@ -121,6 +121,24 @@ reported as failed in time; the car must reach only some of them):
 
 
 
+How to cite
+----------------------------------
+If you use `mrpt_tps_astar_planner` in your work, please cite the paper that describes it
+([arXiv:2611.09210](https://arxiv.org/abs/2611.09210)):
+
+```bibtex
+@misc{blanco2026tpsastar,
+  title         = {{TPS-A*}: Path Planning for Any-Shape Vehicles with Certified Collision Checking in Trajectory Parameter Space},
+  author        = {Blanco-Claraco, Jos{\'e} Luis and Rai, Shravan S. and Ca{\~n}adas-Ar{\'a}nega, Fernando and Torres-Moreno, Jos{\'e} Luis and Moreno-{\'U}beda, Jos{\'e} Carlos},
+  year          = {2026},
+  eprint        = {2611.09210},
+  archivePrefix = {arXiv},
+  primaryClass  = {cs.RO},
+  url           = {https://arxiv.org/abs/2611.09210}
+}
+```
+
+
 Contributing
 ----------------------------------
 * Code formatting: We use clang-format to ensure formatting consistency in the

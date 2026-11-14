@@ -18,9 +18,20 @@ simultaneously without blocking each other.
 
 ## How to cite
 
-<details>
-    TBD!
-</details>
+If you use this planner in your work, please cite the paper that describes it
+([arXiv:2611.09210](https://arxiv.org/abs/2611.09210)):
+
+```bibtex
+@misc{blanco2026tpsastar,
+  title         = {{TPS-A*}: Path Planning for Any-Shape Vehicles with Certified Collision Checking in Trajectory Parameter Space},
+  author        = {Blanco-Claraco, Jos{\'e} Luis and Rai, Shravan S. and Ca{\~n}adas-Ar{\'a}nega, Fernando and Torres-Moreno, Jos{\'e} Luis and Moreno-{\'U}beda, Jos{\'e} Carlos},
+  year          = {2026},
+  eprint        = {2611.09210},
+  archivePrefix = {arXiv},
+  primaryClass  = {cs.RO},
+  url           = {https://arxiv.org/abs/2611.09210}
+}
+```
 
 
 ## Configuration
