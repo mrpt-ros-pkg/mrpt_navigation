@@ -2,8 +2,8 @@
 Changelog for package mrpt_pointcloud_pipeline
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+2.9.0 (2026-11-14)
+------------------
 * New observations are processed and published from their own callback, instead of waiting for the next publish_period timer; new republish_unchanged parameter (default true, as before).
 * New max_input_age parameter: publish nothing while some input topic stalls, so a sensor that stopped is not hidden by fresh data from the others. Robust to out-of-order stamps and clock resets.
 * Contributors: Jose Luis Blanco-Claraco

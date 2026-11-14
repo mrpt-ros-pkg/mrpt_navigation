@@ -2,8 +2,8 @@
 Changelog for package mrpt_tps_astar_planner_node
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+2.9.0 (2026-11-14)
+------------------
 * New NavigateWaypoints action (~/navigate_waypoints): a waypoint sequence handled as a single goal, switching to the next waypoint shortly before reaching the current one, so the robot does not stop on the way.
 * NavigateWaypoints wait_if_blocked: stop and wait at obstacles blocking the path (or at a waypoint in collision) instead of detouring.
 * Ignore robot speed estimates above the PTG max speed (e.g. localization jumps).

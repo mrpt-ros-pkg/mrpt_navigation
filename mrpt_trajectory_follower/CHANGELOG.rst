@@ -2,8 +2,8 @@
 Changelog for package mrpt_trajectory_follower
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+2.9.0 (2026-11-14)
+------------------
 * Integration test: stale obstacle data stop the robot, which drives on once the data are back.
 * Contributors: Jose Luis Blanco-Claraco
 

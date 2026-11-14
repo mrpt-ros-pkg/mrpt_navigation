@@ -2,8 +2,8 @@
 Changelog for package mrpt_navigation
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+2.9.0 (2026-11-14)
+------------------
 * tps_astar_planner: NavigateWaypoints action (waypoint sequences without stopping), with optional wait_if_blocked.
 * pointcloud_pipeline: publish new observations right away; max_input_age, so a stalled sensor stops the robot.
 * Contributors: Jose Luis Blanco-Claraco
