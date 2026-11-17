@@ -69,7 +69,6 @@ jobs:
         if: matrix.use_ros_testing == true
         env:
           GH_TOKEN: ${{ github.token }}
-        shell: bash
         run: |
           set -eo pipefail
           ver=$(curl -fsSL --retry 5 --retry-delay 5 -H "Authorization: Bearer ${GH_TOKEN}" \
