@@ -39,11 +39,13 @@ Related to sensor pipelines:
 Related to autonomous navigation:
 * [mrpt_reactivenav2d](mrpt_reactivenav2d): **Deprecated**, use `mrpt_trajectory_follower` with `mrpt_tps_astar_planner` instead. A pure reactive navigator for polygonal robots on 2D worlds.
 * [mrpt_tps_astar_planner](mrpt_tps_astar_planner): A path planner based on PTG trajectories using A* in a SE(2) lattice.
+* [mrpt_trajectory_follower](mrpt_trajectory_follower): A path follower for wheeled robots, with predictive safety and a last-resort collision guard.
 
 Others:
 * [mrpt_tutorials](mrpt_tutorials): Launch and configuration files for the various examples provided for the other packages.
 * [mrpt_msgs_bridge](mrpt_msgs_bridge): C++ library to convert between custom [mrpt_msgs](https://github.com/mrpt-ros-pkg/mrpt_msgs) messages and native MRPT classes
 * [mrpt_nav_interfaces](mrpt_nav_interfaces): Definition of msgs, srvs, and actions used by the other packages.
+* [mrpt_navigation](mrpt_navigation): Metapackage, also hosting the end-to-end navigation tests.
 
 
 General documentation
