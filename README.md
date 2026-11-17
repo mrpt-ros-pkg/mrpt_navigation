@@ -48,9 +48,11 @@ Others:
 
 General documentation
 ----------------------------------
-* ROS wiki: http://wiki.ros.org/mrpt_navigation
-* Compiling instructions: http://wiki.ros.org/mrpt_navigation/Tutorials/Installing
-* Usage examples and tutorials: http://wiki.ros.org/mrpt_navigation/Tutorials
+* Package documentation: see the README of each package (linked above).
+* Installation: `sudo apt install ros-$ROS_DISTRO-mrpt-navigation`, or build
+  from sources by cloning this repository into a colcon workspace.
+* Usage examples and tutorials: see [mrpt_tutorials](mrpt_tutorials) and the
+  demos section below.
 * Branches:
   * `ros2`: The most recent, active branch for modern ROS 2 distributions.
   * `ros1`: Intended for ROS 1. No further development will happen there.
