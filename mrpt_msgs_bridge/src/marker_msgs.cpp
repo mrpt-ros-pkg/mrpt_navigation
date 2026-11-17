@@ -10,7 +10,7 @@
  * @file   marker_msgs.cpp
  * @author Markus Bader <markus.bader@tuwien.ac.at>
  * @date   September, 2017
- * @brief  Funtions to convert marker_msgs to mrpt msgs
+ * @brief  Functions to convert marker_msgs messages to MRPT observations
  **/
 
 #include <mrpt/ros2bridge/time.h>

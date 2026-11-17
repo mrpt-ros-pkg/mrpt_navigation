@@ -7,7 +7,7 @@
    +------------------------------------------------------------------------+ */
 
 /*
- * File: landmark.h
+ * File: landmark.hpp
  * Author: Vladislav Tananaev
  *
  */
@@ -23,30 +23,32 @@
 
 namespace mrpt_msgs_bridge
 {
-/** @name LaserScan: ROS2 <-> MRPT
+/** @name ObservationRangeBearing: ROS 2 <-> MRPT
  *  @{ */
 
-/** ROS2->MRPT: Takes a mrpt_msgs::CObservationBearingRange and the relative
- * pose of the sensor wrt base_link and builds a ObservationRangeBearing \return
- * true on sucessful conversion, false on any error. \sa mrpt2ros
+/** ROS 2->MRPT: Takes a mrpt_msgs::msg::ObservationRangeBearing and the
+ * relative pose of the sensor w.r.t. base_link, and builds a
+ * CObservationBearingRange.
+ * \return true on successful conversion, false on any error.
+ * \sa toROS
  */
 bool fromROS(
 	const mrpt_msgs::msg::ObservationRangeBearing& _msg, const mrpt::poses::CPose3D& _pose,
 	mrpt::obs::CObservationBearingRange& _obj);
 
-/** MRPT->ROS2: Takes a CObservationBearingRange and outputs range data in
- * mrpt_msgs::ObservationRangeBearing
- * \return true on sucessful conversion, false on any error.
- * \sa ros2mrpt
+/** MRPT->ROS 2: Takes a CObservationBearingRange and outputs range data in
+ * mrpt_msgs::msg::ObservationRangeBearing.
+ * \return true on successful conversion, false on any error.
+ * \sa fromROS
  */
 bool toROS(
 	const mrpt::obs::CObservationBearingRange& _obj, mrpt_msgs::msg::ObservationRangeBearing& _msg);
 
-/** MRPT->ROS2: Takes a CObservationBearingRange and outputs range data in
- * mrpt_msgs::ObservationRangeBearing + the relative pose of the range sensor
- * wrt base_link
- * \return true on sucessful conversion, false on any error.
- * \sa ros2mrpt
+/** MRPT->ROS 2: Takes a CObservationBearingRange and outputs range data in
+ * mrpt_msgs::msg::ObservationRangeBearing, plus the relative pose of the
+ * sensor w.r.t. base_link.
+ * \return true on successful conversion, false on any error.
+ * \sa fromROS
  */
 bool toROS(
 	const mrpt::obs::CObservationBearingRange& _obj, mrpt_msgs::msg::ObservationRangeBearing& _msg,

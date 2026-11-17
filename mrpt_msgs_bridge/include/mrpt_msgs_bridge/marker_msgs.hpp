@@ -7,10 +7,10 @@
    +------------------------------------------------------------------------+ */
 
 /**
- * @file   marker_msgs.h
+ * @file   marker_msgs.hpp
  * @author Markus Bader <markus.bader@tuwien.ac.at>
  * @date   September, 2017
- * @brief  Funtions to convert marker_msgs to mrpt msgs
+ * @brief  Functions to convert marker_msgs messages to MRPT observations
  **/
 
 #pragma once

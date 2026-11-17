@@ -18,20 +18,14 @@
 
 namespace mrpt_msgs_bridge
 {
-/**\name MRPT \rightarrow ROS2 conversions */
-/**\brief Convert [MRPT] CNetworkOfPoses*D \rightarrow [ROS2] NetworkOfPoses.
+/**\name MRPT \rightarrow ROS 2 conversions */
+/**\brief Convert [MRPT] CNetworkOfPoses*DInf \rightarrow [ROS 2] NetworkOfPoses.
  * \param[in] mrpt_graph MRPT graph representation
  * \param[out] ros_graph ROS graph representation
  */
 /**\{*/
 
 // TODO - convert these methods into a common polymorphic method
-void toROS(
-	const mrpt::graphs::CNetworkOfPoses2D& mrpt_graph, mrpt_msgs::msg::NetworkOfPoses& ros_graph);
-
-void toROS(
-	const mrpt::graphs::CNetworkOfPoses3D& mrpt_graph, mrpt_msgs::msg::NetworkOfPoses& ros_graph);
-
 void toROS(
 	const mrpt::graphs::CNetworkOfPoses2DInf& mrpt_graph,
 	mrpt_msgs::msg::NetworkOfPoses& ros_graph);
@@ -44,18 +38,12 @@ void toROS(
 
 /////////////////////////////////////////////////////////////////////////
 
-/**\name ROS2 \rightarrow MRPT conversions */
-/**\brief Convert [ROS2] NetworkOfPoses \rightarrow [MRPT] CNetworkOfPoses*DInf.
- * \param[in] mrpt_graph ROS2 graph representation
- * \param[out] ros_graph MRPT graph representation
+/**\name ROS 2 \rightarrow MRPT conversions */
+/**\brief Convert [ROS 2] NetworkOfPoses \rightarrow [MRPT] CNetworkOfPoses*DInf.
+ * \param[in] ros_graph ROS 2 graph representation
+ * \param[out] mrpt_graph MRPT graph representation
  */
 /**\{ */
-void fromROS(
-	const mrpt::graphs::CNetworkOfPoses2D& mrpt_graph, mrpt_msgs::msg::NetworkOfPoses& ros_graph);
-
-void fromROS(
-	const mrpt::graphs::CNetworkOfPoses3D& mrpt_graph, mrpt_msgs::msg::NetworkOfPoses& ros_graph);
-
 void fromROS(
 	const mrpt_msgs::msg::NetworkOfPoses& ros_graph,
 	mrpt::graphs::CNetworkOfPoses2DInf& mrpt_graph);

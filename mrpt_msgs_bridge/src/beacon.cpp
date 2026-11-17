@@ -17,7 +17,7 @@
 using namespace mrpt::obs;
 
 bool mrpt_msgs_bridge::fromROS(
-	const mrpt_msgs::msg::ObservationRangeBeacon _msg, const mrpt::poses::CPose3D& _pose,
+	const mrpt_msgs::msg::ObservationRangeBeacon& _msg, const mrpt::poses::CPose3D& _pose,
 	CObservationBeaconRanges& _obj)
 {
 	_obj.timestamp = mrpt::ros2bridge::fromROS(_msg.header.stamp);
