@@ -837,7 +837,8 @@ void PFLocalizationCore::onStateRunning()
 		ASSERT_(state_.pdf2d);
 		auto& parts = state_.pdf2d->m_particles;
 		parts.clear();
-		mrpt::random::CRandomGenerator rng;
+		// (the global generator, so a fixed seed gives reproducible results)
+		auto& rng = mrpt::random::getRandomGenerator();
 		const double sigmaXY = params_.relocalization_resolution_xy * 0.33;
 		const double sigmaPhi = params_.relocalization_resolution_phi * 0.33;
 
