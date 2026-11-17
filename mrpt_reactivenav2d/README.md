@@ -63,6 +63,33 @@ using MRPT navigation algorithms (TP-Space).
   }
   ```
 
+  Autonomous Robots 2008 ([PDF](https://ingmec.ual.es/~jlblanco/papers/blanco2008eoa_DRAFT.pdf))
+  ```bibtex
+  @ARTICLE{blanco2008eoa,
+      author = {Blanco, Jos{\'{e}}-Luis and Gonz{\'{a}}lez-Jim{\'{e}}nez, Javier and Fern{\'{a}}ndez-Madrigal, Juan-Antonio},
+      title = {Extending Obstacle Avoidance Methods through Multiple Parameter-Space Transformations},
+      journal = {Autonomous Robots},
+      volume = {24},
+      number = {1},
+      pages = {29--48},
+      year = {2008},
+      doi = {10.1007/s10514-007-9062-7}
+  }
+  ```
+
+  IJARS 2015 ([DOI](https://doi.org/10.5772/60563))
+  ```bibtex
+  @ARTICLE{jaimez2015efficient,
+      author = {Jaimez-Tarifa, Mariano and Gonz{\'{a}}lez-Jim{\'{e}}nez, Javier and Blanco, Jos{\'{e}}-Luis},
+      title = {Efficient Reactive Navigation with Exact Collision Determination for 3D Robot Shapes},
+      journal = {International Journal of Advanced Robotic Systems},
+      volume = {12},
+      number = {63},
+      year = {2015},
+      doi = {10.5772/60563}
+  }
+  ```
+
 </details>
 
 
@@ -78,13 +105,15 @@ The main **parameters** of our approach are:
 
 ### Navigation in simulated warehouse
 
-    ros2 launch mrpt_tutorials reactive_nav_demo_with_mvsim.launch.py
+    ros2 launch mrpt_tutorials demo_reactive_nav_mvsim.launch.py
 
 to start:
 
 * ``mrpt_reactivenav2d`` for the autonomous reactive navigation (this package),
 * ``mrpt_pointcloud_pipeline`` for generating input obstacles for the navigator from lidar data,
 * ``mvsim`` to simulate a live robot that can be controlled by the navigator.
+
+Video of the (ROS 1) demo: [YouTube](https://www.youtube.com/watch?v=9iohyHqGc0g)
 
 ## Node: mrpt_reactivenav2d_node
 
@@ -227,44 +256,16 @@ Goal finished with status: SUCCEEDED
 
 ### Template ROS 2 launch files
 
-This package provides [launch/reactivenav.launch.py](launch/reactivenav.launch.py):
+This package provides [launch/rnav.launch.py](launch/rnav.launch.py):
 
-    ros2 launch mrpt_reactivenav2d reactivenav.launch.py
+    ros2 launch mrpt_reactivenav2d rnav.launch.py
 
 which can be used in user projects to launch the MRPT reactive navigation node, by setting these [launch arguments](https://docs.ros.org/en/rolling/Tutorials/Intermediate/Launch/Using-Substitutions.html):
 
-* ``XXX_config_file``: Path to an INI file with...
-
-
-## Demo
-
-After installing
-[mrpt_navigation](https://index.ros.org/p/mrpt_navigation) and
-[mvsim](https://index.ros.org/p/mvsim), run: 
-
-```
-roslaunch mrpt_reactivenav2d reactive_nav_demo_with_mvsim.launch
-```
-
-
-
-[Youtube](https://www.youtube.com/watch?v=9iohyHqGc0g)
-
-## Theory and references
-
-- J.L. Blanco, J. Gonzalez-Jimenez, J.A. Fernandez-Madrigal, "Extending
-  Obstacle Avoidance Methods through Multiple Parameter-Space
-  Transformations", Autonomous Robots, vol. 24, no. 1, pp.
-  29\--48, 2008.
-  ([Draft PDF](http://ingmec.ual.es/~jlblanco/papers/blanco2008eoa_DRAFT.pdf))
-- M. Jaimez-Tarifa, J. Gonzalez-Jimenez, J.L. Blanco, "Efficient
-  Reactive Navigation with Exact Collision Determination for 3D Robot
-  Shapes", International Journal of Advanced Robotic Systems, vol. 12,
-  no. 63, 2015.
-  ([PDF](http://www.intechopen.com/journals/international_journal_of_advanced_robotic_systems/efficient-reactive-navigation-with-exact-collision-determination-for-3d-robot-shapes))
-
-## Nodes
-
-### mrpt_reactivenav2d
-
-Pure reactive navigation with TP-Space algorithms.
+* ``rnav_cfg_file``: Path to the INI file with the navigator parameters (default: [params/reactive2d_default.ini](params/reactive2d_default.ini)).
+* ``topic_obstacles``: Input obstacles point cloud (default: ``/local_map_pointcloud``).
+* ``topic_robot_shape``: Optional input robot shape polygon (default: empty, use the INI file).
+* ``topic_reactive_nav_goal``: Input goal pose (default: ``/goal_pose``).
+* ``topic_wp_seq``: Input waypoint sequence (default: ``/rnav_waypoint_sequence``).
+* ``frameid_reference``, ``frameid_robot``: Frame IDs of the map and robot (default: ``map``, ``base_link``).
+* ``nav_period``: Navigation loop period [s] (default: ``0.20``).
