@@ -148,10 +148,3 @@ void mrpt_msgs_bridge::fromROS(
 	// TODO: Implement mrpt_msgs::NetworkOfPoses => CNetworkOfPoses3DInf
 	// conversion.
 }
-
-void convert(
-	[[maybe_unused]] mrpt_msgs::msg::NetworkOfPoses& ros_graph,
-	[[maybe_unused]] const mrpt::graphs::CNetworkOfPoses3DInf& mrpt_graph)
-{
-	THROW_EXCEPTION("Conversion not implemented yet");
-}

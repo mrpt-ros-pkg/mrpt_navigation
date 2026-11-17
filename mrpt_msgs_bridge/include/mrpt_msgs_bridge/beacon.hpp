@@ -17,29 +17,32 @@
 
 namespace mrpt_msgs_bridge
 {
-/** @name ObservationRangeBeacon: ROS2 <-> MRPT
+/** @name ObservationRangeBeacon: ROS 2 <-> MRPT
  *  @{ */
 
-/** ROS->MRPT: Takes a mrpt_msgs::ObservationRangeBeacon and the relative pose
- * of the range sensor wrt base_link and builds a CObservationBeaconRanges
- * \return true on sucessful conversion, false on any error.
- * \sa mrpt2ros
+/** ROS 2->MRPT: Takes a mrpt_msgs::msg::ObservationRangeBeacon and the
+ * relative pose of the range sensor w.r.t. base_link, and builds a
+ * CObservationBeaconRanges.
+ * \return true on successful conversion, false on any error.
+ * \sa toROS
  */
 bool fromROS(
-	const mrpt_msgs::msg::ObservationRangeBeacon _msg, const mrpt::poses::CPose3D& _pose,
+	const mrpt_msgs::msg::ObservationRangeBeacon& _msg, const mrpt::poses::CPose3D& _pose,
 	mrpt::obs::CObservationBeaconRanges& _obj);
 
-/** MRPT->ROS2: Takes a CObservationBeaconRanges and outputs range data in
- * mrpt_msgs::ObservationRangeBeacon \return true on sucessful conversion, false
- * on any error. \sa ros2mrpt
+/** MRPT->ROS 2: Takes a CObservationBeaconRanges and outputs range data in
+ * mrpt_msgs::msg::ObservationRangeBeacon.
+ * \return true on successful conversion, false on any error.
+ * \sa fromROS
  */
 bool toROS(
 	const mrpt::obs::CObservationBeaconRanges& _obj, mrpt_msgs::msg::ObservationRangeBeacon& _msg);
 
-/** MRPT->ROS2: Takes a CObservationBeaconRanges and outputs range data in
- * mrpt_msgs::ObservationRangeBeacon + the relative pose of the range sensor wrt
- * base_link \return true on sucessful conversion, false on any error. \sa
- * ros2mrpt
+/** MRPT->ROS 2: Takes a CObservationBeaconRanges and outputs range data in
+ * mrpt_msgs::msg::ObservationRangeBeacon, plus the relative pose of the range
+ * sensor w.r.t. base_link.
+ * \return true on successful conversion, false on any error.
+ * \sa fromROS
  */
 bool toROS(
 	const mrpt::obs::CObservationBeaconRanges& _obj, mrpt_msgs::msg::ObservationRangeBeacon& _msg,
