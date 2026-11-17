@@ -91,18 +91,6 @@ to start:
 
 
 
-### Range-only (RO) localization with a set of fixed, known radio beacons
-Run:
-
-    ros2 launch mrpt_localization demo_ro.launch
-
-to start:
-
-* a dataset (rawlog format) including RO and odometry observations,
-* the mrpt localization with known beacon locations, and
-* RViz for visualization
-
-
 ## Node: mrpt_pf_localization
 
 ### Working rationale
