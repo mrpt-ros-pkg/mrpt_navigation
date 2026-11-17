@@ -120,6 +120,8 @@ class TestWaypoints(unittest.TestCase):
                                  reliability=ReliabilityPolicy.RELIABLE)
         cls.gt = None
         cls.track = []              # (t, x, y) ground truth
+        cls.loc_track = []          # (t, x, y) localized (map frame)
+        cls.loc_stamp = None
         cls.collisions = 0
         cls.last = None             # latest NavigationStatus
         cls.messages = []
@@ -164,6 +166,14 @@ class TestWaypoints(unittest.TestCase):
 
     def spin_once(self):
         rclpy.spin_once(self.node, timeout_sec=0.05)
+        try:
+            tf = self.tf_buffer.lookup_transform('map', 'base_link', rclpy.time.Time())
+            if tf.header.stamp != self.loc_stamp:
+                self.__class__.loc_stamp = tf.header.stamp
+                self.loc_track.append((time.time(), tf.transform.translation.x,
+                                       tf.transform.translation.y))
+        except Exception:
+            pass
         if self.obstacles is not None and time.time() - self.last_obstacle_pub > 0.2:
             header = Header()
             header.frame_id = 'map'
@@ -340,7 +350,10 @@ class TestWaypoints(unittest.TestCase):
         self.assertEqual(self.last.state, NavigationStatus.STATE_BLOCKED)
         tail = [p for p in self.track[i_track:] if p[0] > time.time() - 3.0]
         moved = math.hypot(tail[-1][1] - tail[0][1], tail[-1][2] - tail[0][2])
-        d_box = math.hypot(self.gt[0] - box[0], self.gt[1] - box[1])
+        # The box only exists in the map frame (for the planner), so distances to it
+        # are judged on the localized pose, free of localization errors:
+        loc = self.loc_track[-1]
+        d_box = math.hypot(loc[1] - box[0], loc[2] - box[1])
         print(f'Waiting: moved {moved:.2f} m in the last 3 s, {d_box:.2f} m from the box',
               flush=True)
         self.assertLess(moved, 0.05)
@@ -348,13 +361,13 @@ class TestWaypoints(unittest.TestCase):
 
         # Box removed: on through where it was, to the end:
         self.__class__.obstacles = []
-        i_track = len(self.track)
+        i_loc = len(self.loc_track)
         self.spin_until(res_fut.done, SEQUENCE_TIMEOUT)
         self.__class__.obstacles = None
         self.assertTrue(res_fut.done(), 'the sequence did not end in time')
         res = res_fut.result()
         self.assertEqual(res.status, GoalStatus.STATUS_SUCCEEDED, res.result.state.message)
-        d = self.min_dist(self.track[i_track:], box)
+        d = self.min_dist(self.loc_track[i_loc:], box)
         print(f'Closest approach to the removed box: {d:.2f} m', flush=True)
         self.assertLess(d, 0.5)
         msgs = [m for m in self.messages[start[0]:] if m.goal_id != 0]
