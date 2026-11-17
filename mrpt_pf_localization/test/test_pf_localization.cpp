@@ -14,8 +14,10 @@
 #include <mrpt/obs/CObservation3DRangeScan.h>
 #include <mrpt/obs/CObservationPointCloud.h>
 #include <mrpt/obs/CRawlog.h>
+#include <mrpt/random/RandomGenerators.h>
 #include <mrpt_pf_localization/mrpt_pf_localization_core.h>
 
+#include <iostream>
 #include <thread>
 
 struct TestParams
@@ -57,6 +59,10 @@ struct TestParams
 		MRPT_LOCALIZATION_SOURCE_DIR "/../mrpt_tutorials/datasets/driving_in_office_obs.rawlog");
 
 	const size_t TEST_SKIP_FIRST_N = mrpt::get_env<size_t>("TEST_SKIP_FIRST_N", 0);
+
+	// Fixed seed for the particle filter random numbers, so results are
+	// reproducible from run to run:
+	const uint32_t TEST_RANDOM_SEED = mrpt::get_env<uint32_t>("TEST_RANDOM_SEED", 1234);
 };
 
 TEST(PF_Localization, InitState)
@@ -73,6 +79,8 @@ TEST(PF_Localization, InitState)
 TEST(PF_Localization, RunRealDataset)
 {
 	TestParams _;
+
+	mrpt::random::getRandomGenerator().randomize(_.TEST_RANDOM_SEED);
 
 	PFLocalizationCore loc;
 
@@ -236,9 +244,12 @@ TEST(PF_Localization, RunRealDataset)
 
 		const auto gtPose = mrpt::poses::CPose3D::FromString(_.TEST_FINAL_GT_POSE);
 
-		EXPECT_LT((mean - gtPose).asVectorVal().norm(), _.TEST_CONVERGENCE_TOLERANCE)
-			<< "mean: " << mean << "\n"
-			<< "gtPose: " << gtPose << "\n";
+		const double err = (mean - gtPose).asVectorVal().norm();
+		std::cout << "Final pose error: " << err << " (tolerance: " << _.TEST_CONVERGENCE_TOLERANCE
+				  << ")\n";
+
+		EXPECT_LT(err, _.TEST_CONVERGENCE_TOLERANCE) << "mean: " << mean << "\n"
+													 << "gtPose: " << gtPose << "\n";
 	}
 
 	if (_.RUN_TESTS_WITH_GUI)
