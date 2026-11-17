@@ -129,6 +129,7 @@ class TestWaypoints(unittest.TestCase):
         cls.obstacles = None
         cls.last_obstacle_pub = 0.0
         cls.reference_path = None
+        cls.reference_paths = []    # (t, ReferencePath)
 
         def on_gt(m):
             p = m.pose.pose
@@ -146,12 +147,15 @@ class TestWaypoints(unittest.TestCase):
             if m.data:
                 cls.collisions += 1
 
+        def on_reference_path(m):
+            cls.reference_path = m
+            cls.reference_paths.append((time.time(), m))
+
         n.create_subscription(Odometry, '/base_pose_ground_truth', on_gt, 10)
         n.create_subscription(NavigationStatus, STATUS_TOPIC, on_status, latched_all)
         n.create_subscription(FollowerStatus, FOLLOWER_STATUS_TOPIC, on_follower, 100)
         n.create_subscription(Bool, '/collision', on_collision, 100)
-        n.create_subscription(ReferencePath, REFERENCE_PATH_TOPIC,
-                              lambda m: setattr(cls, 'reference_path', m), 10)
+        n.create_subscription(ReferencePath, REFERENCE_PATH_TOPIC, on_reference_path, 10)
         cls.pub_obstacles = n.create_publisher(PointCloud2, VIRTUAL_OBSTACLES_TOPIC, 10)
         cls.action = ActionClient(n, NavigateWaypoints, ACTION_NAME)
         cls.tf_buffer = Buffer()
@@ -340,6 +344,7 @@ class TestWaypoints(unittest.TestCase):
 
         self.assertTrue(self.spin_until(waiting, 15.0), 'not waiting for the obstacle')
         replans = self.last.replans
+        goal_id = self.last.goal_id
         # Still waiting (stopped, no replans) after longer than the replan period
         # of a blocked follower:
         i_track = len(self.track)
@@ -361,15 +366,35 @@ class TestWaypoints(unittest.TestCase):
 
         # Box removed: on through where it was, to the end:
         self.__class__.obstacles = []
+        t_clear = time.time()
         i_loc = len(self.loc_track)
+        i_gt = len(self.track)
         self.spin_until(res_fut.done, SEQUENCE_TIMEOUT)
         self.__class__.obstacles = None
         self.assertTrue(res_fut.done(), 'the sequence did not end in time')
         res = res_fut.result()
         self.assertEqual(res.status, GoalStatus.STATUS_SUCCEEDED, res.result.state.message)
+
+        # No detour: the paths published after the box was removed, while the robot
+        # was still short of it, go through where it was. (Judged on the paths: the
+        # robot itself may cut a curve there by more than the box size.)
+        def gt_dist(p):
+            return math.hypot(p[1] - box[0], p[2] - box[1])
+
+        gt_after = self.track[i_gt:]
+        t_pass = min(gt_after, key=gt_dist)[0]
+        t_near = min((p[0] for p in gt_after if gt_dist(p) < 1.0), default=t_pass)
+        paths = [m for t, m in self.reference_paths
+                 if t_clear <= t < t_near and m.goal_id == goal_id]
+        self.assertTrue(paths, 'no path published after the box was removed')
+        for m in paths:
+            d_path = min(math.hypot(q.pose.position.x - box[0], q.pose.position.y - box[1])
+                         for q in m.path.poses)
+            self.assertLess(d_path, 0.25, 'a path avoids where the box was')
         d = self.min_dist(self.loc_track[i_loc:], box)
-        print(f'Closest approach to the removed box: {d:.2f} m', flush=True)
-        self.assertLess(d, 0.5)
+        print(f'Closest approach to the removed box: {d:.2f} m '
+              f'({len(paths)} paths through it)', flush=True)
+        self.assertLess(d, 1.0)
         msgs = [m for m in self.messages[start[0]:] if m.goal_id != 0]
         self.assertEqual(len({m.goal_id for m in msgs}), 1)
         self.assertEqual(self.collisions, 0)

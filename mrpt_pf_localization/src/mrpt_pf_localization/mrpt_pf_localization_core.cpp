@@ -57,7 +57,7 @@ PFLocalizationCore::Parameters::Parameters()
 	// 2D mode:
 	motion_model_no_odom_2d.modelSelection = mrpt::obs::CActionRobotMovement2D::mmGaussian;
 	motion_model_no_odom_2d.gaussianModel.minStdXY = 0.10;
-	motion_model_no_odom_2d.gaussianModel.minStdPHI = 2.0;
+	motion_model_no_odom_2d.gaussianModel.minStdPHI = mrpt::DEG2RAD(2.0);
 
 	// 3D mode:
 	motion_model_no_odom_3d.modelSelection = mrpt::obs::CActionRobotMovement3D::mmGaussian;
@@ -95,21 +95,30 @@ void load_motion_model2d_from(
 {
 	MCP_LOAD_REQ_HERE(p, modelSelection, mmo.modelSelection);
 
-	ASSERT_(p.has("gaussianModel"));
+	// Each model's parameters are in its own sub-map:
+	if (p.has("gaussianModel"))
+	{
+		const mrpt::containers::yaml g = p["gaussianModel"];
 
-	MCP_LOAD_OPT_HERE(p, a1, mmo.gaussianModel.a1);
-	MCP_LOAD_OPT_HERE(p, a2, mmo.gaussianModel.a2);
-	MCP_LOAD_OPT_DEG_HERE(p, a3, mmo.gaussianModel.a3);
-	MCP_LOAD_OPT_HERE(p, a4, mmo.gaussianModel.a4);
-	MCP_LOAD_OPT_HERE(p, minStdXY, mmo.gaussianModel.minStdXY);
-	MCP_LOAD_OPT_DEG_HERE(p, minStdPHI, mmo.gaussianModel.minStdPHI);
+		MCP_LOAD_OPT_HERE(g, a1, mmo.gaussianModel.a1);
+		MCP_LOAD_OPT_HERE(g, a2, mmo.gaussianModel.a2);
+		MCP_LOAD_OPT_DEG_HERE(g, a3, mmo.gaussianModel.a3);
+		MCP_LOAD_OPT_HERE(g, a4, mmo.gaussianModel.a4);
+		MCP_LOAD_OPT_HERE(g, minStdXY, mmo.gaussianModel.minStdXY);
+		MCP_LOAD_OPT_DEG_HERE(g, minStdPHI, mmo.gaussianModel.minStdPHI);
+	}
 
-	MCP_LOAD_OPT_HERE(p, alfa1_rot_rot, mmo.thrunModel.alfa1_rot_rot);
-	MCP_LOAD_OPT_HERE(p, alfa2_rot_trans, mmo.thrunModel.alfa2_rot_trans);
-	MCP_LOAD_OPT_HERE(p, alfa3_trans_trans, mmo.thrunModel.alfa3_trans_trans);
-	MCP_LOAD_OPT_HERE(p, alfa4_trans_rot, mmo.thrunModel.alfa4_trans_rot);
-	MCP_LOAD_OPT_HERE(p, additional_std_XY, mmo.thrunModel.additional_std_XY);
-	MCP_LOAD_OPT_DEG_HERE(p, additional_std_phi, mmo.thrunModel.additional_std_phi);
+	if (p.has("thrunModel"))
+	{
+		const mrpt::containers::yaml t = p["thrunModel"];
+
+		MCP_LOAD_OPT_HERE(t, alfa1_rot_rot, mmo.thrunModel.alfa1_rot_rot);
+		MCP_LOAD_OPT_HERE(t, alfa2_rot_trans, mmo.thrunModel.alfa2_rot_trans);
+		MCP_LOAD_OPT_HERE(t, alfa3_trans_trans, mmo.thrunModel.alfa3_trans_trans);
+		MCP_LOAD_OPT_HERE(t, alfa4_trans_rot, mmo.thrunModel.alfa4_trans_rot);
+		MCP_LOAD_OPT_HERE(t, additional_std_XY, mmo.thrunModel.additional_std_XY);
+		MCP_LOAD_OPT_DEG_HERE(t, additional_std_phi, mmo.thrunModel.additional_std_phi);
+	}
 }
 
 }  // namespace
@@ -134,7 +143,7 @@ void PFLocalizationCore::Parameters::load_from(const mrpt::containers::yaml& par
 
 	// motion_model_no_odom_2d
 	ASSERT_(params.has("motion_model_no_odom_2d"));
-	load_motion_model2d_from(params["motion_model_no_odom_2d"], motion_model_2d);
+	load_motion_model2d_from(params["motion_model_no_odom_2d"], motion_model_no_odom_2d);
 
 	// motion_model_3d
 	MCP_LOAD_OPT(params, motion_model_3d.modelSelection);

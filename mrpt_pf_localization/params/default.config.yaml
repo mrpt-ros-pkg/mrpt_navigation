@@ -60,7 +60,7 @@
     motion_model_2d:
       modelSelection: mmGaussian    # (mmGaussian|mmThrun)
       gaussianModel:
-        a1: 0.02    # [m/m]
+        a1: 0.04    # [m/m] (also covers systematic odometry scale errors of a few %)
         a2: 0.001  # [m/rad]
         a3: 1.0     # [deg/m]
         a4: 0.25    # [deg/deg]
@@ -150,12 +150,12 @@
     # Docs for mrpt::maps::COccupancyGridMap2D::TLikelihoodOptions: https://docs.mrpt.org/reference/stable/class_mrpt_maps_COccupancyGridMap2D_TLikelihoodOptions.html
     override_likelihood_gridmaps:
        likelihoodMethod: 'lmLikelihoodField_Thrun'
-       LF_stdHit: 2.0
+       LF_stdHit: 0.50  # [m]
        LF_zHit: 0.90
        LF_zRandom: 0.10
        LF_maxRange: 81.0
        LF_maxCorrsDistance: 1.0
-       LF_decimation: 1
+       LF_decimation: 2  # use every 2nd ray, to avoid overconfident weights
 
 
     # After relocalization, candidate poses are grouped using a SE(3) grid with this granularity:
