@@ -66,10 +66,7 @@ MAX_PATH_DEVIATION = 1.5    # [m] ground truth vs reference path, while moving
 MAX_STARTUP_LOC_ERROR = 0.4       # [m] localization converged before the first goal
 MAX_STARTUP_LOC_YAW_ERROR = 10.0  # [deg]
 
-# [m] localized vs ground truth pose, while moving. Odometry drift on long trips
-# through open areas is only corrected slowly by the (1 Hz) particle filter, so
-# this only catches a localization that gets lost, not transient drift:
-MAX_LOC_ERROR = 1.5
+MAX_LOC_ERROR = 1.0         # [m] localized vs ground truth pose, while moving
 
 # Per robot: minimum number of goals reached, and max final errors of reached
 # goals (localized pose vs goal; the ground truth error is only reported). The
