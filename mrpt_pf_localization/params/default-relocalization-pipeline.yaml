@@ -21,8 +21,7 @@ solvers:
     params:
       maxIterations: 2
       robustKernel: 'RobustKernel::GemanMcClure'
-      #robustKernelParam: '0.5*ADAPTIVE_THRESHOLD_SIGMA'  # [m]  # (adaptive)
-      robustKernelParam: '0.5*max(0.5*ADAPTIVE_THRESHOLD_SIGMA, 2.0*ADAPTIVE_THRESHOLD_SIGMA-(2.0*ADAPTIVE_THRESHOLD_SIGMA-0.5*ADAPTIVE_THRESHOLD_SIGMA)*ICP_ITERATION/100)'
+      robustKernelScale: 'sqrt(0.5*max(0.5*ADAPTIVE_THRESHOLD_SIGMA, 2.0*ADAPTIVE_THRESHOLD_SIGMA-(2.0*ADAPTIVE_THRESHOLD_SIGMA-0.5*ADAPTIVE_THRESHOLD_SIGMA)*ICP_ITERATION/100))' # sqrt() keeps the schedule this was tuned at, now that the scale is squared
       #innerLoopVerbose: true
 
 # Sequence of one or more pairs (class, params) defining mp2p_icp::Matcher
