@@ -23,6 +23,117 @@ This repository provides packages that wrap functionality in the Mobile Robot Pr
 The latest **SLAM framework**, whose maps are compatible with this repository for localization, is [MOLA](https://github.com/MOLAorg/).
 
 
+How to cite
+----------------------------------
+If you use `mrpt_tps_astar_planner` in your work, please cite the paper that describes it
+([arXiv:2611.09210](https://arxiv.org/abs/2611.09210)):
+
+```bibtex
+@misc{blanco2026tpsastar,
+  title         = {{TPS-A*}: Path Planning for Any-Shape Vehicles with Certified Collision Checking in Trajectory Parameter Space},
+  author        = {Blanco-Claraco, Jos{\'e} Luis and Rai, Shravan S. and Ca{\~n}adas-Ar{\'a}nega, Fernando and Torres-Moreno, Jos{\'e} Luis and Moreno-{\'U}beda, Jos{\'e} Carlos},
+  year          = {2026},
+  eprint        = {2611.09210},
+  archivePrefix = {arXiv},
+  primaryClass  = {cs.RO},
+  url           = {https://arxiv.org/abs/2611.09210}
+}
+```
+
+<details>
+  <summary>Related papers (newest first)</summary>
+
+[IEEE RAM 2023](https://ieeexplore.ieee.org/abstract/document/10355540/)
+
+```bibtex
+@ARTICLE{xiao2023barn,
+    author = {Xiao, Xuesu and Xu, Zifan and Warnell, Garrett and Stone, Peter and Gebelli Guinjoan, Ferran and T Rodrigues, Romulo and Bruyninckx, Herman and Mandala, Hanjaya and Christmann, Guilherme and Blanco, Jos{\'{e}}-Luis and Somashekara Rai, Shravan},
+     month = {{aug}},
+     title = {Autonomous Ground Navigation in Highly Constrained Spaces: Lessons learned from The 2nd BARN Challenge at ICRA 2023},
+     journal = {IEEE Robotics & Automation Magazine},
+     volume = {30},
+     number = {4},
+     year = {2023},
+     url = {https://ieeexplore.ieee.org/abstract/document/10355540/},
+     doi = {10.1109/MRA.2023.3322920},
+     pages = {91--97}
+}
+```
+
+IJARS 2015 ([DOI](https://doi.org/10.5772/60563))
+
+```bibtex
+@ARTICLE{jaimez2015efficient,
+    author = {Jaimez-Tarifa, Mariano and Gonz{\'{a}}lez-Jim{\'{e}}nez, Javier and Blanco, Jos{\'{e}}-Luis},
+    title = {Efficient Reactive Navigation with Exact Collision Determination for 3D Robot Shapes},
+    journal = {International Journal of Advanced Robotic Systems},
+    volume = {12},
+    number = {63},
+    year = {2015},
+    doi = {10.5772/60563}
+}
+```
+
+IJARS 2015 ([PDF](https://ingmec.ual.es/~jlblanco/papers/blanco2015tps_rrt.pdf))
+
+```bibtex
+@ARTICLE{bellone2015tprrt,
+    author = {Blanco, Jos{\'{e}}-Luis and Bellone, Mauro and Gim{\'{e}}nez-Fern{\'{a}}ndez, Antonio},
+    month = {{{may}}},
+    title = {TP-Space RRT: Kinematic path planning of non-holonomic any-shape vehicles},
+    journal = {International Journal of Advanced Robotic Systems},
+    volume = {12},
+    number = {55},
+    year = {2015},
+    url = {http://www.intechopen.com/journals/international_journal_of_advanced_robotic_systems/tp-space-rrt-ndash-kinematic-path-planning-of-non-holonomic-any-shape-vehicles},
+    doi = {10.5772/60463}
+}
+```
+
+IJRR 2010 ([PDF](https://ingmec.ual.es/~jlblanco/papers/blanco2010ofn_IJRR.pdf)), particle filter used in `mrpt_pf_localization`
+
+```bibtex
+@ARTICLE{blanco2010ofn,
+    author = {Blanco, Jos{\'{e}}-Luis and Gonz{\'{a}}lez-Jim{\'{e}}nez, Javier and Fern{\'{a}}ndez-Madrigal, Juan-Antonio},
+    title = {Optimal Filtering for Non-Parametric Observation Models: Applications to Localization and SLAM},
+    journal = {The International Journal of Robotics Research},
+    volume = {29},
+    number = {14},
+    year = {2010}
+}
+```
+
+Autonomous Robots 2008 ([PDF](https://ingmec.ual.es/~jlblanco/papers/blanco2008eoa_DRAFT.pdf))
+
+```bibtex
+@ARTICLE{blanco2008eoa,
+    author = {Blanco, Jos{\'{e}}-Luis and Gonz{\'{a}}lez-Jim{\'{e}}nez, Javier and Fern{\'{a}}ndez-Madrigal, Juan-Antonio},
+    title = {Extending Obstacle Avoidance Methods through Multiple Parameter-Space Transformations},
+    journal = {Autonomous Robots},
+    volume = {24},
+    number = {1},
+    pages = {29--48},
+    year = {2008},
+    doi = {10.1007/s10514-007-9062-7}
+}
+```
+
+IROS 2006 ([PDF](https://ingmec.ual.es/~jlblanco/papers/blanco2006tps_IROS.pdf))
+
+```bibtex
+@INPROCEEDINGS{blanco2006tps,
+     author = {Blanco, Jos{\'{e}}-Luis and Gonz{\'{a}}lez-Jim{\'{e}}nez, Javier and Fern{\'{a}}ndez-Madrigal, Juan-Antonio},
+      month = oct,
+      title = {The Trajectory Parameter Space (TP-Space): A New Space Representation for Non-Holonomic Mobile Robot Reactive Navigation},
+      booktitle = {IEEE International Conference on Intelligent Robots and Systems (IROS'06)},
+      year = {2006},
+      location = {Beijing (China)}
+}
+```
+
+</details>
+
+
 Documentation for each package
 ----------------------------------
 All packages follow [REP-2003](https://ros.org/reps/rep-2003.html) regarding ROS 2 topic QoS.
@@ -120,28 +231,6 @@ there are no collisions, the robot stays on its path, and goals are reached or
 reported as failed in time; the car must reach only some of them):
 
     colcon test --packages-select mrpt_navigation
-
-
-
-
-
-How to cite
-----------------------------------
-If you use `mrpt_tps_astar_planner` in your work, please cite the paper that describes it
-([arXiv:2611.09210](https://arxiv.org/abs/2611.09210)):
-
-```bibtex
-@misc{blanco2026tpsastar,
-  title         = {{TPS-A*}: Path Planning for Any-Shape Vehicles with Certified Collision Checking in Trajectory Parameter Space},
-  author        = {Blanco-Claraco, Jos{\'e} Luis and Rai, Shravan S. and Ca{\~n}adas-Ar{\'a}nega, Fernando and Torres-Moreno, Jos{\'e} Luis and Moreno-{\'U}beda, Jos{\'e} Carlos},
-  year          = {2026},
-  eprint        = {2611.09210},
-  archivePrefix = {arXiv},
-  primaryClass  = {cs.RO},
-  url           = {https://arxiv.org/abs/2611.09210}
-}
-```
-
 
 Contributing
 ----------------------------------

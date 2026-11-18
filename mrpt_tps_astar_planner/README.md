@@ -1,21 +1,5 @@
 # mrpt_tps_astar_planner
 
-## Overview
-
-This package provides a ROS 2 node that uses the PTG-based A\* planner from
-`mrpt_path_planning` to compute collision-free waypoint sequences for a
-non-holonomic robot, respecting its real shape, orientation, and kinematic
-constraints.
-
-Planning is performed on a SE(2) lattice using Parameterized Trajectory
-Generator (PTG) families that encode the robot's motion primitives. The result
-is published as a `mrpt_msgs/WaypointSequence` (and a `nav_msgs/Path` for
-visualization) and/or returned as the response of a ROS 2 service call.
-
-The node supports **concurrent service requests**: each executor thread owns a
-lazily-initialized planner instance, so multiple clients can request plans
-simultaneously without blocking each other.
-
 ## How to cite
 
 If you use this planner in your work, please cite the paper that describes it
@@ -33,6 +17,101 @@ If you use this planner in your work, please cite the paper that describes it
 }
 ```
 
+<details>
+  <summary>Related papers (newest first)</summary>
+
+[IEEE RAM 2023](https://ieeexplore.ieee.org/abstract/document/10355540/)
+
+```bibtex
+@ARTICLE{xiao2023barn,
+    author = {Xiao, Xuesu and Xu, Zifan and Warnell, Garrett and Stone, Peter and Gebelli Guinjoan, Ferran and T Rodrigues, Romulo and Bruyninckx, Herman and Mandala, Hanjaya and Christmann, Guilherme and Blanco, Jos{\'{e}}-Luis and Somashekara Rai, Shravan},
+     month = {{aug}},
+     title = {Autonomous Ground Navigation in Highly Constrained Spaces: Lessons learned from The 2nd BARN Challenge at ICRA 2023},
+     journal = {IEEE Robotics & Automation Magazine},
+     volume = {30},
+     number = {4},
+     year = {2023},
+     url = {https://ieeexplore.ieee.org/abstract/document/10355540/},
+     doi = {10.1109/MRA.2023.3322920},
+     pages = {91--97}
+}
+```
+
+IJARS 2015 ([DOI](https://doi.org/10.5772/60563))
+
+```bibtex
+@ARTICLE{jaimez2015efficient,
+    author = {Jaimez-Tarifa, Mariano and Gonz{\'{a}}lez-Jim{\'{e}}nez, Javier and Blanco, Jos{\'{e}}-Luis},
+    title = {Efficient Reactive Navigation with Exact Collision Determination for 3D Robot Shapes},
+    journal = {International Journal of Advanced Robotic Systems},
+    volume = {12},
+    number = {63},
+    year = {2015},
+    doi = {10.5772/60563}
+}
+```
+
+IJARS 2015 ([PDF](https://ingmec.ual.es/~jlblanco/papers/blanco2015tps_rrt.pdf))
+
+```bibtex
+@ARTICLE{bellone2015tprrt,
+    author = {Blanco, Jos{\'{e}}-Luis and Bellone, Mauro and Gim{\'{e}}nez-Fern{\'{a}}ndez, Antonio},
+    month = {{{may}}},
+    title = {TP-Space RRT: Kinematic path planning of non-holonomic any-shape vehicles},
+    journal = {International Journal of Advanced Robotic Systems},
+    volume = {12},
+    number = {55},
+    year = {2015},
+    url = {http://www.intechopen.com/journals/international_journal_of_advanced_robotic_systems/tp-space-rrt-ndash-kinematic-path-planning-of-non-holonomic-any-shape-vehicles},
+    doi = {10.5772/60463}
+}
+```
+
+Autonomous Robots 2008 ([PDF](https://ingmec.ual.es/~jlblanco/papers/blanco2008eoa_DRAFT.pdf))
+
+```bibtex
+@ARTICLE{blanco2008eoa,
+    author = {Blanco, Jos{\'{e}}-Luis and Gonz{\'{a}}lez-Jim{\'{e}}nez, Javier and Fern{\'{a}}ndez-Madrigal, Juan-Antonio},
+    title = {Extending Obstacle Avoidance Methods through Multiple Parameter-Space Transformations},
+    journal = {Autonomous Robots},
+    volume = {24},
+    number = {1},
+    pages = {29--48},
+    year = {2008},
+    doi = {10.1007/s10514-007-9062-7}
+}
+```
+
+IROS 2006 ([PDF](https://ingmec.ual.es/~jlblanco/papers/blanco2006tps_IROS.pdf))
+
+```bibtex
+@INPROCEEDINGS{blanco2006tps,
+     author = {Blanco, Jos{\'{e}}-Luis and Gonz{\'{a}}lez-Jim{\'{e}}nez, Javier and Fern{\'{a}}ndez-Madrigal, Juan-Antonio},
+      month = oct,
+      title = {The Trajectory Parameter Space (TP-Space): A New Space Representation for Non-Holonomic Mobile Robot Reactive Navigation},
+      booktitle = {IEEE International Conference on Intelligent Robots and Systems (IROS'06)},
+      year = {2006},
+      location = {Beijing (China)}
+}
+```
+
+</details>
+
+## Overview
+
+This package provides a ROS 2 node that uses the PTG-based A\* planner from
+`mrpt_path_planning` to compute collision-free waypoint sequences for a
+non-holonomic robot, respecting its real shape, orientation, and kinematic
+constraints.
+
+Planning is performed on a SE(2) lattice using Parameterized Trajectory
+Generator (PTG) families that encode the robot's motion primitives. The result
+is published as a `mrpt_msgs/WaypointSequence` (and a `nav_msgs/Path` for
+visualization) and/or returned as the response of a ROS 2 service call.
+
+The node supports **concurrent service requests**: each executor thread owns a
+lazily-initialized planner instance, so multiple clients can request plans
+simultaneously without blocking each other.
 
 ## Configuration
 
