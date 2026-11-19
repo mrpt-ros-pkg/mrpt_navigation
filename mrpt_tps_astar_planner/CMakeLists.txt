@@ -192,6 +192,14 @@ if(BUILD_TESTING)
   target_compile_definitions(test_node_goal_frame PRIVATE
     MRPT_TPS_ASTAR_PLANNER_CONFIGS_DIR="${CMAKE_CURRENT_SOURCE_DIR}/configs")
   target_link_libraries(test_node_goal_frame ${PROJECT_NAME}_component)
+
+  # Waypoint sequences: free heading at the last waypoint.
+  ament_add_gtest(test_node_waypoints_heading
+    test/test_node_waypoints_heading.cpp
+    TIMEOUT 300)
+  target_compile_definitions(test_node_waypoints_heading PRIVATE
+    MRPT_TPS_ASTAR_PLANNER_CONFIGS_DIR="${CMAKE_CURRENT_SOURCE_DIR}/configs")
+  target_link_libraries(test_node_waypoints_heading ${PROJECT_NAME}_component)
 endif()
 
 ament_package()
