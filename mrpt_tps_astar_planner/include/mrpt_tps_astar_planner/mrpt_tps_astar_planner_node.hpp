@@ -360,6 +360,9 @@ class TPS_Astar_Planner_Node : public rclcpp::Node
 		double allowedDistance = 0;
 		/// Skipped (instead of failing) if the robot footprint there hits an obstacle
 		bool allowSkip = false;
+		/// Any final heading is fine: the search goal is the position alone
+		/// (`pose.phi` is only a hint, e.g. for collision checks at the goal)
+		bool freeHeading = false;
 	};
 
 	/// A navigation goal handled by the goal manager: a single pose, or a
@@ -377,6 +380,11 @@ class TPS_Astar_Planner_Node : public rclcpp::Node
 
 		[[nodiscard]] bool from_action() const { return action || waypointsAction; }
 		[[nodiscard]] bool has_next_waypoint() const { return current + 1 < waypoints.size(); }
+		/// Whether the current target is a position, with a free final heading
+		[[nodiscard]] bool free_heading() const
+		{
+			return !waypoints.empty() && waypoints.at(current).freeHeading;
+		}
 	};
 
 	std::mutex goal_cs_;  //!< guards the fields below, until goal_cv_

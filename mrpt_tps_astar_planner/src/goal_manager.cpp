@@ -392,8 +392,11 @@ void TPS_Astar_Planner_Node::action_waypoints_handle_accepted(
 		ignoreHeading.push_back(in.ignore_heading);
 	}
 	// Free headings: toward the next waypoint, so the search to it starts
-	// straight and the robot drives through without stopping; the last one keeps
-	// the direction it is reached from (from the previous waypoint, or the robot).
+	// straight and the robot drives through without stopping. The last one is
+	// searched as a position (any final heading): a heading fixed here gets
+	// stale once the robot is elsewhere (e.g. past it after a missed goal), and
+	// reaching it would then need loops or long reverse motions. Its heading is
+	// only a hint (from the previous waypoint, or the robot).
 	for (size_t i = 0; i < n; i++)
 	{
 		if (!ignoreHeading[i])
@@ -405,8 +408,10 @@ void TPS_Astar_Planner_Node::action_waypoints_handle_accepted(
 		{
 			const auto& next = ag.waypoints[i + 1].pose;
 			p.phi = std::atan2(next.y - p.y, next.x - p.x);
+			continue;
 		}
-		else if (i > 0)
+		ag.waypoints[i].freeHeading = true;
+		if (i > 0)
 		{
 			const auto& prev = ag.waypoints[i - 1].pose;
 			p.phi = std::atan2(p.y - prev.y, p.x - prev.x);
@@ -661,7 +666,14 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 		pi.ptgs = get_thread_ptgs();
 		pi.stateStart.pose = from;
 		pi.stateStart.vel = {speed * std::cos(from.phi), speed * std::sin(from.phi), 0.0};
-		pi.stateGoal.state = goal->pose;
+		if (goal->free_heading())
+		{
+			pi.stateGoal.state = goal->pose.translation();
+		}
+		else
+		{
+			pi.stateGoal.state = goal->pose;
+		}
 
 		planner.costEvaluators_.clear();
 		auto bbox = mrpt::math::TBoundingBoxf::PlusMinusInfinity();
@@ -1042,8 +1054,11 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 				endGoal(NavStatus::STATUS_SUCCESS, "reached", "The robot is at the goal");
 				return true;
 			}
-			// End exactly at the goal (refinement may leave it slightly off):
+			// End exactly at the goal (refinement may leave it slightly off),
+			// with the heading the path arrives with if it is free:
+			const double endPhi = goal->free_heading() ? newPoses.back().phi : goal->pose.phi;
 			newPoses.back() = goal->pose;
+			newPoses.back().phi = endPhi;
 		}
 
 		// The search edges were checked when created, maybe against older
@@ -1299,6 +1314,33 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 		return obstacleIndex(points).collides(pose, footprintPoly, footprintRadius, 0.0);
 	};
 
+	// For a position goal (free heading): the first heading, from `pose.phi`
+	// on, at which the footprint fits, if any. Its heading is only a hint, so a
+	// goal is not refused because the footprint hits something at that one.
+	auto headingThatFits = [&](const TPose2D& pose) -> std::optional<double>
+	{
+		if (!plannerReady)
+		{
+			return pose.phi;
+		}
+		std::vector<mpp::ObstacleSource::Ptr> unusedSources;
+		std::vector<mrpt::maps::CPointsMap::Ptr> points;
+		auto unusedBbox = mrpt::math::TBoundingBoxf::PlusMinusInfinity();
+		build_obstacles(pose, unusedSources, &points, nullptr, unusedBbox);
+		const auto index = obstacleIndex(points);
+		constexpr int kHeadings = 24;  // every 15 deg
+		for (int k = 0; k < kHeadings; k++)
+		{
+			TPose2D p = pose;
+			p.phi = mrpt::math::wrapToPi(pose.phi + 2 * M_PI * k / kHeadings);
+			if (!index.collides(p, footprintPoly, footprintRadius, 0.0))
+			{
+				return p.phi;
+			}
+		}
+		return std::nullopt;
+	};
+
 	// Makes goal->pose the current waypoint (if a sequence), skipping those in
 	// collision that allow it. A goal (or waypoint) in collision can not be
 	// reached: the goal fails now instead of driving toward it with partial
@@ -1311,7 +1353,15 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 			{
 				goal->pose = goal->waypoints.at(goal->current).pose;
 			}
-			const auto hit = footprintHit(goal->pose);
+			auto hit = footprintHit(goal->pose);
+			if (hit && goal->free_heading())
+			{
+				if (const auto phi = headingThatFits(goal->pose); phi)
+				{
+					goal->pose.phi = *phi;
+					hit.reset();
+				}
+			}
 			if (!hit)
 			{
 				waitingWaypoint = false;
