@@ -106,7 +106,11 @@ class PlannerWaypointsHeadingTest : public ::testing::Test
 	void TearDown() override
 	{
 		executor_.cancel();
-		spin_thread_.join();
+		// (not started if SetUp() skipped the test)
+		if (spin_thread_.joinable())
+		{
+			spin_thread_.join();
+		}
 	}
 
 	static mrpt_msgs::msg::Waypoint waypoint(double x, double y)
