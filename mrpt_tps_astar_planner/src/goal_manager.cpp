@@ -1314,6 +1314,33 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 		return obstacleIndex(points).collides(pose, footprintPoly, footprintRadius, 0.0);
 	};
 
+	// For a position goal (free heading): the first heading, from `pose.phi`
+	// on, at which the footprint fits, if any. Its heading is only a hint, so a
+	// goal is not refused because the footprint hits something at that one.
+	auto headingThatFits = [&](const TPose2D& pose) -> std::optional<double>
+	{
+		if (!plannerReady)
+		{
+			return pose.phi;
+		}
+		std::vector<mpp::ObstacleSource::Ptr> unusedSources;
+		std::vector<mrpt::maps::CPointsMap::Ptr> points;
+		auto unusedBbox = mrpt::math::TBoundingBoxf::PlusMinusInfinity();
+		build_obstacles(pose, unusedSources, &points, nullptr, unusedBbox);
+		const auto index = obstacleIndex(points);
+		constexpr int kHeadings = 24;  // every 15 deg
+		for (int k = 0; k < kHeadings; k++)
+		{
+			TPose2D p = pose;
+			p.phi = mrpt::math::wrapToPi(pose.phi + 2 * M_PI * k / kHeadings);
+			if (!index.collides(p, footprintPoly, footprintRadius, 0.0))
+			{
+				return p.phi;
+			}
+		}
+		return std::nullopt;
+	};
+
 	// Makes goal->pose the current waypoint (if a sequence), skipping those in
 	// collision that allow it. A goal (or waypoint) in collision can not be
 	// reached: the goal fails now instead of driving toward it with partial
@@ -1326,7 +1353,15 @@ void TPS_Astar_Planner_Node::goal_manager_loop()
 			{
 				goal->pose = goal->waypoints.at(goal->current).pose;
 			}
-			const auto hit = footprintHit(goal->pose);
+			auto hit = footprintHit(goal->pose);
+			if (hit && goal->free_heading())
+			{
+				if (const auto phi = headingThatFits(goal->pose); phi)
+				{
+					goal->pose.phi = *phi;
+					hit.reset();
+				}
+			}
 			if (!hit)
 			{
 				waitingWaypoint = false;

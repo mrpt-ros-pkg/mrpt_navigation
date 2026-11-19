@@ -50,6 +50,9 @@ class PlannerWaypointsHeadingTest : public ::testing::Test
 
 	void SetUp() override
 	{
+#if !HAVE_MPP_CONTINUOUS_PLANNING
+		GTEST_SKIP() << "navigate_waypoints needs an mrpt_path_planning with resumable A*";
+#endif
 		const std::string cfg = MRPT_TPS_ASTAR_PLANNER_CONFIGS_DIR;
 		rclcpp::NodeOptions opts;
 		opts.parameter_overrides({
