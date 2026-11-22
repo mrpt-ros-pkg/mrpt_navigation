@@ -192,3 +192,7 @@ Consequences for day-to-day work:
 - PR/commit titles matter: `catkin_generate_changelog` pulls merge commit
   titles and first-line commit messages verbatim into `CHANGELOG.rst`, so
   keep them descriptive and free of internal doc/section references.
+- ABI: changing the layout of a public type (data members added, removed or reordered,
+  virtual functions) or an exported signature of a library other packages link needs at least a
+  minor version bump, never a patch release: packages built against the previous release would
+  load the new library and silently corrupt memory.
