@@ -118,7 +118,13 @@ jobs:
           # github.workspace, which is the host path in container jobs:
           mkdir -p nav_traces
           export MRPT_NAV_TEST_LOG="$GITHUB_WORKSPACE/nav_traces/traces.json"
-          colcon test --event-handlers console_direct+
+          # Only the packages of this repository (not the dependencies built
+          # from source), one package at a time: otherwise the simulation
+          # tests of several packages run at once on the few CPU cores of the
+          # runner, and become timing-dependent.
+          colcon test --executor sequential \
+            --packages-skip $(colcon list --base-paths ci_deps --names-only) \
+            --event-handlers console_direct+
           colcon test-result --verbose
 
       # Diagnostics only: never fails the job.
