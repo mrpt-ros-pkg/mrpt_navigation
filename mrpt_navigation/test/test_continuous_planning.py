@@ -129,6 +129,7 @@ class TestContinuousPlanning(unittest.TestCase):
         cls.status = None
         cls.statuses = []
         cls.collisions = 0
+        cls.collision_poses = []  # ground truth at the first collisions
         cls.ref_path = None
         cls.robot_shape = None
         cls.references = []
@@ -146,6 +147,8 @@ class TestContinuousPlanning(unittest.TestCase):
         def on_collision(m):
             if m.data:
                 cls.collisions += 1
+                if len(cls.collision_poses) < 5 and cls.gt is not None:
+                    cls.collision_poses.append(tuple(round(v, 2) for v in cls.gt))
 
         def on_ref_path(m):
             cls.ref_path = [(q.pose.position.x, q.pose.position.y) for q in m.poses]
@@ -288,7 +291,8 @@ class TestContinuousPlanning(unittest.TestCase):
                          NavigationFinalStatus.STATUS_SUCCESS)
         self.assertGreater(min_clearance, MIN_CLEARANCE, 'the robot drove into the obstacle')
         self.assertNotIn('Blocked', self.statuses)
-        self.assertEqual(self.collisions, 0)
+        self.assertEqual(self.collisions, 0,
+                         f'collisions, ground truth at the first ones: {self.collision_poses}')
         self.assertLess(
             math.hypot(self.gt[0] - FAR_GOAL[0], self.gt[1] - FAR_GOAL[1]),
             GOAL_GT_TOLERANCE)
@@ -330,4 +334,5 @@ class TestContinuousPlanning(unittest.TestCase):
                 self.gt[0] - HOME_GOAL[0], self.gt[1] - HOME_GOAL[1]) < GOAL_GT_TOLERANCE,
             GOAL_TIMEOUT)
         self.assertTrue(reached, f'topic goal not reached: {self.statuses}')
-        self.assertEqual(self.collisions, 0)
+        self.assertEqual(self.collisions, 0,
+                         f'collisions, ground truth at the first ones: {self.collision_poses}')
