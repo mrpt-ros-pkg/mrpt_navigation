@@ -401,11 +401,11 @@ void PFLocalizationNode::callbackPointCloud(
 
 	auto obs = mrpt::obs::CObservationPointCloud::Create();
 	obs->sensorLabel = topicName;
+	obs->timestamp = mrpt::ros2bridge::fromROS(msg.header.stamp);
+	obs->sensorPose = sensorPose;
 	auto pts = mrpt::maps::CSimplePointsMap::Create();
 	obs->pointcloud = pts;
 	mrpt::ros2bridge::fromROS(msg, *pts);
-
-	obs->sensorLabel = topicName;
 
 	last_sensor_stamp_ = obs->timestamp;
 
@@ -905,10 +905,10 @@ void PFLocalizationNode::updateEstimatedTwist()
 
 	const double max_time_to_use_velocity_model = 5.0;	// [s]
 
-	if (dt < max_time_to_use_velocity_model)
+	// Sensor stamps may go back in time (e.g. several sensors with different
+	// delays): just start again from the current estimate.
+	if (dt > 0 && dt < max_time_to_use_velocity_model)
 	{
-		ASSERT_GT_(dt, .0);
-
 		auto& tw = estimated_twist_.emplace();
 
 		const auto incrPose = curPose - prevPose;
