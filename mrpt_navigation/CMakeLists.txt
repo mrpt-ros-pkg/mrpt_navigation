@@ -19,6 +19,11 @@ if(BUILD_TESTING)
   # A->B goals for each simulated robot, checking there are no collisions and
   # goals are reached or reported as failed in time (see the test criteria).
   find_package(ament_cmake_ros REQUIRED)
+  # Each test also gets its own MVSim server port (like its own ROS domain),
+  # so the tests of several packages can run at the same time (requires
+  # MVSim >= 1.6.0; older versions ignore MVSIM_SERVER_PORT):
+  set(MVSIM_PORT_diffdrive 23711)
+  set(MVSIM_PORT_ackermann 23712)
   foreach(ROBOT diffdrive ackermann)
     ament_add_ros_isolated_pytest_test(test_navigation_battery_${ROBOT}
       test/test_navigation_battery.py
@@ -26,6 +31,7 @@ if(BUILD_TESTING)
       # Ideal mvsim twist controllers: test the navigation stack, not the
       # simulated vehicle dynamics:
       ENV MRPT_NAV_TEST_ROBOT=${ROBOT}
+          MVSIM_SERVER_PORT=${MVSIM_PORT_${ROBOT}}
           MRPT_TUTORIALS_DYNAMIC_OBSTACLES=false
           MRPT_TUTORIALS_DIFFDRIVE_CONTROLLER=twist_ideal
           MRPT_TUTORIALS_ACKERMANN_CONTROLLER=twist_ideal
@@ -38,6 +44,7 @@ if(BUILD_TESTING)
     TIMEOUT 900
     ENV MRPT_TUTORIALS_DIFFDRIVE_CONTROLLER=twist_ideal
         MRPT_TUTORIALS_DYNAMIC_OBSTACLES=false
+        MVSIM_SERVER_PORT=23713
   )
 
   # Replanning for a fast robot (searches start ahead of it on its path):
@@ -46,6 +53,7 @@ if(BUILD_TESTING)
     TIMEOUT 900
     ENV MRPT_TUTORIALS_DIFFDRIVE_CONTROLLER=twist_ideal
         MRPT_TUTORIALS_DYNAMIC_OBSTACLES=false
+        MVSIM_SERVER_PORT=23714
   )
 
   # Goal manager against late/stale follower statuses and boxes dropped on
@@ -55,6 +63,7 @@ if(BUILD_TESTING)
     TIMEOUT 1200
     ENV MRPT_TUTORIALS_DIFFDRIVE_CONTROLLER=twist_ideal
         MRPT_TUTORIALS_DYNAMIC_OBSTACLES=false
+        MVSIM_SERVER_PORT=23715
   )
 
   # Navigation status, feedback and warnings published by the planner (PTG
@@ -64,6 +73,7 @@ if(BUILD_TESTING)
     TIMEOUT 1200
     ENV MRPT_TUTORIALS_DIFFDRIVE_CONTROLLER=twist_ideal
         MRPT_TUTORIALS_DYNAMIC_OBSTACLES=false
+        MVSIM_SERVER_PORT=23716
   )
 
   # Waypoint sequences (planner navigate_waypoints action):
@@ -72,6 +82,7 @@ if(BUILD_TESTING)
     TIMEOUT 1200
     ENV MRPT_TUTORIALS_DIFFDRIVE_CONTROLLER=twist_ideal
         MRPT_TUTORIALS_DYNAMIC_OBSTACLES=false
+        MVSIM_SERVER_PORT=23717
   )
 
   # Legacy (plain string) follower status, without goal id and revision:
@@ -80,6 +91,7 @@ if(BUILD_TESTING)
     TIMEOUT 900
     ENV MRPT_TUTORIALS_DIFFDRIVE_CONTROLLER=twist_ideal
         MRPT_TUTORIALS_DYNAMIC_OBSTACLES=false
+        MVSIM_SERVER_PORT=23718
   )
 endif()
 

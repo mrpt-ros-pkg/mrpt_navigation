@@ -209,6 +209,7 @@ class AisleManeuvers(unittest.TestCase):
         cls.status = None
         cls.status_count = 0
         cls.collisions = 0
+        cls.collision_poses = []  # ground truth at the first collisions
         cls.trace = []
 
         def on_gt(m):
@@ -223,6 +224,10 @@ class AisleManeuvers(unittest.TestCase):
         def on_collision(m):
             if m.data:
                 cls.collisions += 1
+                if len(cls.collision_poses) < 5 and cls.gt is not None:
+                    cls.collision_poses.append(tuple(round(v, 2) for v in cls.gt))
+                    # Printed now too, in case another assertion fails first:
+                    print(f'Collision, ground truth: {cls.collision_poses[-1]}', flush=True)
 
         n.create_subscription(Odometry, '/base_pose_ground_truth', on_gt, 10)
         n.create_subscription(String, STATUS_TOPIC, on_status, latched)
@@ -310,6 +315,8 @@ class AisleManeuvers(unittest.TestCase):
         self.node.get_logger().info(
             f'min clearance {min_clearance:.3f} m, in-aisle cross-track {max_cross:.3f} m, '
             f'collisions {self.collisions}')
-        self.assertEqual(self.collisions, 0, 'The robot collided')
+        self.assertEqual(
+            self.collisions, 0,
+            f'The robot collided, ground truth at the first ones: {self.collision_poses}')
         self.assertGreater(min_clearance, MIN_CLEARANCE, 'Too close to the boxes')
         self.assertLess(max_cross, MAX_IN_AISLE_CROSS, 'Left the reverse arc wide of the aisle')
