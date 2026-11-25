@@ -150,7 +150,8 @@ colcon test-result --verbose
 navigation batteries and anytime/continuous/fast-robot replanning tests in
 mvsim (several minutes). The demo_world2 moving box is disabled in tests
 (`MRPT_TUTORIALS_DYNAMIC_OBSTACLES=false`). Each mvsim test has its own
-`MVSIM_SERVER_PORT` (set in CMake), as well as its own ROS domain.
+`MVSIM_SERVER_PORT` (set in CMake; honored by MVSim >= 1.6.0), as well as its
+own ROS domain.
 `colcon test --packages-select mrpt_trajectory_follower` drives a car-like
 robot out of and back into narrow aisles in mvsim (`mrpt_trajectory_follower/test/`).
 

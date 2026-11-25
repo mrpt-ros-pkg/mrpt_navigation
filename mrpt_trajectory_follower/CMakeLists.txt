@@ -116,7 +116,8 @@ if(BUILD_TESTING)
 
   # Closed-loop maneuvers of a car-like robot between narrow aisles, in
   # simulation (mvsim, headless). Each test has its own MVSim server port, so
-  # the tests of several packages can run at the same time.
+  # the tests of several packages can run at the same time (requires MVSim
+  # >= 1.6.0; older versions ignore MVSIM_SERVER_PORT).
   find_package(ament_cmake_ros REQUIRED)
   ament_add_ros_isolated_pytest_test(test_aisle_maneuvers
     test/test_aisle_maneuvers.py

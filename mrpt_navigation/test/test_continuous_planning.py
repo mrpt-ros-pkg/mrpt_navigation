@@ -149,6 +149,8 @@ class TestContinuousPlanning(unittest.TestCase):
                 cls.collisions += 1
                 if len(cls.collision_poses) < 5 and cls.gt is not None:
                     cls.collision_poses.append(tuple(round(v, 2) for v in cls.gt))
+                    # Printed now too, in case another assertion fails first:
+                    print(f'Collision, ground truth: {cls.collision_poses[-1]}', flush=True)
 
         def on_ref_path(m):
             cls.ref_path = [(q.pose.position.x, q.pose.position.y) for q in m.poses]

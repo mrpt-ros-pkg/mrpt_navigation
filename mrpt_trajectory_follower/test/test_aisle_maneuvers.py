@@ -226,6 +226,8 @@ class AisleManeuvers(unittest.TestCase):
                 cls.collisions += 1
                 if len(cls.collision_poses) < 5 and cls.gt is not None:
                     cls.collision_poses.append(tuple(round(v, 2) for v in cls.gt))
+                    # Printed now too, in case another assertion fails first:
+                    print(f'Collision, ground truth: {cls.collision_poses[-1]}', flush=True)
 
         n.create_subscription(Odometry, '/base_pose_ground_truth', on_gt, 10)
         n.create_subscription(String, STATUS_TOPIC, on_status, latched)

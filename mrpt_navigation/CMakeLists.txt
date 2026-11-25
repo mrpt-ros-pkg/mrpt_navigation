@@ -20,7 +20,8 @@ if(BUILD_TESTING)
   # goals are reached or reported as failed in time (see the test criteria).
   find_package(ament_cmake_ros REQUIRED)
   # Each test also gets its own MVSim server port (like its own ROS domain),
-  # so the tests of several packages can run at the same time:
+  # so the tests of several packages can run at the same time (requires
+  # MVSim >= 1.6.0; older versions ignore MVSIM_SERVER_PORT):
   set(MVSIM_PORT_diffdrive 23711)
   set(MVSIM_PORT_ackermann 23712)
   foreach(ROBOT diffdrive ackermann)
