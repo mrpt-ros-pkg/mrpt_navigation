@@ -155,9 +155,13 @@
     # de-serialized metric map (.mm) used as global map:
     #
     # Docs for mrpt::maps::COccupancyGridMap2D::TLikelihoodOptions: https://docs.mrpt.org/reference/stable/class_mrpt_maps_COccupancyGridMap2D_TLikelihoodOptions.html
+    #
+    # The accuracy is limited by the map resolution: use cells of 0.1 m or
+    # smaller. Larger LF_stdHit values make the estimate lag behind under
+    # odometry errors; much smaller ones make the particle cloud overconfident.
     override_likelihood_gridmaps:
        likelihoodMethod: 'lmLikelihoodField_Thrun'
-       LF_stdHit: 0.50  # [m]
+       LF_stdHit: 0.30  # [m]
        LF_zHit: 0.90
        LF_zRandom: 0.10
        LF_maxRange: 81.0
