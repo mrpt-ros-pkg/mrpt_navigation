@@ -26,8 +26,11 @@
 	<!-- =============================
 		   Vehicle classes definition
 	     ============================= -->
-	<!-- Controller overridable with an environment variable (e.g. twist_ideal in tests): -->
-	<include file="${DEFS_DIR}/jackal.vehicle.xml" controller="${MRPT_TUTORIALS_DIFFDRIVE_CONTROLLER|twist_pid}" />
+	<!-- Controller overridable with an environment variable (e.g. twist_ideal in tests).
+	     The default sensors of the vehicle class (2D lidar "scanner1", 3D lidar "lidar1"
+	     and camera "cam1") can be disabled the same way, if only "laser1" is used: -->
+	<include file="${DEFS_DIR}/jackal.vehicle.xml" controller="${MRPT_TUTORIALS_DIFFDRIVE_CONTROLLER|twist_pid}"
+	  default_sensors="${MRPT_TUTORIALS_DIFFDRIVE_DEFAULT_SENSORS|true}" />
 
 	<!-- ========================
 		   Vehicle(s) definition
