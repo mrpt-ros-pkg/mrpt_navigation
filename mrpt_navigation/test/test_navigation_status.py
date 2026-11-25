@@ -405,6 +405,10 @@ class TestNavigationStatus(unittest.TestCase):
         handle = self.send_action_goal(goal)
         res = self.wait_result(handle, GOAL_TIMEOUT)
         self.set_obstacles(None)
+        # The final status message may arrive after the action result:
+        self.spin_until(
+            lambda: self.states_since(start) and
+            self.states_since(start)[-1][0] == S('FAILED'), 5.0)
         states = self.states_since(start)
         print(f'States for a walled-in goal: {states}', flush=True)
         self.assertEqual(res.status, GoalStatus.STATUS_ABORTED)
