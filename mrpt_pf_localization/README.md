@@ -75,8 +75,9 @@ the only way to set these important options is via this overriding mechanism.
 
 Refer to node launch arguments for details.
 
-**Point cloud maps**: the log-likelihood of a scan is `-mean(d_i^2)/sigma_dist`,
-with `d_i` the distance from each used scan point to its closest map point.
+**Point cloud maps**: the log-likelihood of a scan is
+`-mean(min(d_i^2, max_corr_distance^2))/sigma_dist`, with `d_i` the distance
+from each used scan point to its closest map point.
 Since it is a mean, not a sum over points as in the occupancy grid likelihood
 field, `sigma_dist` (in m², default `0.0025`) is much smaller than a per-point
 variance. Too large values produce a wide particle cloud whose mean lags behind

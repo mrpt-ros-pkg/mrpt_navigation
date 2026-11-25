@@ -140,12 +140,12 @@
     #
     # Docs for mrpt::maps::CPointsMap::TLikelihoodOptions: https://docs.mrpt.org/reference/stable/struct_mrpt_maps_CPointsMap_TLikelihoodOptions.html
     #
-    # The log-likelihood is -mean(d_i^2)/sigma_dist, with d_i the distance from
-    # each used scan point to its closest map point. Being a mean (not a sum
-    # over points), sigma_dist must be small to give informative weights:
-    # large values make a wide particle cloud whose mean lags behind under
-    # odometry errors. For dense 3D point clouds, increase decimation (or
-    # downsample the input) to bound the CPU cost.
+    # The log-likelihood is -mean(min(d_i^2, max_corr_distance^2))/sigma_dist,
+    # with d_i the distance from each used scan point to its closest map point.
+    # Being a mean (not a sum over points), sigma_dist must be small to give
+    # informative weights: large values make a wide particle cloud whose mean
+    # lags behind under odometry errors. For dense 3D point clouds, increase
+    # decimation (or downsample the input) to bound the CPU cost.
     override_likelihood_point_maps:
       sigma_dist: 0.0025  # [m^2]
       max_corr_distance: 1.0 # [m]
