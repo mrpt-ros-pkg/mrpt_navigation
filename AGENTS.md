@@ -149,13 +149,16 @@ colcon test-result --verbose
 `colcon test --packages-select mrpt_navigation` runs headless end-to-end
 navigation batteries and anytime/continuous/fast-robot replanning tests in
 mvsim (several minutes). The demo_world2 moving box is disabled in tests
-(`MRPT_TUTORIALS_DYNAMIC_OBSTACLES=false`).
+(`MRPT_TUTORIALS_DYNAMIC_OBSTACLES=false`). Each mvsim test has its own
+`MVSIM_SERVER_PORT` (set in CMake), as well as its own ROS domain.
 `colcon test --packages-select mrpt_trajectory_follower` drives a car-like
 robot out of and back into narrow aisles in mvsim (`mrpt_trajectory_follower/test/`).
 
 CI (`.github/workflows/build-ros.yml`) builds and tests against Humble and
 Jazzy (stable + testing repos) on every push. Dependencies not yet released
-with MRPT 3 support are built from source via `.github/ci-deps.repos`.
+with MRPT 3 support are built from source via `.github/ci-deps.repos`; only
+this repository's packages are tested, one at a time (`--executor sequential`),
+since simulation tests running at once on the runner become timing-dependent.
 
 ## Release process (maintainer only)
 

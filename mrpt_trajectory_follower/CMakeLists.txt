@@ -115,23 +115,27 @@ if(BUILD_TESTING)
   ament_lint_auto_find_test_dependencies()
 
   # Closed-loop maneuvers of a car-like robot between narrow aisles, in
-  # simulation (mvsim, headless).
+  # simulation (mvsim, headless). Each test has its own MVSim server port, so
+  # the tests of several packages can run at the same time.
   find_package(ament_cmake_ros REQUIRED)
   ament_add_ros_isolated_pytest_test(test_aisle_maneuvers
     test/test_aisle_maneuvers.py
     TIMEOUT 300
+    ENV MVSIM_SERVER_PORT=23731
   )
 
   # Commanded to move, but stuck against an obstacle it doesn't see: Blocked.
   ament_add_ros_isolated_pytest_test(test_stall_blocked
     test/test_stall_blocked.py
     TIMEOUT 300
+    ENV MVSIM_SERVER_PORT=23732
   )
 
   # Obstacle data that stop arriving: full stop, then resume.
   ament_add_ros_isolated_pytest_test(test_stale_obstacles_stop
     test/test_stale_obstacles_stop.py
     TIMEOUT 300
+    ENV MVSIM_SERVER_PORT=23733
   )
 endif()
 
