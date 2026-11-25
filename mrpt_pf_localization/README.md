@@ -75,6 +75,13 @@ the only way to set these important options is via this overriding mechanism.
 
 Refer to node launch arguments for details.
 
+**Occupancy grid maps**: the likelihood field is evaluated per grid cell, so the
+localization accuracy is limited by the map resolution. Use cells of 0.1 m or
+smaller (e.g. 0.05 m) for localization, even if a coarser map is enough for
+path planning. The default `LF_stdHit` (0.30 m) is a balance: larger values make
+the estimate lag behind the robot under odometry errors, much smaller ones make
+the particle cloud overconfident.
+
 **Point cloud maps**: the log-likelihood of a scan is
 `-mean(min(d_i^2, max_corr_distance^2))/sigma_dist`, with `d_i` the distance
 from each used scan point to its closest map point.
