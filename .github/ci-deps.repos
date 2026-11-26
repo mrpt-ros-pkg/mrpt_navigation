@@ -11,8 +11,9 @@ repositories:
     type: git
     url: https://github.com/mrpt-ros-pkg/pose_cov_ops.git
     version: master
-  # Jazzy still releases 1.4.0, which depends on MRPT 2:
+  # Jazzy still releases 1.4.0, which depends on MRPT 2. Versions older than
+  # 2.0.0 do not move "ideal" controller vehicles exactly as commanded:
   mvsim:
     type: git
     url: https://github.com/MRPT/mvsim.git
-    version: 1.5.0
+    version: 2.2.0

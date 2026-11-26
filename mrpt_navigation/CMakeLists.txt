@@ -19,6 +19,8 @@ if(BUILD_TESTING)
   # A->B goals for each simulated robot, checking there are no collisions and
   # goals are reached or reported as failed in time (see the test criteria).
   find_package(ament_cmake_ros REQUIRED)
+  # The diffdrive robot runs without the default sensors of its vehicle class
+  # (only its "laser1" is used): rendering them may slow down the simulation.
   # Each test also gets its own MVSim server port (like its own ROS domain),
   # so the tests of several packages can run at the same time (requires
   # MVSim >= 1.6.0; older versions ignore MVSIM_SERVER_PORT):
@@ -33,6 +35,7 @@ if(BUILD_TESTING)
       ENV MRPT_NAV_TEST_ROBOT=${ROBOT}
           MVSIM_SERVER_PORT=${MVSIM_PORT_${ROBOT}}
           MRPT_TUTORIALS_DYNAMIC_OBSTACLES=false
+          MRPT_TUTORIALS_DIFFDRIVE_DEFAULT_SENSORS=false
           MRPT_TUTORIALS_DIFFDRIVE_CONTROLLER=twist_ideal
           MRPT_TUTORIALS_ACKERMANN_CONTROLLER=twist_ideal
     )
@@ -44,6 +47,7 @@ if(BUILD_TESTING)
     TIMEOUT 900
     ENV MRPT_TUTORIALS_DIFFDRIVE_CONTROLLER=twist_ideal
         MRPT_TUTORIALS_DYNAMIC_OBSTACLES=false
+        MRPT_TUTORIALS_DIFFDRIVE_DEFAULT_SENSORS=false
         MVSIM_SERVER_PORT=23713
   )
 
@@ -53,6 +57,7 @@ if(BUILD_TESTING)
     TIMEOUT 900
     ENV MRPT_TUTORIALS_DIFFDRIVE_CONTROLLER=twist_ideal
         MRPT_TUTORIALS_DYNAMIC_OBSTACLES=false
+        MRPT_TUTORIALS_DIFFDRIVE_DEFAULT_SENSORS=false
         MVSIM_SERVER_PORT=23714
   )
 
@@ -63,6 +68,7 @@ if(BUILD_TESTING)
     TIMEOUT 1200
     ENV MRPT_TUTORIALS_DIFFDRIVE_CONTROLLER=twist_ideal
         MRPT_TUTORIALS_DYNAMIC_OBSTACLES=false
+        MRPT_TUTORIALS_DIFFDRIVE_DEFAULT_SENSORS=false
         MVSIM_SERVER_PORT=23715
   )
 
@@ -73,6 +79,7 @@ if(BUILD_TESTING)
     TIMEOUT 1200
     ENV MRPT_TUTORIALS_DIFFDRIVE_CONTROLLER=twist_ideal
         MRPT_TUTORIALS_DYNAMIC_OBSTACLES=false
+        MRPT_TUTORIALS_DIFFDRIVE_DEFAULT_SENSORS=false
         MVSIM_SERVER_PORT=23716
   )
 
@@ -82,6 +89,7 @@ if(BUILD_TESTING)
     TIMEOUT 1200
     ENV MRPT_TUTORIALS_DIFFDRIVE_CONTROLLER=twist_ideal
         MRPT_TUTORIALS_DYNAMIC_OBSTACLES=false
+        MRPT_TUTORIALS_DIFFDRIVE_DEFAULT_SENSORS=false
         MVSIM_SERVER_PORT=23717
   )
 
@@ -91,6 +99,7 @@ if(BUILD_TESTING)
     TIMEOUT 900
     ENV MRPT_TUTORIALS_DIFFDRIVE_CONTROLLER=twist_ideal
         MRPT_TUTORIALS_DYNAMIC_OBSTACLES=false
+        MRPT_TUTORIALS_DIFFDRIVE_DEFAULT_SENSORS=false
         MVSIM_SERVER_PORT=23718
   )
 endif()
